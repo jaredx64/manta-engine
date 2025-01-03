@@ -1,0 +1,485 @@
+#include <object_api.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+HEADER_INCLUDES
+#include <core/list.hpp>
+#include <manta/ui.hpp>
+#include <manta/color.hpp>
+
+SOURCE_INCLUDES
+#include <manta/random.hpp>
+#include <manta/draw.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+OBJECT( UIWidget_ColorPicker_TextBox )
+PARENT( UIWidget )
+
+CATEGORY( CategoryUI )
+BUCKET_SIZE( 64 )
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// INTERNAL STATE
+
+PROTECTED float hue = 0.0f;
+PROTECTED float saturation = 1.0f;
+PROTECTED float value = 1.0f;
+PROTECTED float alpha = 1.0f;
+
+PROTECTED Color rgba;
+PROTECTED Color hsva;
+
+PROTECTED enum
+{
+	TextBox_Red,
+	TextBox_Hue = TextBox_Red,
+	TextBox_Green,
+	TextBox_Saturation = TextBox_Green,
+	TextBox_Blue,
+	TextBox_Value = TextBox_Blue,
+	TextBox_Alpha,
+	TextBox_Hex,
+	TEXTBOX_COUNT
+};
+
+PROTECTED Object rgbaTextboxes[TEXTBOX_COUNT];
+PROTECTED Object hsvaTextboxes[TEXTBOX_COUNT];
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// PUBLIC STATE
+
+PUBLIC bool showRGB = true;
+PUBLIC bool showHSV = true;
+PUBLIC bool showAlpha = true;
+PUBLIC bool showHex = true;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// CORE EVENTS
+
+PROTECTED void init()
+{
+	INHERIT::init();
+
+	// TextBox Format
+	TextFormat format;
+	format.font = fnt_iosevka;
+	format.size = 14;
+
+	// Create RGBA Textboxes
+	for( int i = 0, offset = 0; i < TEXTBOX_COUNT; i++ )
+	{
+		if( i == TextBox_Alpha && !showAlpha ) { continue; }
+		if( i == TextBox_Hex && !showHex ) { continue; }
+
+		ObjectHandle<UIWidget_TextBox> rgbHandle { nullptr };
+		ObjectHandle<UIWidget_TextBox> hsvHandle { nullptr };
+
+		if( i > 0 ) { offset += 1; }
+		const int tX = 33 + offset;
+		const int tWidth = ( i == TextBox_Hex ? 71 : 37 );
+		const int tHeight = 28;
+
+		// Create RGBA Textboxes
+		if( showRGB )
+		{
+			const int tY = 0;
+			rgbaTextboxes[i] = context->create_widget_textline( UIWidget_TextBox, tX, tY, tWidth, tHeight, format, id );
+			rgbHandle = context->handle<UIWidget_TextBox>( rgbaTextboxes[i] ); Assert( rgbHandle );
+		}
+
+		// Create HSVA Textboxes
+		if( showHSV )
+		{
+			const int tY = ( 28 + 8 ) * showRGB;
+			hsvaTextboxes[i] = context->create_widget_textline( UIWidget_TextBox, tX, tY, tWidth, tHeight, format, id );
+			hsvHandle = context->handle<UIWidget_TextBox>( hsvaTextboxes[i] ); Assert( hsvHandle );
+		}
+		offset += tWidth;
+
+		// RGBA / HSVA
+		if( i < TextBox_Hex )
+		{
+			if( showRGB )
+			{
+				rgbHandle->set_filter( Text::filter_integer );
+				rgbHandle->limitCharacters = 3;
+				rgbHandle->callbackOnInteract = []( UIContext &context, Object widget )
+					{
+						auto widgetHandle = context.handle<UIWidget_TextBox>( widget );
+						Assert( widgetHandle );
+						auto parentHandle = context.handle<UIWidget_ColorPicker_TextBox>( widgetHandle->parent );
+						Assert( widgetHandle );
+						parentHandle->update_from_textbox_values( true );
+					};
+			}
+
+			if( showHSV )
+			{
+				hsvHandle->set_filter( Text::filter_integer );
+				hsvHandle->limitCharacters = 3;
+				hsvHandle->callbackOnInteract = []( UIContext &context, Object widget )
+					{
+						auto widgetHandle = context.handle<UIWidget_TextBox>( widget );
+						Assert( widgetHandle );
+						auto parentHandle = context.handle<UIWidget_ColorPicker_TextBox>( widgetHandle->parent );
+						Assert( widgetHandle );
+						parentHandle->update_from_textbox_values( false );
+					};
+			}
+		}
+		// HEX
+		else
+		{
+			if( showRGB )
+			{
+				rgbHandle->set_filter( Text::filter_hex );
+				rgbHandle->limitCharacters = 8;
+				rgbHandle->callbackOnInteract = []( UIContext &context, Object widget )
+					{
+						auto widgetHandle = context.handle<UIWidget_TextBox>( widget );
+						Assert( widgetHandle );
+						auto parentHandle = context.handle<UIWidget_ColorPicker_TextBox>( widgetHandle->parent );
+						Assert( widgetHandle );
+						parentHandle->update_from_textbox_hex( true );
+					};
+			}
+
+			if( showHSV )
+			{
+				hsvHandle->set_filter( Text::filter_hex );
+				hsvHandle->limitCharacters = 8;
+				hsvHandle->callbackOnInteract = []( UIContext &context, Object widget )
+					{
+						auto widgetHandle = context.handle<UIWidget_TextBox>( widget );
+						Assert( widgetHandle );
+						auto parentHandle = context.handle<UIWidget_ColorPicker_TextBox>( widgetHandle->parent );
+						Assert( widgetHandle );
+						parentHandle->update_from_textbox_hex( false );
+					};
+			}
+		}
+
+		// Update Width
+		width = 33 + offset;
+	}
+
+	// Update Height
+	height = ( 28 * showRGB ) + ( 28 * showHSV ) + ( 8 * ( showRGB && showHSV ) );
+
+	PrintLn( "%d, %d", width, height );
+
+	// Set color
+	set_rgba( c_aqua );
+	update_textboxes();
+}
+
+
+PROTECTED void free()
+{
+	// Destroy Textboxes
+	for( int i = 0; i < TEXTBOX_COUNT; i++ )
+	{
+		context->destroy_widget( rgbaTextboxes[i] );
+		context->destroy_widget( hsvaTextboxes[i] );
+	}
+
+	INHERIT::free();
+}
+
+
+PROTECTED void update( const Delta delta )
+{
+	// Interaction State
+	const bool isInteractable = is_interactable();
+	const bool isHovering = isInteractable && is_hovering();
+
+	// Tab
+	if( Keyboard::check_pressed( vk_tab ) )
+	{
+		bool activateNext = false;
+
+		// RGBA
+		for( int i = 0; i < TEXTBOX_COUNT * 2; i++ )
+		{
+			if( i < TEXTBOX_COUNT && !showRGB ) { continue; }
+			if( i % TEXTBOX_COUNT == TextBox_Alpha && !showAlpha ) { continue; }
+			if( i % TEXTBOX_COUNT == TextBox_Hex && !showHex ) { continue; }
+			if( i % TEXTBOX_COUNT == 0 && activateNext ) { break; }
+
+			Object textbox = i < TEXTBOX_COUNT ? rgbaTextboxes[i % TEXTBOX_COUNT] : hsvaTextboxes[i % TEXTBOX_COUNT];
+			auto textboxHandle = context->handle<UIWidget_TextBox>( textbox );
+			Assert( textboxHandle );
+
+			if( activateNext )
+			{
+				textboxHandle->activate();
+				textboxHandle->input.caret_set_selection( 0, textboxHandle->input->length() );
+				break;
+			}
+			else if( textboxHandle->is_activated() )
+			{
+				textboxHandle->deactivate();
+				activateNext = true;
+				continue;
+			}
+		}
+
+		// HSVA
+	}
+}
+
+
+PROTECTED void render( const Delta delta )
+{
+	const intv2 p1 = intv2( x, y ).multiply( context->matrix_get() );
+	const intv2 p2 = intv2( x + width, y + height ).multiply( context->matrix_get() );
+
+	// Draw Labels
+	if( showRGB )
+	{
+		const int tY = p1.y;
+		const intv2 dimensions = text_dimensions( fnt_iosevka.bold(), 14, "RGB:" );
+		draw_text( fnt_iosevka.bold(), 14, p1.x, tY + ( 28 - dimensions.y ) / 2 + 2, c_white, "RGB:" );
+	}
+
+	if( showHSV )
+	{
+		const int tY = p1.y + ( 28 + 8  ) * showRGB;
+		const intv2 dimensions = text_dimensions( fnt_iosevka.bold(), 14, "HSV:" );
+		draw_text( fnt_iosevka.bold(), 14, p1.x, tY + ( 28 - dimensions.y ) / 2 + 2, c_white, "HSV:" );
+	}
+}
+
+
+// PROTECTED void apply_matrix() { INHERIT::apply_matrix(); }
+
+
+PROTECTED bool contains_point( const floatv2 point ) { return false; }
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// PUBLIC API
+
+PUBLIC void set_hsva( const u8 h, const u8 s, const u8 v, const u8 a )
+{
+	hsva = Color { h, s, v, a };
+	rgba = color_hsv_to_rgb( hsva );
+
+	hue = h / 255.0f;
+	saturation = s / 255.0f;
+	value = v / 255.0f;
+	alpha = a / 255.0f;
+
+	update_textboxes();
+}
+
+
+PUBLIC void set_hsva( const Color color )
+{
+	set_hsva( color.h, color.s, color.v, color.a );
+}
+
+
+PUBLIC void set_hsva_floats( const float h, const float s, const float v, const float a )
+{
+	hue = clamp( h, 0.0f, 1.0f );
+	saturation = clamp( s, 0.0f, 1.0f );
+	value = clamp( v, 0.0f, 1.0f );
+	alpha = clamp( a, 0.0f, 1.0f );
+
+	const u8 h8 = static_cast<u8>( hue * 255.0f );
+	const u8 s8 = static_cast<u8>( saturation * 255.0f );
+	const u8 v8 = static_cast<u8>( value * 255.0f );
+	const u8 a8 = static_cast<u8>( alpha * 255.0f );
+
+	hsva = Color { h8, s8, v8, a8 };
+	rgba = color_hsv_to_rgb( hsva );
+
+	update_textboxes();
+}
+
+
+PUBLIC void set_hsva_floats( const floatv4 &vHSVA )
+{
+	set_hsva_floats( vHSVA.x, vHSVA.y, vHSVA.z, vHSVA.w );
+}
+
+
+PUBLIC void set_rgba( const u8 r, const u8 g, const u8 b, const u8 a )
+{
+	rgba = Color { r, g, b, a };
+	hsva = color_rgb_to_hsv( rgba );
+
+	hue = hsva.h / 255.0f;
+	saturation = hsva.s / 255.0f;
+	value = hsva.v / 255.0f;
+	alpha = hsva.a / 255.0f;
+
+	update_textboxes();
+}
+
+
+PUBLIC void set_rgba( const Color color )
+{
+	set_rgba( color.r, color.g, color.b, color.a );
+}
+
+
+PUBLIC void set_rgba_floats( const float r, const float g, const float b, const float a )
+{
+	const u8 r8 = static_cast<u8>( clamp( r, 0.0f, 1.0f ) * 255.0f );
+	const u8 g8 = static_cast<u8>( clamp( g, 0.0f, 1.0f ) * 255.0f );
+	const u8 b8 = static_cast<u8>( clamp( b, 0.0f, 1.0f ) * 255.0f );
+	const u8 a8 = static_cast<u8>( clamp( a, 0.0f, 1.0f ) * 255.0f );
+
+	rgba = Color { r8, g8, b8, a8 };
+	hsva = color_rgb_to_hsv( rgba );
+
+	hue = hsva.h / 255.0f;
+	saturation = hsva.s / 255.0f;
+	value = hsva.v / 255.0f;
+	alpha = hsva.a / 255.0f;
+
+	update_textboxes();
+}
+
+
+PUBLIC void set_rgba_floats( const floatv4 &vRGBA )
+{
+	set_rgba_floats( vRGBA.x, vRGBA.y, vRGBA.z, vRGBA.w );
+}
+
+
+PUBLIC Color get_rgba()
+{
+	return rgba;
+}
+
+
+PUBLIC floatv4 get_rgba_floats()
+{
+	return floatv4 { rgba.r / 255.0f, rgba.g / 255.0f, rgba.b / 255.0f, rgba.a / 255.0f };
+}
+
+
+PUBLIC Color get_hsva()
+{
+	return hsva;
+}
+
+
+PUBLIC floatv4 get_hsva_floats()
+{
+	return floatv4 { hsva.h / 255.0f, hsva.s / 255.0f, hsva.v / 255.0f, hsva.a / 255.0f };
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// PRIVATE UTILITY
+
+PROTECTED void update_textboxes()
+{
+	char buffer[16];
+
+	for( int i = 0, offset = 0; i < TEXTBOX_COUNT; i++ )
+	{
+		if( i == TextBox_Alpha && !showAlpha ) { continue; }
+		if( i == TextBox_Hex && !showHex ) { continue; }
+
+		ObjectHandle<UIWidget_TextBox> rgbHandle { nullptr };
+		if( showRGB ) { rgbHandle = context->handle<UIWidget_TextBox>( rgbaTextboxes[i] ); Assert( rgbHandle ); }
+
+		ObjectHandle<UIWidget_TextBox> hsvHandle { nullptr };
+		if( showHSV ) { hsvHandle = context->handle<UIWidget_TextBox>( hsvaTextboxes[i] ); Assert( hsvHandle ); }
+
+		// RGBA / HSVA
+		if( i < TextBox_Hex )
+		{
+			if( showRGB )
+			{
+				snprintf( buffer, sizeof( buffer ), "%u", rgba.xyzw[i] );
+				rgbHandle->set_string( buffer );
+			}
+
+			if( showHSV )
+			{
+				snprintf( buffer, sizeof( buffer ), "%u", hsva.xyzw[i] );
+				hsvHandle->set_string( buffer );
+			}
+		}
+		// HEX
+		else
+		{
+			if( showRGB )
+			{
+				snprintf( buffer, sizeof( buffer ), "%08X", rgba.hash() );
+				rgbHandle->set_string( buffer );
+			}
+
+			if( showHSV )
+			{
+				snprintf( buffer, sizeof( buffer ), "%08X", hsva.hash() );
+				hsvHandle->set_string( buffer );
+			}
+		}
+	}
+}
+
+
+PUBLIC void update_from_textbox_values( const bool isRGBA )
+{
+	if( ( isRGBA && !showRGB ) || ( !isRGBA && !showHSV ) ) { return; }
+	const Object *textboxes = isRGBA ? rgbaTextboxes : hsvaTextboxes;
+
+	Color color;
+	char buffer[16];
+
+	for( int i = 0; i < TextBox_Hex; i++ )
+	{
+		if( i == TextBox_Alpha && !showAlpha) { color.xyzw[i] = 255; break; }
+		auto handle = context->handle<UIWidget_TextBox>( textboxes[i] ); Assert( handle );
+		handle->get_string( buffer, sizeof( buffer ) );
+		const int value = atoi( buffer );
+		color.xyzw[i] = static_cast<u8>( clamp( value, 0, 255 ) );
+	}
+
+	if( isRGBA ) { set_rgba( color ); } else { set_hsva( color ); }
+
+	// Interact Callback
+	if( callbackOnInteract ) { callbackOnInteract( *context, id ); }
+}
+
+
+PUBLIC void update_from_textbox_hex( const bool isRGBA )
+{
+	if( !showHex || ( isRGBA && !showRGB ) || ( !isRGBA && !showHSV ) ) { return; }
+	const Object *textboxes = isRGBA ? rgbaTextboxes : hsvaTextboxes;
+
+	Color color;
+	char buffer[16];
+
+	auto handle = context->handle<UIWidget_TextBox>( textboxes[TextBox_Hex] ); Assert( handle );
+	handle->get_string( buffer, sizeof( buffer ) );
+	const usize length = strlen( buffer );
+
+	// Decode Hex
+	for( int i = 0; i < 4; ++i )
+	{
+		if( length >= static_cast<usize>( ( i + 1 ) * 2 ) )
+		{
+			char hex[3] = { buffer[i * 2], buffer[i * 2 + 1], '\0' };
+			color.xyzw[i] = static_cast<u8>( strtol( hex, nullptr, 16 ) );
+		}
+		else
+		{
+			color.xyzw[i] = 0;
+		}
+	}
+
+	if( isRGBA ) { set_rgba( color ); } else { set_hsva( color ); }
+
+	// Interact Callback
+	if( callbackOnInteract ) { callbackOnInteract( *context, id ); }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

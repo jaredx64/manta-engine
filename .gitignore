@@ -1,0 +1,11 @@
+# Visual Studio
+.vs/
+.vscode/
+node_modules/
+
+# Manta Engine
+boot-vcvars64.txt
+.cache
+
+# System Cache
+.DS_Store

@@ -1,0 +1,237 @@
+#include <object_api.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Includes
+
+HEADER_INCLUDES
+#include <core/list.hpp>
+#include <manta/ui.hpp>
+
+SOURCE_INCLUDES
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Object
+
+OBJECT( UIWidget_ScrollableRegion )
+PARENT( UIWidget )
+
+CATEGORY( CategoryUI )
+BUCKET_SIZE( 64 )
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// INTERNAL STATE
+
+PUBLIC Object scrollbarVertical;
+PUBLIC Object scrollbarHorizontal;
+
+PROTECTED int regionWidth = 64;
+PROTECTED int regionHeight = 64;
+
+PUBLIC int offsetX = 0;
+PUBLIC int offsetY = 0;
+PUBLIC int viewWidth = 0;
+PUBLIC int viewHeight = 0;
+
+PUBLIC bool hideScrollbarHorizontal = false;
+PUBLIC bool hideScrollbarVertical = false;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// PUBLIC STATE
+
+PUBLIC int scrollbarThickness = 20;
+
+PUBLIC void ( *callbackOnRenderContents )( const Delta delta, const int x, const int y ) = nullptr;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// CORE EVENTS
+
+PROTECTED void init()
+{
+	INHERIT::init();
+
+	// Properties
+	sortable = false;
+	container = true;
+
+	// Create Scrollbars
+	scrollbarHorizontal = context->create_widget( UIWidget_Scrollbar, parent ); Assert( scrollbarHorizontal );
+	scrollbarVertical = context->create_widget( UIWidget_Scrollbar, parent ); Assert( scrollbarVertical );
+
+	// Color
+	randomize_color();
+}
+
+
+PROTECTED void free()
+{
+	// Destroy Scrollbars
+	Assert( scrollbarHorizontal ); context->destroy_widget( scrollbarHorizontal );
+	Assert( scrollbarVertical ); context->destroy_widget( scrollbarVertical );
+
+	INHERIT::free();
+}
+
+
+PROTECTED void update( const Delta delta )
+{
+	// Interaction State
+	const bool isInteractable = is_interactable();
+	const bool isHovering = isInteractable && is_hovering();
+
+	// Scrollbar Handles
+	auto horizontalHandle = context->handle<UIWidget_Scrollbar>( scrollbarHorizontal );
+	Assert( horizontalHandle );
+	auto verticalHandle = context->handle<UIWidget_Scrollbar>( scrollbarVertical );
+	Assert( verticalHandle );
+
+	// Scrollbar Positions
+	{
+		horizontalHandle->vertical = false;
+		horizontalHandle->x = x;
+		horizontalHandle->y = y + height - scrollbarThickness;
+		horizontalHandle->height = scrollbarThickness;
+
+		verticalHandle->vertical = true;
+		verticalHandle->x = x + width - scrollbarThickness;
+		verticalHandle->y = y;
+		verticalHandle->width = scrollbarThickness;
+	}
+
+	// Scrollbar Visibility & Views
+	{
+		// Vertical Definitively Visible
+		if( height < regionHeight )
+		{
+			verticalHandle->renderEnabled = !hideScrollbarVertical;
+			viewWidth = width - scrollbarThickness * verticalHandle->renderEnabled;
+
+			// Horizontal Visible
+			if( viewWidth < regionWidth )
+			{
+				horizontalHandle->renderEnabled = !hideScrollbarHorizontal;
+				horizontalHandle->width = width - scrollbarThickness;
+
+				viewHeight = height - scrollbarThickness * horizontalHandle->renderEnabled;
+
+				verticalHandle->height = height;
+			}
+			else
+			// Horizontal Not Visible
+			{
+				horizontalHandle->renderEnabled = false;
+				horizontalHandle->width = width;
+
+				viewHeight = height;
+
+				verticalHandle->height = height;
+			}
+		}
+		// Horizontal Definitively Visible
+		else if( width < regionWidth )
+		{
+			horizontalHandle->renderEnabled = !hideScrollbarHorizontal;
+			viewHeight = height - scrollbarThickness * horizontalHandle->renderEnabled;
+
+			// Vertical Visible
+			if( viewHeight < regionHeight )
+			{
+				verticalHandle->renderEnabled = !hideScrollbarVertical;
+				verticalHandle->height = height;
+
+				viewWidth = width - scrollbarThickness * verticalHandle->renderEnabled;
+
+				horizontalHandle->width = width - scrollbarThickness;
+			}
+			// Vertical Not Visible
+			else
+			{
+				verticalHandle->renderEnabled = false;
+				verticalHandle->height = height;
+
+				viewWidth = width;
+
+				horizontalHandle->width = width;
+			}
+		}
+		// Neither Visible
+		else
+		{
+			viewWidth = width;
+			horizontalHandle->renderEnabled = false;
+			horizontalHandle->width = width;
+
+			viewHeight = height;
+			verticalHandle->renderEnabled = false;
+			verticalHandle->height = height;
+		}
+
+		// Clamp Views
+		viewWidth = max( viewWidth, 0 );
+		regionWidth = max( regionWidth, 0 );
+		viewHeight = max( viewHeight, 0 );
+		regionHeight = max( regionHeight, 0 );
+
+		// Update Scrollbar Views
+		horizontalHandle->set_scrollable_area( viewWidth, regionWidth );
+		verticalHandle->set_scrollable_area( viewHeight, regionHeight );
+	}
+
+	// Scrollbar Offset
+	offsetX = ( regionWidth - min( viewWidth, regionWidth ) ) * horizontalHandle->get_value();
+	offsetY = ( regionHeight - min( viewHeight, regionHeight ) ) * verticalHandle->get_value();
+}
+
+
+PROTECTED void render( const Delta delta )
+{
+	// Scissor
+	const intv2 b1 = intv2( x, y ).multiply( context->matrix_get() );
+	const intv2 b2 = intv2( x + width, y + height ).multiply( context->matrix_get() );
+	context->scissor_set_nested( { b1.x, b1.y, b2.x, b2.y } );
+
+	// Render Contents Callback
+	if( callbackOnRenderContents )
+	{
+		callbackOnRenderContents( delta, b1.x - offsetX, b1.y - offsetY );
+	}
+}
+
+
+PROTECTED void apply_matrix()
+{
+	INHERIT::apply_matrix();
+
+	// Scroll Offset Matrix
+	const Matrix matrix = matrix_build_translation( -offsetX, -offsetY, 0.0f );
+	context->matrix_multiply( matrix );
+}
+
+
+// PROTECTED bool contains_point( const floatv2 point ) { }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// UTILITY FUNCTIONS
+
+PUBLIC void set_scrollable_width( const int w )
+{
+	Assert( w >= 0 );
+	regionWidth = w;
+}
+
+
+PUBLIC void set_scrollable_height( const int h )
+{
+	Assert( h >= 0 );
+	regionHeight = h;
+}
+
+
+PUBLIC void set_scrollable_area( const int w, const int h )
+{
+	Assert( w >= 0 );
+	regionWidth = w;
+	Assert( h >= 0 );
+	regionHeight = h;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

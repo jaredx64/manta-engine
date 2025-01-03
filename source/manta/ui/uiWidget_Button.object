@@ -1,0 +1,111 @@
+#include <object_api.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+HEADER_INCLUDES
+#include <core/list.hpp>
+#include <manta/ui.hpp>
+#include <manta/color.hpp>
+#include <manta/console.hpp>
+
+SOURCE_INCLUDES
+#include <manta/draw.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+OBJECT( UIWidget_Button )
+PARENT( UIWidget )
+
+CATEGORY( CategoryUI )
+BUCKET_SIZE( 64 )
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+PROTECTED Text label;
+PUBLIC DVAR_NAME( color, "color2" );
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// PROTECTED void init() { INHERIT::init(); }
+
+
+// PROTECTED void free() { INHERIT::free(); }
+
+
+PROTECTED void update( const Delta delta )
+{
+	// Interaction State
+	const bool isInteractable = is_interactable();
+	const bool isHovering = isInteractable && is_hovering();
+
+	// Tweens
+	tween( tweenHover, isHovering ? 1.0f : 0.0f, 0.1f, delta, 0.01f );
+	tween( tweenAlert, 0.0f, 0.1f, delta, 0.01f );
+	tween( tweenError, 0.0f, 0.1f, delta, 0.01f );
+	tween( tweenClick, 0.0f, 0.1f, delta, 0.01f );
+
+	// Click
+	if( isHovering && Mouse::check_pressed( mb_left ) )
+	{
+		if( callbackOnInteract ) { callbackOnInteract( *context, id ); }
+		tweenClick = 1.0f;
+	}
+}
+
+
+PROTECTED void render( const Delta delta )
+{
+	// Positions
+	const intv2 b1 = intv2( x, y ).multiply( context->matrix_get() );
+	const intv2 b2 = intv2( x + width, y + height ).multiply( context->matrix_get() );
+
+	// Colors
+	const Color colorMain = color_mix( color_mix( color, c_white, tweenHover * 0.25f ), c_lime, tweenClick );
+	const Color colorSide = color_mix( colorMain, c_black, 0.2f );
+
+	// Click Offset
+	constexpr int clickDepth = 3;
+	const int clickOffset = tweenClick * clickDepth;
+
+	// Side
+	draw_rectangle( b1.x, b1.y + clickOffset, b2.x, b2.y, colorSide );
+	draw_rectangle( b1.x, b1.y + clickOffset, b2.x, b2.y, c_black, true );
+
+	// Main
+	draw_rectangle( b1.x, b1.y + clickOffset, b2.x, b2.y - clickDepth + clickOffset, colorMain );
+	draw_rectangle( b1.x, b1.y + clickOffset, b2.x, b2.y - clickDepth + clickOffset, c_black, true );
+
+	// Label
+	const intv2 labelDimensions = label.get_dimensions();
+	const int labelX = b1.x + width * 0.5f - labelDimensions.x * 0.5f;
+	const int labelY = b1.y + ( height - clickDepth ) * 0.5f - labelDimensions.y * 0.5f - 1 + clickOffset;
+	label.draw( labelX, labelY );
+
+	// Locked Overlay
+	if( locked ) { draw_rectangle( b1.x, b1.y + clickOffset, b2.x, b2.y, Color { 0, 0, 0, 150 } ); }
+}
+
+
+// PROTECTED void apply_matrix() { INHERIT::apply_matrix(); }
+
+
+// PROTECTED bool contains_point( const floatv2 point ) { }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// PUBLIC API
+
+PUBLIC void set_label( const char *string )
+{
+	label.clear();
+	label.append( string );
+}
+
+
+PUBLIC void set_label( const char *string, TextFormat format )
+{
+	label.clear();
+	label.defaultFormat = format;
+	label.append( string );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

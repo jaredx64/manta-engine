@@ -1,0 +1,9 @@
+{
+	"name": "spr_fire_beam",
+	"texture": "spr_fire_beam.png",
+	"atlas": "ui",
+
+	"count": 1,
+	"xorigin": 20,
+	"yorigin": 6,
+}

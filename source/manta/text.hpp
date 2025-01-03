@@ -1,0 +1,466 @@
+#pragma once
+
+#include <core/debug.hpp>
+#include <core/types.hpp>
+
+#include <manta/fonts.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// TODO:
+// TextEditor - underline
+// TextEditor - strikethrough
+// TextEditor - highlight
+// TextEditor - hyperlink
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+enum_type( TextErr, int )
+{
+	TextErr_None = 0,
+	TextErr_LimitCharacter = 1,
+	TextErr_IllegalCharacter = 2,
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class TextFormat
+{
+_PUBLIC:
+	constexpr TextFormat() :
+		font{ fnt_iosevka.id }, size{ 12 },
+		bold{ false }, italic{ false }, underline{ false }, highlight{ false },
+		alignment{ 0 },
+		color{ c_white },
+		payload{ 0 } { }
+
+_PUBLIC:
+	// 2 bytes
+	u8 font;
+	u8 size;
+
+	// 1 Byte
+	u16 bold          : 1;
+	u16 italic        : 1;
+	u16 underline     : 1;
+	u16 strikethrough : 1;
+	u16 highlight     : 1;
+	u16 _unused0	  : 3;
+
+	// 1 Byte
+	u16 alignment	  : 3;
+	u16 _unused1      : 5;
+
+	// 4 bytes
+	Color color;
+
+	// 4 bytes
+	u16 payload;
+	u16 _unused3;
+};
+static_assert( sizeof( TextFormat ) == 12, "TextFormat must be 12 bytes!" );
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class TextChar
+{
+_PUBLIC:
+	constexpr TextChar( const u32 codepoint = 0, const TextFormat format = { } ) :
+		codepoint{ codepoint }, format{ format } { }
+
+	explicit operator bool() const { return codepoint != 0; }
+	bool is_whitespace() const;
+	bool is_newline() const;
+
+	u16 get_ttf() const;
+	SysFonts::FontGlyphInfo &get_glyph() const;
+	u16v2 get_glyph_dimensions( const usize index ) const;
+	u16v2 get_glyph_dimensions_raw() const;
+
+_PUBLIC:
+	u32 codepoint;
+	TextFormat format;
+};
+static_assert( sizeof( TextChar ) == 16, "TextChar must be 16 bytes!" );
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class Text
+{
+_PUBLIC:
+#if true // MEMORY_RAII
+	Text( const char *string = "" ) { init( string ); }
+	Text( const Text &other ) { copy( other ); }
+	Text( Text &&other ) { move( static_cast<Text &&>( other ) ); }
+	~Text() { free(); }
+
+	Text &operator=( const Text &other ) { return copy( other ); }
+	Text &operator=( Text &&other ) { return move( static_cast<Text &&>( other ) ); }
+#else
+	Text<T> &operator=( const Text &other ) { Error( "Text: assignment disabled" ); return *this; }
+	Text<T> &operator=( Text &&other ) { Error( "Text: assignment disabled" ); return *this; }
+
+#if MEMORY_ASSERTS
+	~Text()
+	{
+		// Memory Leak Detection
+		if( Debug::memoryLeakDetection && Debug::exitCode == 0 )
+		{
+			MemoryAssertMsg( data == nullptr, "ERROR: Memory leak in Text (%p) (size: %.2f kb)",
+			                 this, KB( size_allocated_bytes() ) );
+		}
+	}
+#endif
+#endif
+
+_PRIVATE:
+	void grow();
+
+_PUBLIC:
+	void init( const char *string = "" );
+	void free();
+	Text &copy( const Text &other );
+	Text &move( Text &&other );
+
+	void clear();
+	void remove( const usize index, const usize count );
+
+	usize append( const TextChar &c );
+	usize append( const char *string, TextFormat format );
+	usize append( const char *string );
+	usize append( const Text &string, const TextFormat format );
+	usize append( const Text &string );
+
+	usize insert( const usize index, const TextChar &c );
+	usize insert( const usize index, const char *string, TextFormat format );
+	usize insert( const usize index, const char *string );
+	usize insert( const usize index, const Text &string, const TextFormat format );
+	usize insert( const usize index, const Text &string );
+
+	usize size_allocated_bytes() const;
+	usize length_bytes() const;
+	usize length() const;
+
+	TextChar &char_at( const usize index );
+	const TextChar &char_at( const usize index ) const;
+	void string( class String &string );
+	String substr( const usize start, const usize end );
+	void cstr( char *buffer, const usize size );
+
+	void draw_selection( const float x, const float y, const usize begin, const usize end );
+	void draw_caret( const float x, const float y, const usize caret, floatv4 *outCorners = nullptr );
+	intv2 draw( const float x, const float y );
+
+	usize get_index_from_position( const int x, const int y, const float bias = 1.0f );
+	intv3 get_position_from_index( const usize index );
+	intv2 get_dimensions();
+
+	TextChar &operator[]( const usize index ) { return char_at( index ); }
+	const TextChar &operator[]( const usize index ) const { return char_at( index ); }
+
+	static bool filter_ascii( Text &text, u32 codepoint );
+	static bool filter_emoji( Text &text, u32 codepoint );
+	static bool filter_number( Text &text, u32 codepoint );
+	static bool filter_number_positive( Text &text, u32 codepoint );
+	static bool filter_integer( Text &text, u32 codepoint );
+	static bool filter_integer_positive( Text &text, u32 codepoint );
+	static bool filter_hex( Text &text, u32 codepoint );
+	static bool filter_boolean( Text &text, u32 codepoint );
+	static bool filter_filename( Text &text, u32 codepoint );
+	static bool filter_console( Text &text, u32 codepoint );
+
+_PRIVATE:
+	struct LineInfo
+	{
+		usize begin = 0;
+		usize end = USIZE_MAX;
+		usize next = USIZE_MAX;
+		u16 width = 0;
+		u16 height = 0;
+		u16 offset = 0;
+		u8 alignment = 0;
+		u8 unused;
+	};
+	static_assert( sizeof( LineInfo ) == 32, "LineInfo must be 32 bytes!" );
+
+	TextFormat get_format( const usize index ) const;
+	LineInfo get_line( const usize index );
+
+	bool limit_characters();
+	bool limit_dimensions();
+
+_PUBLIC:
+	TextChar *data = nullptr;
+	TextFormat defaultFormat;
+	usize capacity = 0;
+	usize current = 0;
+
+_PUBLIC:
+	usize limitCharacters = 0; // Max character count
+	u16 limitWidth = 0;        // Maximum width
+	u16 limitHeight = 0;       // Maximum height
+	u16 pageWidth = 0;         // Word-wrap width
+
+	// bool filter( Text &text, u32 codepoint )
+	bool ( *filter )( Text &, u32 ) = nullptr;
+
+	// void callbackUpdate( Text &text )
+	void ( *callbackOnUpdate )( Text & ) = nullptr;
+
+	// void callbackError( TextEditor &ime, const TextErr error )
+	void ( *callbackOnError )( Text &, const TextErr ) = nullptr;
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+namespace SysText
+{
+
+constexpr const char u8ToHex[][2] = {
+	"\x00", "\x01", "\x02", "\x03", "\x04", "\x05", "\x06", "\x07",
+	"\x08", "\x09", "\x0A", "\x0B", "\x0C", "\x0D", "\x0E", "\x0F",
+	"\x10", "\x11", "\x12", "\x13", "\x14", "\x15", "\x16", "\x17",
+	"\x18", "\x19", "\x1A", "\x1B", "\x1C", "\x1D", "\x1E", "\x1F",
+	"\x20", "\x21", "\x22", "\x23", "\x24", "\x25", "\x26", "\x27",
+	"\x28", "\x29", "\x2A", "\x2B", "\x2C", "\x2D", "\x2E", "\x2F",
+	"\x30", "\x31", "\x32", "\x33", "\x34", "\x35", "\x36", "\x37",
+	"\x38", "\x39", "\x3A", "\x3B", "\x3C", "\x3D", "\x3E", "\x3F",
+	"\x40", "\x41", "\x42", "\x43", "\x44", "\x45", "\x46", "\x47",
+	"\x48", "\x49", "\x4A", "\x4B", "\x4C", "\x4D", "\x4E", "\x4F",
+	"\x50", "\x51", "\x52", "\x53", "\x54", "\x55", "\x56", "\x57",
+	"\x58", "\x59", "\x5A", "\x5B", "\x5C", "\x5D", "\x5E", "\x5F",
+	"\x60", "\x61", "\x62", "\x63", "\x64", "\x65", "\x66", "\x67",
+	"\x68", "\x69", "\x6A", "\x6B", "\x6C", "\x6D", "\x6E", "\x6F",
+	"\x70", "\x71", "\x72", "\x73", "\x74", "\x75", "\x76", "\x77",
+	"\x78", "\x79", "\x7A", "\x7B", "\x7C", "\x7D", "\x7E", "\x7F",
+	"\x80", "\x81", "\x82", "\x83", "\x84", "\x85", "\x86", "\x87",
+	"\x88", "\x89", "\x8A", "\x8B", "\x8C", "\x8D", "\x8E", "\x8F",
+	"\x90", "\x91", "\x92", "\x93", "\x94", "\x95", "\x96", "\x97",
+	"\x98", "\x99", "\x9A", "\x9B", "\x9C", "\x9D", "\x9E", "\x9F",
+	"\xA0", "\xA1", "\xA2", "\xA3", "\xA4", "\xA5", "\xA6", "\xA7",
+	"\xA8", "\xA9", "\xAA", "\xAB", "\xAC", "\xAD", "\xAE", "\xAF",
+	"\xB0", "\xB1", "\xB2", "\xB3", "\xB4", "\xB5", "\xB6", "\xB7",
+	"\xB8", "\xB9", "\xBA", "\xBB", "\xBC", "\xBD", "\xBE", "\xBF",
+	"\xC0", "\xC1", "\xC2", "\xC3", "\xC4", "\xC5", "\xC6", "\xC7",
+	"\xC8", "\xC9", "\xCA", "\xCB", "\xCC", "\xCD", "\xCE", "\xCF",
+	"\xD0", "\xD1", "\xD2", "\xD3", "\xD4", "\xD5", "\xD6", "\xD7",
+	"\xD8", "\xD9", "\xDA", "\xDB", "\xDC", "\xDD", "\xDE", "\xDF",
+	"\xE0", "\xE1", "\xE2", "\xE3", "\xE4", "\xE5", "\xE6", "\xE7",
+	"\xE8", "\xE9", "\xEA", "\xEB", "\xEC", "\xED", "\xEE", "\xEF",
+	"\xF0", "\xF1", "\xF2", "\xF3", "\xF4", "\xF5", "\xF6", "\xF7",
+	"\xF8", "\xF9", "\xFA", "\xFB", "\xFC", "\xFD", "\xFE", "\xFF",
+};
+
+
+template <usize N> class CharBuffer
+{
+_PUBLIC:
+    template <usize... Ns> constexpr CharBuffer( const char ( &...args )[Ns] )
+	{
+        static_assert( sizeof...( args ) > 0, "Must provide at least one string" );
+		( append( args, Ns - 1 ), ... );
+		data[N] = '\0';
+    }
+
+	constexpr const char *cstr() const { return data; }
+	constexpr operator const char *() const { return data; }
+
+_PRIVATE:
+	constexpr void append( const char *buffer, const usize a )
+	{
+		for( usize i = 0; i < a; i++ ) { data[current++] = buffer[i]; }
+	}
+
+    char data[N + 1] { };
+	usize current = 0;
+};
+
+
+template <usize... Ns> constexpr auto concatenate_strings( const char ( &...args )[Ns] )
+{
+    constexpr usize size = ( 0 + ... + Ns );
+    return CharBuffer<size>( args... );
+}
+
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// TEXT_RESET() -- Resets text formatting to default state
+#define TEXT_RESET() \
+	"\x01"
+
+// TEXT_FONT( u8 font ) -- Custom font ID (accepted values: 0 - 255)
+#define TEXT_FONT(font) \
+	"\x02", SysText::u8ToHex[static_cast<u8>( font )]
+
+// TEXT_SIZE( u8 size ) -- Font size (accepted values: 0 - 255)
+#define TEXT_SIZE(size) \
+	"\x03", SysText::u8ToHex[static_cast<u8>( size )]
+
+// TEXT_COLOR( Color color )
+#define TEXT_COLOR(color) \
+	"\x04", SysText::u8ToHex[color.r], SysText::u8ToHex[color.g], \
+            SysText::u8ToHex[color.b], SysText::u8ToHex[color.a]
+
+// TEXT_COLOR_RGBA( u8 r, u8 g, u8, b, u8 a )
+#define TEXT_COLOR_RGBA(r, g, b, a) \
+	"\x04", SysText::u8ToHex[static_cast<u8>( r )], SysText::u8ToHex[static_cast<u8>( g )], \
+	        SysText::u8ToHex[static_cast<u8>( b )], SysText::u8ToHex[static_cast<u8>( a )]
+
+// TEXT_COLOR_RGB( u8 r, u8 g, u8, b )
+#define TEXT_COLOR_RGB(r, g, b, a) \
+	"\x04", SysText::u8ToHex[static_cast<u8>( r )], SysText::u8ToHex[static_cast<u8>( g )], \
+	        SysText::u8ToHex[static_cast<u8>( b )], SysText::u8ToHex[255]
+
+// TEXT_BOLD( bool enable ) -- Enable/Disable bold (accepted values: true/false)
+#define TEXT_BOLD(enable) \
+	"\x05", "\x01", SysText::u8ToHex[static_cast<u8>( enable )]
+
+// TEXT_ITALICS( bool enable ) -- Enable/Disable italics (accepted values: true/false)
+#define TEXT_ITALICS(enable) \
+	"\x05", "\x02", SysText::u8ToHex[static_cast<u8>( enable )]
+
+// TEXT_UNDERLINE( bool enable ) -- Enable/Disable underline (accepted values: true/false)
+#define TEXT_UNDERLINE(enable) \
+	"\x05", "\x03", SysText::u8ToHex[static_cast<u8>( enable )]
+
+// TEXT_HIGHLIGHT( bool enable ) -- Enable/Disable highlight (accepted values: true/false)
+#define TEXT_HIGHLIGHT(enable) \
+	"\x05", "\x04", SysText::u8ToHex[static_cast<u8>( enable )]
+
+// TEXT_ALIGN( u8 alignment ) -- Text Alignment (accepted values: align_left, align_center, align_right)
+#define TEXT_ALIGN(alignment) \
+	"\x05", "\x05", SysText::u8ToHex[static_cast<u8>( alignment )]
+
+// TEXT_ALIGN( name, ... ) -- Begin a text buffer definition; Usage: static constexpr auto text = TEXT_DEFINE( ... )
+#define TEXT_DEFINE(...) SysText::concatenate_strings( __VA_ARGS__ )
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class TextEditor
+{
+_PUBLIC:
+	TextEditor()
+	{
+		text.callbackOnError = text_callback_error;
+		text.callbackOnUpdate = text_callback_update;
+	}
+
+	~TextEditor();
+
+_PUBLIC:
+	static void listen();
+	void activate();
+	void deactivate();
+	void update( const u64 codepoint );
+	void update( const char *buffer );
+	void clear();
+
+	void event_mouse_click();
+	void event_mouse_select();
+	void event_left();
+	void event_right();
+	void event_up();
+	void event_down();
+	void event_backspace();
+	void event_insert();
+	void event_delete();
+	void event_home();
+	void event_end();
+	void event_pageup();
+	void event_pagedown();
+	void event_tab();
+	void event_newline();
+	void event_select_all();
+	void event_cut();
+	void event_copy_clipboard();
+	void event_paste_clipboard();
+	void event_copy_selection();
+	void event_paste_selection();
+
+	bool highlighting() const { return ( caretEnd != USIZE_MAX && caretStart < caretEnd ); }
+	usize caret_get_position() const { return ( highlighting() ? caretSeek : caretStart ); }
+	usize caret_get_start() const { return caretStart; }
+	usize caret_get_end() const { return caretEnd; }
+
+	void caret_alert( const Color color );
+	void caret_set_color( const Color color );
+	void caret_set_root( const usize position );
+	void caret_set_position( const usize position );
+	void caret_set_position_start();
+	void caret_set_position_end();
+	void caret_set_selection( const usize start, const usize end );
+	void caret_set_selection_word( const usize index );
+	void caret_set_selection_paragraph( const usize index );
+	void caret_reset_selection();
+
+	intv2 draw( const Delta delta, const float x, const float y );
+
+	// Handle
+	Text *operator->() { MemoryAssert( text.data != nullptr ); return &text; }
+
+	// Indexer
+	TextChar &operator[]( const usize index ) { return text.char_at( index ); }
+	const TextChar &operator[]( const usize index ) const { return text.char_at( index ); }
+
+_PRIVATE:
+	void poll();
+	void text_append( const char *buffer );
+	usize text_replace( const usize start, const usize end, const char *buffer );
+
+	u32 codepoint_at( const usize index ) const;
+	void validate_selection();
+
+_PRIVATE:
+	static void text_callback_error( Text &text, const TextErr error );
+	static void text_callback_update( Text &text );
+
+_PRIVATE:
+	Text text;
+	usize caretStart = 0; // insertion & highlight begin
+	usize caretEnd = USIZE_MAX; // highlight end
+	usize caretRoot = USIZE_MAX; // root for shift selection seeking
+	usize caretSeek = USIZE_MAX; // current shift selection seek
+
+	float caretTimer = 0.0;
+	float caretTimerAlert = 0.0;
+	Color caretColor = c_white;
+	Color caretColorAlert = c_white;
+
+	usize clickIndex = USIZE_MAX;
+	usize clickStart = USIZE_MAX;
+	usize clickEnd = USIZE_MAX;
+	u8 clickCount = 0;
+
+_PUBLIC:
+	bool control = false;
+	bool shifting = false;
+	bool selecting = false;
+	bool inserting = false;
+	bool allowUTF8 = false;
+	bool allowNewlines = false;
+	bool allowTabs = false;
+	bool allowClick = true;
+	int screenX = 0;
+	int screenY = 0;
+
+_PUBLIC:
+	// void callbackUpdate( TextEditor &ime )
+	void ( *callbackOnUpdate )( TextEditor & ) = nullptr;
+
+	// void callbackListen( TextEditor &ime )
+	void ( *callbackOnListen )( TextEditor & ) = nullptr;
+
+	// void callbackError( TextEditor &ime, const TextErr error )
+	void ( *callbackOnError )( TextEditor &, const TextErr ) = nullptr;
+
+	// void callbackDraw( TextEditor &ime, const Delta delta detla, const float x, const float y )
+	void ( *callbackOnDraw )( TextEditor &, const Delta, const float, const float ) = nullptr;
+};
+
+
+namespace SysText
+{
+	extern TextEditor *ACTIVE_TEXT_EDITOR;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -1,0 +1,147 @@
+#include <object_api.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Includes
+
+HEADER_INCLUDES
+// ...
+
+SOURCE_INCLUDES
+#include <scene.hpp>
+#include <manta/window.hpp>
+#include <manta/input.hpp>
+#include <manta/draw.hpp>
+#include <manta/math.hpp>
+#include <manta/random.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Object
+
+OBJECT( obj_asteroid )
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Data
+
+PUBLIC float x = 0.0f;
+PUBLIC float y = 0.0f;
+PUBLIC float speed = 0.0f;
+PUBLIC float direction = 0.0f;
+PUBLIC float rotation = 0.0f;
+PUBLIC float size = 0.0f;
+PUBLIC float health = 0.0f;
+PUBLIC const float radius = 16.0f;
+
+PRIVATE const float border = 256.0f;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Events
+
+CONSTRUCTOR( const float _size )
+{
+	size = _size;
+	speed = random<float>( 30.0f, 64.0f );
+	direction = random<float>( 360.0f );
+
+	const int side = choose( 0, 1, 2, 3 );
+	switch( side )
+	{
+		case 0: // Left
+		{
+			x = 0 - border * 0.5f;
+			y = random<float>( 0.0f, static_cast<float>( Window::height ) );
+		}
+		break;
+
+		case 1: // Right
+		{
+			x = static_cast<float>( Window::width ) + border * 0.5f;
+			y = random<float>( 0.0f, static_cast<float>( Window::height ) );
+		}
+		break;
+
+		case 2: // Top
+		{
+			x = random<float>( 0.0f, static_cast<float>( Window::width ) );
+			y = 0 - border * 0.5f;
+		}
+		break;
+
+		case 3: // Bottom
+		{
+			x = random<float>( 0.0f, static_cast<float>( Window::width ) );
+			y = static_cast<float>( Window::height ) + border * 0.5f;
+		}
+		break;
+	}
+}
+
+CONSTRUCTOR( const float _x, const float _y, const float _direction, const float _speed, const float _size )
+{
+	x = _x;
+	y = _y;
+	direction = _direction;
+	speed = _speed;
+	size = _size;
+}
+
+EVENT_CREATE
+{
+	rotation = random<float>( 360.0 );
+
+	health = 100.0f * size;
+}
+
+EVENT_UPDATE
+{
+	// Movement
+	x += lengthdir_x( speed * delta, direction );
+	y += lengthdir_y( speed * delta, direction );
+
+	rotation += delta * speed * ( id.index % 2 == 0 ? -1.0f : 1.0f );
+
+	// Destroy
+	constexpr float border = 256.0f;
+	if( x < -border || x > static_cast<float>( Window::width + border ) || y < -border || y > static_cast<float>( Window::height + border ) )
+	{
+		Scene::objects.destroy( id );
+		return;
+	}
+
+	// Bullets
+	const float radiusSqr = ( radius * size ) * ( radius * size );
+	for( auto projectile : Scene::objects.iterator_all<obj_projectile>() )
+	{
+		if( floatv2_distance_sqr( { x, y }, { projectile->x, projectile->y } ) < radiusSqr )
+		{
+			Scene::objects.destroy( projectile->id );
+			health -= 50.0f;
+		}
+	}
+
+	// Health
+	if( health <= 0.0f )
+	{
+		// Create Children
+		if( size >= 2.0f )
+		{
+			Scene::objects.create<obj_asteroid>( x, y, direction - 45, speed, size * 0.5f );
+			Scene::objects.create<obj_asteroid>( x, y, direction + 45, speed, size * 0.5f );
+			Scene::objects.create<obj_asteroid>( x, y, direction - 135, speed, size * 0.5f );
+			Scene::objects.create<obj_asteroid>( x, y, direction + 135, speed, size * 0.5f );
+		}
+
+		// Destroy Self
+		Scene::score += 1 + static_cast<int>( size );
+		Scene::objects.destroy( id );
+		return;
+	}
+}
+
+EVENT_RENDER
+{
+	const float r = radius * size;
+	draw_sprite_angle( spr_asteroid, 0, x, y, rotation, size, size, c_white, 0.0f );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Functions

@@ -1,0 +1,129 @@
+#include <object_api.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+HEADER_INCLUDES
+#include <core/list.hpp>
+#include <manta/ui.hpp>
+#include <manta/color.hpp>
+
+SOURCE_INCLUDES
+#include <manta/draw.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+OBJECT( UIWidget_Checkbox )
+PARENT( UIWidget )
+
+CATEGORY( CategoryUI )
+BUCKET_SIZE( 64 )
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// INTERNAL STATE
+
+PROTECTED bool enabled = false;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// PUBLIC STATE
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// CORE EVENTS
+
+// PROTECTED void init() { INHERIT::init(); }
+
+
+// PROTECTED void free() { INHERIT::free(); }
+
+
+PROTECTED void update( const Delta delta )
+{
+	// Interaction State
+	const bool isInteractable = is_interactable();
+	const bool isHovering = isInteractable && is_hovering();
+
+	// Tweens
+	tween( tweenHover, isHovering ? 1.0f : 0.0f, 0.1f, delta, 0.01f );
+	tween( tweenAlert, 0.0f, 0.1f, delta, 0.01f );
+	tween( tweenError, 0.0f, 0.1f, delta, 0.01f );
+	tween( tweenClick, 0.0f, 0.1f, delta, 0.01f );
+
+	// Click
+	if( isHovering && Mouse::check_pressed( mb_left ) )
+	{
+		tweenClick = 1.0f;
+		toggle();
+	}
+}
+
+
+PROTECTED void render( const Delta delta )
+{
+	// Positions
+	const intv2 b1 = intv2( x, y ).multiply( context->matrix_get() );
+	const intv2 b2 = intv2( x + width, y + height ).multiply( context->matrix_get() );
+
+	// Colors
+	const Color colorMain = color_mix( color_mix( color, c_white, tweenHover * 0.25f ), c_lime, tweenClick );
+	const Color colorSide = color_mix( colorMain, c_black, 0.2f );
+
+	// Click Offset
+	constexpr int clickDepth = 3;
+	const int clickOffset = tweenClick * clickDepth;
+
+	// Side
+	draw_rectangle( b1.x, b1.y + clickOffset, b2.x, b2.y, colorSide );
+	draw_rectangle( b1.x, b1.y + clickOffset, b2.x, b2.y, c_black, true );
+
+	// Main
+	draw_rectangle( b1.x, b1.y + clickOffset, b2.x, b2.y - clickDepth + clickOffset, colorMain );
+	draw_rectangle( b1.x, b1.y + clickOffset, b2.x, b2.y - clickDepth + clickOffset, c_black, true );
+
+	// State
+	const int border = 5;
+	draw_rectangle( b1.x + border, b1.y + clickOffset + border,
+		b2.x - border, b2.y - clickDepth + clickOffset - border,
+		enabled ? c_white : c_black );
+	draw_rectangle( b1.x + border, b1.y + clickOffset + border,
+		b2.x - border, b2.y - clickDepth + clickOffset - border, c_black, true );
+
+	if( !enabled )
+	{
+		draw_rectangle( b1.x + border, b1.y + clickOffset + border,
+			b2.x - border, b1.y + border + clickDepth + 1, colorSide );
+		draw_rectangle( b1.x + border, b1.y + clickOffset + border,
+			b2.x - border, b1.y + border + clickDepth + 1, c_black, true );
+	}
+
+	// Locked Overlay
+	if( locked ) { draw_rectangle( b1.x, b1.y + clickOffset, b2.x, b2.y, Color { 0, 0, 0, 150 } ); }
+}
+
+
+// PROTECTED void apply_matrix() { INHERIT::apply_matrix(); }
+
+
+// PROTECTED bool contains_point( const floatv2 point ) { }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// PUBLIC API
+
+PUBLIC void set_enabled( const bool enable )
+{
+	enabled = enable;
+}
+
+
+PUBLIC bool is_enabled()
+{
+	return enabled;
+}
+
+
+PUBLIC void toggle()
+{
+	enabled = !enabled;
+	if( callbackOnInteract ) { callbackOnInteract( *context, id ); }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

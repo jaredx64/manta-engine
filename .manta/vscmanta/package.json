@@ -1,0 +1,52 @@
+{
+	"name": "vscmanta",
+	"displayName": "vscmanta",
+	"description": "Manta Engine - Visual Studio Code Extension",
+	"version": "0.0.1",
+	"engines": {
+		"vscode": "^1.78.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"main": "./extension.js",
+	"activationEvents": [
+		"workspaceContains:.manta"
+	],
+	"contributes": {
+		"commands": [
+			{ "command": "vscmanta.about",              "title": "Manta: About" },
+
+			{ "command": "vscmanta.newProject",         "title": "Manta: New Project" },
+
+			{ "command": "vscmanta.selectProject",      "title": "Manta: Select Project" },
+			{ "command": "vscmanta.selectPlatform",     "title": "Manta: Select Platform" },
+			{ "command": "vscmanta.selectArchitecture", "title": "Manta: Select Architecture" },
+			{ "command": "vscmanta.selectToolchain",    "title": "Manta: Select Toolchain" },
+			{ "command": "vscmanta.selectConfig",       "title": "Manta: Select Configuration" },
+			{ "command": "vscmanta.selectRenderer",     "title": "Manta: Select Renderer" },
+
+			{ "command": "vscmanta.setWorkspace",       "title": "Manta: Select VSCode Workspace" },
+
+			{ "command": "vscmanta.cleanProject",       "title": "Manta: Clean Project" },
+			{ "command": "vscmanta.buildAndRun",        "title": "Manta: Build & Run" },
+			{ "command": "vscmanta.build",              "title": "Manta: Build" },
+			{ "command": "vscmanta.run",                "title": "Manta: Run" },
+			{ "command": "vscmanta.package",            "title": "Manta: Package" },
+			{ "command": "vscmanta.debugRuntime",       "title": "Manta: Debug Runtime" },
+			{ "command": "vscmanta.renderdoc",          "title": "Manta: RenderDoc" },
+			{ "command": "vscmanta.insertCommentBreak", "title": "Manta: Inserts comment break" }
+		]
+	},
+	"devDependencies": {
+        "@types/vscode": "^1.78.0",
+        "@types/glob": "^8.1.0",
+        "@types/mocha": "^10.0.1",
+        "@types/node": "16.x",
+        "eslint": "^8.39.0",
+        "glob": "^8.1.0",
+        "mocha": "^10.2.0",
+        "typescript": "^5.0.4",
+        "@vscode/test-electron": "^2.3.0"
+    }
+}

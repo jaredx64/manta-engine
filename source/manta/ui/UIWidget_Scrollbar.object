@@ -1,0 +1,275 @@
+#include <object_api.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+HEADER_INCLUDES
+#include <core/list.hpp>
+#include <manta/ui.hpp>
+#include <manta/color.hpp>
+
+SOURCE_INCLUDES
+#include <manta/random.hpp>
+#include <manta/draw.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+OBJECT( UIWidget_Scrollbar )
+PARENT( UIWidget )
+
+CATEGORY( CategoryUI )
+BUCKET_SIZE( 64 )
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// INTERNAL STATE
+
+PROTECTED float valueTo = 0.0f;
+PROTECTED float value = 0.0f;
+
+PROTECTED int sizeView = 0;
+PROTECTED int sizeArea = 0;
+
+PROTECTED intv2 anchorMouse;
+PROTECTED float tweenSlider = 0.0f;
+PROTECTED bool sliding = false;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// PUBLIC STATE
+
+PUBLIC bool vertical = true;
+PUBLIC int sizeMin = 32;
+
+PUBLIC void ( *callbackOnScroll )() = nullptr;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// CORE EVENTS
+
+PROTECTED void init()
+{
+	INHERIT::init();
+
+	// Properties
+	container = true;
+	sortable = false;
+
+	// Default View
+	sizeView = vertical ? height : width;
+	sizeArea = sizeView * 2;
+
+	// Color
+	randomize_color();
+}
+
+
+// PROTECTED void free() { INHERIT::free(); }
+
+
+PROTECTED void update( const Delta delta )
+{
+	// State
+	const bool isInteractable = is_interactable();
+	const bool isHovering = isInteractable && is_hovering();
+
+	// Tweens
+	tween( tweenAlert, 0.0f, 0.1f, delta, 0.01f );
+	tween( tweenError, 0.0f, 0.1f, delta, 0.01f );
+	tween( tweenClick, 0.0f, 0.1f, delta, 0.01f );
+
+	// Positions
+	const intv2 sliderDim = slider_dimensions();
+	const intv2 sliderPos = slider_position( sliderDim );
+	const floatv2 b1 = floatv2( x, y ).multiply( context->matrix_get() );
+	const floatv2 s1 = floatv2( x + sliderPos.x,
+	                            y + sliderPos.y ).multiply( context->matrix_get() );
+	const floatv2 s2 = floatv2( x + sliderPos.x + sliderDim.x,
+								y + sliderPos.y + sliderDim.y ).multiply( context->matrix_get() );
+
+	// Mouse Interaction
+	const float percentMouseX = ( ( mouse_x - anchorMouse.x ) - ( b1.x + sliderDim.x / 2 ) ) / ( width - sliderDim.x );
+	const float percentMouseY = ( ( mouse_y - anchorMouse.y ) - ( b1.y + sliderDim.y / 2 ) ) / ( height - sliderDim.y );
+	const float percentMouse = clamp( vertical ? percentMouseY : percentMouseX, 0.0f, 1.0f );
+
+	// Hover & Slider Click
+	const bool isHoveringSlider = isHovering && point_in_rect( mouse_x, mouse_y, s1.x, s1.y, s2.x, s2.y );
+
+	if( isHovering )
+	{
+		// Tween
+		tween( tweenSlider, isHoveringSlider ? 1.0f : 0.0f, 0.1f, delta, 0.01f );
+		tween( tweenHover, sliding || !isHoveringSlider ? 1.0f : 0.0f, 0.1f, delta, 0.01f );
+
+		// Activate Sliding
+		if( Mouse::check_pressed( mb_left ) )
+		{
+			sliding = true;
+			tweenClick = 1.0f;
+			if( isHoveringSlider ) { anchorMouse = intv2 { mouse_x - ( s1.x + s2.x ) / 2,
+			                                               mouse_y - ( s1.y + s2.y ) / 2 }; }
+		}
+	}
+	else
+	{
+		// No hover
+		tween( tweenSlider, 0.0f, 1.0f, delta, 0.01f );
+		tween( tweenHover, 0.0f, 1.0f, delta, 0.01f );
+	}
+
+	// Interact Callback
+	if( callbackOnInteract && sliding ) { callbackOnInteract( *context, id ); }
+
+	// Sliding
+	if( Mouse::check_released( mb_left ) || !isInteractable )
+	{
+		sliding = false;
+		anchorMouse = intv2 { 0, 0 };
+	}
+	else if( isInteractable && sliding && Mouse::check( mb_left ) )
+	{
+		// Active sliding
+		tweenClick = 1.0f;
+		valueTo = percentMouse;
+	}
+
+	// Scrollbar Position
+	tween( value, valueTo, 0.025f, delta, 0.01f );
+}
+
+
+PROTECTED void render( const Delta delta )
+{
+	// Background Positions
+	const intv2 b1 = intv2( x, y ).multiply( context->matrix_get() );
+	const intv2 b2 = intv2( x + width, y + height ).multiply( context->matrix_get() );
+
+	// Slider Positions
+	const intv2 sliderDimensions = slider_dimensions();
+	const intv2 sliderPosition = slider_position( sliderDimensions );
+
+	const intv2 s1 = intv2( x + sliderPosition.x,
+	                        y + sliderPosition.y ).multiply( context->matrix_get() );
+	const intv2 s2 = intv2( x + sliderPosition.x + sliderDimensions.x,
+	                        y + sliderPosition.y + sliderDimensions.y ).multiply( context->matrix_get() );
+
+	// Colors
+	const Color colorMain = color_mix( color_mix( color, c_white, tweenSlider * 0.50f ), c_lime, tweenClick );
+	const Color colorBackground = color_mix( color_mix( color, c_white, tweenHover * 0.25f ), c_black, 0.5f );
+
+	// Draw Background
+	draw_rectangle( b1.x, b1.y, b2.x, b2.y, colorBackground );
+	draw_rectangle( b1.x, b1.y, b2.x, b2.y, c_black, true );
+
+	// Draw Slider
+	draw_rectangle( s1.x, s1.y, s2.x, s2.y, colorMain );
+	draw_rectangle( s1.x, s1.y, s2.x, s2.y, c_black, true );
+
+	// Locked Overlay
+	if( locked ) { draw_rectangle( b1.x, b1.y, b2.x, b2.y, Color { 0, 0, 0, 150 } ); }
+}
+
+
+// PROTECTED void apply_matrix() { INHERIT::apply_matrix(); }
+
+
+// PROTECTED bool contains_point( const floatv2 point ) { }
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// PUBLIC API
+
+PUBLIC void scroll_percent( const float increment )
+{
+	valueTo = clamp( valueTo + increment, 0.0f, 1.0f );
+}
+
+
+PUBLIC void scroll_percent_immediate( const float increment )
+{
+	valueTo = clamp( valueTo + increment, 0.0f, 1.0f );
+	value = valueTo;
+}
+
+
+PUBLIC void scroll_pixels( const int increment )
+{
+	const int scrollableSize = sizeArea - min( sizeView, sizeArea );
+	const float pixelsPercent = static_cast<float>( increment ) / scrollableSize;
+	valueTo = clamp( valueTo + pixelsPercent, 0.0f, 1.0f );
+}
+
+
+PUBLIC void scroll_pixels_immediate( const int increment )
+{
+	const int scrollableSize = sizeArea - min( sizeView, sizeArea );
+	const float pixelsPercent = static_cast<float>( increment ) / scrollableSize;
+	valueTo = clamp( valueTo + pixelsPercent, 0.0f, 1.0f );
+	value = valueTo;
+}
+
+
+PUBLIC void set_position_pixels( const int position )
+{
+ 	const int scrollableSize = sizeArea - min( sizeView, sizeArea );
+	const float pixelsPercent = static_cast<float>( position ) / scrollableSize;
+	valueTo = clamp( pixelsPercent, 0.0f, 1.0f );
+}
+
+
+PUBLIC void set_position_pixels_immediate( const int position )
+{
+	const int scrollableSize = sizeArea - min( sizeView, sizeArea );
+	const float pixelsPercent = static_cast<float>( position ) / scrollableSize;
+	valueTo = clamp( pixelsPercent, 0.0f, 1.0f );
+	value = valueTo;
+}
+
+
+PUBLIC void set_position_percent( const float position )
+{
+	valueTo = clamp( position, 0.0f, 1.0f );
+}
+
+
+PUBLIC void set_position_percent_immediate( const float position )
+{
+	valueTo = clamp( position, 0.0f, 1.0f );
+	value = valueTo;
+}
+
+
+PUBLIC float get_value()
+{
+	return value;
+}
+
+
+PUBLIC float get_value_immediate()
+{
+	return valueTo;
+}
+
+
+PUBLIC void set_scrollable_area( const int sView, const int sArea )
+{
+	Assert( sView >= 0 );
+	sizeView = sView;
+	Assert( sArea >= 0 );
+	sizeArea = sArea;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// PRIVATE HELPERS
+
+PRIVATE intv2 slider_dimensions()
+{
+	const int w = vertical ? width : width * ( static_cast<float>( sizeView ) / sizeArea );
+	const int h = vertical ? height * ( static_cast<float>( sizeView ) / sizeArea ) : height;
+	return intv2 { clamp( w, sizeMin, width ), clamp( h, sizeMin, height ) };
+}
+
+
+PRIVATE intv2 slider_position( const intv2 &dimensions )
+{
+	return intv2 { vertical ? 0 : ( width - dimensions.x ) * value,
+	               vertical ? ( height - dimensions.y ) * value : 0 };
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

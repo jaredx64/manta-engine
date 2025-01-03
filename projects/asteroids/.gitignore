@@ -1,0 +1,11 @@
+# Visual Studio
+.vs/
+.vscode/
+node_modules/
+
+# Manta Engine
+output/
+.manta
+
+# System Cache
+.DS_Store

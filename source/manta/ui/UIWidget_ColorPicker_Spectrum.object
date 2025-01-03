@@ -1,0 +1,477 @@
+#include <object_api.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+HEADER_INCLUDES
+#include <core/list.hpp>
+#include <manta/ui.hpp>
+#include <manta/color.hpp>
+
+SOURCE_INCLUDES
+#include <manta/random.hpp>
+#include <manta/draw.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+OBJECT( UIWidget_ColorPicker_Spectrum )
+PARENT( UIWidget )
+
+CATEGORY( CategoryUI )
+BUCKET_SIZE( 64 )
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// INTERNAL STATE
+
+PROTECTED float hue = 0.0f;
+PROTECTED float saturation = 1.0f;
+PROTECTED float value = 1.0f;
+PROTECTED float alpha = 1.0f;
+
+PROTECTED Color rgba;
+PROTECTED Color hsva;
+
+PROTECTED float tweenHoverSpectrum = 0.0f;
+PROTECTED float tweenClickSpectrum = 0.0f;
+PROTECTED float tweenHoverHue = 0.0f;
+PROTECTED float tweenClickHue = 0.0f;
+PROTECTED float tweenHoverAlpha = 0.0f;
+PROTECTED float tweenClickAlpha = 0.0f;
+
+PROTECTED bool slidingSpectrum = false;
+PROTECTED bool slidingHue = false;
+PROTECTED bool slidingAlpha = false;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Alpha Picker
+
+PUBLIC int sliderThickness = 24;
+PUBLIC bool showHueSlider = true;
+PUBLIC bool showAlphaSlider = true;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// CORE EVENTS
+
+PROTECTED void init()
+{
+	INHERIT::init();
+
+	// Color
+	//randomize_color();
+
+	// Properties
+	sortable = false;
+}
+
+
+// PROTECTED void free() { INHERIT::free(); }
+
+
+PROTECTED void update( const Delta delta )
+{
+	// Interaction State
+	const bool isInteractable = is_interactable();
+	const bool isHovering = isInteractable && is_hovering();
+
+	// Coordinates
+	const intv4 pS = get_spectrum_bounds(); // Spectrum bounds
+	const intv4 pH = get_hue_bounds(); // Hue Slider Bounds
+	const intv4 pA = get_alpha_bounds(); // Alpha Slider Bounds
+	const int mX = static_cast<int>( mouse_x );
+	const int mY = static_cast<int>( mouse_y );
+
+	// Hover
+	const bool canHoverSpectrum = isHovering && !( slidingHue || slidingAlpha );
+	const bool isHoveringSpectrum = canHoverSpectrum && point_in_rect( mX, mY, pS.x, pS.y, pS.z, pS.w );
+
+	const bool canHoverHue = isHovering && !( slidingSpectrum || slidingAlpha );
+	const bool isHoveringHue = canHoverHue && point_in_rect( mX, mY, pH.x, pH.y, pH.z, pH.w );
+
+	const bool canHoverAlpha = isHovering && !( slidingSpectrum || slidingHue );
+	const bool isHoveringAlpha = canHoverAlpha && point_in_rect( mX, mY, pA.x, pA.y, pA.z, pA.w );
+
+	// Tweens
+	tween( tweenHover, isHovering ? 1.0f : 0.0f, 0.1f, delta, 0.01f );
+	tween( tweenAlert, 0.0f, 0.1f, delta, 0.01f );
+	tween( tweenError, 0.0f, 0.1f, delta, 0.01f );
+	tween( tweenClick, 0.0f, 0.1f, delta, 0.01f );
+
+	// Spectrum Tween
+	tween( tweenHoverSpectrum, ( isHoveringSpectrum || slidingSpectrum ) ? 1.0f : 0.0f, 0.05f, delta, 0.01f );
+	tween( tweenClickSpectrum, slidingSpectrum ? 1.0f : 0.0f, 0.05f, delta, 0.01f );
+
+	// Hue Tween
+	if( showHueSlider )
+	{
+		tween( tweenHoverHue, ( isHoveringHue || slidingHue ) ? 1.0f : 0.0f, 0.05f, delta, 0.01f );
+		tween( tweenClickHue, slidingHue ? 1.0f : 0.0f, 0.05f, delta, 0.01f );
+	}
+	else
+	{
+		tweenHoverHue = 0.0f;
+		tweenClickHue = 0.0f;
+	}
+
+	// Alpha Tween
+	if( showAlphaSlider )
+	{
+		tween( tweenHoverAlpha, ( isHoveringAlpha || slidingAlpha ) ? 1.0f : 0.0f, 0.05f, delta, 0.01f );
+		tween( tweenClickAlpha, slidingAlpha ? 1.0f : 0.0f, 0.05f, delta, 0.01f );
+	}
+	else
+	{
+		tweenHoverAlpha = 0.0f;
+		tweenClickAlpha = 0.0f;
+	}
+
+	// Mouse Click
+	if( isHovering && Mouse::check_pressed( mb_left ) )
+	{
+		if( isHoveringSpectrum ) { slidingSpectrum = true; } else
+		if( isHoveringHue ) { slidingHue = true; } else
+		if( isHoveringAlpha ) { slidingAlpha = true; }
+	}
+
+	// Mouse Release
+	if( Mouse::check_released( mb_left ) )
+	{
+		// Reset Sliding State
+		slidingSpectrum = false;
+		slidingHue = false;
+		slidingAlpha = false;
+	}
+
+	// Interact Callback
+	if( callbackOnInteract && ( slidingSpectrum || slidingHue || slidingAlpha ) )
+	{
+		callbackOnInteract( *context, id );
+	}
+
+	// Sliding
+	if( slidingSpectrum )
+	{
+		saturation = static_cast<float>( mX - pS.x ) / ( pS.z - pS.x );
+		value = 1.0f - static_cast<float>( mY - pS.y ) / ( pS.w - pS.y );
+		set_hsva_floats( hue, saturation, value, alpha );
+	}
+	else if( slidingHue )
+	{
+		hue = static_cast<float>( mX - pH.x ) / ( pH.z - pH.x );
+		set_hsva_floats( hue, saturation, value, alpha );
+	}
+	else if( slidingAlpha )
+	{
+		alpha = 1.0f - static_cast<float>( mX - pH.x ) / ( pA.z - pA.x );
+		set_hsva_floats( hue, saturation, value, alpha );
+	}
+}
+
+
+PROTECTED void render( const Delta delta )
+{
+	// Interaction State
+	const bool isInteractable = is_interactable();
+	const bool isHovering = isInteractable && is_hovering();
+
+	// Coordinates
+	const intv2 b1 = intv2( x, y ).multiply( context->matrix_get() );
+	const intv2 b2 = intv2( x + width, y + height ).multiply( context->matrix_get() );
+	const intv4 pS = get_spectrum_bounds(); // Spectrum bounds
+	const intv4 pH = get_hue_bounds(); // Hue Slider Bounds
+	const intv4 pA = get_alpha_bounds(); // Alpha Slider Bounds
+
+	// Color
+	const Color colorS = color_mix( c_yellow, c_lime, tweenClickSpectrum );
+	const Color colorH = color_mix( c_yellow, c_lime, tweenClickHue );
+	const Color colorA = color_mix( c_yellow, c_lime, tweenClickAlpha );
+
+	// Color Picker Values
+	const u8 hue8 = static_cast<u8>( hue * 255.0f );
+	const u8 saturation8 = static_cast<u8>( saturation * 255.0f );
+	const u8 value8 = static_cast<u8>( value * 255.0f );
+
+	// Backgrounds
+	draw_rectangle( pS.x - 3, pS.y - 3, pS.z + 3, pS.w + 3, c_black );
+	draw_rectangle( pS.x - 2, pS.y - 2, pS.z + 2, pS.w + 2, color );
+	const u8 hoverAlphaSpectrum = static_cast<u8>( tweenHoverSpectrum * 255.0 );
+	draw_rectangle( pS.x - 2, pS.y - 2, pS.z + 2, pS.w + 2, color_swap_alpha( colorS, hoverAlphaSpectrum ) );
+	draw_rectangle( pS.x - 1, pS.y - 1, pS.z + 1, pS.w + 1, c_black );
+
+	if( showHueSlider )
+	{
+		draw_rectangle( pH.x - 3, pH.y - 3, pH.z + 3, pH.w + 3, c_black );
+		draw_rectangle( pH.x - 2, pH.y - 2, pH.z + 2, pH.w + 2, color );
+		const u8 hoverAlphaHue = static_cast<u8>( tweenHoverHue * 255.0 );
+		draw_rectangle( pH.x - 2, pH.y - 2, pH.z + 2, pH.w + 2, color_swap_alpha( colorH, hoverAlphaHue ) );
+		draw_rectangle( pH.x - 1, pH.y - 1, pH.z + 1, pH.w + 1, c_black );
+	}
+
+	if( showAlphaSlider )
+	{
+		draw_rectangle( pA.x - 3, pA.y - 3, pA.z + 3, pA.w + 3, c_black, true );
+		draw_rectangle( pA.x - 2, pA.y - 2, pA.z + 2, pA.w + 2, color );
+		const u8 hoverAlphaAlpha = static_cast<u8>( tweenHoverAlpha * 255.0 );
+		draw_rectangle( pA.x - 2, pA.y - 2, pA.z + 2, pA.w + 2, color_swap_alpha( colorA, hoverAlphaAlpha ) );
+		draw_rectangle( pA.x - 1, pA.y - 1, pA.z + 1, pA.w + 1, c_black );
+		draw_checkerboard( pA.x, pA.y, pA.z, pA.w );
+	}
+
+	// Colors
+	Gfx::shader_bind( SHADER_DEFAULT_HSV );
+	{
+		// Spectrum
+		{
+			const Color c1 = Color { hue8, 0x00, 0xFF };
+			const Color c2 = Color { hue8, 0xFF, 0xFF };
+			const Color c3 = Color { hue8, 0x00, 0x00 };
+			const Color c4 = Color { hue8, 0xFF, 0x00 };
+			draw_quad_uv_color( pS.x, pS.y, pS.z, pS.w, 0, 0, 0xFFFF, 0xFFFF, c1, c2, c3, c4 );
+		}
+
+		// Hue Slider
+		if( showHueSlider )
+		{
+			const Color c1 = Color { 0x00, 0xFF, 0xFF };
+			const Color c2 = Color { 0xFF, 0xFF, 0xFF };
+			const Color c3 = Color { 0x00, 0xFF, 0xFF };
+			const Color c4 = Color { 0xFF, 0xFF, 0xFF };
+			draw_quad_uv_color( pH.x, pH.y, pH.z, pH.w, 0, 0, 0xFFFF, 0xFFFF, c1, c2, c3, c4 );
+		}
+
+		// Alpha Slider
+		if( showAlphaSlider )
+		{
+			const Color c1 = Color { hue8, saturation8, value8, 0xFF };
+			const Color c2 = Color { hue8, saturation8, value8, 0x00 };
+			const Color c3 = Color { hue8, saturation8, value8, 0xFF };
+			const Color c4 = Color { hue8, saturation8, value8, 0x00 };
+			draw_quad_uv_color( pA.x, pA.y, pA.z, pA.w, 0, 0, 0xFFFF, 0xFFFF, c1, c2, c3, c4 );
+		}
+	}
+	Gfx::shader_bind( SHADER_DEFAULT );
+
+	// Spectrum Picker
+	{
+		const float pickerX = lerp( pS.x, pS.z, saturation );
+		const float pickerY = lerp( pS.y, pS.w, 1.0f - value );
+		const Color pickerColorOutline = color_mix( c_white, c_yellow, tweenHoverSpectrum );
+		draw_rectangle( pickerX - 6, pickerY - 6, pickerX + 6, pickerY + 6, pickerColorOutline );
+
+		const Color pickerColor = Color { rgba.r, rgba.g, rgba.b, 255 };
+		draw_rectangle( pickerX - 4, pickerY - 4, pickerX + 4, pickerY + 4, pickerColor );
+	}
+
+	// Hue Picker
+	if( showHueSlider )
+	{
+		const float pickerX = lerp( pH.x, pH.z, hue );
+		const float pickerY1 = pH.y;
+		const float pickerY2 = pH.w;
+		const Color pickerColorOutline = color_mix( c_white, c_yellow, tweenHoverHue );
+		draw_rectangle( pickerX - 6, pickerY1 - 2, pickerX + 6, pickerY2 + 2, pickerColorOutline );
+
+		const Color pickerColor = color_hsv_to_rgb( Color { hsva.h, 255, 255, 255 } );
+		draw_rectangle( pickerX - 4, pickerY1, pickerX + 4, pickerY2, pickerColor );
+	}
+
+	// Alpha Picker
+	if( showAlphaSlider )
+	{
+		const float pickerX = lerp( pA.x, pA.z, 1.0f - alpha );
+		const float pickerY1 = pA.y;
+		const float pickerY2 = pA.w;
+		const Color pickerColorOutline = color_mix( c_white, c_yellow, tweenHoverAlpha );
+
+		draw_rectangle( pickerX - 6, pickerY1 - 2, pickerX - 4, pickerY2 + 2, pickerColorOutline );
+		draw_rectangle( pickerX + 4, pickerY1 - 2, pickerX + 6, pickerY2 + 2, pickerColorOutline );
+		draw_rectangle( pickerX - 4, pickerY1 - 2, pickerX + 4, pickerY1, pickerColorOutline );
+		draw_rectangle( pickerX - 4, pickerY2, pickerX + 4, pickerY2 + 2, pickerColorOutline );
+
+		draw_checkerboard( pickerX - 4, pickerY1, pickerX + 4, pickerY2 );
+		draw_rectangle( pickerX - 4, pickerY1, pickerX + 4, pickerY2, rgba );
+	}
+}
+
+
+// PROTECTED void apply_matrix() { INHERIT::apply_matrix(); }
+
+
+// PROTECTED bool contains_point( const floatv2 point ) { INHERIT::contains_point(); }
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// PUBLIC API
+
+PUBLIC void set_hsva( const u8 h, const u8 s, const u8 v, const u8 a )
+{
+	hsva = Color { h, s, v, a };
+	rgba = color_hsv_to_rgb( hsva );
+
+	hue = h / 255.0f;
+	saturation = s / 255.0f;
+	value = v / 255.0f;
+	alpha = a / 255.0f;
+}
+
+
+PUBLIC void set_hsva( const Color color )
+{
+	set_hsva( color.h, color.s, color.v, color.a );
+}
+
+
+PUBLIC void set_hsva_floats( const float h, const float s, const float v, const float a )
+{
+	hue = clamp( h, 0.0f, 1.0f );
+	saturation = clamp( s, 0.0f, 1.0f );
+	value = clamp( v, 0.0f, 1.0f );
+	alpha = clamp( a, 0.0f, 1.0f );
+
+	const u8 h8 = static_cast<u8>( hue * 255.0f );
+	const u8 s8 = static_cast<u8>( saturation * 255.0f );
+	const u8 v8 = static_cast<u8>( value * 255.0f );
+	const u8 a8 = static_cast<u8>( alpha * 255.0f );
+
+	hsva = Color { h8, s8, v8, a8 };
+	rgba = color_hsv_to_rgb( hsva );
+}
+
+
+PUBLIC void set_hsva_floats( const floatv4 &vHSVA )
+{
+	set_hsva_floats( vHSVA.x, vHSVA.y, vHSVA.z, vHSVA.w );
+}
+
+
+PUBLIC void set_rgba( const u8 r, const u8 g, const u8 b, const u8 a )
+{
+	rgba = Color { r, g, b, a };
+	hsva = color_rgb_to_hsv( rgba );
+
+	hue = hsva.h / 255.0f;
+	saturation = hsva.s / 255.0f;
+	value = hsva.v / 255.0f;
+	alpha = hsva.a / 255.0f;
+}
+
+
+PUBLIC void set_rgba( const Color color )
+{
+	set_rgba( color.r, color.g, color.b, color.a );
+}
+
+
+PUBLIC void set_rgba_floats( const float r, const float g, const float b, const float a )
+{
+	const u8 r8 = static_cast<u8>( clamp( r, 0.0f, 1.0f ) * 255.0f );
+	const u8 g8 = static_cast<u8>( clamp( g, 0.0f, 1.0f ) * 255.0f );
+	const u8 b8 = static_cast<u8>( clamp( b, 0.0f, 1.0f ) * 255.0f );
+	const u8 a8 = static_cast<u8>( clamp( a, 0.0f, 1.0f ) * 255.0f );
+
+	rgba = Color { r8, g8, b8, a8 };
+	hsva = color_rgb_to_hsv( rgba );
+
+	hue = hsva.h / 255.0f;
+	saturation = hsva.s / 255.0f;
+	value = hsva.v / 255.0f;
+	alpha = hsva.a / 255.0f;
+}
+
+
+PUBLIC void set_rgba_floats( const floatv4 &vRGBA )
+{
+	set_rgba_floats( vRGBA.x, vRGBA.y, vRGBA.z, vRGBA.w );
+}
+
+
+PUBLIC Color get_rgba()
+{
+	return rgba;
+}
+
+
+PUBLIC floatv4 get_rgba_floats()
+{
+	return floatv4 { rgba.r / 255.0f, rgba.g / 255.0f, rgba.b / 255.0f, rgba.a / 255.0f };
+}
+
+
+PUBLIC Color get_hsva()
+{
+	return hsva;
+}
+
+
+PUBLIC floatv4 get_hsva_floats()
+{
+	return floatv4 { hsva.h / 255.0f, hsva.s / 255.0f, hsva.v / 255.0f, hsva.a / 255.0f };
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// PRIVATE UTILITY
+
+PROTECTED intv4 get_spectrum_bounds()
+{
+	const int border = 3;
+	const int spacing = 6 * ( showHueSlider + showAlphaSlider );
+
+	const int w = width - border;
+	const int h = height - border - spacing - ( sliderThickness + border ) * ( showHueSlider + showAlphaSlider );
+	const intv2 p1 = intv2( x + border, y + border ).multiply( context->matrix_get() );
+	const intv2 p2 = intv2( x + w, y + h ).multiply( context->matrix_get() );
+
+	return intv4 { p1.x, p1.y, p2.x, p2.y };
+}
+
+
+PROTECTED intv4 get_hue_bounds()
+{
+	const int border = 3;
+	const int spacing = 6 * showAlphaSlider;
+
+	const int offsetY = height - spacing - ( sliderThickness + border ) * ( showHueSlider + showAlphaSlider );
+
+	const int w = width - border;
+	const int h = sliderThickness;
+
+	const intv2 p1 = intv2( x + border, y + offsetY ).multiply( context->matrix_get() );
+	const intv2 p2 = intv2( x + w, y + offsetY + h ).multiply( context->matrix_get() );
+
+	return intv4 { p1.x, p1.y, p2.x, p2.y };
+}
+
+
+PROTECTED intv4 get_alpha_bounds()
+{
+	constexpr int border = 3;
+
+	const int offsetY = height - ( sliderThickness + border ) * ( showAlphaSlider );
+	const int w = width - border;
+	const int h = sliderThickness;
+
+	const intv2 p1 = intv2( x + border, y + offsetY ).multiply( context->matrix_get() );
+	const intv2 p2 = intv2( x + w, y + offsetY + h ).multiply( context->matrix_get() );
+
+	return intv4 { p1.x, p1.y, p2.x, p2.y };
+}
+
+
+PROTECTED void draw_checkerboard( const int x1, const int y1, const int x2, const int y2 )
+{
+	const int checkerSize = 8;
+	const int checkerCountX = ( x2 - x1 ) / checkerSize;
+	const int checkerCountY = ( y2 - y1 ) / checkerSize;
+
+	for( int i = 0; i <= checkerCountX; i++ )
+	for( int j = 0; j <= checkerCountY; j++ )
+	{
+
+		const Color checkerColor = ( ( j % 2 ) + i ) % 2 == 0 ? Color { 120, 120, 120 } : Color { 170, 170, 170 };
+		const int checkerX1 = x1 + i * checkerSize;
+		const int checkerY1 = y1 + j * checkerSize;
+		const int checkerX2 = checkerX1 + ( i == checkerCountX ? x2 - checkerX1 : checkerSize );
+		const int checkerY2 = checkerY1 + ( j == checkerCountY ? y2 - checkerY1 : checkerSize );
+		draw_rectangle( checkerX1, checkerY1, checkerX2, checkerY2, checkerColor );
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

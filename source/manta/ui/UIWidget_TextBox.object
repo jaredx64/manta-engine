@@ -1,0 +1,266 @@
+#include <object_api.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+HEADER_INCLUDES
+#include <core/list.hpp>
+#include <manta/ui.hpp>
+#include <manta/color.hpp>
+#include <manta/text.hpp>
+
+SOURCE_INCLUDES
+#include <manta/random.hpp>
+#include <manta/draw.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+OBJECT( UIWidget_TextBox )
+PARENT( UIWidget )
+
+CATEGORY( CategoryUI )
+BUCKET_SIZE( 64 )
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// INTERNAL STATE
+
+PROTECTED Object region;
+
+PROTECTED bool active = false;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// PUBLIC STATE
+
+PUBLIC TextEditor input;
+
+PUBLIC int limitWidth = 0;
+PUBLIC int limitHeight = 0;
+PUBLIC int limitCharacters = 0;
+
+PUBLIC bool allowWordWrap = true;
+PUBLIC bool hideScrollbars = false;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// CORE EVENTS
+
+PROTECTED void init()
+{
+	INHERIT::init();
+
+	// Properties
+	container = true;
+
+	// Initialize TextEditor
+	input.allowNewlines = true;
+	input.allowTabs = true;
+
+	// Scrollable Region
+	region = context->create_widget( UIWidget_ScrollableRegion, id ); Assert( region );
+}
+
+
+PROTECTED void free()
+{
+	Assert( region ); context->destroy_widget( region );
+	input.deactivate();
+
+	INHERIT::free();
+}
+
+
+PROTECTED void update( const Delta delta )
+{
+	// Interaction State
+	const bool isInteractable = is_interactable();
+	const bool isHovering = isInteractable && is_hovering();
+
+	// Tweens
+	tween( tweenHover, isHovering ? 1.0f : 0.0f, 0.05f, delta, 0.01f );
+	tween( tweenAlert, 0.0f, 0.05f, delta, 0.01f );
+	tween( tweenError, 0.0f, 0.05f, delta, 0.01f );
+	tween( tweenClick, 0.0f, 0.05f, delta, 0.01f );
+
+	// Scrollable Region
+	auto regionHandle = context->handle<UIWidget_ScrollableRegion>( region );
+	Assert( regionHandle );
+
+	// Update Scrollable Region Dimensions
+	regionHandle->x = 6;
+	regionHandle->y = 6;
+	regionHandle->width = width - 12;
+	regionHandle->height = height - 12;
+	regionHandle->hideScrollbarVertical = hideScrollbars;
+	regionHandle->hideScrollbarHorizontal = hideScrollbars;
+	regionHandle->hoverable = false;
+
+	// Force update the region widget here
+	//regionHandle->updateEnabled = false;
+	context->update_widget( region, delta );
+
+	// TextEditor Limits
+	input->limitCharacters = limitCharacters;
+	input->limitWidth = limitWidth;
+	input->limitHeight = limitHeight;
+	if( allowWordWrap ) { input->pageWidth = limitWidth > 0 ? limitWidth : regionHandle->viewWidth; } else
+	                    { input->pageWidth = 0; }
+
+	// Update Scrollable Region Area
+	const intv2 dimensionText = input->get_dimensions();
+	const intv2 dimensionsRegion = intv2 { max( regionHandle->viewWidth, dimensionText.x ),
+	                                       max( regionHandle->viewHeight, dimensionText.y ) };
+	regionHandle->set_scrollable_area( dimensionsRegion.x, dimensionsRegion.y );
+
+	// Caret Scrolling
+	if( SysText::ACTIVE_TEXT_EDITOR == &input )
+	{
+		const intv3 caretPos = input->get_position_from_index( input.caret_get_position() );
+		const intv2 viewVer = { regionHandle->offsetY, regionHandle->offsetY + regionHandle->viewHeight };
+		const intv2 viewHor = { regionHandle->offsetX, regionHandle->offsetX + regionHandle->viewWidth };
+
+		auto verticalHandle = context->handle<UIWidget_Scrollbar>( regionHandle->scrollbarVertical );
+		Assert( verticalHandle );
+		if( caretPos.y < viewVer.x ) { verticalHandle->set_position_pixels( caretPos.y ); } else
+		if( caretPos.z > viewVer.y ) { verticalHandle->set_position_pixels( caretPos.z - regionHandle->viewHeight ); }
+
+		auto horizontalHandle = context->handle<UIWidget_Scrollbar>( regionHandle->scrollbarHorizontal );
+		Assert( horizontalHandle );
+		if( caretPos.x < viewHor.x ) { horizontalHandle->set_position_pixels( caretPos.x ); } else
+		if( caretPos.x > viewHor.y ) { horizontalHandle->set_position_pixels( caretPos.x - regionHandle->viewWidth ); }
+	}
+
+	// Return
+	if( Keyboard::check_pressed( vk_enter ) && is_activated() && !input.allowNewlines )
+	{
+		deactivate();
+	}
+
+	// Click
+	if( Mouse::check_pressed( mb_left ) )
+	{
+		if( isHovering ) { activate(); } else { deactivate(); }
+	}
+
+	// Validate Activated Status
+	if( active )
+	{
+		tweenClick = 1.0f;
+		if( SysText::ACTIVE_TEXT_EDITOR != &input ) { deactivate(); }
+	}
+	else
+	{
+		Assert( SysText::ACTIVE_TEXT_EDITOR != &input );
+	}
+}
+
+
+PROTECTED void render( const Delta delta )
+{
+	const intv2 p1 = intv2( x, y ).multiply( context->matrix_get() );
+	const intv2 p2 = intv2( x + width, y + height ).multiply( context->matrix_get() );
+
+	// Colors
+	const Color colorMain = color_mix( color_mix( color, c_white, tweenHover * 0.25f ), c_lime, tweenClick );
+	const Color colorSide = color_mix( color_mix( color, c_white, tweenHover * 0.25f ), c_black, 0.85f );
+
+	// Outline
+	draw_rectangle( p1.x, p1.y, p2.x, p2.y, colorMain );
+	draw_rectangle( p1.x, p1.y, p2.x, p2.y, c_black, true );
+
+	// Body & Scissor
+	draw_rectangle( p1.x + 2, p1.y + 2, p2.x - 2, p2.y - 2, colorSide );
+	context->scissor_set_nested( p1.x + 2, p1.y + 2, p2.x - 2, p2.y - 2 );
+
+	// Text Editor
+	auto regionHandle = context->handle<UIWidget_ScrollableRegion>( region );
+	Assert( regionHandle );
+	input.draw( delta, p1.x + 6 - regionHandle->offsetX, p1.y + 6 - regionHandle->offsetY );
+	input.screenX = p1.x + 6 - regionHandle->offsetX;
+	input.screenY = p1.y + 6 - regionHandle->offsetY;
+
+	// Locked Overlay
+	if( locked ) { draw_rectangle( p1.x, p1.y, p2.x, p2.y, Color { 0, 0, 0, 150 } ); }
+}
+
+
+// PROTECTED void apply_matrix() { INHERIT::apply_matrix(); }
+
+
+// PROTECTED bool contains_point( const floatv2 point ) { }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// PUBLIC API
+
+PUBLIC void activate()
+{
+	if( active ) { Assert( SysText::ACTIVE_TEXT_EDITOR == &input ); return; }
+	input.activate();
+	input.caret_set_position( input->length() );
+	active = true;
+}
+
+
+PUBLIC void deactivate()
+{
+	if( !active ) { Assert( SysText::ACTIVE_TEXT_EDITOR != &input ); return; }
+	input.deactivate();
+	input.caret_reset_selection();
+	if( callbackOnInteract ) { callbackOnInteract( *context, id ); }
+	active = false;
+}
+
+
+PUBLIC bool is_activated()
+{
+	return active;
+}
+
+
+PUBLIC void set_filter( bool ( *textFilter )( Text &, u32 ) )
+{
+	input->filter = textFilter;
+}
+
+
+PUBLIC void clear_string()
+{
+	input->clear();
+}
+
+
+PUBLIC void set_format_default( TextFormat format )
+{
+	input->defaultFormat = format;
+}
+
+
+PUBLIC void set_string( const char *buffer )
+{
+	input->clear();
+	input->append( buffer );
+}
+
+
+PUBLIC void set_string( const char *buffer, const TextFormat format )
+{
+	input->clear();
+	input->append( buffer, format );
+}
+
+
+PUBLIC void append_string( const char *buffer )
+{
+	input->append( buffer );
+}
+
+
+PUBLIC void append_string( const char *buffer, const TextFormat format )
+{
+	input->append( buffer, format );
+}
+
+
+PUBLIC void get_string( char *buffer, const usize size )
+{
+	input->cstr( buffer, size );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

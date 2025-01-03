@@ -1,0 +1,148 @@
+#include <object_api.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Includes
+
+HEADER_INCLUDES
+#include <core/list.hpp>
+#include <manta/ui.hpp>
+
+SOURCE_INCLUDES
+#include <manta/random.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Object
+
+OBJECT( UIWidget ) ABSTRACT( true )
+CATEGORY( CategoryUI )
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// INTERNAL STATE
+
+FRIEND( UIContext )
+
+PROTECTED UIContext *context = nullptr;
+PROTECTED List<Object> children;
+PROTECTED bool releasing = false;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// PUBLIC STATE
+
+PUBLIC Object parent;
+
+PUBLIC int x;
+PUBLIC int y;
+PUBLIC int width;
+PUBLIC int height;
+
+PUBLIC Color color;
+
+PUBLIC float tweenHover = 0.0f;
+PUBLIC float tweenClick = 0.0f;
+PUBLIC float tweenAlert = 0.0f;
+PUBLIC float tweenError = 0.0f;
+
+PUBLIC u8 renderEnabled : 1; // Determines whether to call EVENT_RENDER
+PUBLIC u8 updateEnabled : 1; // Determines whether to call EVENT_UPDATE
+PUBLIC u8 glowing       : 1; // Represents a glowing visual state, i.e. first-time user experience (FTUE)
+PUBLIC u8 locked        : 1; // Prevents user interaction with the widget
+PUBLIC u8 hoverable     : 1; // Enables detection of mouse hover (EVENT_TEST)
+PUBLIC u8 container     : 1; // Restricts child EVENT_TEST events to only occur when its parent widget is hovered
+PUBLIC u8 sortable      : 1; // Allows the widget to be reordered when clicked
+PUBLIC u8 ___unused     : 1;
+
+PUBLIC void ( *callbackOnUpdate )( UIContext &, Object ) = nullptr;
+PUBLIC void ( *callbackOnRender )( UIContext &, Object ) = nullptr;
+PUBLIC void ( *callbackOnInteract )( UIContext &, Object ) = nullptr;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+EVENT_DESTROY { free(); }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// CORE EVENTS
+
+PROTECTED void init()
+{
+	// Register Widget
+	UICONTEXT_VALIDATE( context, "UIWidget initialize" );
+	context->register_widget( id );
+
+	// Properties
+	renderEnabled = true;
+	updateEnabled = true;
+	glowing = false;
+	locked = false;
+	hoverable = true;
+	container = false;
+	sortable = false;
+
+	// Color
+	color = Color { 160, 150, 135, 255 };
+
+	// Children List
+	children.init();
+}
+
+
+PROTECTED void free()
+{
+	// Release Widget
+	UICONTEXT_VALIDATE( context, "UIWidget destroy" );
+	context->release_widget( id );
+
+	// Children List
+	children.free();
+}
+
+
+PROTECTED void update( const Delta delta )
+{
+	// ...
+}
+
+
+PROTECTED void render( const Delta delta )
+{
+	// ...
+}
+
+
+PROTECTED bool contains_point( const floatv2 point )
+{
+	const floatv2 p1 = floatv2( x, y ).multiply( context->matrix_get() );
+	const floatv2 p2 = floatv2( x + width, y + height ).multiply( context->matrix_get() );
+	return point_in_rect( point.x, point.y, p1.x, p1.y, p2.x, p2.y );
+}
+
+
+PROTECTED void apply_matrix()
+{
+	const Matrix matrix = matrix_build_translation( x, y, 0.0f );
+	context->matrix_multiply( matrix );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// PRIVATE HELPERS
+
+PROTECTED void randomize_color()
+{
+	const u8 r = static_cast<u8>( random<int>( 50, 200 ) );
+	const u8 g = static_cast<u8>( random<int>( 50, 200 ) );
+	const u8 b = static_cast<u8>( random<int>( 50, 200 ) );
+	color = Color { r, g, b };
+}
+
+
+PROTECTED bool is_interactable()
+{
+	return !locked && renderEnabled;
+}
+
+
+PROTECTED bool is_hovering()
+{
+	return context->get_widget_hover() == id;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

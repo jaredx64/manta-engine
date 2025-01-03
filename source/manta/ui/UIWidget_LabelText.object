@@ -1,0 +1,124 @@
+#include <object_api.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+HEADER_INCLUDES
+#include <core/list.hpp>
+#include <manta/ui.hpp>
+#include <manta/color.hpp>
+#include <manta/draw.hpp>
+
+SOURCE_INCLUDES
+#include <manta/random.hpp>
+#include <manta/draw.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+OBJECT( UIWidget_LabelText )
+PARENT( UIWidget )
+
+CATEGORY( CategoryUI )
+BUCKET_SIZE( 64 )
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// INTERNAL STATE
+
+PROTECTED Text label;
+PROTECTED Align alignVertical;
+PROTECTED Align alignHorizontal;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// PUBLIC STATE
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// CORE EVENTS
+
+// PROTECTED void init() { INHERIT::init(); }
+
+
+// PROTECTED void free() { INHERIT::free(); }
+
+
+// PROTECTED void update( const Delta delta ) { INHERIT::update(); }
+
+
+PROTECTED void render( const Delta delta )
+{
+	// Label
+	const intv2 labelDimensions = label.get_dimensions();
+	int offsetX, offsetY;
+
+	if( alignHorizontal == Align_Center ) { offsetX = ( width - labelDimensions.x ) / 2; } else
+	if( alignHorizontal == Align_Right  ) { offsetX = width - labelDimensions.x; } else
+	                                      { offsetX = 0; }
+
+	if( alignVertical == Align_Middle ) { offsetY = ( height - labelDimensions.y ) / 2; } else
+	if( alignVertical == Align_Bottom ) { offsetY = height - labelDimensions.y; } else
+	                                    { offsetY = 0; }
+
+	const intv2 p = intv2( x, y ).multiply( context->matrix_get() );
+	label.draw( p.x + offsetX, p.y + offsetY );
+}
+
+
+// PROTECTED void apply_matrix() { INHERIT::apply_matrix(); }
+
+
+// PROTECTED bool contains_point( const floatv2 point ) { }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// PUBLIC API
+
+
+PUBLIC void set_label( const char *string )
+{
+	label.clear();
+	label.append( string );
+}
+
+
+PUBLIC void set_label( const char *string, TextFormat format )
+{
+	label.clear();
+	label.defaultFormat = format;
+	label.append( string );
+}
+
+
+PUBLIC void set_label( const Text &text )
+{
+	label.clear();
+	label.append( text );
+}
+
+
+PUBLIC void set_label( Text &&text )
+{
+	label.clear();
+	label.append( static_cast<Text &&>( text ) );
+}
+
+
+PUBLIC void set_alignment_horizontal( const Align halign )
+{
+	Assert( halign <= Align_Right );
+	alignHorizontal = halign;
+}
+
+
+PUBLIC void set_alignment_vertical( const Align valign )
+{
+	Assert( valign <= Align_Bottom );
+	alignVertical = valign;
+}
+
+
+PUBLIC void set_alignment( const Align halign, const Align valign )
+{
+	Assert( halign <= Align_Right );
+	alignHorizontal = halign;
+	Assert( valign <= Align_Bottom );
+	alignVertical = valign;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -1,0 +1,86 @@
+{
+	"windows":
+	{
+		"-architecture=":
+		[
+			{ "label": "x64" }
+		],
+		"-toolchain=":
+		[
+			{ "label": "msvc" },
+			{ "label": "llvm" },
+			{ "label": "gnu" }
+		],
+		"-gfx=":
+		[
+			{ "label": "opengl" },
+			{ "label": "d3d11" },
+			{ "label": "d3d12" },
+			{ "label": "vulkan" },
+			{ "label": "none" }
+		]
+	},
+
+	"macOS":
+	{
+		"-architecture=":
+		[
+			{ "label": "arm64" },
+			{ "label": "x64" }
+		],
+		"-toolchain=":
+		[
+			{ "label": "gnu" },
+			{ "label": "llvm" }
+		],
+		"-gfx=":
+		[
+			{ "label": "opengl" },
+			{ "label": "metal" },
+			{ "label": "none" }
+		]
+	},
+
+	"linux":
+	{
+		"-architecture=":
+		[
+			{ "label": "x64" }
+		],
+		"-toolchain=":
+		[
+			{ "label": "gnu" },
+			{ "label": "llvm" }
+		],
+		"-gfx=":
+		[
+			{ "label": "opengl" },
+			{ "label": "vulkan" },
+			{ "label": "none" }
+		]
+	},
+
+	"unknown":
+	{
+		"-architecture=":
+		[
+			{ "label": "x64" },
+			{ "label": "arm64" }
+		],
+		"-toolchain=":
+		[
+			{ "label": "msvc" },
+			{ "label": "llvm" },
+			{ "label": "gnu" }
+		],
+		"-gfx=":
+		[
+			{ "label": "d3d11" },
+			{ "label": "d3d12" },
+			{ "label": "opengl" },
+			{ "label": "vulkan" },
+			{ "label": "metal" },
+			{ "label": "none" }
+		]
+	}
+}

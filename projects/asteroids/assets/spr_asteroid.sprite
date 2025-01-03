@@ -1,0 +1,9 @@
+{
+	"name": "spr_asteroid",
+	"texture": "spr_asteroid.png",
+	"atlas": "ui",
+
+	"count": 1,
+	"xorigin": 16,
+	"yorigin": 16,
+}

@@ -1,0 +1,9 @@
+{
+	"name": "SPRITE_DEFAULT",
+	"texture": "SPRITE_DEFAULT.png",
+	"atlas": "ui",
+
+	"count": 1,
+	"xorigin": 0,
+	"yorigin": 0,
+}

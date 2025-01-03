@@ -1,0 +1,8 @@
+{
+	"license": "iosevka_license.txt",
+
+	"default": "iosevka_regular.ttf",
+	"italic": "iosevka_italic.ttf",
+	"bold": "iosevka_bold.ttf",
+	"bold_italic": "iosevka_bold_italic.ttf",
+}

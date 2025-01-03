@@ -1,0 +1,336 @@
+#include <manta/fonts.hpp>
+
+#include <vendor/vendor.hpp>
+#include <vendor/stb/stb_truetype.hpp>
+
+#include <core/memory.hpp>
+#include <core/string.hpp>
+#include <core/list.hpp>
+#include <core/utf8.hpp>
+
+#include <manta/draw.hpp>
+#include <manta/filesystem.hpp>
+#include <manta/textureio.hpp>
+#include <manta/gfx.hpp>
+#include <manta/color.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+namespace SysFonts
+{
+	struct FontGlyphEntry
+	{
+		FontGlyphEntry( FontGlyphKey key, FontGlyphInfo value ) : key{ key }, value{ value } { }
+		FontGlyphKey key;
+		FontGlyphInfo value;
+	};
+
+	struct FontInfo
+	{
+		FontInfo() { }
+		stbtt_fontinfo info;
+	};
+
+	// Global
+	GfxTexture2D texture2D;
+
+	// Static
+	static u16 insertX = SysFonts::FONTS_GLYPH_PADDING;
+	static u16 insertY = SysFonts::FONTS_GLYPH_PADDING;
+	static u16 lineHeight = 0;
+
+	static Texture2DBuffer textureBuffer;
+	static byte *bitmap;
+
+	static FontGlyphEntry *data = nullptr;
+	static List<FontInfo> fontInfos;
+	static List<FontGlyphEntry> dirtyGlyphs;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+u32 SysFonts::FontGlyphKey::hash()
+{
+	// Calculate 'randomized' offset from font id and size using prime numbers
+	const u32 p1 = 41;
+	const u32 p2 = 37;
+	const u32 p3 = 31;
+	const u32 offset = ( ( ttf * p1 ) ^ ( size * p2 ) ) * p3 ^ ( ( ( ttf * p1 ) ^ ( size * p2 ) ) >> 16 );
+
+	// Calculate hash index
+	return static_cast<u32>( ( codepoint / SysFonts::FONTS_GROUP_SIZE + offset ) % SysFonts::FONTS_TABLE_SIZE );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool SysFonts::FontGlyphInfo::get_glyph_metrics( const u32 codepoint, const u16 ttf, const u16 size )
+{
+	SysFonts::FontInfo &fontInfo = fontInfos[ttf];
+	const float scale = stbtt_ScaleForPixelHeight( &fontInfo.info, size * ( 96.0f / 72.0f ) );
+
+	// Max Ascent (TODO: considering caching this instead of getting it each time?)
+	int mx0, my0, mx1, my1;
+	stbtt_GetCodepointBitmapBox( &fontInfo.info, 'T', scale, scale, &mx0, &my0, &mx1, &my1 );
+
+	// Get glyph metrics
+	int x0, y0, x1, y1;
+	stbtt_GetCodepointBitmapBox( &fontInfo.info, codepoint, scale, scale, &x0, &y0, &x1, &y1 );
+
+	const int w = x1 - x0;
+	const int h = y1 - y0;
+	ErrorIf( w < 0 || h < 0,
+		"Fonts: invalid glyph size (%dx%d) for codepoint %llu (font %d, size: %d)", w, h, codepoint, ttf, size );
+	ErrorIf( static_cast<u32>( w ) >= SysFonts::FONTS_GLYPH_SIZE_MAX ||
+	         static_cast<u32>( h ) >= SysFonts::FONTS_GLYPH_SIZE_MAX,
+		"Fonts: exceeded glyph size (%dx%d) for codepoint %llu (font %d, size: %d)", w, h, codepoint, ttf, size );
+
+	int advance, leftSideBearing;
+	stbtt_GetCodepointHMetrics( &fontInfo.info, codepoint, &advance, &leftSideBearing );
+
+	// Update FontGlyphInfo
+	this->advance = static_cast<u8>( advance * scale );
+	this->width = static_cast<u8>( w );
+	this->height = static_cast<u8>( h );
+	this->xshift = x0;
+	this->yshift = y0 - my0;
+	return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool SysFonts::init()
+{
+	// Init Fonts Table
+	Assert( data == nullptr );
+	constexpr usize size = SysFonts::FONTS_GROUP_SIZE *
+	                       SysFonts::FONTS_TABLE_DEPTH *
+	                       SysFonts::FONTS_TABLE_SIZE *
+	                       sizeof( SysFonts::FontGlyphEntry );
+	data = reinterpret_cast<SysFonts::FontGlyphEntry *>( memory_alloc( size ) );
+	ErrorReturnIf( data == nullptr, false, "Fonts: failed to allocate memory for table" );
+	memory_set( data, 0, size ); // Zero memory
+
+	// Load Font Metrics
+	fontInfos.init( Assets::fontsCount );
+	for( u16 ttf = 0; ttf < Assets::ttfsCount; ttf++ )
+	{
+		// Get Font Info
+		SysFonts::FontInfo &fontInfo = fontInfos.add( { } );
+		const byte *ttfData = &Assets::binary.data[Assets::ttfs[ttf].offset];
+		ErrorReturnIf( stbtt_InitFont( &fontInfo.info, ttfData, stbtt_GetFontOffsetForIndex( ttfData, 0 ) ) != 1,
+			false, "Fonts: failed to get metrics for ttf: %u", ttf );
+	}
+
+	// Init dirtyGlyphs list
+	dirtyGlyphs.init();
+
+	// Init Texture2DBuffer
+	textureBuffer.init( SysFonts::FONTS_TEXTURE_SIZE, SysFonts::FONTS_TEXTURE_SIZE );
+	textureBuffer.clear( rgba{ 0, 0, 0, 0 } );
+
+	// Init Texture2D
+	texture2D.init( textureBuffer.data, textureBuffer.width, textureBuffer.height, GfxColorFormat_R8G8B8A8 );
+
+	// Init bitmap buffer
+	bitmap = reinterpret_cast<byte *>( memory_alloc( SysFonts::FONTS_GLYPH_SIZE_MAX * SysFonts::FONTS_GLYPH_SIZE_MAX ) );
+	ErrorReturnIf( bitmap == nullptr, false, "Fonts: failed to allocate memory for bitmap buffer" );
+
+	// Success
+	return true;
+}
+
+
+bool SysFonts::free()
+{
+	// Free RTFonts table
+	if( data != nullptr )
+	{
+		memory_free( data );
+		data = nullptr;
+	}
+
+	// Free font metrics
+	fontInfos.free();
+
+	// Free dirtyGlyphs list
+	dirtyGlyphs.free();
+
+	// Free Texture2D
+	texture2D.free();
+
+	// Free bitmap buffer
+	if( bitmap != nullptr )
+	{
+		memory_free( bitmap );
+		bitmap = nullptr;
+	}
+
+	// Success
+	return true;
+}
+
+
+SysFonts::FontGlyphInfo &SysFonts::get( FontGlyphKey key )
+{
+	// The goal here is to efficiently cache and retrieve font glyphs at runtime using an optimized "hashtable"
+	//
+	// FontGlyphEntry is 16 bytes (FontGlyphKey + FontGlyphInfo) meaning 4 glyphs fit in a 64 byte cache line.
+	// The 'hash' index below ensures consecutive codepoints of a font and size (i.e. 'a', 'b', 'c', 'd') all share
+	// a single L1 cache line. Since the hashing function can produce collisions, 'FONTS_TABLE_DEPTH' number of
+	// collisions are allowed before the glyph retrieval is aborted
+
+	const usize index = key.hash() * ( SysFonts::FONTS_GROUP_SIZE * SysFonts::FONTS_TABLE_DEPTH ) +
+	                                 ( key.codepoint % SysFonts::FONTS_GROUP_SIZE );
+
+	for( u8 collision = 0; collision < FONTS_TABLE_DEPTH; collision++ )
+	{
+		// Retrieve FontGlyphEntry
+		SysFonts::FontGlyphEntry &entry = data[index + collision * SysFonts::FONTS_GROUP_SIZE];
+
+		// Found our key?
+		if( LIKELY( entry.key == key ) )
+		{
+			return entry.value;
+		}
+
+		// Empty key?
+		if( entry.key.codepoint == 0 )
+		{
+			// Retrieve metrics & cache the glyph
+			entry.key = key;
+			entry.value.get_glyph_metrics( key.codepoint, key.ttf, key.size );
+
+			// Pack Glyph
+			if( !pack( entry.value ) )
+			{
+				// Packing failed -- out of room? Return a "null key"
+				AssertMsg( false, "Fonts: failed to pack glyph (codepoint: %llu)", index, key.codepoint );
+				return data[0].value;
+			}
+
+			// Add glyph to rasterization list
+			dirtyGlyphs.add( entry );
+			return entry.value;
+		}
+	}
+
+	// Return a "null key"
+	AssertMsg( false, "Fonts: saturated glyph table at index %d (codepoint: %llu)", index, key.codepoint );
+	return data[0].value;
+}
+
+
+bool SysFonts::pack( SysFonts::FontGlyphInfo &glyphInfo )
+{
+	// Check if the glyph pushes us onto a "new line"
+	if( insertX + glyphInfo.width + SysFonts::FONTS_GLYPH_PADDING >= textureBuffer.width )
+	{
+		insertX = SysFonts::FONTS_GLYPH_PADDING;
+		insertY += lineHeight + SysFonts::FONTS_GLYPH_PADDING * 2;
+		lineHeight = 0;
+	}
+
+	// No more room?
+	if( insertY + glyphInfo.height + SysFonts::FONTS_GLYPH_PADDING >= textureBuffer.height )
+	{
+		return false;
+	}
+
+	// Insert Glyph
+	glyphInfo.u = insertX;
+	glyphInfo.v = insertY;
+	insertX += glyphInfo.width + SysFonts::FONTS_GLYPH_PADDING * 2;
+	lineHeight = glyphInfo.height > lineHeight ? glyphInfo.height : lineHeight;
+	return true;
+}
+
+
+void SysFonts::flush()
+{
+	// Clear Glyph table cache
+	constexpr usize size = SysFonts::FONTS_GROUP_SIZE *
+	                       SysFonts::FONTS_TABLE_DEPTH *
+	                       SysFonts::FONTS_TABLE_SIZE *
+	                       sizeof( SysFonts::FontGlyphEntry );
+	memory_set( data, 0, size );
+
+	// Clear Texture2DBuffer
+	textureBuffer.clear( rgba{ 0, 0, 0, 0 } );
+
+	// Clear newGlyph list
+	dirtyGlyphs.clear();
+
+	// Update GPU texture
+	texture2D.free();
+	texture2D.init( textureBuffer.data, textureBuffer.width, textureBuffer.height, GfxColorFormat_R8G8B8A8 );
+
+	// Reset packing state
+	insertX = FONTS_GLYPH_PADDING;
+	insertY = FONTS_GLYPH_PADDING;
+	lineHeight = 0;
+}
+
+
+void SysFonts::update()
+{
+	// Dirty?
+	if( dirtyGlyphs.size() == 0 ) { return; }
+
+	// Rasterize glyph bitmaps & copy to Texture2DBuffer
+	for( FontGlyphEntry &entry : dirtyGlyphs )
+	{
+		// TODO: This can potentially cause frame spikes as rasterizing & copying glyphs is a CPU intensive task
+		// Consider moving this to a background thread and double buffering?
+
+		const SysFonts::FontGlyphKey &key = entry.key;
+		const SysFonts::FontGlyphInfo &glyph = entry.value;
+		const SysFonts::FontInfo &fontInfo = fontInfos[entry.key.ttf];
+
+		// Bitmap
+		const float scale = stbtt_ScaleForPixelHeight( &fontInfo.info, key.size * ( 96.0f / 72.0f ) );
+		stbtt_MakeCodepointBitmap( &fontInfo.info, bitmap, glyph.width, glyph.height,
+		                           glyph.width, scale, scale, key.codepoint );
+
+		// Transfer to Bitmap to RGBA Texture2DBuffer
+		for( u16 x = 0; x < glyph.width; x++ )
+		{
+			for( u16 y = 0; y < glyph.height; y++ )
+			{
+				const u32 srcIndex = y * glyph.width + x;
+				const u32 dstIndex = ( glyph.v + y ) * textureBuffer.width + ( glyph.u + x );
+				textureBuffer.data[dstIndex] = rgba{ 255, 255, 255, static_cast<u8>( bitmap[srcIndex] ) };
+			}
+		}
+	}
+
+	// Clear dirtyGlyphs
+	dirtyGlyphs.clear();
+
+	// Update GPU texture
+	texture2D.free();
+	texture2D.init( textureBuffer.data, textureBuffer.width, textureBuffer.height, GfxColorFormat_R8G8B8A8 );
+}
+
+
+void SysFonts::cache( const u16 ttf, const u16 size, const u32 start, const u32 end )
+{
+	for( u32 codepoint = start; codepoint <= end; codepoint++ )
+	{
+		get( SysFonts::FontGlyphKey { codepoint, ttf, size } );
+	}
+}
+
+
+void SysFonts::cache( const u16 ttf, const u16 size, const char *buffer )
+{
+	u32 state = UTF8_ACCEPT;
+	u32 codepoint;
+	char c;
+	while( ( c = *buffer++ ) != '\0' )
+	{
+		if( utf8_decode( &state, &codepoint, c ) != UTF8_ACCEPT ) { continue; }
+		get( SysFonts::FontGlyphKey { codepoint, ttf, size } );
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
