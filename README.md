@@ -13,10 +13,14 @@ Manta is C++ game engine & build system currently under development designed to 
 Manta is a personal project not meant for open use. That said, the source is available here to browse as you please.
 
 # Showcase Projects
-Voxel Renderer
-[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/Q8Q8c5H9kaU/0.jpg)](https://www.youtube.com/watch?v=Q8Q8c5H9kaU)
-Vitality (work in progress indie game)
-[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/_YdTRmEN9xs/0.jpg)](https://www.youtube.com/watch?v=_YdTRmEN9xs)
+
+Voxel Renderer (https://www.youtube.com/watch?v=Q8Q8c5H9kaU)
+
+[![Youtube Redirect](https://img.youtube.com/vi/Q8Q8c5H9kaU/0.jpg)](https://www.youtube.com/watch?v=Q8Q8c5H9kaU)
+
+Vitality (https://www.youtube.com/watch?v=_YdTRmEN9xs)
+
+[![Youtube Redirect](https://img.youtube.com/vi/_YdTRmEN9xs/0.jpg)](https://www.youtube.com/watch?v=_YdTRmEN9xs)
 
 # Setup:
 
