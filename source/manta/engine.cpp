@@ -15,6 +15,7 @@
 #include <manta/fonts.hpp>
 #include <manta/ui.hpp>
 #include <manta/console.hpp>
+#include <manta/thread.hpp>
 
 #include <manta/text.hpp>
 #include <manta/input.hpp>
@@ -28,13 +29,14 @@ namespace Engine
 {
 	static bool init( int argc, char **argv )
 	{
-		const bool newGfx = ( strcmp( PROJECT_NAME, "gfx_new" ) == 0 );
-
 		// Assets
 		ErrorReturnIf( !SysAssets::init(), false, "Engine: failed to initialize assets" );
 
 		// Time
 		ErrorReturnIf( !SysTime::init(), false, "Engine: failed to initialize timer" );
+
+		// Thread
+		ErrorReturnIf( !SysThread::init(), false, "Engine: failed to initialize thread" );
 
 		// Window
 		ErrorReturnIf( !SysWindow::init(), false, "Engine: failed to initialize window" );
@@ -66,7 +68,7 @@ namespace Engine
 		// Console
 		ErrorReturnIf( !SysConsole::free(), false, "Engine: failed to free console system" );
 
-		// Console
+		// UI
 		ErrorReturnIf( !SysUI::free(), false, "Engine: failed to free UI system" );
 
 		// Fonts
@@ -83,6 +85,9 @@ namespace Engine
 
 		// Window
 		ErrorReturnIf( !SysWindow::free(), false, "Engine: failed to free window" );
+
+		// Thread
+		ErrorReturnIf( !SysThread::free(), false, "Engine: failed to free thread" );
 
 		// Time
 		ErrorReturnIf( !SysTime::free(), false, "Engine: failed to free timer" );

@@ -10,25 +10,23 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define FILESYSTEM_WINDOWS ( PIPELINE_OS_WINDOWS )
-#define FILESYSTEM_POSIX   ( PIPELINE_OS_LINUX || PIPELINE_OS_MACOS )
+#define FILESYSTEM_POSIX ( PIPELINE_OS_LINUX || PIPELINE_OS_MACOS )
 
 #if PIPELINE_OS_WINDOWS
-	// Windows
 	#include <vendor/windows.hpp>
 
 	#ifdef MAX_PATH
-	#define PATH_SIZE MAX_PATH
+		#define PATH_SIZE ( MAX_PATH )
 	#else
-	#define PATH_SIZE 256
+		#define PATH_SIZE ( 256 )
 	#endif
 #elif PIPELINE_OS_LINUX || PIPELINE_OS_MACOS
-	// POSIX
 	#include <vendor/posix.hpp>
 
 	#ifdef PATH_MAX
-	#define PATH_SIZE PATH_MAX
+		#define PATH_SIZE ( PATH_MAX )
 	#else
-	#define PATH_SIZE 256
+		#define PATH_SIZE ( 256 )
 	#endif
 #else
 	static_assert( false, "Unsupported OS" );
@@ -190,9 +188,9 @@ static bool file_delete( const char *path )
 }
 
 
-inline void directory_create( const char *path )
+inline bool directory_create( const char *path )
 {
-	CreateDirectoryA( path, nullptr );
+	return CreateDirectoryA( path, nullptr );
 }
 
 
@@ -324,11 +322,11 @@ static bool file_delete( const char *path )
 }
 
 
-inline void directory_create( const char *path )
+inline bool directory_create( const char *path )
 {
 	char dir[PATH_SIZE];
 	strjoin( dir, "." SLASH, path );
-	mkdir( dir, 0777 );
+	return mkdir( dir, 0777 ) == 0;
 }
 
 

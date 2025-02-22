@@ -31,7 +31,7 @@
 template <typename K, typename V>
 struct HashMap
 {
-_PUBLIC:
+public:
 #if MEMORY_RAII
 	HashMap( const u32 reserve = 32, const V &nullElement = { } ) { init( reserve, nullElement ); }
 	HashMap( const HashMap<K, V> &other ) { copy( other ); }
@@ -57,7 +57,7 @@ _PUBLIC:
 #endif
 #endif
 
-_PRIVATE:
+private:
 	struct KeyValue { K key; V value; };
 
 	void grow()
@@ -69,18 +69,12 @@ _PRIVATE:
 		const u32 capacityPrevious = capacity;
 		capacity = capacity > U32_MAX / 2 ? U32_MAX : capacity * 2;
 
-		// Allocate new 'data' memory
+		// Allocate memory
 		MemoryAssert( data != nullptr );
 		KeyValue *dataOld = data;
 		data = reinterpret_cast<KeyValue *>( memory_alloc( capacity * sizeof( KeyValue ) ) );
-		ErrorIf( data == nullptr, "Failed to allocate memory for grow HashMap (%p: alloc %d bytes)",
-		         data, capacity * sizeof( KeyValue ) );
-
-		// Allocate new 'deadslot' memory
 		MemoryAssert( deadslot != nullptr );
 		deadslot = reinterpret_cast<bool *>( memory_realloc( deadslot, capacity * sizeof( bool ) ) );
-		ErrorIf( deadslot == nullptr, "Failed to reallocate memory for grow HashMap (%p: alloc %d bytes)",
-		         deadslot, capacity * sizeof( bool ) );
 
 		// Initialize new slots
 		for( u32 i = 0; i < capacity; i++ )
@@ -148,7 +142,7 @@ _PRIVATE:
 		Assert( false ); return false;
 	}
 
-_PUBLIC:
+public:
 	void init( const u32 reserve = 32, const V &nullElement = { } )
 	{
 		// Set state
@@ -160,14 +154,8 @@ _PUBLIC:
 		// Allocate 'data' memory
 		MemoryAssert( data == nullptr );
 		data = reinterpret_cast<KeyValue *>( memory_alloc( capacity * sizeof( KeyValue ) ) );
-		ErrorIf( data == nullptr, "Failed to allocate memory for init HashMap (%p: alloc %d bytes)",
-		         data, capacity * sizeof( KeyValue ) );
-
-		// Allocate 'deadslot' memory
 		MemoryAssert( deadslot == nullptr );
 		deadslot = reinterpret_cast<bool *>( memory_alloc( capacity * sizeof( bool ) ) );
-		ErrorIf( deadslot == nullptr, "Failed to allocate memory for grow HashMap (%p: alloc %d bytes)",
-		         deadslot, capacity * sizeof( bool ) );
 
 		// Initialize slots
 		for( u32 i = 0; i < capacity; i++ )
@@ -220,16 +208,10 @@ _PUBLIC:
 		null.~V();
 		new ( &null ) V( other.null );
 
-		// Allocate 'data' memory
+		// Allocate memory
 		MemoryAssert( data == nullptr );
 		data = reinterpret_cast<KeyValue *>( memory_alloc( capacity * sizeof( KeyValue ) ) );
-		ErrorIf( data == nullptr, "Failed to allocate memory for copy HashMap (%p: alloc %d bytes)",
-		         data, capacity * sizeof( KeyValue ) );
-
-		// Allocate 'deadslot' memory
 		deadslot = reinterpret_cast<bool *>( memory_alloc( capacity * sizeof( bool ) ) );
-		ErrorIf( deadslot == nullptr, "Failed to allocate memory for grow HashMap (%p: alloc %d bytes)",
-		         deadslot, capacity * sizeof( bool ) );
 
 		// Copy memory
 		for( u32 i = 0; i < capacity; i++ )
@@ -297,8 +279,6 @@ _PUBLIC:
 		MemoryAssert( data != nullptr );
 		KeyValue *dataOld = data;
 		data = reinterpret_cast<KeyValue *>( memory_alloc( capacity * sizeof( KeyValue ) ) );
-		ErrorIf( data == nullptr, "Failed to allocate memory for rehash HashMap (%p: alloc %d bytes)",
-		         data, capacity * sizeof( KeyValue ) );
 
 		// Initialize new slots
 		for( u32 i = 0; i < capacity; i++ )
@@ -445,14 +425,14 @@ _PUBLIC:
 	// Forward Iterator
 	class forward_iterator
 	{
-	_PUBLIC:
+	public:
 		forward_iterator( KeyValue *ptr, KeyValue *end ) : end{ end } { this->ptr = find_next( ptr ); } // begin();
 		forward_iterator( KeyValue *end ) : end{ end }, ptr{ end } { } // end();
 		KeyValue &operator*() { return *ptr; }
 		forward_iterator &operator++() { ptr = find_next( ptr + 1 ); return *this; }
 		bool operator!=( const forward_iterator &other ) const { return ptr != other.ptr; }
 
-	_PRIVATE:
+	private:
 		KeyValue *find_next( KeyValue *ptr )
 		{
 			while( ptr != end )
@@ -472,7 +452,7 @@ _PUBLIC:
 	forward_iterator begin() const { return forward_iterator( &data[0], &data[capacity] ); }
 	forward_iterator end() const { return forward_iterator( &data[capacity] ); }
 
-_PUBLIC:
+public:
 	static void write( Buffer &buffer, const HashMap<K, V> &hashmap )
 	{
 		MemoryAssert( buffer.data != nullptr );
@@ -520,7 +500,7 @@ _PUBLIC:
 		Error( "TODO: Implement this!" );
 	}
 
-_PRIVATE:
+private:
 	KeyValue *data = nullptr;
 	bool *deadslot = nullptr;
 	u32 capacity = 0;

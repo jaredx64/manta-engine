@@ -46,6 +46,7 @@ static void output_callback( void *data, AudioQueueRef queue, AudioQueueBufferRe
 
 bool SysAudio::init_backend()
 {
+#if AUDIO_ENABLED
 	AudioStreamBasicDescription desc;
 	AudioQueueRef queue;
     AudioQueueBufferRef buffers[BUFFERS];
@@ -85,15 +86,18 @@ bool SysAudio::init_backend()
 	// Start Queue
 	failure = AudioQueueStart( queue, nullptr ) != 0;
 	ErrorReturnIf( failure, false, "CoreAudio: Failed to start audio queue" );
+#endif
 
-	// Success
 	return true;
 }
 
 
 bool SysAudio::free_backend()
 {
-	// TODO
+#if AUDIO_ENABLED
+	// ...
+#endif
+
 	return true;
 }
 

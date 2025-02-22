@@ -47,7 +47,7 @@ void Meshes::load( const char *path )
 	{
 		FileTime time;
 		file_time( path, &time );
-		//Build::cacheDirtyAssets |= file_time_newer( time, Assets::timeCache );
+		Build::cacheDirtyAssets |= file_time_newer( time, Assets::timeCache );
 	}
 
 	// Read Mesh File

@@ -14,10 +14,10 @@
 
 enum_type( ShaderType, u8 )
 {
-	ShaderType_Default,
+	ShaderType_NONE,
 	ShaderType_HLSL,
 	ShaderType_GLSL,
-	ShaderType_Metal,
+	ShaderType_METAL,
 	SHADERTYPE_COUNT,
 };
 
@@ -112,10 +112,16 @@ namespace Gfx
 	extern void write();
 
 	// Backends
-	void write_header_api_d3d11( String &header );
-	void write_source_api_d3d11( String &source );
 	void write_header_api_opengl( String &header );
 	void write_source_api_opengl( String &source );
+	void write_header_api_d3d11( String &header );
+	void write_source_api_d3d11( String &source );
+	void write_header_api_d3d12( String &header );
+	void write_source_api_d3d12( String &source );
+	void write_header_api_metal( String &header );
+	void write_source_api_metal( String &source );
+	void write_header_api_vulkan( String &header );
+	void write_source_api_vulkan( String &source );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

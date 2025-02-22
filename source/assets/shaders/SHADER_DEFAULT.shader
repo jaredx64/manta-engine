@@ -38,7 +38,7 @@ cbuffer( 0 ) ShaderGlobals
 	float4x4 matrixMVP;
 };
 
-texture2D( 0 ) texture0;
+texture2D( float4, 0 ) textureAmbient;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -53,7 +53,7 @@ void vertex_main( BuiltinVertex In, VertexOutput Out, ShaderGlobals globals )
 
 void fragment_main( FragmentInput In, FragmentOutput Out )
 {
-	float4 tex = sample_texture2D( texture0, In.uv );
+	float4 tex = texture_sample_2d( textureAmbient, In.uv );
 	if( tex.a <= 0.1 ) { discard; }
 	Out.color0 = tex * In.color;
 }

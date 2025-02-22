@@ -20,6 +20,7 @@
 	extern "C" long atol(const char *);
 	extern "C" long long atoll(const char *);
 	extern "C" long int strtol(const char *, char **, int);
+	extern "C" unsigned long long int strtoull(const char *str, char **endptr, int base);
 
 	#if PIPELINE_OS_WINDOWS
 		extern "C" char *_fullpath(const char *, char const *, size_t);

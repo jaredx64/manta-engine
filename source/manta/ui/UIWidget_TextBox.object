@@ -4,8 +4,8 @@
 
 HEADER_INCLUDES
 #include <core/list.hpp>
+#include <core/color.hpp>
 #include <manta/ui.hpp>
-#include <manta/color.hpp>
 #include <manta/text.hpp>
 
 SOURCE_INCLUDES

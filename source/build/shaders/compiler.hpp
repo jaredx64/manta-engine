@@ -275,6 +275,12 @@ enum_type( Intrinsic, u32 )
 	Intrinsic_AtomicOr,
 	Intrinsic_AtomicXor,
 
+	// Type Bit Conversions
+	Intrinsic_FloatToIntBits,
+	Intrinsic_FloatToUIntBits,
+	Intrinsic_IntToFloatBits,
+	Intrinsic_UIntToFloatBits,
+
 	// Texture Sampling Functions
 	Intrinsic_SampleTexture1D,
 	Intrinsic_SampleTexture1DArray,
@@ -284,6 +290,13 @@ enum_type( Intrinsic, u32 )
 	Intrinsic_SampleTexture3D,
 	Intrinsic_SampleTextureCube,
 	Intrinsic_SampleTextureCubeArray,
+	Intrinsic_LoadTexture2D,
+
+	// Depth
+	Intrinsic_DepthNormalize,
+	Intrinsic_DepthLinearize,
+	Intrinsic_DepthUnproject,
+	Intrinsic_DepthUnprojectZW,
 
 	INTRINSIC_COUNT,
 };
@@ -409,6 +422,7 @@ struct Variable : public Construct
 	TypeID typeID = USIZE_MAX;
 	InputFormat format = InputFormat_UNORM8;
 	SemanticType semantic = SemanticType_TEXCOORD;
+	TextureType texture = TextureType_Texture2D;
 	int arrayLengthX = 0;
 	int arrayLengthY = 0;
 	int slot = -1;

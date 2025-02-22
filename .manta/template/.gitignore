@@ -5,6 +5,7 @@ node_modules/
 
 # Manta Engine
 output/
+packages/
 .manta
 
 # System Cache

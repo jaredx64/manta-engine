@@ -112,7 +112,7 @@ void packet_process_buffer( Socket &socket, char *data, const int data_size, voi
 #if NETWORKING
 	// Receive packet byte stream
 	const int data_block_start_position = socket.packet_buffer.tell;
-	buffer_write_buffer( socket.packet_buffer, data, data_size );
+	buffered_write_buffer( socket.packet_buffer, data, data_size );
 
 	// Check for size spoofing
 	packet_validate_size( socket, data_block_start_position );

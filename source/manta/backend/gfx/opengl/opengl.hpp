@@ -648,6 +648,10 @@
 #define GL_TEXTURE_IMMUTABLE_LEVELS                      0x82DF
 #define GL_LINE                                          0x1B01
 #define GL_FILL                                          0x1B02
+#define GL_READ_ONLY                                     0x88B8
+#define GL_WRITE_ONLY                                    0x88B9
+#define GL_READ_WRITE                                    0x88BA
+#define GL_BUFFER_ACCESS                                 0x88BB
 
 // Define OpenGL Types
 using GLchar     = char;
@@ -657,6 +661,7 @@ using GLdouble   = double;
 using GLboolean  = unsigned char;
 using GLubyte    = unsigned char;
 using GLuint     = unsigned int;
+using GLuint64   = unsigned long long;
 using GLenum     = unsigned int;
 using GLbitfield = unsigned int;
 using GLfloat    = float;
@@ -705,6 +710,7 @@ using GLclampf   = float;
 	#define nglUniform1i glUniform1i
 	#define nglUniformMatrix4fv glUniformMatrix4fv
 	#define nglMapBufferRange glMapBufferRange
+	#define nglMapBuffer glMapBuffer
 	#define nglUnmapBuffer glUnmapBuffer
 	#define nglActiveTexture glActiveTexture
 	#define nglBindAttribLocation glBindAttribLocation
@@ -726,6 +732,10 @@ using GLclampf   = float;
 	#define nglGetProgramiv glGetProgramiv
 	#define nglGetShaderInfoLog glGetShaderInfoLog
 	#define nglGetProgramInfoLog glGetProgramInfoLog
+	#define nglGetBufferParameteriv glGetBufferParameteriv
+	//#define nglFenceSync glFenceSync
+	#define nglClientWaitSync glClientWaitSync
+
 #endif
 
 
@@ -764,6 +774,12 @@ extern "C"
 	GL_EXTERN void           GL_API glViewport(GLint, GLint, GLsizei, GLsizei);
 	GL_EXTERN void           GL_API glDepthFunc(GLenum);
 	GL_EXTERN void           GL_API glColorMask(GLboolean, GLboolean, GLboolean, GLboolean);
+	GL_EXTERN void           GL_API glReadBuffer(GLenum);
+	GL_EXTERN void           GL_API glReadPixels(GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, void *);
+	GL_EXTERN void           GL_API glFlush();
+	GL_EXTERN void           GL_API glFinish();
+	GL_EXTERN void           GL_API glGetIntegerv(GLenum, GLint *);
+
 #if GL_MAC
 	#undef  META
 

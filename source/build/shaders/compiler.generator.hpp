@@ -42,8 +42,10 @@ struct Generator
 	virtual void generate_stage( ShaderStage stage );
 
 	virtual void generate_node( Node *node );
+	virtual void generate_node_parenthesis( Node *node );
 
 	virtual void generate_statement( NodeStatement *node );
+	virtual void generate_statement_block_no_braces( NodeStatementBlock *node );
 	virtual void generate_statement_block( NodeStatementBlock *node );
 	virtual void generate_statement_expression( NodeStatementExpression *node );
 	virtual void generate_statement_if( NodeStatementIf *node );
@@ -136,6 +138,16 @@ struct GeneratorGLSL : public Generator
 struct GeneratorMetal : public Generator
 {
 	GeneratorMetal( Shader &shader, ShaderStage stage, Parser &parser ) :
+		Generator{ shader, stage, parser } { }
+
+	virtual void generate_structure( NodeStruct *node );
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct GeneratorVulkan : public Generator
+{
+	GeneratorVulkan( Shader &shader, ShaderStage stage, Parser &parser ) :
 		Generator{ shader, stage, parser } { }
 
 	virtual void generate_structure( NodeStruct *node );

@@ -48,7 +48,9 @@
 
 		#define _CRT_INTERNAL_LOCAL_PRINTF_OPTIONS                    (*__local_stdio_printf_options())
 		#define _CRT_INTERNAL_PRINTF_LEGACY_VSPRINTF_NULL_TERMINATION (1ULL << 0)
-		#define stdout __acrt_iob_func(1)
+		#define stdin ( __acrt_iob_func( 0 ) )
+		#define stdout ( __acrt_iob_func( 1 ) )
+		#define stderr ( __acrt_iob_func( 2 ) )
 
 		inline unsigned long long *__local_stdio_printf_options()
 		{
@@ -146,7 +148,12 @@
 		extern "C" int vsprintf(char *, const char *, __builtin_va_list );
 		extern "C" int vsnprintf(char *, size_t, const char *, __builtin_va_list );
 
+		extern "C" FILE *stdin;
 		extern "C" FILE *stdout;
+		extern "C" FILE *stderr;
+
+		extern "C" int remove(const char *);
+		extern "C" int rename(const char *, const char *);
 	#endif
 
 #endif

@@ -11,14 +11,18 @@
 
 void *memory_alloc( const usize size )
 {
-	return malloc( size );
+	void *ptr = malloc( size );
+	ErrorIf( ptr == nullptr, "Memory allocation failure! Out of memory?" );
+	return ptr;
 }
 
 
 void *memory_realloc( void *block, const usize size )
 {
 	Assert( block != nullptr );
-	return realloc( block, size );
+	void *ptr = realloc( block, size );
+	ErrorIf( ptr == nullptr, "Memory reallocation failure! Out of memory?" );
+	return ptr;
 }
 
 

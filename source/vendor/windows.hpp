@@ -463,6 +463,7 @@
 	extern "C" DLL_IMPORT HANDLE STD_CALL CreateFileMappingW(HANDLE, struct SECURITY_ATTRIBUTES *, DWORD, DWORD, DWORD, LPCWSTR);
 	extern "C" DLL_IMPORT BOOL STD_CALL CreateProcessA(LPCSTR lpApplicationName, LPSTR lpCommandLine, struct SECURITY_ATTRIBUTES *lpProcessAttributes, struct SECURITY_ATTRIBUTES *lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, void *lpEnvironment, LPCSTR lpCurrentDirectory, STARTUPINFOA *lpStartupInfo, PROCESS_INFORMATION *lpProcessInformation);
 	extern "C" DLL_IMPORT HANDLE STD_CALL CreateThread(struct SECURITY_ATTRIBUTES *, SIZE_T, LPTHREAD_START_ROUTINE, void *, DWORD, DWORD *);
+	extern "C" DLL_IMPORT BOOL STD_CALL MoveFileA(LPCSTR, LPCSTR);
 	extern "C" DLL_IMPORT BOOL STD_CALL DeleteFileA(LPCSTR);
 	extern "C" DLL_IMPORT NO_RETURN void STD_CALL ExitProcess(UINT);
 	extern "C" DLL_IMPORT BOOL STD_CALL FindClose(HANDLE);

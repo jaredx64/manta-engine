@@ -14,7 +14,7 @@ bool file_time_newer( const FileTime &a, const FileTime &b )
 }
 
 
-void directory_create( const char *path )
+bool directory_create( const char *path )
 {
 	// ...
 }

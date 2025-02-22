@@ -6,7 +6,7 @@
 
 class Builder : public BuilderCore
 {
-_PUBLIC:
+public:
 	// Override BuilderCore functions here for project-specific needs
 	// ...
 };

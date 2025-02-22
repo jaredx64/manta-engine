@@ -66,5 +66,8 @@ inline void set_null( const char *&a ) { a = nullptr; }
 inline bool is_null( const u32 a ) { return a == U32_MAX; }
 inline void set_null( u32 &a ) { a = U32_MAX; }
 
+inline bool is_null( const u64 a ) { return a == U64_MAX; }
+inline void set_null( u64 &a ) { a = U64_MAX; }
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 };

@@ -132,7 +132,7 @@ void GeneratorGLSL::process_names()
 			String &name = variableNames.add( "" );
 			Variable &variable = parser.variables[variableID];
 
-			switch( variable.typeID )
+			switch( variable.texture )
 			{
 				case Primitive_Texture1D:
 				case Primitive_Texture1DArray:
@@ -275,6 +275,17 @@ void GeneratorGLSL::generate_function_call_intrinsics( NodeFunctionCall *node )
 {
 	Intrinsic intrinsic = node->functionID;
 	Assert( intrinsic < INTRINSIC_COUNT );
+
+	// Helper to output UV with flipped V
+	auto generate_node_uvs_flipped = [this]( Node *node )
+		{
+			output.append( "vec2( " );
+				generate_node_parenthesis( node );
+				output.append( ".x, 1.0 - " );
+				generate_node_parenthesis( node );
+				output.append( ".y" );
+			output.append( " )" );
+		};
 
 	switch( intrinsic )
 	{
@@ -456,6 +467,27 @@ void GeneratorGLSL::generate_function_call_intrinsics( NodeFunctionCall *node )
 		}
 		return;
 
+	// Type Bit Conversions
+		case Intrinsic_FloatToIntBits:
+		case Intrinsic_FloatToUIntBits:
+		case Intrinsic_IntToFloatBits:
+		case Intrinsic_UIntToFloatBits:
+		{
+			static const char *intrinsics[] =
+			{
+				"floatBitsToInt",   // Intrinsic_FloatToIntBits
+				"floatBitsToUint",  // Intrinsic_FloatToUIntBits
+				"intBitsToFloat",   // Intrinsic_IntToFloatBits
+				"uintBitsToFloat",  // Intrinsic_UIntToFloatBits
+			};
+			static_assert( ARRAY_LENGTH( intrinsics ) == ( Intrinsic_UIntToFloatBits - Intrinsic_FloatToIntBits + 1 ),
+				"Missing Intrinsic!" );
+
+			output.append( intrinsics[intrinsic - Intrinsic_FloatToIntBits] );
+			generate_function_call_parameters( node );
+		}
+		return;
+
 	// Texture Sampling Functions
 		case Intrinsic_SampleTexture1D:
 		case Intrinsic_SampleTexture1DArray:
@@ -467,13 +499,12 @@ void GeneratorGLSL::generate_function_call_intrinsics( NodeFunctionCall *node )
 		{
 			// <texture>.Sample( sampler, <uv> );
 			output.append( "texture" );
-			generate_function_call_parameters( node );
-			/*
+
+			output.append( "( " );
 			generate_node( get_param( node->param, 0 )->expr );
 			output.append( ", " );
-			generate_node( get_param( node->param, 1 )->expr );
+			generate_node_uvs_flipped( get_param( node->param, 1 )->expr );
 			output.append( " )" );
-			*/
 		}
 		return;
 
@@ -481,13 +512,112 @@ void GeneratorGLSL::generate_function_call_intrinsics( NodeFunctionCall *node )
 		{
 			// <texture>.SampleLevel( sampler, <uv> );
 			output.append( "texture" );
-			generate_function_call_parameters( node );
-			/*
+
+			output.append( "( " );
 			generate_node( get_param( node->param, 0 )->expr );
 			output.append( ", " );
-			generate_node( get_param( node->param, 1 )->expr );
+			generate_node_uvs_flipped( get_param( node->param, 1 )->expr );
 			output.append( " )" );
-			*/
+		}
+		return;
+
+		case Intrinsic_LoadTexture2D:
+		{
+			output.append( "texelFetch" );
+
+			output.append( "( " );
+			generate_node( get_param( node->param, 0 )->expr );
+			output.append( ", ivec2( " );
+			generate_node( get_param( node->param, 1 )->expr );
+			output.append( ", int( " );
+			generate_node( get_param( node->param, 4 )->expr );
+			output.append( " - 1 ) - ( " );
+			generate_node( get_param( node->param, 2 )->expr );
+			output.append( " ) ), 0 )" );
+		}
+		return;
+
+	// Depth
+		case Intrinsic_DepthNormalize:
+		{
+			// ( depth - near ) / ( far - near )
+			output.append( "( " );
+				output.append( "( " );
+					generate_node_parenthesis( get_param( node->param, 0 )->expr ); // depth
+					output.append( " - " );
+					generate_node_parenthesis( get_param( node->param, 1 )->expr ); // near
+				output.append( " )" );
+				output.append( " / " );
+				output.append( "( " );
+					generate_node_parenthesis( get_param( node->param, 2 )->expr ); // far
+					output.append( " - " );
+					generate_node_parenthesis( get_param( node->param, 1 )->expr ); // near
+				output.append( " )" );
+			output.append( " )" );
+		}
+		return;
+
+		case Intrinsic_DepthLinearize:
+		{
+			// ( ( ( near * far ) / ( far - depth * ( far - near ) ) ) - near ) / ( far - near )
+			output.append( "( " );
+				output.append( "( " );
+					output.append( "( " );
+						output.append( "( " );
+							generate_node_parenthesis( get_param( node->param, 1 )->expr ); // near
+							output.append( " * " );
+							generate_node_parenthesis( get_param( node->param, 2 )->expr ); // far
+						output.append( " )" );
+						output.append( " / " );
+						output.append( "( " );
+							generate_node_parenthesis( get_param( node->param, 2 )->expr ); // far
+							output.append( " - " );
+							generate_node_parenthesis( get_param( node->param, 0 )->expr ); // depth
+							output.append( " * " );
+							output.append( "( " );
+								generate_node_parenthesis( get_param( node->param, 2 )->expr ); // far
+								output.append( " - " );
+								generate_node_parenthesis( get_param( node->param, 1 )->expr ); // near
+							output.append( " )" );
+						output.append( " )" );
+					output.append( " )" );
+					output.append( " - " );
+					generate_node_parenthesis( get_param( node->param, 1 )->expr ); // near
+				output.append( " )" );
+				output.append( " / " );
+				output.append( "( " );
+					generate_node_parenthesis( get_param( node->param, 2 )->expr ); // far
+					output.append( " - " );
+					generate_node_parenthesis( get_param( node->param, 1 )->expr ); // near
+				output.append( " )" );
+			output.append( " )" );
+		}
+		return;
+
+		case Intrinsic_DepthUnproject:
+		{
+			output.append( "( " );
+				output.append( "( " );
+					generate_node_parenthesis( get_param( node->param, 0 )->expr );
+					output.append( ".z / " );
+					generate_node_parenthesis( get_param( node->param, 0 )->expr );
+					output.append( ".w" );
+				output.append( " )" );
+				output.append( " * 0.5 + 0.5 " );
+			output.append( " )" );
+		}
+		return;
+
+		case Intrinsic_DepthUnprojectZW:
+		{
+			output.append( "( " );
+				output.append( "( " );
+					generate_node_parenthesis( get_param( node->param, 0 )->expr );
+					output.append( " / " );
+					generate_node_parenthesis( get_param( node->param, 1 )->expr );
+				output.append( " )" );
+				output.append( " * 0.5 + 0.5 " );
+			output.append( " )" );
 		}
 		return;
 
@@ -697,7 +827,7 @@ void GeneratorGLSL::generate_structure( NodeStruct *node )
 					{
 						output.append( "// " );
 						String replace = String( typeName ).append( "_" ).append( memberVariableName );
-						SemanticSubstitutions.add( SemanticSubsituation( replace.cstr(), "gl_Depth" ) );
+						SemanticSubstitutions.add( SemanticSubsituation( replace.cstr(), "gl_FragDepth" ) );
 					}
 					break;
 				}
@@ -710,6 +840,29 @@ void GeneratorGLSL::generate_structure( NodeStruct *node )
 		{
 			int slot = memberVariable.slot != -1 ? memberVariable.slot : static_cast<int>( location );
 			output.append( "layout( location = " ).append( slot ).append( " ) " );
+		}
+
+		// Flat
+		if( node->structType == StructType_VertexOutput ||
+			node->structType == StructType_FragmentInput )
+		{
+			switch( memberVariable.typeID )
+			{
+				case Primitive_Bool:
+				case Primitive_Bool2:
+				case Primitive_Bool3:
+				case Primitive_Bool4:
+				case Primitive_Int:
+				case Primitive_Int2:
+				case Primitive_Int3:
+				case Primitive_Int4:
+				case Primitive_UInt:
+				case Primitive_UInt2:
+				case Primitive_UInt3:
+				case Primitive_UInt4:
+					output.append( "flat " );
+				break;
+			}
 		}
 
 		// <in> / <out>
@@ -983,12 +1136,35 @@ void GeneratorGLSL::generate_texture( NodeTexture *node )
 	static bool generatedSampler = false;
 
 	Texture &texture = parser.textures[node->textureID];
-	const String &typeName = type_name( parser.variables[texture.variableID].typeID );
+	const String &samplerName = type_name( parser.variables[texture.variableID].texture );
 	const String &variableName = variable_name( texture.variableID );
 
+	const char *samplerPrefix;
+
+	switch( parser.variables[texture.variableID].typeID )
+	{
+		case Primitive_Int:
+		case Primitive_Int2:
+		case Primitive_Int3:
+		case Primitive_Int4:
+			samplerPrefix = "i";
+		break;
+
+		case Primitive_UInt:
+		case Primitive_UInt2:
+		case Primitive_UInt3:
+		case Primitive_UInt4:
+			samplerPrefix = "u";
+		break;
+
+		default:
+			samplerPrefix = "";
+		break;
+	}
+
 	// Texture
-	output.append( indent ).append( "uniform " );
-	output.append( typeName ).append( " " ).append( variableName ).append( ";\n\n" );
+	output.append( indent ).append( "uniform " ).append( samplerPrefix );
+	output.append( samplerName ).append( " " ).append( variableName ).append( ";\n\n" );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

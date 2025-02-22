@@ -22,7 +22,7 @@ namespace Time
 
 class Timer
 {
-_PUBLIC:
+public:
 	Timer() { start(); }
 
 	void start() { timeStart = Time::value(); timing = true; }
@@ -62,7 +62,7 @@ _PUBLIC:
 		return ( timeEnd - timeStart ) * 1000.0 * 1000.0;
 	}
 
-_PRIVATE:
+private:
 	double timeStart = 0.0;
 	double timeEnd = 0.0;
 	bool timing = false;

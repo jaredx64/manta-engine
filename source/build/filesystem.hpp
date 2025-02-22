@@ -15,28 +15,26 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #if PIPELINE_OS_WINDOWS
-	// Windows
 	#include <vendor/windows.hpp>
 
 	#define SLASH "\\"
 	#define SLASH_CHAR '\\'
 
 	#ifdef MAX_PATH
-	#define PATH_SIZE MAX_PATH
+		#define PATH_SIZE ( MAX_PATH )
 	#else
-	#define PATH_SIZE 256
+		#define PATH_SIZE ( 256 )
 	#endif
 #else
-	// POSIX
 	#include <vendor/posix.hpp>
 
 	#define SLASH "/"
 	#define SLASH_CHAR '/'
 
 	#ifdef PATH_MAX
-	#define PATH_SIZE PATH_MAX
+		#define PATH_SIZE ( PATH_MAX )
 	#else
-	#define PATH_SIZE 256
+		#define PATH_SIZE ( 256 )
 	#endif
 #endif
 
@@ -65,9 +63,15 @@ struct FileInfo
 
 extern bool file_time( const char *path, FileTime *result );
 extern bool file_time_newer( const FileTime &a, const FileTime &b );
+extern bool file_delete( const char *path );
+extern bool file_rename( const char *path, const char *name );
+extern bool file_copy( const char *source, const char *destination );
 
-extern void directory_create( const char *path );
+extern bool directory_create( const char *path );
 extern bool directory_iterate( List<FileInfo> &list, const char *path, const char *extension, const bool recurse );
+extern bool directory_delete( const char *path );
+extern bool directory_rename( const char *path, const char *name );
+extern bool directory_copy( const char *source, const char *destination );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -89,7 +93,7 @@ extern usize fsize( FILE *file );
 
 class File
 {
-_PUBLIC:
+public:
 	File() = default;
 	File( const char *path ) { open( path ); }
 
@@ -113,7 +117,7 @@ _PUBLIC:
 	}
 	#endif
 
-_PUBLIC:
+public:
 	FILE *file = nullptr;
 	byte *data = nullptr;
 	const char *filepath = "";

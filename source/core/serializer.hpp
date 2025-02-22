@@ -26,7 +26,7 @@ struct SerializerKey
 
 class Serializer
 {
-_PRIVATE:
+private:
 	// custom serialize() must be: static void T::serialize( Buffer &buffer, const T &type ) { ... }
 	template <typename T> struct HasCustomSerialize
 	{
@@ -40,7 +40,7 @@ _PRIVATE:
 	usize endTell = USIZE_MAX;
 	usize nextTell = USIZE_MAX;
 
-_PUBLIC:
+public:
 	void begin( Buffer &buffer, const u32 version )
 	{
 		// Set state
@@ -128,7 +128,7 @@ _PUBLIC:
 
 class Deserializer
 {
-_PRIVATE:
+private:
 	// custom deserialize() must be: static void T::deserialize( Buffer &buffer, T &type ) { ... }
 	template <typename T> struct HasCustomDeserialize
 	{
@@ -143,7 +143,7 @@ _PRIVATE:
 	usize endTell = USIZE_MAX;
 	usize firstTell = USIZE_MAX;
 
-_PUBLIC:
+public:
 	u32 version = 0;
 
 	void begin( Buffer &buffer, const u32 version )

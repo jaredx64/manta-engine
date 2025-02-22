@@ -27,16 +27,32 @@ struct ThreadID
 {
 #if THREAD_WINDOWS
 	DWORD id;
+	ThreadID() { };
 	ThreadID( const DWORD id ) { this->id = id; }
 	bool operator==( const ThreadID &other ) const { return ( id == other.id ); }
+	bool operator!=( const ThreadID &other ) const { return ( id != other.id ); }
 #elif THREAD_POSIX
 	pthread_t id;
+	ThreadID() { };
 	ThreadID( const pthread_t id ) { this->id = id; }
 	bool operator==( const ThreadID &other ) const { return ( id == other.id ); }
+	bool operator!=( const ThreadID &other ) const { return ( id != other.id ); }
 #else
+	ThreadID() { };
 	ThreadID( const pthread_t id ) { this->id = id; }
 	bool operator==( const ThreadID &other ) const { return true; }
+	bool operator!=( const ThreadID &other ) const { return true; }
 #endif
+};
+
+extern ThreadID THREAD_ID_MAIN;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+namespace SysThread
+{
+	extern bool init();
+	extern bool free();
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -114,7 +130,6 @@ template <typename T> bool ConcurrentQueue<T>::init( const int reserve )
 
 	Assert( data == nullptr );
 	data = reinterpret_cast<T *>( memory_alloc( capacity * sizeof( T ) ) );
-	ErrorIf( data == nullptr, "Failed to allocate memory for ConcurrentQueue" );
 
 	mutex.init();
 	empty.init();

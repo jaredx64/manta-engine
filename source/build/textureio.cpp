@@ -1,8 +1,7 @@
 #include <build/textureio.hpp>
 
 #include <core/memory.hpp>
-
-#include <build/math.hpp>
+#include <core/math.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -18,9 +17,6 @@ void Texture2DBuffer::init( const u16 width, const u16 height )
 
 	// Allocate blank texture
 	data = reinterpret_cast<rgba *>( memory_alloc( width * height * sizeof( rgba ) ) );
-	ErrorIf( data == nullptr,
-		"Failed to allocate memory for init() Texture2DBuffer (%p: memory_alloc %d bytes)",
-		data, width * height * sizeof( rgba ) );
 	memory_set( data, 0, width * height * sizeof( rgba ) );
 	this->width = width;
 	this->height = height;
@@ -116,5 +112,78 @@ void Texture2DBuffer::splice( Texture2DBuffer &source,
 		memory_copy( dst, src, w * sizeof( rgba ) );
 	}
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct ICOHeader
+{
+	u16 reserved;
+	u16 type;
+	u16 count;
+};
+
+
+struct ICODirEntry
+{
+    u8 width;
+    u8 height;
+    u8 colorCount;
+    u8 reserved;
+    u16 planes;
+    u16 bitCount;
+    u32 sizeInBytes;
+    u32 offset;
+};
+
+
+bool png_to_ico( const char *pathPNG, const char *pathICO )
+{
+	// Load .png File
+	FILE *pngFile = fopen( pathPNG, "rb" );
+	if( !pngFile ) { return false; }
+
+	fseek( pngFile, 0, SEEK_END );
+	const usize pngSizeBytes = ftell( pngFile );
+	fseek( pngFile, 0, SEEK_END );
+
+	byte *pngData = reinterpret_cast<byte *>( memory_alloc( pngSizeBytes ) );
+	fseek( pngFile, 0, SEEK_SET );
+
+	if( fread( pngData, 1, pngSizeBytes, pngFile ) != pngSizeBytes )
+	{
+		memory_free( pngData );
+		fclose( pngFile );
+		return false;
+	}
+
+	fclose( pngFile );
+
+	// Create .ico file
+	FILE *file = fopen( pathICO, "wb" );
+	if( !file ) { return false; }
+
+	ICOHeader header;
+	header.reserved = 0;
+	header.type = 1;
+	header.count = 1;
+
+	ICODirEntry entry;
+	entry.width = 0;
+	entry.height = 0;
+	entry.colorCount = 0;
+	entry.reserved = 0;
+	entry.planes = 1;
+	entry.bitCount = 32;
+	entry.sizeInBytes = static_cast<u32>( pngSizeBytes );
+	entry.offset = sizeof( ICOHeader ) + sizeof( ICODirEntry );
+
+	fwrite( &header, sizeof( header ), 1, file );
+	fwrite( &entry, sizeof( entry ), 1, file );
+	fwrite( pngData, 1, pngSizeBytes, file );
+	fclose( file );
+
+	return true;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

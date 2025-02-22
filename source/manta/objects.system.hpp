@@ -81,7 +81,7 @@ extern bool object_is_child_of( const u16 thisType, const u16 otherType );
 
 class Object
 {
-_PUBLIC:
+public:
 	Object() : alive{ 0 }, deactivated{ 0 }, type{ 0 }, generation{ 0 }, bucketID{ 0 }, index{ 0 } { }
 	Object( const u16 type, const u16 generation, const u16 bucket, const u16 index ) :
 		alive{ 0 }, deactivated{ 0 }, type{ type }, generation{ generation }, bucketID{ bucket }, index{ index } { }
@@ -103,10 +103,10 @@ _PUBLIC:
 	operator u64() const { return id(); }
 #endif
 
-_PUBLIC:
+public:
 	class Serialization
 	{
-	_PRIVATE:
+	private:
 		friend ObjectContext;
 
 		struct InstanceTable
@@ -121,25 +121,25 @@ _PUBLIC:
 			u32 find_instance( const u32 key ) const;
 		};
 
-	_PUBLIC:
+	public:
 		static void init();
 		static void free();
 		static void prepare( const ObjectContext &context );
 		static u32 instance_from_object( const Object &object );
 		static Object object_from_instance( const u16 type, const u32 instance );
 
-	_PRIVATE:
+	private:
 		static InstanceTable instances[];
 		static const ObjectContext *context;
 
-	_PUBLIC:
+	public:
 		static bool dirty;
 	};
 
 	static void serialize( Buffer &buffer, const Object &object );
 	static void deserialize( Buffer &buffer, Object &object );
 
-_PRIVATE:
+private:
 	struct SerializedObject
 	{
 		SerializedObject() : hash{ 0 }, instance{ 0 } { }
@@ -163,11 +163,11 @@ static_assert( sizeof( Object ) == 8, "Object size changed!" );
 
 class ObjectContext
 {
-_PRIVATE:
+private:
 	friend Object;
 	friend Object::Serialization;
 
-_PUBLIC:
+public:
 	ObjectContext() : category { 0 } { };
 	ObjectContext( const u16 category ) : category{ category } { };
 
@@ -237,7 +237,7 @@ _PUBLIC:
 	void draw( const Delta delta, const float x, const float y );
 #endif
 
-_PRIVATE:
+private:
 	struct ObjectBucket
 	{
 		ObjectBucket() = delete;
@@ -310,7 +310,7 @@ _PRIVATE:
 	ObjectBucket *new_object( const u16 type );
 	Object create_object( const u16 type );
 
-_PUBLIC:
+public:
 	template <int N> struct IteratorAll
 	{
 		IteratorAll() = delete;
@@ -352,7 +352,7 @@ _PUBLIC:
 		return ObjectHandle<N>{ get_object_pointer( object ) };
 	}
 
-_PRIVATE:
+private:
 	ObjectBucket *buckets = nullptr; // ObjectBucket array (dynamic)
 	u16 *bucketCache = nullptr;      // Most recent buckets touched by object create/destroy
 	u32 *objectCount = nullptr;      // Instance count for each object type

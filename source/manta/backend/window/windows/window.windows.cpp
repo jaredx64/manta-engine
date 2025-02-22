@@ -26,6 +26,7 @@ namespace SysWindow
 
 	static LRESULT CALLBACK procedure( HWND wnd, UINT msg, WPARAM wp, LPARAM lp )
 	{
+	#if WINDOW_ENABLED
 		switch( msg )
 		{
 			// Close Button
@@ -203,11 +204,14 @@ namespace SysWindow
 			// Let Windows handle everything else
 			default: { return DefWindowProcW( wnd, msg, wp, lp ); }
 		}
+	#endif
+		return 0;
 	}
 
 
 	bool init( const int defaultWidth, const int defaultHeight )
 	{
+	#if WINDOW_ENABLED
 		// Set Dimensions
 		Window::width = defaultWidth;
 		Window::height = defaultHeight;
@@ -274,6 +278,7 @@ namespace SysWindow
 
 		// Check Error
 		if( handle == nullptr ) { ErrorReturnMsg( false, "Window: Failed to get window handle" ); }
+	#endif
 
 		// Success
 		return true;
@@ -282,19 +287,25 @@ namespace SysWindow
 
 	bool free()
 	{
-		// Success
+	#if WINDOW_ENABLED
+		// ...
+	#endif
 		return true;
+		// Success
 	}
 
 
 	void show()
 	{
+	#if WINDOW_ENABLED
 		ShowWindow( SysWindow::handle, SW_NORMAL );
+	#endif
 	}
 
 
 	void poll()
 	{
+	#if WINDOW_ENABLED
 		MSG msg;
 
 		while( PeekMessageW( &msg, nullptr, 0, 0, PM_REMOVE ) )
@@ -302,24 +313,29 @@ namespace SysWindow
 			TranslateMessage( &msg );
 			DispatchMessageW( &msg );
 		}
+	#endif
 	}
 
 
 	void mouse_get_position( double &x, double &y )
 	{
+	#if WINDOW_ENABLED
 		// On Windows, this function doesn't need to do anything special
 		x = Mouse::x();
 		y = Mouse::y();
+	#endif
 	}
 
 
 	void mouse_set_position( const int x, const int y )
 	{
+	#if WINDOW_ENABLED
 		POINT p;
 		p.x = x;
 		p.y = y;
 		ClientToScreen( SysWindow::handle, &p );
 		SetCursorPos( p.x, p.y );
+	#endif
 	}
 };
 
@@ -329,29 +345,36 @@ namespace Window
 {
 	void show_message( const char* title, const char* message )
 	{
+	#if WINDOW_ENABLED
 		MessageBoxA( NULL, message, title, MB_OK );
+	#endif
 	}
 
 
 	void show_message_error( const char* title, const char* message )
 	{
+	#if WINDOW_ENABLED
 		MessageBoxA( NULL, message, title, MB_OK | MB_ICONERROR );
+	#endif
 	}
 
 
-	bool resize( int width, int height )
+	void set_size( int width, int height )
 	{
+	#if WINDOW_ENABLED
 		RECT screenRect;
 		SystemParametersInfoA( SPI_GETWORKAREA, 0, &screenRect, 0 );
 
 		const int x = ( screenRect.right - width ) / 2;
 		const int y = ( screenRect.bottom - height ) / 2;
-		return SetWindowPos( SysWindow::handle, NULL, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE );
+		SetWindowPos( SysWindow::handle, NULL, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE );
+	#endif
 	}
 
 
 	void set_fullscreen( bool enabled )
 	{
+	#if WINDOW_ENABLED
 		MONITORINFO monitor;
 		int mw, mh; // Monitor Dimensions
 		int cw, ch; // Client Dimensions
@@ -417,11 +440,13 @@ namespace Window
 				SWP_FRAMECHANGED | SWP_SHOWWINDOW
 			);
 		}
+	#endif
 	}
 
 
 	void set_caption( const char *caption )
 	{
+	#if WINDOW_ENABLED
 		static wchar_t wstr[512];
 
 		int length = static_cast<int>( strlen( caption ) );
@@ -434,11 +459,13 @@ namespace Window
 
 			SetWindowTextW( SysWindow::handle, wstr );
 		}
+	#endif
 	}
 
 
 	bool set_clipboard( const char *buffer )
 	{
+	#if WINDOW_ENABLED
 		// Open & clear the clipboard
 		if( !OpenClipboard( 0 ) ) { return false; }
 		if( !EmptyClipboard() ) { CloseClipboard(); return false; }
@@ -463,12 +490,15 @@ namespace Window
 
 		// Close clipboard
 		CloseClipboard();
+	#endif
+
 		return true;
 	}
 
 
 	bool get_clipboard( char *buffer, const usize size )
 	{
+	#if WINDOW_ENABLED
 		// Open the clipboard
 		buffer[0] = '\0';
 		if( !OpenClipboard( 0 ) ) { return false; }
@@ -486,21 +516,26 @@ namespace Window
 
 		// Close clipboard
 		CloseClipboard();
+	#endif
 		return true;
 	}
 
 
 	bool set_selection( const char *buffer )
 	{
+	#if WINDOW_ENABLED
 		// Do nothing on Windows
+	#endif
 		return true;
 	}
 
 
 	bool get_selection( char *buffer, const usize size )
 	{
+	#if WINDOW_ENABLED
 		// Do nothing on Windows
 		buffer[0] = '\0';
+	#endif
 		return true;
 	}
 }

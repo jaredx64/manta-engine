@@ -16,14 +16,14 @@ namespace ShaderCompiler
 
 class Token
 {
-_PUBLIC:
+public:
 	Token() = default;
 	Token( TokenType type ) : type { type } { }
 	Token( TokenType type, StringView name ) : type{ type }, name{ name } { }
 	Token( TokenType type, double number ) : type{ type }, number{ number } { }
 	Token( TokenType type, u64 integer ) : type{ type }, integer{ integer } { }
 
-_PUBLIC:
+public:
 	u32 position = 0;
 	u32 start = 0;
 	u32 line = 0;
@@ -38,7 +38,7 @@ _PUBLIC:
 
 class Scanner
 {
-_PUBLIC:
+public:
 	void init( const char *buffer ) { this->buffer = buffer; }
 	bool consume( char c );
 	void skip_whitespace();
@@ -47,7 +47,7 @@ _PUBLIC:
 	Token back();
 	Token current();
 
-_PUBLIC:
+public:
 	const char *buffer;
 	List<Token> stack;
 	u32 position = 0;
@@ -58,7 +58,7 @@ _PUBLIC:
 
 class Parser
 {
-_PUBLIC:
+public:
 	Parser( Shader &shader, const char *path ) : shader{ shader }, path{ path } { }
 
 	void init();
@@ -145,7 +145,7 @@ _PUBLIC:
 	// Override Error Macros
 	void ERROR_HANDLER_FUNCTION_DECL;
 
-_PUBLIC:
+public:
 	Shader &shader;
 	const char *path;
 

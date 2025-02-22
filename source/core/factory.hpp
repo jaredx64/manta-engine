@@ -12,7 +12,7 @@
 template <typename T>
 class Factory
 {
-_PUBLIC:
+public:
 #if MEMORY_RAII
 	Factory( const u32 bucketSize = 64, const bool growable = true, const T &nullElement = { } )
 		{ init( bucketSize, growable, nullElement ); }
@@ -39,7 +39,7 @@ _PUBLIC:
 #endif
 #endif
 
-_PRIVATE:
+private:
 	using GenerationID = u16;
 	static const u16 GENERATION_MAX = ( ( 1ULL << 15 ) - 1 );
 	using BucketID = u16;
@@ -84,8 +84,6 @@ _PRIVATE:
 			MemoryAssert( slots == nullptr );
 			Assert( capacity >= 1 );
 			slots = reinterpret_cast<ElementSlot *>( memory_alloc( capacity * sizeof( ElementSlot ) ) );
-			ErrorIf( slots == nullptr, "Failed to allocate memory for init Factory Bucket (%p: alloc %d bytes)",
-			         slots, capacity * sizeof( ElementSlot ) );
 			memory_set( slots, 0, capacity * sizeof( ElementSlot ) );
 		}
 
@@ -128,8 +126,6 @@ _PRIVATE:
 			MemoryAssert( slots == nullptr );
 			Assert( capacity >= 1 );
 			slots = reinterpret_cast<ElementSlot *>( memory_alloc( capacity * sizeof( ElementSlot ) ) );
-			ErrorIf( slots == nullptr, "Failed to allocate memory for copy Factory Bucket (%p: alloc %d bytes)",
-					 slots, capacity * sizeof( ElementSlot ) );
 
 			// Copy memory
 			for( usize i = 0; i < capacity; i++ )
@@ -409,7 +405,7 @@ _PRIVATE:
 		return &buckets[current - 1];
 	}
 
-_PUBLIC:
+public:
 	void init( const u32 bucketSize = 64, const bool growable = true, const T &nullElement = { } )
 	{
 		// Set state
@@ -425,8 +421,6 @@ _PUBLIC:
 		MemoryAssert( this->buckets == nullptr );
 		Assert( this->bucketSize >= 1 );
 		buckets = reinterpret_cast<Bucket *>( memory_alloc( this->capacity * sizeof( Bucket ) ) );
-		ErrorIf( buckets == nullptr, "Failed to allocate memory for Factory buckets (%p: alloc %d bytes)",
-		         buckets, capacity * sizeof( Bucket ) );
 
 		// Initialize first bucket
 		ErrorIf( !new_bucket(), "Failed to allocate first bucket for Factory" );
@@ -466,7 +460,6 @@ _PUBLIC:
 
 		// Allocate the new buckets array
 		buckets = reinterpret_cast<Bucket *>( memory_alloc( other.capacity * sizeof( Bucket ) ) );
-		ErrorIf( buckets == nullptr, "Failed to allocate memory for copy Factory buckets" );
 
 		// Copy each bucket from the other factory
 		for( BucketID i = 0; i < other.current; i++ )
@@ -674,7 +667,7 @@ _PUBLIC:
 	// Forward Iterator
 	class forward_iterator
 	{
-	_PUBLIC:
+	public:
 		forward_iterator( Factory<T> &context, const bool begin )
 			: context( context ), bucketID( 0 ), index{ 0 }
 		{
@@ -686,7 +679,7 @@ _PUBLIC:
 		bool operator!=( const forward_iterator &other ) const { return element != other.element; }
 		T &operator*() { MemoryAssert( element != nullptr ); return *element; }
 
-	_PRIVATE:
+	private:
 		void advance()
 		{
 			// Increment index
@@ -716,7 +709,7 @@ _PUBLIC:
 			element = nullptr;
 		}
 
-	_PRIVATE:
+	private:
 		Factory<T> &context;
 		T *element;
 		BucketID bucketID;
@@ -731,7 +724,7 @@ _PUBLIC:
 	// Reverse Iterator
 	class reverse_iterator
 	{
-	_PUBLIC:
+	public:
 		reverse_iterator( Factory<T> &context, const bool begin )
 			: context( context )
 		{
@@ -745,7 +738,7 @@ _PUBLIC:
 		bool operator!=( const reverse_iterator &other ) const { return element != other.element; }
 		T &operator*() { MemoryAssert( element != nullptr ); return *element; }
 
-	_PRIVATE:
+	private:
 		void advance()
 		{
 			// Decrement index
@@ -775,7 +768,7 @@ _PUBLIC:
 			element = nullptr;
 		}
 
-	_PRIVATE:
+	private:
 		Factory<T> &context;
 		T *element;
 		BucketID bucketID;
@@ -787,7 +780,7 @@ _PUBLIC:
 	reverse_iterator rbegin() const { MemoryAssert( buckets != nullptr ); return reverse_iterator( *this, true ); }
 	reverse_iterator rend() const { MemoryAssert( buckets != nullptr ); return reverse_iterator( *this, false ); }
 
-_PUBLIC:
+public:
 	static void write( Buffer &buffer, const Factory<T> &factory )
 	{
 		MemoryAssert( buffer.data != nullptr );
@@ -840,8 +833,6 @@ _PUBLIC:
 		// Initialize memory
 		Assert( factory.bucketSize >= 1 );
 		factory.buckets = reinterpret_cast<Bucket *>( memory_alloc( factory.capacity * sizeof( Bucket ) ) );
-		ErrorIf( factory.buckets == nullptr, "Failed to allocate memory for 'read' Factory buckets (%p: alloc %d bytes)",
-		         factory.buckets, factory.capacity * sizeof( Bucket ) );
 
 		// Read buckets
 		for( BucketID i = 0; i < factory.current; i++ )
@@ -881,7 +872,7 @@ _PUBLIC:
 		Error( "TODO: Implement this!" );
 	}
 
-_PRIVATE:
+private:
 	Bucket *buckets = nullptr;
 	usize elementCount = 0;
 	BucketIndex bucketSize = 0;

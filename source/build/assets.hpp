@@ -13,6 +13,7 @@
 #include <build/assets/sounds.hpp>
 #include <build/assets/songs.hpp>
 #include <build/assets/meshes.hpp>
+#include <build/assets/skeleton2d.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -40,6 +41,7 @@ namespace Assets
 	extern Sounds sounds;
 	extern Songs songs;
 	extern Meshes meshes;
+	extern Skeleton2Ds skeleton2Ds;
 
 	// Setup
 	extern void begin();

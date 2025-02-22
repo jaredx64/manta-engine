@@ -20,8 +20,6 @@ void Buffer::init( usize reserve, const bool grow )
 	MemoryAssert( data == nullptr );
 	Assert( capacity >= 1 );
 	data = reinterpret_cast<byte *>( memory_alloc( capacity ) );
-	ErrorIf( data == nullptr, "Failed to allocate memory for init Buffer (%p: alloc %d bytes)",
-	         data, capacity );
 }
 
 
@@ -118,8 +116,6 @@ Buffer &Buffer::copy( const Buffer &other )
 	MemoryAssert( data == nullptr );
 	Assert( capacity >= 1 );
 	data = reinterpret_cast<byte *>( memory_alloc( capacity ) );
-	ErrorIf( data == nullptr, "Failed to allocate memory for copy Buffer (%p: alloc %d bytes)",
-	         data, capacity );
 	memory_copy( data, other.data, capacity );
 
 	// Return this

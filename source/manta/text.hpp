@@ -26,7 +26,7 @@ enum_type( TextErr, int )
 
 class TextFormat
 {
-_PUBLIC:
+public:
 	constexpr TextFormat() :
 		font{ fnt_iosevka.id }, size{ 12 },
 		bold{ false }, italic{ false }, underline{ false }, highlight{ false },
@@ -34,7 +34,7 @@ _PUBLIC:
 		color{ c_white },
 		payload{ 0 } { }
 
-_PUBLIC:
+public:
 	// 2 bytes
 	u8 font;
 	u8 size;
@@ -64,7 +64,7 @@ static_assert( sizeof( TextFormat ) == 12, "TextFormat must be 12 bytes!" );
 
 class TextChar
 {
-_PUBLIC:
+public:
 	constexpr TextChar( const u32 codepoint = 0, const TextFormat format = { } ) :
 		codepoint{ codepoint }, format{ format } { }
 
@@ -77,7 +77,7 @@ _PUBLIC:
 	u16v2 get_glyph_dimensions( const usize index ) const;
 	u16v2 get_glyph_dimensions_raw() const;
 
-_PUBLIC:
+public:
 	u32 codepoint;
 	TextFormat format;
 };
@@ -87,7 +87,7 @@ static_assert( sizeof( TextChar ) == 16, "TextChar must be 16 bytes!" );
 
 class Text
 {
-_PUBLIC:
+public:
 #if true // MEMORY_RAII
 	Text( const char *string = "" ) { init( string ); }
 	Text( const Text &other ) { copy( other ); }
@@ -113,10 +113,10 @@ _PUBLIC:
 #endif
 #endif
 
-_PRIVATE:
+private:
 	void grow();
 
-_PUBLIC:
+public:
 	void init( const char *string = "" );
 	void free();
 	Text &copy( const Text &other );
@@ -169,7 +169,7 @@ _PUBLIC:
 	static bool filter_filename( Text &text, u32 codepoint );
 	static bool filter_console( Text &text, u32 codepoint );
 
-_PRIVATE:
+private:
 	struct LineInfo
 	{
 		usize begin = 0;
@@ -189,13 +189,13 @@ _PRIVATE:
 	bool limit_characters();
 	bool limit_dimensions();
 
-_PUBLIC:
+public:
 	TextChar *data = nullptr;
 	TextFormat defaultFormat;
 	usize capacity = 0;
 	usize current = 0;
 
-_PUBLIC:
+public:
 	usize limitCharacters = 0; // Max character count
 	u16 limitWidth = 0;        // Maximum width
 	u16 limitHeight = 0;       // Maximum height
@@ -253,7 +253,7 @@ constexpr const char u8ToHex[][2] = {
 
 template <usize N> class CharBuffer
 {
-_PUBLIC:
+public:
     template <usize... Ns> constexpr CharBuffer( const char ( &...args )[Ns] )
 	{
         static_assert( sizeof...( args ) > 0, "Must provide at least one string" );
@@ -264,7 +264,7 @@ _PUBLIC:
 	constexpr const char *cstr() const { return data; }
 	constexpr operator const char *() const { return data; }
 
-_PRIVATE:
+private:
 	constexpr void append( const char *buffer, const usize a )
 	{
 		for( usize i = 0; i < a; i++ ) { data[current++] = buffer[i]; }
@@ -338,7 +338,7 @@ template <usize... Ns> constexpr auto concatenate_strings( const char ( &...args
 
 class TextEditor
 {
-_PUBLIC:
+public:
 	TextEditor()
 	{
 		text.callbackOnError = text_callback_error;
@@ -347,7 +347,7 @@ _PUBLIC:
 
 	~TextEditor();
 
-_PUBLIC:
+public:
 	static void listen();
 	void activate();
 	void deactivate();
@@ -402,7 +402,7 @@ _PUBLIC:
 	TextChar &operator[]( const usize index ) { return text.char_at( index ); }
 	const TextChar &operator[]( const usize index ) const { return text.char_at( index ); }
 
-_PRIVATE:
+private:
 	void poll();
 	void text_append( const char *buffer );
 	usize text_replace( const usize start, const usize end, const char *buffer );
@@ -410,11 +410,11 @@ _PRIVATE:
 	u32 codepoint_at( const usize index ) const;
 	void validate_selection();
 
-_PRIVATE:
+private:
 	static void text_callback_error( Text &text, const TextErr error );
 	static void text_callback_update( Text &text );
 
-_PRIVATE:
+private:
 	Text text;
 	usize caretStart = 0; // insertion & highlight begin
 	usize caretEnd = USIZE_MAX; // highlight end
@@ -431,7 +431,7 @@ _PRIVATE:
 	usize clickEnd = USIZE_MAX;
 	u8 clickCount = 0;
 
-_PUBLIC:
+public:
 	bool control = false;
 	bool shifting = false;
 	bool selecting = false;
@@ -443,7 +443,7 @@ _PUBLIC:
 	int screenX = 0;
 	int screenY = 0;
 
-_PUBLIC:
+public:
 	// void callbackUpdate( TextEditor &ime )
 	void ( *callbackOnUpdate )( TextEditor & ) = nullptr;
 

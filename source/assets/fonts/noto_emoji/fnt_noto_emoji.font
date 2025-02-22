@@ -1,0 +1,5 @@
+{
+	"license": "noto_emoji_license.txt",
+
+	"default": "noto_emoji_regular.ttf",
+}

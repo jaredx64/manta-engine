@@ -11,7 +11,7 @@
 
 // Define OpenGL Procedures
 #if !GL_MAC
-	#undef  META
+	#undef META
 	#define META(type, name, ...) n##name##proc n##name;
 	#include "opengl.procedures.hpp"
 #endif
@@ -19,9 +19,8 @@
 
 bool opengl_load()
 {
-	// Load OpenGL Procedures
 	#if !GL_MAC
-		#undef  META
+		#undef META
 
 		#define META(type, name, ...)                                                               \
 			if( ( n##name = reinterpret_cast<n##name##proc>( opengl_proc( #name ) ) ) == nullptr )  \
@@ -30,7 +29,6 @@ bool opengl_load()
 		#include "opengl.procedures.hpp"
 	#endif
 
-	// Success
 	return true;
 }
 

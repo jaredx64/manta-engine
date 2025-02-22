@@ -2,6 +2,8 @@
 
 #include <config.hpp>
 
+#include <core/color.hpp>
+
 #include <vendor/stdarg.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -90,6 +92,30 @@ enum
 	#define DebugPrintLn( message, ... )
 	#define DebugPrintLnColor( color, message, ... )
 #endif
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class EnumInfo
+{
+#if COMPILE_DEBUG
+public:
+	constexpr EnumInfo( const char *str, const Color col ) : str{ str }, col{ col } { };
+	const char *name() const { return str; }
+	const Color color() const { return col; }
+private:
+	const char *str = "";
+	const Color col = c_white;
+#else
+public:
+	constexpr EnumInfo( const char *str, const Color col ) { }
+	const char *name() const { return "..."; }
+	const Color color() const { return c_white; }
+#endif
+};
+
+#define ENUM_INFO( name, count, ... ) \
+	constexpr EnumInfo name[] = { __VA_ARGS__ }; \
+	static_assert( ( sizeof( name ) / sizeof( name[0] ) ) == count, "Missing an enum(s)!" );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // ERRORS

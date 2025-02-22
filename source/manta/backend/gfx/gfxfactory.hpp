@@ -9,12 +9,11 @@
 template <typename T, u32 Capacity>
 class GfxResourceFactory
 {
-_PUBLIC:
+public:
 	void init()
 	{
 		Assert( data == nullptr );
 		data = reinterpret_cast<T *>( memory_alloc( Capacity * sizeof( T ) ) );
-		ErrorIf( data == nullptr, "Failed to allocate memory for GfxResourceFactory!" );
 		for( u32 i = 0; i < Capacity; i++ ) { resource( i ).id = GFX_RESOURCE_ID_NULL; }
 		current = 0;
 	}
@@ -83,7 +82,7 @@ _PUBLIC:
 	forward_iterator begin() const { return forward_iterator( data, 0, Capacity ); }
 	forward_iterator end() const { return forward_iterator( data, Capacity ); }
 
-_PRIVATE:
+private:
 	inline GfxResource &resource( const u32 index ) { return *reinterpret_cast<GfxResource *>( &data[index] ); }
 
 	T *data = nullptr;

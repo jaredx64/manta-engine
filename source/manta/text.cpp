@@ -186,8 +186,6 @@ void Text::init( const char *string )
 	// Allocate memory
 	MemoryAssert( data == nullptr );
 	data = reinterpret_cast<TextChar *>( memory_alloc( capacity * sizeof( TextChar ) ) );
-	ErrorIf( data == nullptr, "Failed to allocate memory for init Text (%p: alloc %d bytes)",
-		data, capacity * sizeof( TextChar ) );
 
 	// Default Format
 	defaultFormat = TextFormat { };
@@ -231,8 +229,6 @@ Text &Text::copy( const Text &other )
 	// Allocate memory
 	MemoryAssert( data == nullptr );
 	data = reinterpret_cast<TextChar *>( memory_alloc( capacity * sizeof( TextChar ) ) );
-	ErrorIf( data == nullptr,
-		"Failed to allocate memory for copy Text (%p: alloc %d bytes)", data, capacity * sizeof( TextChar ) );
 	memory_copy( data, other.data, current * sizeof( TextChar ) );
 
 	// Return this

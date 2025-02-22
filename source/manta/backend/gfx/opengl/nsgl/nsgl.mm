@@ -45,17 +45,21 @@ bool opengl_init()
 	// Create Pixel Format
 	NSOpenGLPixelFormat *format;
 	if( ( format = [[NSOpenGLPixelFormat alloc] initWithAttributes:attributes]) == nil )
-		{ ErrorReturnMsg( false, "OpenGL: Failed to create pixel format" ); }
+	{
+		ErrorReturnMsg( false, "OpenGL: Failed to create pixel format" );
+	}
 
 	// Create OpenGL Context
 	if( ( context = [[NSOpenGLContext alloc] initWithFormat:format shareContext:nil] ) == nil )
-		{ ErrorReturnMsg( false, "OpenGL: Failed to create OpenGL context" ); }
+	{
+		ErrorReturnMsg( false, "OpenGL: Failed to create OpenGL context" );
+	}
 
 	// Disable Retina Framebuffer
 	[SysWindow::view setWantsBestResolutionOpenGLSurface:YES];
 
 	// Bind Context
-	[context setView:SysWindow::view];
+	[context setView: SysWindow::view];
 	[context makeCurrentContext];
 
 	// Disable Vsync (TODO)

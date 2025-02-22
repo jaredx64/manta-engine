@@ -1,8 +1,7 @@
 #pragma once
 
 #include <core/types.hpp>
-
-#include <manta/math.hpp>
+#include <core/math.hpp>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -717,5 +716,38 @@ VECTOR_TYPE_4D( u64v4, u64 )
 VECTOR_TYPE_4D( boolv4, bool )
 VECTOR_TYPE_4D( floatv4, float )
 VECTOR_TYPE_4D( doublev4, double )
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+inline floatv2 cubic_bezier( floatv2 root0, floatv2 root1, floatv2 handle0, floatv2 handle1, float t )
+{
+	const float tSqr = t * t;
+	const float tInv = 1.0f - t;
+	const float tInvSqr = tInv * tInv;
+	const float tCube = tSqr * t;
+	const float tInvCube = tInvSqr * tInv;
+
+	return floatv2
+		{
+			tInvCube * root0.x + 3.0f * tInvSqr * t * handle0.x + 3.0f * tInv * tSqr * handle1.x + tCube * root1.x,
+			tInvCube * root0.y + 3.0f * tInvSqr * t * handle0.y + 3.0f * tInv * tSqr * handle1.y + tCube * root1.y,
+		};
+}
+
+
+inline doublev2 cubic_bezier( doublev2 root0, doublev2 root1, doublev2 handle0, doublev2 handle1, double t )
+{
+	const double tSqr = t * t;
+	const double tInv = 1.0 - t;
+	const double tInvSqr = tInv * tInv;
+	const double tCube = tSqr * t;
+	const double tInvCube = tInvSqr * tInv;
+
+	return doublev2
+		{
+			tInvCube * root0.x + 3.0 * tInvSqr * t * handle0.x + 3.0 * tInv * tSqr * handle1.x + tCube * root1.x,
+			tInvCube * root0.y + 3.0 * tInvSqr * t * handle0.y + 3.0 * tInv * tSqr * handle1.y + tCube * root1.y,
+		};
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

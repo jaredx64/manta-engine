@@ -16,9 +16,10 @@ bool Model::init( const u32 meshID, u16 materialID )
 	vertexBuffer.init( diskMesh.vertexCount, GfxCPUAccessMode_WRITE_NO_OVERWRITE );
 	material = materialID;
 
-	GfxCore::rb_vertex_buffer_write_begin( vertexBuffer.resource );
-	GfxCore::rb_vertex_buffer_write( vertexBuffer.resource, Assets::binary.data + diskMesh.vertexBufferOffset, diskMesh.vertexBufferSize );
-	GfxCore::rb_vertex_buffer_write_end( vertexBuffer.resource );
+	GfxCore::rb_vertex_buffered_write_begin( vertexBuffer.resource );
+	GfxCore::rb_vertex_buffered_write( vertexBuffer.resource, Assets::binary.data +
+		diskMesh.vertexBufferOffset, diskMesh.vertexBufferSize );
+	GfxCore::rb_vertex_buffered_write_end( vertexBuffer.resource );
 
 	return true;
 }

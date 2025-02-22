@@ -12,6 +12,7 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 namespace SysObjects { class UIWidget_t; } // fwd declaration for UIWidget.object
+class UIContext;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -25,6 +26,15 @@ namespace SysUI
 	extern bool init();
 	extern bool free();
 };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+namespace UI
+{
+	extern Object hoverWidgetID;
+	extern UIContext *hoverWidgetContext;
+	extern void update( const Delta delta );
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -71,15 +81,15 @@ struct UIButtonDescription : UIWidgetDescription
 
 class UIContext
 {
-_PUBLIC:
+public:
 	friend class SysObjects::UIWidget_t;
 
-_PUBLIC:
+public:
 	void init();
 	void free();
 	void clear();
 
-_PUBLIC:
+public:
 	bool destroy_widget( Object &widget );
 	Object create_widget( u16 type, Object parent = { } );
 
@@ -107,7 +117,7 @@ _PUBLIC:
 	Object create_widget_labeltext( u16 type, int x, int y, const char *label,
 		int width = 0, int height = 0, Object parent = { } );
 
-_PUBLIC:
+public:
 	template <int N> ObjectHandle<N> handle( const Object &widget ) const
 	{
 		Assert( N == UIWidget || object_is_child_of( N, UIWidget ) );
@@ -138,7 +148,7 @@ _PUBLIC:
 	void update_widget( const Object &widget, const Delta delta );
 	void render_widget( const Object &widget, const Delta delta );
 
-_PRIVATE:
+private:
 	Object instantiate_widget( u16 type, Object parent );
 
 	void update_widget( ObjectHandle<UIWidget> &widgetHandle, const Delta delta );
@@ -148,7 +158,7 @@ _PRIVATE:
 	void register_widget( const Object &widget );
 	void release_widget( const Object &widget );
 
-_PRIVATE:
+private:
 	ObjectContext objects { CategoryUI };
 	List<Object> widgets;
 	Object hoverWidget;

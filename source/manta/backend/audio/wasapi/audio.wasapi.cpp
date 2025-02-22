@@ -112,6 +112,7 @@ error:
 
 bool SysAudio::init_backend()
 {
+#if AUDIO_ENABLED
 	IMMDeviceEnumerator *enumerator;
 	IMMDevice *device;
 
@@ -129,7 +130,8 @@ bool SysAudio::init_backend()
 	ErrorReturnIf( failure, false, "WASAPI: Failed to get default endpoint device" );
 
 	// Create Audio Client
-	failure = FAILED( device->Activate( _IID_IAudioClient, CLSCTX_ALL, nullptr, reinterpret_cast<void **>( &client ) ) );
+	failure = FAILED( device->Activate( _IID_IAudioClient, CLSCTX_ALL, nullptr,
+		reinterpret_cast<void **>( &client ) ) );
 	ErrorReturnIf( failure, false, "WASAPI: Failed to create audio client" );
 
 	// Initialize Audio Client
@@ -158,7 +160,8 @@ bool SysAudio::init_backend()
     ErrorReturnIf( failure, false, "WASAPI: Failed to initialize audio client" );
 
 	// Get Render Client
-	failure = FAILED( client->GetService( _IID_IAudioRenderClient, reinterpret_cast<void **>( &renderClient ) ) );
+	failure = FAILED( client->GetService( _IID_IAudioRenderClient,
+		reinterpret_cast<void **>( &renderClient ) ) );
 	ErrorReturnIf( failure, false, "WASAPI: Failed to get render client" );
 
 	// Get Buffer Size
@@ -188,15 +191,18 @@ bool SysAudio::init_backend()
 		static_cast<int>( bufferSize * sizeof(i16) * CHANNELS ),
 		bufferSize * 1000.0 / SAMPLE_RATE );
 #endif
+#endif
 
-	// Success
 	return true;
 }
 
 
 bool SysAudio::free_backend()
 {
-	// TODO
+#if AUDIO_ENABLED
+	// ...
+#endif
+
 	return true;
 }
 

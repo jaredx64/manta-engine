@@ -11,6 +11,14 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if !defined( HEADLESS )
+	#define AUDIO_ENABLED ( true )
+#else
+	#define AUDIO_ENABLED ( false )
+#endif
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 struct DiskSound;
 struct DiskSong;
 
@@ -243,12 +251,12 @@ namespace SysAudio
 
 class AudioEffects
 {
-_PUBLIC:
+public:
 	AudioEffects() { init(); }
     SysAudio::Effect &operator[]( const usize index ) { return effects[index]; }
 	const SysAudio::Effect &operator[]( const usize index ) const { return effects[index]; }
 
-_PUBLIC:
+public:
 	// EffectType_Core
 	__AUDIO_EFFECT_PARAM_GET_SET_DECL( gain )
 	__AUDIO_EFFECT_PARAM_GET_SET_NOAUTOMATION_DECL( pitch )
@@ -263,7 +271,7 @@ _PUBLIC:
 	//__AUDIO_EFFECT_PARAM_GET_SET_DECL( reverb_damp )
 	__AUDIO_EFFECT_PARAM_GET_SET_DECL( reverb_width )
 
-_PRIVATE:
+private:
 	void init();
 	SysAudio::Effect &find_effect( SysAudio::EffectType effect );
 	SysAudio::Effect effects[SysAudio::EFFECTTYPE_COUNT];
@@ -272,7 +280,7 @@ _PRIVATE:
 
 class SoundHandle
 {
-_PUBLIC:
+public:
 	SoundHandle() : voice{ -1 }, id{ -1 } { };
 	SoundHandle( const int voice, const int id ) : voice{ voice }, id{ id } { };
 	SoundHandle( const SoundHandle &other ) : voice{ other.voice }, id{ other.id } { };
@@ -284,7 +292,7 @@ _PUBLIC:
 
 	AudioEffects *operator->() const;
 
-_PUBLIC:
+public:
 	int voice = -1;
 	int id = -1;
 };
@@ -292,7 +300,7 @@ _PUBLIC:
 
 class AudioContext
 {
-_PUBLIC:
+public:
 	AudioContext() : bus{ -1 } { };
 
 	void init( const AudioEffects &effects = { }, const char *name = "" );
@@ -305,9 +313,9 @@ _PUBLIC:
 
 	SoundHandle play_sound( const u32 sound, const AudioEffects &effects = { } );
 
-_PUBLIC:
+public:
 	const char *name;
-_PRIVATE:
+private:
 	int bus = -1;
 };
 
@@ -339,8 +347,8 @@ namespace SysAudio
 		AudioEffects effects;
 	};
 
-	extern SoundHandle play_sound( const int bus, const i16 *const samples, const u32 samplesCount, const int channels,
-	                               const AudioEffects &effects, const char *name );
+	extern SoundHandle play_sound( const int bus, const i16 *const samples, const u32 samplesCount,
+		const int channels, const AudioEffects &effects, const char *name );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

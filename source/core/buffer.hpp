@@ -10,7 +10,7 @@
 
 class Buffer
 {
-_PUBLIC:
+public:
 #if MEMORY_RAII
 	Buffer( usize reserve = 1, const bool grow = true ) { init( reserve, grow ); }
 	Buffer( const char *path, const bool grow = true ) { load( path, grow ); }
@@ -38,7 +38,7 @@ _PUBLIC:
 #endif
 #endif
 
-_PRIVATE:
+private:
 	// custom write() must be: static void T::write( Buffer &buffer, const T &type ) { ... }
 	template <typename T> struct HasCustomWrite
 	{
@@ -59,7 +59,7 @@ _PRIVATE:
 
 	void grow();
 
-_PUBLIC:
+public:
 	void init( usize reserve = 1, const bool grow = true );
 	void free();
 	bool load( const char *path, const bool grow = false );
@@ -210,11 +210,11 @@ _PUBLIC:
 	usize size() const { return current; }
 	usize size_allocated_bytes() const { return capacity; }
 
-_PUBLIC:
+public:
 	byte *data = nullptr;
 	usize tell = 0;
 
-_PRIVATE:
+private:
 	usize capacity = 0;
 	usize current = 0;
 	bool fixed = false;

@@ -95,16 +95,14 @@ u32 Gfx::gather( const char *path, const bool recurse )
 void Gfx::build()
 {
 	// Shader Type
-	#if GRAPHICS_OPENGL
+	#if GRAPHICS_OPENGL || GRAPHICS_VULKAN
 		const ShaderType shaderType = ShaderType_GLSL;
 	#elif GRAPHICS_D3D11 || GRAPHICS_D3D12
 		const ShaderType shaderType = ShaderType_HLSL;
-	#elif GRAPHICS_VULKAN
-		const ShaderType shaderType = ShaderType_GLSL;
 	#elif GRAPHICS_METAL
 		const ShaderType shaderType = ShaderType_METAL;
 	#else
-		const ShaderType shaderType = ShaderType_DEFAULT;
+		const ShaderType shaderType = ShaderType_NONE;
 	#endif
 
 	// Build Shaders
@@ -172,7 +170,7 @@ void Gfx::write()
 		String &header = Gfx::headerGfx;
 		header.append( "#pragma once\n\n" );
 		header.append( "#include <core/types.hpp>\n#include <core/memory.hpp>\n" );
-		header.append( "#include <manta/math.hpp>\n\n#include <manta/vector.hpp>\n\n" );
+		header.append( "#include <core/math.hpp>\n\n#include <manta/vector.hpp>\n\n" );
 
 		header.append( COMMENT_BREAK "\n\n" );
 		{
@@ -184,7 +182,8 @@ void Gfx::write()
 				"u32 sizeFragment;",
 				"u32 offsetCompute;",
 				"u32 sizeCompute;",
-				"u32 vertexFormat;" );
+				"u32 vertexFormat;",
+				"const char *name;" );
 
 			header.append( "enum\n{\n" );
 			for( Shader &shader : shaders )
@@ -240,7 +239,6 @@ void Gfx::write()
 				header.append( "\textern GfxCoreCBuffer::" ).append( cbuffer.name ).append("_t " );
 				header.append( cbuffer.name ).append( ";\n" );
 			}
-			//header.append( Gfx::constantBuffersSource );
 			header.append( "}\n\n" );
 		}
 
@@ -249,10 +247,11 @@ void Gfx::write()
 			header.append( "namespace GfxCore\n{\n" );
 
 			header.append( "\tconstexpr u32 constantBufferCount = " );
-			header.append( static_cast<int>( Gfx::constantBuffers.size() ) ).append( ";\n\n" );
-
+			header.append( static_cast<int>( Gfx::constantBuffers.size() ) ).append( ";\n" );
 			header.append( "}\n\n" );
 		}
+
+		header.append( COMMENT_BREAK "\n" );
 
 		// Save
 		header.save( Gfx::pathHeaderGfx );
@@ -263,7 +262,7 @@ void Gfx::write()
 		String &source = Gfx::sourceGfx;
 		source.append( "#include <gfx.generated.hpp>\n\n" );
 		source.append( "#include <core/memory.hpp>\n\n" );
-		source.append( "#include <manta/gfx.hpp>\n" );
+		source.append( "#include <manta/gfx.hpp>\n\n" );
 
 		source.append( COMMENT_BREAK "\n\n" );
 		{
@@ -273,14 +272,15 @@ void Gfx::write()
 			source.append( "\tconst DiskShader diskShaders[shadersCount] =\n\t{\n" );
 			for( Shader &shader : shaders )
 			{
-				snprintf( buffer, PATH_SIZE, "\t\t{ %u, %u, %u, %u, %u, %u, %u },",
+				snprintf( buffer, PATH_SIZE, "\t\t{ %u, %u, %u, %u, %u, %u, %u, \"%s\" },",
 					shader.offset[ShaderStage_Vertex],
 					shader.size[ShaderStage_Vertex],
 					shader.offset[ShaderStage_Fragment],
 					shader.size[ShaderStage_Fragment],
 					shader.offset[ShaderStage_Compute],
 					shader.size[ShaderStage_Compute],
-					shader.vertexFormatID );
+					shader.vertexFormatID,
+					shader.name.cstr() );
 
 				source.append( buffer );
 				source.append( " // " ).append( shader.name ).append( "\n" );
@@ -297,7 +297,6 @@ void Gfx::write()
 				source.append( "\tGfxCoreCBuffer::" ).append( cbuffer.name ).append("_t " );
 				source.append( cbuffer.name ).append( ";\n" );
 			}
-			//source.append( Gfx::constantBuffersSource );
 			source.append( "}\n\n" );
 		}
 
@@ -310,11 +309,14 @@ void Gfx::write()
 			source.append( "\tbool rb_init_cbuffers()\n\t{\n" );
 			for( ConstantBuffer &cbuffer : Gfx::constantBuffers )
 			{
-				source.append( "\t\tgfxCBufferResources[" ).append( static_cast<int>( cbuffer.id ) ).append( "] = nullptr;\n" );
+				source.append( "\t\tgfxCBufferResources[" ).append( static_cast<int>( cbuffer.id ) );
+				source.append( "] = nullptr;\n" );
 				source.append( "\t\tGfxCBuffer::" ).append( cbuffer.name ).append( ".zero();\n" );
 				source.append( "\t\tif( !GfxCore::rb_constant_buffer_init( " );
-				source.append( "gfxCBufferResources[" ).append( static_cast<int>( cbuffer.id ) ).append( "], \"t_" ).append( cbuffer.name );
-				source.append( "\", " ).append( static_cast<int>( cbuffer.id ) ).append( ", sizeof( GfxCoreCBuffer::" );
+				source.append( "gfxCBufferResources[" ).append( static_cast<int>( cbuffer.id ) );
+				source.append( "], \"t_" ).append( cbuffer.name );
+				source.append( "\", " ).append( static_cast<int>( cbuffer.id ) );
+				source.append( ", sizeof( GfxCoreCBuffer::" );
 				source.append( cbuffer.name ).append( "_t ) ) ) { return false; }\n\n" );
 			}
 			source.append( "\t\t// Success!\n" );
@@ -387,6 +389,8 @@ void Gfx::write()
 			source.append( "}\n\n" );
 		}
 
+		source.append( COMMENT_BREAK "\n" );
+
 		// Save
 		source.save( Gfx::pathSourceGfx );
 	}
@@ -403,11 +407,15 @@ void Gfx::write()
 		#elif GRAPHICS_D3D11
 			write_header_api_d3d11( header );
 		#elif GRAPHICS_D3D12
-			// ...
-		#elif GRAPHICS_VULKAN
-			// ...
+			write_header_api_d3d12( header );
 		#elif GRAPHICS_METAL
-			// ...
+			write_header_api_metal( header );
+		#elif GRAPHICS_VULKAN
+			write_header_api_vulkan( header );
+		#elif GRAPHICS_NONE
+			// Do nothing
+		#else
+			Error( "Unsupported graphics API! (%s)", BUILD_GRAPHICS );
 		#endif
 
 		// Save
@@ -425,11 +433,15 @@ void Gfx::write()
 		#elif GRAPHICS_D3D11
 			write_source_api_d3d11( source );
 		#elif GRAPHICS_D3D12
-			// ...
-		#elif GRAPHICS_VULKAN
-			// ...
+			write_source_api_d3d12( source );
 		#elif GRAPHICS_METAL
-			// ...
+			write_source_api_metal( source );
+		#elif GRAPHICS_VULKAN
+			write_source_api_vulkan( source );
+		#elif GRAPHICS_NONE
+			// Do nothing
+		#else
+			Error( "Unsupported graphics API! (%s)", BUILD_GRAPHICS );
 		#endif
 
 		// Save
@@ -442,55 +454,6 @@ void Gfx::write()
 		PrintColor( LOG_CYAN, TAB TAB "Wrote %d shaders%s", count, count == 1 ? "s" : "" );
 		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
 	}
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void Gfx::write_header_api_d3d11( String &header )
-{
-	// D3D11 Header
-	header.append( "#include <vendor/d3d11.hpp>\n\n" );
-
-	// GfxCore
-	header.append( "namespace GfxCore\n{\n" );
-	header.append( COMMENT_BREAK "\n\n" );
-	{
-		for( Shader &shader : shaders )
-		{
-			header.append( shader.header );
-		}
-
-		header.append( "struct D3D11VertexInputLayoutDescription\n{\n" );
-		header.append( "\tD3D11_INPUT_ELEMENT_DESC *desc;\n" );
-		header.append( "\tint count;\n" );
-		header.append( "};\n\n" );
-
-		header.append( "extern FUNCTION_POINTER_ARRAY( void, d3d11_vertex_input_layout_desc, D3D11VertexInputLayoutDescription & );\n\n" );
-	}
-	header.append( COMMENT_BREAK "\n" );
-	header.append( "}" );
-}
-
-void Gfx::write_source_api_d3d11( String &source )
-{
-	// GfxCore
-	source.append( "namespace GfxCore\n{\n" );
-	source.append( COMMENT_BREAK "\n\n" );
-	{
-		for( Shader &shader : shaders )
-		{
-			source.append( shader.source );
-		}
-
-		source.append( "FUNCTION_POINTER_ARRAY( void, d3d11_vertex_input_layout_desc, D3D11VertexInputLayoutDescription & ) =\n{\n" );
-		for( VertexFormat &vertexFormat : vertexFormats )
-		{
-			source.append( TAB ).append( "d3d11_vertex_input_layout_desc_" ).append( vertexFormat.name ).append( ",\n" );
-		}
-		source.append( "};\n\n" );
-	}
-	source.append( COMMENT_BREAK "\n" );
-	source.append( "}" );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -516,6 +479,7 @@ void Gfx::write_header_api_opengl( String &header )
 	header.append( "}" );
 }
 
+
 void Gfx::write_source_api_opengl( String &source )
 {
 	// GfxCore
@@ -530,19 +494,119 @@ void Gfx::write_source_api_opengl( String &source )
 		source.append( "FUNCTION_POINTER_ARRAY( void, opengl_vertex_input_layout_init, GLuint ) =\n{\n" );
 		for( VertexFormat &vertexFormat : vertexFormats )
 		{
-			source.append( TAB ).append( "opengl_vertex_input_layout_init_" ).append( vertexFormat.name ).append( ",\n" );
+			source.append( TAB ).append( "opengl_vertex_input_layout_init_" );
+			source.append( vertexFormat.name ).append( ",\n" );
 		}
 		source.append( "};\n\n" );
 
 		source.append( "FUNCTION_POINTER_ARRAY( void, opengl_vertex_input_layout_bind ) =\n{\n" );
 		for( VertexFormat &vertexFormat : vertexFormats )
 		{
-			source.append( TAB ).append( "opengl_vertex_input_layout_bind_" ).append( vertexFormat.name ).append( ",\n" );
+			source.append( TAB ).append( "opengl_vertex_input_layout_bind_" );
+			source.append( vertexFormat.name ).append( ",\n" );
 		}
 		source.append( "};\n\n" );
 	}
 	source.append( COMMENT_BREAK "\n" );
 	source.append( "}" );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Gfx::write_header_api_d3d11( String &header )
+{
+	// D3D11 Header
+	header.append( "#include <vendor/d3d11.hpp>\n\n" );
+
+	// GfxCore
+	header.append( "namespace GfxCore\n{\n" );
+	header.append( COMMENT_BREAK "\n\n" );
+	{
+		for( Shader &shader : shaders )
+		{
+			header.append( shader.header );
+		}
+
+		header.append( "struct D3D11VertexInputLayoutDescription\n{\n" );
+		header.append( "\tD3D11_INPUT_ELEMENT_DESC *desc;\n" );
+		header.append( "\tint count;\n" );
+		header.append( "};\n\n" );
+
+		header.append( "extern FUNCTION_POINTER_ARRAY( void, d3d11_vertex_input_layout_desc, " );
+		header.append( "D3D11VertexInputLayoutDescription & );\n\n" );
+	}
+	header.append( COMMENT_BREAK "\n" );
+	header.append( "}" );
+}
+
+
+void Gfx::write_source_api_d3d11( String &source )
+{
+	// GfxCore
+	source.append( "namespace GfxCore\n{\n" );
+	source.append( COMMENT_BREAK "\n\n" );
+	{
+		for( Shader &shader : shaders )
+		{
+			source.append( shader.source );
+		}
+
+		source.append( "FUNCTION_POINTER_ARRAY( void, d3d11_vertex_input_layout_desc, " );
+		source.append( "D3D11VertexInputLayoutDescription & ) =\n{\n" );
+		for( VertexFormat &vertexFormat : vertexFormats )
+		{
+			source.append( TAB ).append( "d3d11_vertex_input_layout_desc_" );
+			source.append( vertexFormat.name ).append( ",\n" );
+		}
+		source.append( "};\n\n" );
+	}
+	source.append( COMMENT_BREAK "\n" );
+	source.append( "}" );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Gfx::write_header_api_d3d12( String &header )
+{
+	// TODO
+	Error( "D3D12 unsupported!" );
+}
+
+
+void Gfx::write_source_api_d3d12( String &source )
+{
+	// TODO
+	Error( "D3D12 unsupported!" );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Gfx::write_header_api_metal( String &header )
+{
+	// TODO
+	Error( "Metal unsupported!" );
+}
+
+
+void Gfx::write_source_api_metal( String &source )
+{
+	// TODO
+	Error( "Metal unsupported!" );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Gfx::write_header_api_vulkan( String &header )
+{
+	// TODO
+	Error( "Vulkan unsupported!" );
+}
+
+
+void Gfx::write_source_api_vulkan( String &source )
+{
+	// TODO
+	Error( "Vulkan unsupported!" );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

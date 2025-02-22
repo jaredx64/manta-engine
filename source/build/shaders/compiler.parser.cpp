@@ -1,7 +1,8 @@
 #include <build/shaders/compiler.parser.hpp>
 
 #include <build/filesystem.hpp>
-#include <build/math.hpp>
+
+#include <core/math.hpp>
 
 namespace ShaderCompiler
 {
@@ -126,15 +127,28 @@ const char *Intrinsics[] =
 	"atomic_or",               // Intrinsic_AtomicOr
 	"atomic_xor",              // Intrinsic_AtomicXor
 
+	// Type Bit Conversions
+	"float_to_int_bits",       // Intrinsic_FloatToIntBits
+	"float_to_uint_bits",      // Intrinsic_FloatToUIntBits
+	"int_to_float_bits",       // Intrinsic_IntToFloatBits
+	"uint_to_float_bits",      // Intrinsic_UIntToFloatBits
+
 	// Texture Sampling Functions
-	"sample_texture1D",        // Intrinsic_SampleTexture1D
-	"sample_texture1DArray",   // Intrinsic_SampleTexture1DArray
-	"sample_texture2D",        // Intrinsic_SampleTexture2D
-	"sample_texture2DArray",   // Intrinsic_SampleTexture2DArray
-	"sample_texture2DLevel",   // Intrinsic_SampleTexture2DLevel
-	"sample_texture3D",        // Intrinsic_SampleTexture3D
-	"sample_textureCube",      // Intrinsic_SampleTextureCube
-	"sample_textureCubeArray", // Intrinsic_SampleTextureCubeArray
+	"texture_sample_1d",         // Intrinsic_SampleTexture1D
+	"texture_sample_1d_array",   // Intrinsic_SampleTexture1DArray
+	"texture_sample_2d",         // Intrinsic_SampleTexture2D
+	"texture_sample_2d_array",   // Intrinsic_SampleTexture2DArray
+	"texture_sample_2d_level",   // Intrinsic_SampleTexture2DLevel
+	"texture_sample_3d",         // Intrinsic_SampleTexture3D
+	"texture_sample_cube",       // Intrinsic_SampleTextureCube
+	"texture_sample_cube_array", // Intrinsic_SampleTextureCubeArray
+	"texture_index_2d",          // Intrinsic_LoadTexture2D
+
+	// Depth
+	"depth_normalize",         // Intrinsic_DepthNormalize
+	"depth_linearize",         // Intrinsic_DepthLinearize
+	"depth_unproject",         // Intrinsic_DepthUnproject
+	"depth_unproject_zw",      // Intrinsic_DepthUnprojectZW
 };
 static_assert( ARRAY_LENGTH( Intrinsics ) == INTRINSIC_COUNT, "Missing Intrinsic!" );
 
@@ -302,6 +316,12 @@ static bool is_digit( const char c )
 }
 
 
+static bool is_digit_hex( const char c )
+{
+	return is_digit( c ) || ( c >= 'A' && c <= 'F' );
+}
+
+
 static TokenType get_keyword( const char *buffer, const u32 length )
 {
 	const u32 keywordCount = sizeof( KeywordNames ) / sizeof( KeywordNames[0] );
@@ -454,16 +474,23 @@ Token Scanner::next()
 			if( is_digit( c ) )
 			{
 				bool seenDot = false;
-				while( buffer[position] != '\0' && ( is_digit( buffer[position] ) || buffer[position] == '.' ) )
+				bool seenHex = false;
+
+				while
+				(
+					buffer[position] != '\0' &&
+					( is_digit_hex( buffer[position] ) || buffer[position] == '.' || buffer[position] == 'x' )
+				)
 				{
 					if( buffer[position] == '.' )
 					{
-						if( seenDot )
-						{
-							// Can't have more than one dot
-							RETURN_TOKEN( Token( TokenType_Error ) );
-						}
+						if( seenDot ) { RETURN_TOKEN( Token( TokenType_Error ) ); }
 						seenDot = true;
+					}
+					else if( buffer[position] == 'x' )
+					{
+						if( seenHex ) { RETURN_TOKEN( Token( TokenType_Error ) ); }
+						seenHex = true;
 					}
 
 					position++;
@@ -480,12 +507,20 @@ Token Scanner::next()
 
 				if( seenDot )
 				{
-					// Double
+					// Floating Point
 					RETURN_TOKEN( Token( TokenType_Number, atof( number ) ) );
 				}
-
-				// Integer
-				RETURN_TOKEN( Token( TokenType_Integer, static_cast<u64>( atoll( number ) ) ) );
+				else if( seenHex )
+				{
+					// Hex
+					const u64 hexInteger = strtoull( number + 2, nullptr, 16 );
+					RETURN_TOKEN( Token( TokenType_Integer, hexInteger ) );
+				}
+				else
+				{
+					// Integer
+					RETURN_TOKEN( Token( TokenType_Integer, static_cast<u64>( atoll( number ) ) ) );
+				}
 			}
 
 			// Error: Unknown token?
@@ -637,7 +672,7 @@ TypeID Parser::node_type( Node *node )
 		case NodeType_Texture:
 		{
 			Texture &texture = textures[reinterpret_cast<NodeTexture *>( node )->textureID];
-			return variables[texture.variableID].typeID;
+			return variables[texture.variableID].texture;
 		}
 
 		// Node has no type
@@ -1249,46 +1284,55 @@ Node *Parser::parse_texture()
 	{
 		case TokenType_Texture1D:
 			textureType = TextureType_Texture1D;
-			variable.typeID = Primitive_Texture1D;
+			variable.texture = Primitive_Texture1D;
 		break;
 
 		case TokenType_Texture1DArray:
 			textureType = TextureType_Texture1D;
-			variable.typeID = Primitive_Texture1DArray;
+			variable.texture = Primitive_Texture1DArray;
 		break;
 
 		case TokenType_Texture2D:
 			textureType = TextureType_Texture2D;
-			variable.typeID = Primitive_Texture2D;
+			variable.texture = Primitive_Texture2D;
 		break;
 
 		case TokenType_Texture2DArray:
 			textureType = TextureType_Texture2D;
-			variable.typeID = Primitive_Texture2DArray;
+			variable.texture = Primitive_Texture2DArray;
 		break;
 
 		case TokenType_Texture3D:
 			textureType = TextureType_Texture3D;
-			variable.typeID = Primitive_Texture3D;
+			variable.texture = Primitive_Texture3D;
 		break;
 
 		case TokenType_TextureCube:
 			textureType = TextureType_TextureCube;
-			variable.typeID = Primitive_TextureCube;
+			variable.texture = Primitive_TextureCube;
 		break;
 
 		case TokenType_TextureCubeArray:
 			textureType = TextureType_TextureCubeArray;
-			variable.typeID = Primitive_TextureCubeArray;
+			variable.texture = Primitive_TextureCubeArray;
 		break;
 
 		default: Error( "unknown texture type!" ); break;
 	}
 	const char *textureName = TextureTypeNames[textureType];
 
-	// Slot
+	// Type
 	token = scanner.next();
-	ErrorIf( token.type != TokenType_LParen, "%s: expected '(' before slot", textureName );
+	ErrorIf( token.type != TokenType_LParen, "%s: expected '(' before type", textureName );
+	token = scanner.next();
+	ErrorIf( token.type != TokenType_Identifier, "%s: expected a texture type", textureName );
+	ErrorIf( !typeMap.contains( token.name ),
+		"%s: unknown type '%.*s'", textureName, token.name.length, token.name.data );
+	variable.typeID = typeMap.get( token.name );
+	token = scanner.next();
+	ErrorIf( token.type != TokenType_Comma, "%s: expected ',' before slot", textureName );
+
+	// Slot
 	token = scanner.next();
 	ErrorIf( token.type != TokenType_Integer, "%s: slot must be a positive, constant integer", textureName );
 	texture.slot = static_cast<int>( token.integer );

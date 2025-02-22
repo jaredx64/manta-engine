@@ -12,7 +12,7 @@
 
 class JSON
 {
-_PUBLIC:
+public:
 	JSON( String &string );
 	JSON( String *string, usize start = U64_MAX, usize end = U64_MAX ) : string( string ), start( start ), end( end )
 	{
@@ -45,7 +45,7 @@ _PUBLIC:
 
 	explicit operator bool() const { return start < end; }
 
-_PRIVATE:
+private:
 	struct JSONElement
 	{
 		JSONElement( usize start, usize end ) : start( start ), end( end ) { }
@@ -57,7 +57,7 @@ _PRIVATE:
 	JSONElement find_element_key( const char *key );
 	JSONElement find_element_index( const usize index );
 
-_PRIVATE:
+private:
 	String *string;
 	usize start;
 	usize end;

@@ -113,6 +113,52 @@ void strupper( char *buffer )
 }
 
 
+bool streq( const char *str1, const char *str2 )
+{
+	while( *str1 != '\0' && *str2 != '\0' )
+	{
+		if( *str1 != *str2 ) { return false; }
+		str1++;
+		str2++;
+	}
+	return *str1 == *str2;
+}
+
+
+bool strneq( const char *str1, const char *str2, const usize size )
+{
+	for( usize i = 0; i < size; i++ )
+	{
+		if( str1[i] != str2[i] ) { return false; }
+		if( str1[i] == '\0' ) { break; }
+	}
+	return true;
+}
+
+
+bool streq_case_insensitive( const char *str1, const char *str2 )
+{
+	while( *str1 != '\0' && *str2 != '\0' )
+	{
+		if( chrlower( *str1 ) != chrlower( *str2 ) ) { return false; }
+		str1++;
+		str2++;
+	}
+	return *str1 == *str2;
+}
+
+
+bool strneq_case_insensitive( const char *str1, const char *str2, const usize size )
+{
+	for( usize i = 0; i < size; i++ )
+	{
+		if( chrlower( str1[i] ) != chrlower( str2[i] ) ) { return false; }
+		if( str1[i] == '\0' ) { break; }
+	}
+	return true;
+}
+
+
 bool char_whitespace( const char c )
 {
 	return c == ' ' || c == '\n' || c == '\r' || c == '\t';
@@ -175,7 +221,6 @@ void String::init( const char *string, const usize length )
 	// Allocate memory
 	MemoryAssert( data == nullptr );
 	data = reinterpret_cast<char *>( memory_alloc( capacity + 1 ) );
-	ErrorIf( data == nullptr, "Failed to allocate memory for init String (%p: alloc %d bytes)", data, capacity + 1 );
 	memory_copy( data, string, current );
 	data[current] = '\0';
 }
@@ -215,8 +260,6 @@ String &String::copy( const String &other )
 	// Allocate memory
 	MemoryAssert( data == nullptr );
 	data = reinterpret_cast<char *>( memory_alloc( capacity + 1 ) );
-	ErrorIf( data == nullptr,
-		"Failed to allocate memory for copy String (%p: alloc %d bytes)", data, capacity + 1 );
 	memory_copy( data, other.data, current );
 	data[current] = '\0';
 
@@ -241,8 +284,6 @@ String &String::copy_part( const String &other, usize start, usize end )
 	// Allocate memory
 	MemoryAssert( data == nullptr );
 	data = reinterpret_cast<char *>( memory_alloc( capacity + 1 ) );
-	ErrorIf( data == nullptr,
-		"Failed to allocate memory for copy_part String (%p: alloc %d bytes)", data, capacity + 1 );
 	memory_copy( data, other.data + start, current );
 	data[current] = '\0';
 
@@ -707,8 +748,6 @@ void String::read( Buffer &buffer, String &string )
 	// Allocate & read memory
 	MemoryAssert( string.data == nullptr );
 	string.data = reinterpret_cast<char *>( memory_alloc( string.capacity + 1 ) );
-	ErrorIf( string.data == nullptr,
-		"Failed to allocate memory for Buffer read String (%p: alloc %d bytes)", string.data, string.capacity + 1 );
 	memory_copy( string.data, buffer.read_bytes( string.capacity ), string.capacity );
 	string.data[string.current] = '\0';
 }

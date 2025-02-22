@@ -8,7 +8,7 @@
 
 class ProjectCallbacks
 {
-_PUBLIC:
+public:
 	ProjectCallbacks( bool ( *init )( int, char ** ),
 	                  bool ( *free )(),
 	                  void ( *update )( const Delta ) ) : callback_init{ init },
@@ -31,7 +31,7 @@ _PUBLIC:
 		callback_update( delta );
 	}
 
-_PRIVATE:
+private:
 	bool ( *callback_init )( int, char ** );  // bool init( int argc, char **argv );
 	bool ( *callback_free )();                // bool free();
 	void ( *callback_update )( const Delta ); // void update( Delta delta );

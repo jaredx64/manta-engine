@@ -149,6 +149,14 @@ void Generator::generate_node( Node *node )
 }
 
 
+void Generator::generate_node_parenthesis( Node *node )
+{
+	output.append( "( " );
+	generate_node( node );
+	output.append( " )" );
+}
+
+
 void Generator::generate_statement( NodeStatement *node )
 {
 	switch( node->statementType )
@@ -238,9 +246,8 @@ void Generator::generate_statement( NodeStatement *node )
 }
 
 
-void Generator::generate_statement_block( NodeStatementBlock *node )
+void Generator::generate_statement_block_no_braces( NodeStatementBlock *node )
 {
-	output.append( indent ).append( "{\n" );
 	indent_add();
 
 	while( node != nullptr )
@@ -250,6 +257,13 @@ void Generator::generate_statement_block( NodeStatementBlock *node )
 	}
 
 	indent_sub();
+}
+
+
+void Generator::generate_statement_block( NodeStatementBlock *node )
+{
+	output.append( indent ).append( "{\n" );
+	generate_statement_block_no_braces( node );
 	output.append( indent ).append( "}\n" );
 }
 
@@ -993,7 +1007,7 @@ bool Generator::generate_structure_gfx_vertex( NodeStruct *node )
 
 			case InputFormat_SNORM32:
 			case InputFormat_SINT32:
-				memberTypeName = "i32";
+				memberTypeName = "int";
 			break;
 
 			case InputFormat_FLOAT16:
@@ -1145,7 +1159,19 @@ bool Generator::generate_structure_gfx_cbuffer( NodeStruct *node )
 		header.append( typeNameCPU.data == nullptr ? memberType.name : typeNameCPU );
 
 		// Variable
-		header.append( " " ).append( memberVariable.name ).append( ";\n" );
+		header.append( " " ).append( memberVariable.name );
+
+		if( memberVariable.arrayLengthX > 0 )
+		{
+			header.append( "[" ).append( memberVariable.arrayLengthX ).append( "]" );
+		}
+
+		if( memberVariable.arrayLengthY > 0 )
+		{
+			header.append( "[" ).append( memberVariable.arrayLengthY ).append( "]" );
+		}
+
+		header.append( ";\n" );
 	}
 	header.append( "\n" );
 	header.append( "\t\tvoid zero();\n" );
@@ -1160,15 +1186,19 @@ bool Generator::generate_structure_gfx_cbuffer( NodeStruct *node )
 
 	if( cbuffer.id != 0 ) { source.append( "\n" ); }
 	source.append( "\tvoid ").append( cbuffer.name ).append( "_t::zero()\n\t{\n" );
+	source.append( "\t#if GRAPHICS_ENABLED\n" );
 	source.append( "\t\tmemory_set( this, 0, sizeof( " ).append( cbuffer.name ).append( "_t ) );\n" );
+	source.append( "\t#endif\n" );
 	source.append( "\t}\n" );
 
 	source.append( "\n\tvoid ").append( cbuffer.name ).append( "_t::upload() const\n\t{\n" );
+	source.append( "\t#if GRAPHICS_ENABLED\n" );
 	source.append( "\t\tauto *&resource = GfxCore::gfxCBufferResources[" );
 	source.append( static_cast<int>( cbuffer.id ) ).append( "];\n" );
-	source.append( "\t\tGfxCore::rb_constant_buffer_write_begin( resource );\n" );
-	source.append( "\t\tGfxCore::rb_constant_buffer_write( resource, this );\n" );
-	source.append( "\t\tGfxCore::rb_constant_buffer_write_end( resource );\n" );
+	source.append( "\t\tGfxCore::rb_constant_buffered_write_begin( resource );\n" );
+	source.append( "\t\tGfxCore::rb_constant_buffered_write( resource, this );\n" );
+	source.append( "\t\tGfxCore::rb_constant_buffered_write_end( resource );\n" );
+	source.append( "\t#endif\n" );
 	source.append( "\t}\n" );
 	return true;
 }

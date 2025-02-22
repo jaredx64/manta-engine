@@ -1,0 +1,6 @@
+{
+	"license": "merienda_license.txt",
+
+	"default": "merienda_regular.ttf",
+	"bold": "merienda_bold.ttf",
+}

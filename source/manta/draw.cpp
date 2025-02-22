@@ -3,11 +3,12 @@
 #include <vendor/vendor.hpp>
 #include <vendor/stdarg.hpp>
 #include <vendor/stdio.hpp>
+
 #include <core/utf8.hpp>
+#include <core/math.hpp>
 
 #include <manta/gfx.hpp>
 #include <manta/fonts.hpp>
-#include <manta/math.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -47,25 +48,25 @@ Align draw_get_valign()
 
 void draw_quad( const float x1, const float y1, const float x2, const float y2, const Color color, const float depth )
 {
-#if !RENDER_NONE
+#if GRAPHICS_ENABLED
 	Gfx::quad_batch_write( x1, y1, x2, y2, 0, 0, 0xFFFF, 0xFFFF, color, nullptr, depth );
 #endif
 }
 
 
 void draw_quad_color( const float x1, const float y1, const float x2, const float y2,
-                      const Color c1, const Color c2, const Color c3, const Color c4, const float depth )
+	const Color c1, const Color c2, const Color c3, const Color c4, const float depth )
 {
-#if !RENDER_NONE
+#if GRAPHICS_ENABLED
 	Gfx::quad_batch_write( x1, y1, x2, y2, 0, 0, 0xFFFF, 0xFFFF, c1, c2, c3, c4, nullptr, depth );
 #endif
 }
 
 
 void draw_quad_uv( const float x1, const float y1, const float x2, const float y2,
-                   const float u1, const float v1, const float u2, const float v2, const Color color, const float depth )
+	const float u1, const float v1, const float u2, const float v2, const Color color, const float depth )
 {
-#if !RENDER_NONE
+#if GRAPHICS_ENABLED
 	const u16 U1 = static_cast<u16>( u1 * 65535.0 );
 	const u16 V1 = static_cast<u16>( v1 * 65535.0 );
 	const u16 U2 = static_cast<u16>( u2 * 65535.0 );
@@ -76,19 +77,19 @@ void draw_quad_uv( const float x1, const float y1, const float x2, const float y
 
 
 void draw_quad_uv( const float  x1, const float  y1, const float  x2, const float  y2,
-                   const u16 u1, const u16 v1, const u16 u2, const u16 v2, const Color color, const float depth )
+	const u16 u1, const u16 v1, const u16 u2, const u16 v2, const Color color, const float depth )
 {
-#if !RENDER_NONE
+#if GRAPHICS_ENABLED
 	Gfx::quad_batch_write( x1, y1, x2, y2, u1, v1, u2, v2, color, nullptr, depth );
 #endif
 }
 
 
 void draw_quad_uv( const float x1, const float y1, const float x2, const float y2,
-                   const float x3, const float y3, const float x4, const float y4,
-                   const float u1, const float v1, const float u2, const float v2, const Color color, const float depth )
+	const float x3, const float y3, const float x4, const float y4,
+	const float u1, const float v1, const float u2, const float v2, const Color color, const float depth )
 {
-#if !RENDER_NONE
+#if GRAPHICS_ENABLED
 	const u16 U1 = static_cast<u16>( u1 * 65535.0 );
 	const u16 V1 = static_cast<u16>( v1 * 65535.0 );
 	const u16 U2 = static_cast<u16>( u2 * 65535.0 );
@@ -99,45 +100,31 @@ void draw_quad_uv( const float x1, const float y1, const float x2, const float y
 
 
 void draw_quad_uv( const float x1, const float y1, const float x2, const float y2,
-                   const float x3, const float y3, const float x4, const float y4,
-                   const u16 u1, const u16 v1, const u16 u2, const u16 v2, const Color color, const float depth )
+	const float x3, const float y3, const float x4, const float y4,
+	const u16 u1, const u16 v1, const u16 u2, const u16 v2, const Color color, const float depth )
 {
-#if !RENDER_NONE
+#if GRAPHICS_ENABLED
 	Gfx::quad_batch_write( x1, y1, x2, y2, x3, y3, x4, y4, u1, v1, u2, v2, color, nullptr, depth );
 #endif
 }
 
 
-/*void draw_quad_uv_color( const float x1, const float y1, const float x2, const float y2,
-                         const float u1, const float v1, const float u2, const float v2,
-                         const Color c1, const Color c2, const Color c3, const Color c4, const float depth )
-{
-#if !RENDER_NONE
-	const u16 U1 = static_cast<u16>( u1 * 65535.0 );
-	const u16 V1 = static_cast<u16>( v1 * 65535.0 );
-	const u16 U2 = static_cast<u16>( u2 * 65535.0 );
-	const u16 V2 = static_cast<u16>( v2 * 65535.0 );
-	Gfx::quad_batch_write( x1, y1, x2, y2, U1, V1, U2, V2, c1, c2, c3, c4, nullptr, depth );
-#endif
-}*/
-
-
 void draw_quad_uv_color( const float x1, const float y1, const float x2, const float y2,
-                         const u16 u1, const u16 v1, const u16 u2, const u16 v2,
-                         const Color c1, const Color c2, const Color c3, const Color c4, const float depth )
+	const u16 u1, const u16 v1, const u16 u2, const u16 v2,
+	const Color c1, const Color c2, const Color c3, const Color c4, const float depth )
 {
-#if !RENDER_NONE
+#if GRAPHICS_ENABLED
 	Gfx::quad_batch_write( x1, y1, x2, y2, u1, v1, u2, v2, c1, c2, c3, c4, nullptr, depth );
 #endif
 }
 
 
 void draw_quad_uv_color( const float x1, const float y1, const float x2, const float y2,
-                         const float x3, const float y3, const float x4, const float y4,
-                         const float u1, const float v1, const float u2, const float v2,
-                         const Color c1, const Color c2, const Color c3, const Color c4, const float depth )
+	const float x3, const float y3, const float x4, const float y4,
+	const float u1, const float v1, const float u2, const float v2,
+	const Color c1, const Color c2, const Color c3, const Color c4, const float depth )
 {
-#if !RENDER_NONE
+#if GRAPHICS_ENABLED
 	const u16 U1 = static_cast<u16>( u1 * 65535.0 );
 	const u16 V1 = static_cast<u16>( v1 * 65535.0 );
 	const u16 U2 = static_cast<u16>( u2 * 65535.0 );
@@ -148,11 +135,11 @@ void draw_quad_uv_color( const float x1, const float y1, const float x2, const f
 
 
 void draw_quad_uv_color( const float x1, const float y1, const float x2, const float y2,
-                         const float x3, const float y3, const float x4, const float y4,
-                         const u16 u1, const u16 v1, const u16 u2, const u16 v2,
-                         const Color c1, const Color c2, const Color c3, const Color c4, const float depth )
+	const float x3, const float y3, const float x4, const float y4,
+	const u16 u1, const u16 v1, const u16 u2, const u16 v2,
+	const Color c1, const Color c2, const Color c3, const Color c4, const float depth )
 {
-#if !RENDER_NONE
+#if GRAPHICS_ENABLED
 	Gfx::quad_batch_write( x1, y1, x2, y2, x3, y3, x4, y4, u1, v1, u2, v2, c1, c2, c3, c4, nullptr, depth );
 #endif
 }
@@ -160,9 +147,9 @@ void draw_quad_uv_color( const float x1, const float y1, const float x2, const f
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void draw_sprite( const u32 sprite, const u16 subimg, float x, float y, const float xscale, const float yscale,
-                  const Color color, const float depth )
+	const Color color, const float depth )
 {
-#if !RENDER_NONE
+#if GRAPHICS_ENABLED
 	const DiskSprite &dSprite = Assets::sprites[sprite];
 	const DiskGlyph &dGlyph = Assets::glyphs[dSprite.glyph + ( subimg % Assets::sprites[sprite].count )];
 	GfxTexture2D *texture = &GfxCore::textures[dSprite.texture];
@@ -174,16 +161,16 @@ void draw_sprite( const u32 sprite, const u16 subimg, float x, float y, const fl
 	y -= dSprite.yorigin * yscale;
 
 	Gfx::quad_batch_write( x, y, x + width, y + height,
-	                       dGlyph.u1, dGlyph.v1, dGlyph.u2, dGlyph.v2, color, texture, depth );
+		dGlyph.u1, dGlyph.v1, dGlyph.u2, dGlyph.v2, color, texture, depth );
 #endif
 }
 
 
 void draw_sprite_part( const u32 sprite, const u16 subimg, float x, float y,
-                       const float u1, const float v1, const float u2, const float v2,
-                       const float xscale, const float yscale, const Color color, const float depth )
+	const float u1, const float v1, const float u2, const float v2,
+	const float xscale, const float yscale, const Color color, const float depth )
 {
-#if !RENDER_NONE
+#if GRAPHICS_ENABLED
 	const DiskSprite &dSprite = Assets::sprites[sprite];
 	const DiskGlyph &dGlyph = Assets::glyphs[dSprite.glyph + subimg];
 	const GfxTexture2D *const texture = &GfxCore::textures[dSprite.texture];
@@ -197,17 +184,37 @@ void draw_sprite_part( const u32 sprite, const u16 subimg, float x, float y,
 	const u16 u = dGlyph.u2 - dGlyph.u1;
 	const u16 v = dGlyph.v2 - dGlyph.v1;
 	Gfx::quad_batch_write( x, y, x + width, y + height,
-	                       dGlyph.u1 + static_cast<u16>( u1 * u ), dGlyph.v1 + static_cast<u16>( v1 * v ),
-	                       dGlyph.u1 + static_cast<u16>( u2 * v ), dGlyph.v1 + static_cast<u16>( v2 * v ),
-	                       color, texture, depth );
+		dGlyph.u1 + static_cast<u16>( u1 * u ), dGlyph.v1 + static_cast<u16>( v1 * v ),
+		dGlyph.u1 + static_cast<u16>( u2 * v ), dGlyph.v1 + static_cast<u16>( v2 * v ),
+		color, texture, depth );
+#endif
+}
+
+
+void draw_sprite_part_quad( const u32 sprite, const u16 subimg,
+	const float x1, const float y1, const float x2, const float y2,
+	const float u1, const float v1, const float u2, const float v2,
+	const Color color, const float depth )
+{
+#if GRAPHICS_ENABLED
+	const DiskSprite &dSprite = Assets::sprites[sprite];
+	const DiskGlyph &dGlyph = Assets::glyphs[dSprite.glyph + subimg];
+	const GfxTexture2D *const texture = &GfxCore::textures[dSprite.texture];
+
+	const u16 u = dGlyph.u2 - dGlyph.u1;
+	const u16 v = dGlyph.v2 - dGlyph.v1;
+	Gfx::quad_batch_write( x1, y1, x2, y2,
+		dGlyph.u1 + static_cast<u16>( u1 * u ), dGlyph.v1 + static_cast<u16>( v1 * v ),
+		dGlyph.u1 + static_cast<u16>( u2 * v ), dGlyph.v1 + static_cast<u16>( v2 * v ),
+		color, texture, depth );
 #endif
 }
 
 
 void draw_sprite_angle( const u32 sprite, const u16 subimg, float x, float y, const float angle,
-                        const float xscale, const float yscale, const Color color, const float depth )
+	const float xscale, const float yscale, const Color color, const float depth )
 {
-#if !RENDER_NONE
+#if GRAPHICS_ENABLED
 	const DiskSprite &dSprite = Assets::sprites[sprite];
 	const DiskGlyph &dGlyph = Assets::glyphs[dSprite.glyph + subimg];
 	const GfxTexture2D *const texture = &GfxCore::textures[dSprite.texture];
@@ -235,14 +242,14 @@ void draw_sprite_angle( const u32 sprite, const u16 subimg, float x, float y, co
 	const float y4 = y - ( dx - width ) * s - ( dy - height ) * c;
 
 	Gfx::quad_batch_write( x1, y1, x2, y2, x3, y3, x4, y4,
-	                       dGlyph.u1, dGlyph.v1, dGlyph.u2, dGlyph.v2, color, texture, depth );
+		dGlyph.u1, dGlyph.v1, dGlyph.u2, dGlyph.v2, color, texture, depth );
 #endif
 }
 
 
 void draw_sprite_fast( const u32 sprite, const u16 subimg, float x, float y, const Color color )
 {
-#if !RENDER_NONE
+#if GRAPHICS_ENABLED
 	const DiskSprite &dSprite = Assets::sprites[sprite];
 	const DiskGlyph &dGlyph = Assets::glyphs[dSprite.glyph + subimg];
 	const GfxTexture2D *const texture = &GfxCore::textures[dSprite.texture];
@@ -251,31 +258,25 @@ void draw_sprite_fast( const u32 sprite, const u16 subimg, float x, float y, con
 	const float height = dSprite.height;
 
 	Gfx::quad_batch_write( x, y, x + width, y + height,
-	                       dGlyph.u1, dGlyph.v1, dGlyph.u2, dGlyph.v2, color, texture, 0.0f );
+		dGlyph.u1, dGlyph.v1, dGlyph.u2, dGlyph.v2, color, texture, 0.0f );
 #endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void draw_render_target_2d( const GfxRenderTarget2D &surface, float x, float y,
-                            const float xscale, const float yscale,
-                            const Color color, const float depth )
+	const float xscale, const float yscale,
+	const Color color, const float depth )
 {
-#if !RENDER_NONE
+#if GRAPHICS_ENABLED
 	const float x1 = x;
 	const float x2 = x + surface.width * xscale;
-
-#if GRAPHICS_OPENGL
-	const float y2 = y;
-	const float y1 = y + surface.height * yscale;
-#else
 	const float y1 = y;
 	const float y2 = y + surface.height * yscale;
-#endif
 
 	const u16 u1 = 0;
-	const u16 v1 = 0;
 	const u16 u2 = 0xFFFF;
+	const u16 v1 = 0; // Render target memory is 'upside down' relative to default UV sampling
 	const u16 v2 = 0xFFFF;
 
 	Assert( surface.textureColor.resource != nullptr );
@@ -283,12 +284,33 @@ void draw_render_target_2d( const GfxRenderTarget2D &surface, float x, float y,
 #endif
 }
 
+
+void draw_render_target_2d_depth( const GfxRenderTarget2D &surface, float x, float y,
+	const float xscale, const float yscale,
+	const Color color, const float depth )
+{
+#if GRAPHICS_ENABLED
+	const float x1 = x;
+	const float x2 = x + surface.width * xscale;
+	const float y1 = y;
+	const float y2 = y + surface.height * yscale;
+
+	const u16 u1 = 0;
+	const u16 u2 = 0xFFFF;
+	const u16 v1 = 0xFFFF; // Render target memory is 'upside down' relative to default UV sampling
+	const u16 v2 = 0;
+
+	Assert( surface.textureDepth.resource != nullptr );
+	Gfx::quad_batch_write( x1, y1, x2, y2, u1, v1, u2, v2, color, &surface.textureDepth, depth );
+#endif
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void draw_rectangle( const float x1, const float y1, const float x2, const float y2, const Color color,
-                     const bool outline, const float depth )
+	const bool outline, const float depth )
 {
-#if !RENDER_NONE
+#if GRAPHICS_ENABLED
 	if( outline )
 	{
 		const floatv2 q1[] = { { x1, y1 }, { x1 + 1.0f, y2 } }; // Left
@@ -311,9 +333,9 @@ void draw_rectangle( const float x1, const float y1, const float x2, const float
 
 
 void draw_rectangle_angle( const float x1, const float y1, const float x2, const float y2, const float angle,
-                           const Color color, const bool outline, const float depth )
+	const Color color, const bool outline, const float depth )
 {
-#if !RENDER_NONE
+#if GRAPHICS_ENABLED
 	if( outline )
 	{
 		if( angle != 0.0f )
@@ -366,10 +388,10 @@ void draw_rectangle_angle( const float x1, const float y1, const float x2, const
 
 
 void draw_rectangle_gradient( const float x1, const float y1, const float x2, const float y2,
-                              const Color c1, const Color c2, const Color c3, const Color c4,
-                              const bool outline, const float depth )
+	const Color c1, const Color c2, const Color c3, const Color c4,
+	const bool outline, const float depth )
 {
-#if !RENDER_NONE
+#if GRAPHICS_ENABLED
 	if( outline )
 	{
 		const floatv2 q1[] = { { x1, y1 }, { x1 + 1.0f, y2 } }; // Left
@@ -392,10 +414,10 @@ void draw_rectangle_gradient( const float x1, const float y1, const float x2, co
 
 
 void draw_rectangle_gradient_angle( const float x1, const float y1, const float x2, const float y2, const float angle,
-                                    const Color c1, const Color c2, const Color c3, const Color c4, const bool outline,
-                                    const float depth )
+	const Color c1, const Color c2, const Color c3, const Color c4, const bool outline,
+	const float depth )
 {
-#if !RENDER_NONE
+#if GRAPHICS_ENABLED
 	if( outline )
 	{
 		if( angle != 0.0f )
@@ -450,9 +472,9 @@ void draw_rectangle_gradient_angle( const float x1, const float y1, const float 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void draw_line( const float x1, const float y1, const float x2, const float y2,
-                const Color color, const float thickness, const float depth )
+	const Color color, const float thickness, const float depth )
 {
-#if !RENDER_NONE
+#if GRAPHICS_ENABLED
 	if ( x1 == x2 )
 	// X-axis aligned line
 	{
@@ -476,7 +498,7 @@ void draw_line( const float x1, const float y1, const float x2, const float y2,
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void draw_circle_gradient( float x, float y, float radius,
-                           Color c1, Color c2, u32 resolution, float depth )
+	Color c1, Color c2, u32 resolution, float depth )
 {
 	const float increment = 2.0f * PI / resolution;
 
@@ -504,7 +526,7 @@ void draw_circle_gradient( float x, float y, float radius,
 
 
 void draw_circle_outline_gradient( float x, float y, float radius, float thickness,
-                                   Color c1, Color c2, u32 resolution, float depth )
+	Color c1, Color c2, u32 resolution, float depth )
 {
 	resolution <<= 1;
 	const float increment = 2.0f * PI / resolution;
@@ -537,7 +559,7 @@ void draw_circle_outline_gradient( float x, float y, float radius, float thickne
 
 void draw_text( const Font font, const u16 size, const float x, const float y, Color color, const char *string )
 {
-#if !RENDER_NONE
+#if GRAPHICS_ENABLED
 	Assert( font < Assets::fontsCount );
 	Assert( size > 0 );
 
@@ -596,9 +618,9 @@ void draw_text( const Font font, const u16 size, const float x, const float y, C
 
 
 void draw_text_f( const Font font, const u16 size, const float x, const float y,
-                  Color color, const char *format, ... )
+	Color color, const char *format, ... )
 {
-#if !RENDER_NONE
+#if GRAPHICS_ENABLED
 	va_list args;
 	va_start( args, format );
 	char buffer[1024];
@@ -649,7 +671,6 @@ intv2 text_dimensions( const Font font, const u16 size, const char *string )
 
 intv2 text_dimensions_f( const Font font, const u16 size, const char *format, ... )
 {
-#if !RENDER_NONE
 	va_list args;
 	va_start( args, format );
 	char buffer[1024];
@@ -657,7 +678,6 @@ intv2 text_dimensions_f( const Font font, const u16 size, const char *format, ..
 	va_end( args );
 
 	return text_dimensions( font, size, buffer );
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

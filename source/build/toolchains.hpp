@@ -39,12 +39,16 @@ struct Toolchain
 			compilerFlagsIncludes = "-I%s";
 			compilerFlagsWarnings = "-Wno-unused-variable -Wno-unused-function -Wno-unused-private-field -Wno-delete-non-abstract-non-virtual-dtor -Wno-unused-but-set-variable";
 			if( strcmp( args.architecture,   "x64" ) == 0 ) { compilerFlagsArchitecture = "-m64"; } else
-			if( strcmp( args.architecture, "arm64" ) == 0 ) { compilerFlagsArchitecture = "-target aarch64-linux-gnu"; } else
+			if( strcmp( args.architecture, "arm64" ) == 0 ) { /*compilerFlagsArchitecture = "-target aarch64-linux-gnu";*/ } else
 															{ Error( "Unsupported target architecture '%s' for compiler '%s'", args.architecture, args.toolchain ); }
 			compilerOutput = "-o ";
 
 			linkerName = "clang++";
-			linkerFlags = "-fuse-ld=lld";
+			#if PIPELINE_OS_MACOS
+				// ...
+			#else
+				linkerFlags = "-fuse-ld=lld";
+			#endif
 			linkerOutput = "-o ";
 
 			linkerExtensionExe = PIPELINE_OS_WINDOWS ? ".exe" : "";

@@ -13,28 +13,26 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #if PIPELINE_OS_WINDOWS
-	// Windows
 	#include <vendor/windows.hpp>
 
 	#define SLASH "\\"
 	#define SLASH_CHAR '\\'
 
 	#ifdef MAX_PATH
-	#define PATH_SIZE MAX_PATH
+		#define PATH_SIZE ( MAX_PATH )
 	#else
-	#define PATH_SIZE 256
+		#define PATH_SIZE ( 256 )
 	#endif
 #else
-	// POSIX
 	#include <vendor/posix.hpp>
 
 	#define SLASH "/"
 	#define SLASH_CHAR '/'
 
 	#ifdef PATH_MAX
-	#define PATH_SIZE PATH_MAX
+		#define PATH_SIZE ( PATH_MAX )
 	#else
-	#define PATH_SIZE 256
+		#define PATH_SIZE ( 256 )
 	#endif
 #endif
 
@@ -59,8 +57,14 @@ struct FileTime
 
 extern bool file_time( const char *path, FileTime *result );
 extern bool file_time_newer( const FileTime &a, const FileTime &b );
+extern bool file_delete( const char *path );
+extern bool file_rename( const char *path, const char *name );
+extern bool file_copy( const char *source, const char *destination );
 
-extern void directory_create( const char *path );
+extern bool directory_create( const char *path );
+extern bool directory_delete( const char *path );
+extern bool directory_rename( const char *path, const char *name );
+extern bool directory_copy( const char *source, const char *destination );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -74,6 +78,8 @@ extern void path_get_extension( char *buffer, const usize size, const char *path
 extern void path_change_extension( char *buffer, const usize size, const char *path, const char *extension );
 extern void path_remove_extension( char *path );
 extern void path_remove_extensions( char *path );
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 extern void swrite( const char *string, FILE *file );
 extern usize fsize( FILE *file );
@@ -97,7 +103,7 @@ struct FileHandle
 
 class File
 {
-_PUBLIC:
+public:
 	File() = default;
 	File( const char *path ) { open( path ); }
 
@@ -115,18 +121,18 @@ _PUBLIC:
 		{
 			if( data == nullptr )
 			{
-				//PrintLn( "memory leak!" );
+				PrintLn( "memory leak!" );
 			}
-			/*
+
 			AssertMsg( data == nullptr,
 				"ERROR: Memory leak in File (%p) (size: %.2f kb) (%s)", this, KB( size ), filepath );
 			AssertMsg( file == nullptr,
-				"ERROR: Opened File but did not close! (%p) (size: %.2f kb) (%s)", this, KB( size ), filepath );*/
+				"ERROR: Opened File but did not close! (%p) (size: %.2f kb) (%s)", this, KB( size ), filepath );
 		}
 	}
 	#endif
 
-_PUBLIC:
+public:
 	FILE *file = nullptr;
 	FileHandle handle;
 
@@ -134,22 +140,5 @@ _PUBLIC:
 	const char *filepath = "";
 	usize size = 0;
 };
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-namespace Filesystem
-{
-	extern bool directory_create( const char *path );
-	extern bool directory_delete( const char *path );
-	extern void directory_copy( const char *sourcePath, const char *destinationPath );
-
-	extern bool file_create( const char *path, void *buffer, const usize size );
-	extern bool file_delete( const char *path );
-	extern bool file_copy( const char *sourcePath, const char *destinationPath );
-	extern usize file_size( const char *path );
-	extern bool file_read( const char *path, void *buffer, const usize size );
-	extern bool file_time_string( const char *path, char *buffer, const usize size );
-	extern u64 file_time( const char *path );
-}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

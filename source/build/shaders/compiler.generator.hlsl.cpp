@@ -252,6 +252,19 @@ void GeneratorHLSL::generate_function_call_intrinsics( NodeFunctionCall *node )
 	Intrinsic intrinsic = node->functionID;
 	Assert( intrinsic < INTRINSIC_COUNT );
 
+	// Helper to output UV with flipped V
+	#if 0
+	auto generate_node_uvs_flipped = [this]( Node *node )
+		{
+			output.append( "float2( " );
+				generate_node_parenthesis( node );
+				output.append( ".x, 1.0 - " );
+				generate_node_parenthesis( node );
+				output.append( ".y" );
+			output.append( " )" );
+		};
+	#endif
+
 	switch( intrinsic )
 	{
 	// Trigonometric Functions
@@ -380,6 +393,27 @@ void GeneratorHLSL::generate_function_call_intrinsics( NodeFunctionCall *node )
 		}
 		return;
 
+	// Type Bit Conversions
+		case Intrinsic_FloatToIntBits:
+		case Intrinsic_FloatToUIntBits:
+		case Intrinsic_IntToFloatBits:
+		case Intrinsic_UIntToFloatBits:
+		{
+			static const char *intrinsics[] =
+			{
+				"asint",    // Intrinsic_FloatToIntBits
+				"asuint",   // Intrinsic_FloatToUIntBits
+				"asfloat",  // Intrinsic_IntToFloatBits
+				"asfloat",  // Intrinsic_UIntToFloatBits
+			};
+			static_assert( ARRAY_LENGTH( intrinsics ) == ( Intrinsic_UIntToFloatBits - Intrinsic_FloatToIntBits + 1 ),
+				"Missing Intrinsic!" );
+
+			output.append( intrinsics[intrinsic - Intrinsic_FloatToIntBits] );
+			generate_function_call_parameters( node );
+		}
+		return;
+
 	// Texture Sampling Functions
 		case Intrinsic_SampleTexture1D:
 		case Intrinsic_SampleTexture1DArray:
@@ -406,6 +440,104 @@ void GeneratorHLSL::generate_function_call_intrinsics( NodeFunctionCall *node )
 			output.append( "GlobalSampler, " );
 			generate_node( get_param( node->param, 1 )->expr );
 			output.append( ", 0 )" );
+		}
+		return;
+
+		case Intrinsic_LoadTexture2D:
+		{
+			// <texture>.Load( <uv> );
+			generate_node( get_param( node->param, 0 )->expr );
+			output.append( ".Load( float3( " );
+			generate_node( get_param( node->param, 1 )->expr );
+			output.append( ", " );
+			generate_node( get_param( node->param, 2 )->expr );
+			output.append( ", 0.0 ) )" );
+
+			/*
+			generate_node( get_param( node->param, 0 )->expr );
+			output.append( ".Sample( " );
+			output.append( "GlobalSampler, " );
+			generate_node( get_param( node->param, 1 )->expr );
+			output.append( " / 1024.0 )" );
+			*/
+		}
+		return;
+
+	// Depth
+		case Intrinsic_DepthNormalize:
+		{
+			// ( depth - near ) / ( far - near )
+			output.append( "( " );
+				output.append( "( " );
+					generate_node_parenthesis( get_param( node->param, 0 )->expr ); // depth
+					output.append( " - " );
+					generate_node_parenthesis( get_param( node->param, 1 )->expr ); // near
+				output.append( " )" );
+				output.append( " / " );
+				output.append( "( " );
+					generate_node_parenthesis( get_param( node->param, 2 )->expr ); // far
+					output.append( " - " );
+					generate_node_parenthesis( get_param( node->param, 1 )->expr ); // near
+				output.append( " )" );
+			output.append( " )" );
+		}
+		return;
+
+		case Intrinsic_DepthLinearize:
+		{
+			// ( ( ( near * far ) / ( far - depth * ( far - near ) ) ) - near ) / ( far - near )
+			output.append( "( " );
+				output.append( "( " );
+					output.append( "( " );
+						output.append( "( " );
+							generate_node_parenthesis( get_param( node->param, 1 )->expr ); // near
+							output.append( " * " );
+							generate_node_parenthesis( get_param( node->param, 2 )->expr ); // far
+						output.append( " )" );
+						output.append( " / " );
+						output.append( "( " );
+							generate_node_parenthesis( get_param( node->param, 2 )->expr ); // far
+							output.append( " - " );
+							generate_node_parenthesis( get_param( node->param, 0 )->expr ); // depth
+							output.append( " * " );
+							output.append( "( " );
+								generate_node_parenthesis( get_param( node->param, 2 )->expr ); // far
+								output.append( " - " );
+								generate_node_parenthesis( get_param( node->param, 1 )->expr ); // near
+							output.append( " )" );
+						output.append( " )" );
+					output.append( " )" );
+					output.append( " - " );
+					generate_node_parenthesis( get_param( node->param, 1 )->expr ); // near
+				output.append( " )" );
+				output.append( " / " );
+				output.append( "( " );
+					generate_node_parenthesis( get_param( node->param, 2 )->expr ); // far
+					output.append( " - " );
+					generate_node_parenthesis( get_param( node->param, 1 )->expr ); // near
+				output.append( " )" );
+			output.append( " )" );
+		}
+		return;
+
+		case Intrinsic_DepthUnproject:
+		{
+			output.append( "( " );
+				generate_node_parenthesis( get_param( node->param, 0 )->expr );
+				output.append( ".z / " );
+				generate_node_parenthesis( get_param( node->param, 0 )->expr );
+				output.append( ".w" );
+			output.append( " )" );
+		}
+		return;
+
+		case Intrinsic_DepthUnprojectZW:
+		{
+			output.append( "( " );
+				generate_node_parenthesis( get_param( node->param, 0 )->expr );
+				output.append( " / " );
+				generate_node_parenthesis( get_param( node->param, 1 )->expr );
+			output.append( " )" );
 		}
 		return;
 
@@ -461,6 +593,29 @@ void GeneratorHLSL::generate_structure( NodeStruct *node )
 		Variable &memberVariable = parser.variables[i];
 		const String &memberVariableName = variable_name( i );
 		const String &memberTypeName = type_name( memberVariable.typeID );
+
+		// Flat
+		if( node->structType == StructType_VertexOutput ||
+			node->structType == StructType_FragmentInput )
+		{
+			switch( memberVariable.typeID )
+			{
+				case Primitive_Bool:
+				case Primitive_Bool2:
+				case Primitive_Bool3:
+				case Primitive_Bool4:
+				case Primitive_Int:
+				case Primitive_Int2:
+				case Primitive_Int3:
+				case Primitive_Int4:
+				case Primitive_UInt:
+				case Primitive_UInt2:
+				case Primitive_UInt3:
+				case Primitive_UInt4:
+					output.append( "nointerpolation " );
+				break;
+			}
+		}
 
 		// <type>
 		output.append( indent );
@@ -926,6 +1081,7 @@ void GeneratorHLSL::generate_texture( NodeTexture *node )
 {
 	// TODO: Multiple sampler states for each texture (like OpenGL)
 	Texture &texture = parser.textures[node->textureID];
+	const String &typeName = type_name( parser.variables[texture.variableID].typeID );
 	const String &variableName = variable_name( texture.variableID );
 
 	static const char *textureNames[] =
@@ -941,7 +1097,8 @@ void GeneratorHLSL::generate_texture( NodeTexture *node )
 	static_assert( ARRAY_LENGTH( textureNames ) == TEXTURETYPE_COUNT, "Missing TextureType" );
 
 	// Texture
-	output.append( indent ).append( textureNames[node->textureType] ).append( " " );
+	output.append( indent ).append( textureNames[node->textureType] );
+	output.append( "<" ).append( typeName ).append( "> " );
 	output.append( variableName );
 	output.append( " : register( t" ).append( texture.slot ).append( " );\n" );
 

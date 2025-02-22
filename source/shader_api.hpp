@@ -32,6 +32,7 @@
 	template <typename T> bool operator==( T other ); \
 	template <typename T> bool operator!=( T other );
 
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Keywords
 
@@ -137,33 +138,46 @@ vector_type_3( double );
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Vector 4D
 
-#define vector_type_4( type )                      \
-	struct type##4 {                               \
-		type##4() = default;                       \
-		type##4( type v );                         \
-		type##4( type x, type y, type z, type w ); \
-		type##4( type##3 xyz, type w );            \
-		type##4( type x, type##3 yzw );            \
-		type##4( type##2 xy, type z, type w );     \
-		type##4( type x, type##2 yz, type w );     \
-		type##4( type x, type w, type##2 zw );     \
-		type##4( type##2 xy, type##2 zw );         \
-		operator_overloads( type##4 );             \
-		type &operator[]( int index );             \
-		union {                                    \
-			type x, y, z, w;                       \
-			type r, g, b, a;                       \
-			type##2 xy;                            \
-			type##2 rg;                            \
-			type##2 yz;                            \
-			type##2 gb;                            \
-			type##2 zw;                            \
-			type##2 ba;                            \
-			type##3 xyz;                           \
-			type##3 rgb;                           \
-			type##3 yzw;                           \
-			type##3 gba;                           \
-		};                                         \
+#define vector_type_4( type )                        \
+	struct type##4 {                                 \
+		type##4() = default;                         \
+		type##4( type v );                           \
+		type##4( type x, type y, type z, type w );   \
+		type##4( type##3 xyz, type w );              \
+		type##4( type x, type##3 yzw );              \
+		type##4( type##2 xy, type z, type w );       \
+		type##4( type x, type##2 yz, type w );       \
+		type##4( type x, type w, type##2 zw );       \
+		type##4( type##2 xy, type##2 zw );           \
+		operator_overloads( type##4 );               \
+		type &operator[]( int index );               \
+		union {                                      \
+			type x, y, z, w;                         \
+			type r, g, b, a;                         \
+			type##2 xy;                              \
+			type##2 rg;                              \
+			type##2 yz;                              \
+			type##2 gb;                              \
+			type##2 zw;                              \
+			type##2 ba;                              \
+			type##3 xyz;                             \
+			type##3 rgb;                             \
+			type##3 yzw;                             \
+			type##3 gba;                             \
+		};                                           \
+		bool operator==( const type##4 &other );     \
+		bool operator>=( const type##4 &other );     \
+		bool operator>( const type##4 &other );      \
+		bool operator<=( const type##4 &other );     \
+		bool operator<( const type##4 &other );      \
+		type##4 &operator*=( const type##4 &other ); \
+		type##4 &operator/=( const type##4 &other ); \
+		type##4 &operator+=( const type##4 &other ); \
+		type##4 &operator-=( const type##4 &other ); \
+		type##4 operator*( const type##4 &other );   \
+		type##4 operator/( const type##4 &other );   \
+		type##4 operator+( const type##4 &other );   \
+		type##4 operator-( const type##4 &other );   \
 	};
 
 vector_type_4( float );
@@ -238,75 +252,75 @@ struct TextureCubeArray { };
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Trigonometric Functions
 
-template <typename T> T sin( T x );
-template <typename T> T cos( T x );
-template <typename T> T tan( T x );
-template <typename T> T asin( T x );
-template <typename T> T acos( T x );
-template <typename T> T atan( T x );
-template <typename T> T atan2( T y, T x );
-template <typename T> T sinh( T x );
-template <typename T> T cosh( T x );
-template <typename T> T tanh( T x );
+template <typename T> auto sin( T x );
+template <typename T> auto cos( T x );
+template <typename T> auto tan( T x );
+template <typename T> auto asin( T x );
+template <typename T> auto acos( T x );
+template <typename T> auto atan( T x );
+template <typename T, typename U> auto atan2( T y, U x );
+template <typename T> auto sinh( T x );
+template <typename T> auto cosh( T x );
+template <typename T> auto tanh( T x );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Exponential and Logarithmic Functions
 
-template <typename T> T exp( T x );
-template <typename T> T exp2( T x );
-template <typename T> T log( T x );
-template <typename T> T log2( T x );
+template <typename T> auto exp( T x );
+template <typename T> auto exp2( T x );
+template <typename T> auto log( T x );
+template <typename T> auto log2( T x );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Conversion Functions
 
-template <typename T> T degrees( T radians );
-template <typename T> T radians( T degrees );
-template <typename T> T round( T x );
-template <typename T> T trunc( T x );
-template <typename T> T ceil( T x );
-template <typename T> T floor( T x );
+template <typename T> auto degrees( T radians );
+template <typename T> auto radians( T degrees );
+template <typename T> auto round( T x );
+template <typename T> auto trunc( T x );
+template <typename T> auto ceil( T x );
+template <typename T> auto floor( T x );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Arithmetic Functions
 
-template <typename T> T abs( T x );
-template <typename T> T pow( T x, T y );
-template <typename T> T sqrt( T x );
-template <typename T> T rsqrt( T x );
-template <typename T> T clamp( T x, T min, T max );
-template <typename T> T max( T x, T y );
-template <typename T> T min( T x, T y );
-template <typename T> T mod( T x, T y );
-template <typename T> T frac( T x );
-template <typename A, typename B> A ldexp( A x, B exp );
-template <typename T> T fma( T a, T b, T c );
-template <typename T> T sign( T x );
-template <typename T> T saturate( T x );
-template <typename T> T ddx( T x );
-template <typename T> T ddy( T y );
-template <typename T> T ddx_coarse( T x );
-template <typename T> T ddx_fine( T x );
-template <typename T> T ddy_coarse( T y );
-template <typename T> T ddy_fine( T y );
+template <typename T> auto abs( T x );
+template <typename T, typename U> auto pow( T x, U y );
+template <typename T> auto sqrt( T x );
+template <typename T> auto rsqrt( T x );
+template <typename T, typename U, typename V> T clamp( T x, U min, V max );
+template <typename T, typename U> auto max( T x, U y );
+template <typename T, typename U> auto min( T x, U y );
+template <typename T, typename U> auto mod( T x, U y );
+template <typename T> auto frac( T x );
+template <typename T, typename U> auto ldexp( T x, U exp );
+template <typename T, typename U, typename V> auto fma( T a, U b, V c );
+template <typename T> auto sign( T x );
+template <typename T> auto saturate( T x );
+template <typename T> auto ddx( T x );
+template <typename T> auto ddy( T y );
+template <typename T> auto ddx_coarse( T x );
+template <typename T> auto ddx_fine( T x );
+template <typename T> auto ddy_coarse( T y );
+template <typename T> auto ddy_fine( T y );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Vector and Matrix Functions
 
-template <typename A, typename B> B mul( A x, B y );
+template <typename T, typename U> U mul( T x, U y );
 template <typename T> float length( T vector );
-template <typename T> float distance( T point1, T point2 );
-template <typename T> auto dot( T vector1, T vector2 );
-template <typename T> auto cross( T vector1, T vector2 );
+template <typename T, typename U> float distance( T point1, U point2 );
+template <typename T, typename U> auto dot( T vector1, U vector2 );
+template <typename T, typename U> auto cross( T vector1, U vector2 );
 template <typename T> auto normalize( T x );
-template <typename T> auto reflect( T incident, T normal );
-template <typename T> auto refract( T incident, T normal, float eta );
-template <typename T> auto faceforward( T normal, T incident, T ng );
+template <typename T, typename U> auto reflect( T incident, U normal );
+template <typename T, typename U, typename V> auto refract( T incident, U normal, V /*float*/ eta );
+template <typename T, typename U, typename V> auto faceforward( T normal, U incident, V ng );
 template <typename T> auto transpose( T matrix );
 template <typename T> auto determinant( T matrix );
-template <typename T> auto lerp( T x, T y, float s );
+template <typename T, typename U, typename V> auto lerp( T x, U y, V s );
 template <typename T> auto step( T threshold, T x );
-template <typename T> auto smoothstep( T min, T max, T x );
+template <typename T, typename U, typename V> auto smoothstep( T min, U max, V x );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Bitwise Operations
@@ -316,16 +330,31 @@ template <typename T> auto bit_firsthigh( T x );
 template <typename T> auto bit_firstlow( T x );
 template <typename T> auto bit_reverse( T x );
 
+template <typename T> int float_to_int_bits( T x );
+template <typename T> uint float_to_uint_bits( T x );
+template <typename T> float int_to_float_bits( T x );
+template <typename T> float uint_to_float_bits( T x );
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Texture Sampling Functions
 
-float4 sample_texture1D( Texture1D texture, float x );
-float4 sample_texture1DArray( Texture1DArray texture, float x );
+float4 texture_sample_1d( Texture1D texture, float x );
+float4 texture_sample_1d_array( Texture1DArray texture, float x );
 
-float4 sample_texture2D( Texture2D texture, float2 uv );
-float4 sample_texture2DArray( Texture2DArray texture, float2 uv );
-float4 sample_texture2DLevel( Texture2D texture, float2 uv );
+float4 texture_sample_2d( Texture2D texture, float2 uv );
+float4 texture_sample_2d_array( Texture2DArray texture, float2 uv );
+float4 texture_sample_2d_level( Texture2D texture, float2 uv );
 
-float4 sample_texture3D( Texture3D texture, float3 xyz );
+float4 texture_sample_3d( Texture3D texture, float3 xyz );
+
+float4 texture_index_2d( Texture2D texture, int x, int y, int width, int height );
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Depth
+
+float depth_unproject( float4 position );
+float depth_unproject_zw( float depthZ, float depthW );
+float depth_normalize( float depth, float near, float far );
+float depth_linearize( float depth, float near, float far );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

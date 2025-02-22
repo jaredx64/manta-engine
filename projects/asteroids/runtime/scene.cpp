@@ -8,6 +8,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+
 namespace Scene
 {
 	ObjectContext objects;
@@ -15,7 +16,6 @@ namespace Scene
 	bool dead = true;
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 static void create_asteroid()
 {
@@ -93,11 +93,7 @@ void scene_draw( const Delta delta )
 		const float cX = Window::width * 0.5f;
 		const float cY = Window::height * 0.5f;
 		draw_rectangle( 0.0f, cY - dMsg.y * 0.5f - 64.0f, Window::width, cY + dRst.y * 0.5f + 64.0f, { 0, 0, 0, 127 } );
-		draw_text_f( fnt_iosevka, 48, cX - dMsg.x * 0.5f, cY - dMsg.y * 0.5f - 32.0f, c_white,
-			"You died! Score: %d", Scene::score );
-		draw_text( fnt_iosevka, 24, cX - dRst.x * 0.5f, cY - dRst.y * 0.5f + 32.0f, c_white,
-			"Press Space to restart!" );
+		draw_text_f( fnt_iosevka, 48, cX - dMsg.x * 0.5f, cY - dMsg.y * 0.5f - 32.0f, c_white, "You died! Score: %d", Scene::score );
+		draw_text( fnt_iosevka, 24, cX - dRst.x * 0.5f, cY - dRst.y * 0.5f + 32.0f, c_white, "Press Space to restart!" );
 	}
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

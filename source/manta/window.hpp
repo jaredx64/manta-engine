@@ -6,6 +6,14 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if !defined( HEADLESS )
+	#define WINDOW_ENABLED ( true )
+#else
+	#define WINDOW_ENABLED ( false )
+#endif
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 namespace SysWindow
 {
 	extern bool init( const int width = WINDOW_WIDTH_DEFAULT, const int height = WINDOW_HEIGHT_DEFAULT );
@@ -21,13 +29,26 @@ namespace SysWindow
 	extern void ime_reset();
 	extern bool ime_process_key_event( const u32 keysym, const u32 keycode, const bool down );
 	extern void ime_pump_events();
-	//extern void ime_update_text_input_area(SDL_Window *window);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 namespace Window
 {
+	extern void update( const Delta delta );
+
+	extern void show_message( const char *title, const char *message );
+	extern void show_message_error( const char *title, const char *message );
+
+	extern void set_size( const int width, const int height );
+	extern void set_fullscreen( bool enabled );
+	extern void set_caption( const char *caption );
+
+	extern bool set_clipboard( const char *buffer );
+	extern bool get_clipboard( char *buffer, const usize size );
+	extern bool set_selection( const char *buffer );
+	extern bool get_selection( char *buffer, const usize size );
+
 	extern int width;
 	extern int height;
 	extern int widthDefault;
@@ -44,20 +65,6 @@ namespace Window
 	extern bool allowResize;
 	extern bool fullscreen;
 	extern bool resized;
-
-	extern void update( const Delta delta );
-
-	extern void show_message( const char *title, const char *message );
-	extern void show_message_error( const char *title, const char *message );
-
-	extern bool set_size( const int width, const int height );
-	extern void set_fullscreen( bool enabled );
-	extern void set_caption( const char *caption );
-
-	extern bool set_clipboard( const char *buffer );
-	extern bool get_clipboard( char *buffer, const usize size );
-	extern bool set_selection( const char *buffer );
-	extern bool get_selection( char *buffer, const usize size );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

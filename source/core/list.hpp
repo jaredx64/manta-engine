@@ -13,7 +13,7 @@
 template <typename T>
 class List
 {
-_PUBLIC:
+public:
 #if MEMORY_RAII
 	List( const usize reserve = 1 ) { init( reserve ); }
 	List( const List<T> &other ) { copy( other ); }
@@ -39,7 +39,7 @@ _PUBLIC:
 #endif
 #endif
 
-_PRIVATE:
+private:
 	void grow()
 	{
 		MemoryAssert( data != nullptr );
@@ -52,7 +52,55 @@ _PRIVATE:
 		         data, capacity * sizeof( T ) );
 	}
 
-_PUBLIC:
+	void quicksort( usize left, usize right, bool ascending )
+	{
+		if( left >= right ) { return; }
+		usize pivotIndex = partition( left, right, ascending );
+		if( pivotIndex > 0 ) { quicksort( left, pivotIndex - 1, ascending ); }
+		quicksort( pivotIndex + 1, right, ascending );
+	}
+
+	template <typename Compare> void quicksort( usize left, usize right, Compare comp )
+	{
+		if( left >= right ) { return; }
+		usize pivotIndex = partition( left, right, comp );
+		if( pivotIndex > 0 ) { quicksort( left, pivotIndex - 1, comp ); }
+		quicksort( pivotIndex + 1, right, comp );
+	}
+
+	usize partition( usize left, usize right, bool ascending )
+	{
+		T pivot = data[right];
+		usize i = left;
+		for( usize j = left; j < right; j++ )
+		{
+			if( ascending ? ( data[j] < pivot ) : ( data[j] > pivot ) ) { swap( i, j ); i++; }
+		}
+		swap( i, right );
+		return i;
+	}
+
+	template <typename Compare> usize partition( usize left, usize right, Compare comp )
+	{
+		T pivot = data[right];
+		usize i = left;
+		for( usize j = left; j < right; j++ )
+		{
+			if( comp( data[j], pivot ) ) { swap( i, j ); i++; }
+		}
+		swap( i, right );
+		return i;
+	}
+
+	void swap( usize i, usize j )
+	{
+		if( i == j ) { return; }
+		T temp = static_cast<T &&>( data[i] );
+		data[i] = static_cast<T &&>( data[j] );
+		data[j] = static_cast<T &&>( temp );
+	}
+
+public:
 	void init( const usize reserve = 1 )
 	{
 		// Set state
@@ -63,8 +111,6 @@ _PUBLIC:
 		MemoryAssert( data == nullptr );
 		Assert( capacity >= 1 );
 		data = reinterpret_cast<T *>( memory_alloc( capacity * sizeof( T ) ) );
-		ErrorIf( data == nullptr, "Failed to allocate memory for init List (%p: alloc %d bytes)",
-		         data, capacity * sizeof( T ) );
 		memory_set( data, 0, capacity * sizeof( T ) );
 	}
 
@@ -105,8 +151,6 @@ _PUBLIC:
 		MemoryAssert( data == nullptr );
 		Assert( capacity >= 1 );
 		data = reinterpret_cast<T *>( memory_alloc( capacity * sizeof( T ) ) );
-		ErrorIf( data == nullptr, "Failed to allocate memory for copy List (%p: alloc %d bytes)",
-		         data, capacity * sizeof( T ) );
 
 		// Copy memory
 		for( usize i = 0; i < current; i++ ) { new ( &data[i] ) T( other.data[i] ); }
@@ -176,6 +220,20 @@ _PUBLIC:
 
 		// Reset state
 		current = 0;
+	}
+
+	void sort( bool ascending = true )
+	{
+		MemoryAssert( data != nullptr );
+		if( current <= 1 ) { return; }
+		quicksort( 0, current - 1, ascending );
+	}
+
+	template <typename Compare> void sort( Compare comp )
+	{
+		MemoryAssert( data != nullptr );
+		if( current <= 1 ) { return; }
+		quicksort( 0, current - 1, comp );
 	}
 
 	T &add( const T &element )
@@ -379,13 +437,13 @@ _PUBLIC:
 	// Forward Iterator
 	class forward_iterator
 	{
-	_PUBLIC:
+	public:
 		forward_iterator( T *element ) : element{ element } { }
 		forward_iterator &operator++() { element++; return *this; }
 		bool operator!=( const forward_iterator &other ) const { return element != other.element; }
 		T &operator*() { return *element; }
 
-	_PRIVATE:
+	private:
 		T *element;
 	};
 
@@ -396,13 +454,13 @@ _PUBLIC:
 
 	struct reverse_iterator
 	{
-	_PUBLIC:
+	public:
 		reverse_iterator( T *element ) : element{ element } { }
 		reverse_iterator &operator++() { element--; return *this; }
 		bool operator!=( const reverse_iterator &other ) const { return element != other.element; }
 		T &operator*() { return *element; }
 
-	_PRIVATE:
+	private:
 		T *element;
 	};
 
@@ -411,7 +469,7 @@ _PUBLIC:
 	reverse_iterator rbegin() const { MemoryAssert( data != nullptr ); return reverse_iterator( &data[current] - 1 ); }
 	reverse_iterator rend() const { MemoryAssert( data != nullptr ); return reverse_iterator( &data[0] - 1 ); }
 
-_PUBLIC:
+public:
 	static void write( Buffer &buffer, const List<T> &list )
 	{
 		MemoryAssert( buffer.data != nullptr );
@@ -471,7 +529,7 @@ _PUBLIC:
 		deserializer.end();
 	}
 
-_PRIVATE:
+private:
 	T *data = nullptr;
 	usize capacity = 0;
 	usize current = 0;

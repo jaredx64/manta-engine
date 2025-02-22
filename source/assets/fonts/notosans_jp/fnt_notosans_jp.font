@@ -1,0 +1,6 @@
+{
+	"license": "notosans_jp_license.txt",
+
+	"default": "notosans_jp_regular.ttf",
+	"bold": "notosans_jp_bold.ttf",
+}

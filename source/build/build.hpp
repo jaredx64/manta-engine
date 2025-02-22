@@ -42,8 +42,19 @@ namespace Build
 	extern char pathOutputRuntime[PATH_SIZE];
 	extern char pathOutputRuntimeLicenses[PATH_SIZE];
 	extern char pathOutputRuntimeDistributables[PATH_SIZE];
-	extern char pathOutputPackage[PATH_SIZE];
+	extern char pathPackage[PATH_SIZE];
 	extern char pathOutputBuildCache[PATH_SIZE];
+
+	// Package
+	extern String packageName;
+	extern String packageCompany;
+	extern String packageVersionA;
+	extern String packageVersionB;
+	extern String packageVersionC;
+	extern String packageVersionD;
+	extern String packageIcon;
+	extern Texture2DBuffer packageIconBuffer;
+	extern Source packageRC;
 
 	// Commands
 	extern char commandNinja[1024];
@@ -77,18 +88,13 @@ namespace Build
 
 	extern void compile_add_library( const char *library );
 	extern void compile_add_include_directory( const char *includePath );
-
-#if PIPELINE_OS_WINDOWS
-	extern void compile_add_rc( const char *srcPath, char *objPath );
-	extern u32 compile_add_rcs( const char *rcDirectory, const char *outputDirectory, const bool recurse );
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class BuilderCore
 {
-_PUBLIC:
+public:
 	// Build
 	virtual void build( int argc, char **argv );
 	virtual void build_cache();
@@ -123,6 +129,14 @@ _PUBLIC:
 	virtual void compile_engine();
 	virtual void compile_write_ninja();
 	virtual void compile_run_ninja();
+
+	// Package
+	virtual void package_load();
+	virtual void package_generate_rc();
+
+	virtual bool package_windows();
+	virtual bool package_linux();
+	virtual bool package_macos();
 
 	// Run
 	virtual void executable_run( int argc, char **argv );

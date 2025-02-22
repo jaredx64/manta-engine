@@ -2,9 +2,9 @@
 
 #include <build/build.hpp>
 #include <build/filesystem.hpp>
-#include <build/math.hpp>
 
 #include <core/hashmap.hpp>
+#include <core/math.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -236,7 +236,7 @@ const char *g_EVENT_FUNCTIONS[][EVENT_FUNCTION_DEFINITION_COUNT] =
 	{ "event_wake",            "void",                   "",                        "( const Delta delta )",  "( delta )"  }, // KeywordID_EVENT_WAKE
 	{ "event_flag",            "void",                   "",                        "( const u64 code )",     "( code )"   }, // KeywordID_EVENT_FLAG
 
-	{ "event_partition",       "void",                    "",                       "( void *ptr )",          "( ptr )"    }, // KeywordID_EVENT_PARTITION
+	{ "event_partition",       "void",                   "",                        "( void *ptr )",          "( ptr )"    }, // KeywordID_EVENT_PARTITION
 
 	{ "event_network_send",    "bool",                   "",                        "( Buffer &buffer )",     "( buffer )" }, // KeywordID_EVENT_NETWORK_SEND
 	{ "event_network_receive", "bool",                   "",                        "( Buffer &buffer )",     "( buffer )" }, // KeywordID_EVENT_NETWORK_RECEIVE
@@ -1214,7 +1214,7 @@ void ObjectFile::write_header()
 			for( String &f : friendsHeader ) { output.append( "\tfriend " ).append( f ).append( ";\n" ); }
 
 			// Public
-			output.append( "_PUBLIC:\n" );
+			output.append( "public:\n" );
 			{
 				// Constructors
 				if( !constructorHasDefault ) { output.append( "\t" ).append( type ).append( "() = default;\n" ); }
@@ -1242,7 +1242,7 @@ void ObjectFile::write_header()
 			}
 
 			// Protected
-			output.append( "_PROTECTED:\n" );
+			output.append( "protected:\n" );
 			{
 				// Protected Variables
 				for( String &var : protectedVariableHeader )
@@ -1259,7 +1259,7 @@ void ObjectFile::write_header()
 			}
 
 			// Private
-			output.append( "_PRIVATE:\n" );
+			output.append( "private:\n" );
 			{
 				// Versions
 				if( versionsHeader.length_bytes() > 0 ) { output.append( versionsHeader ); }\
@@ -1307,9 +1307,11 @@ void ObjectFile::write_header()
 
 	// ObjectHandle
 	output.append( "template <> struct ObjectHandle<" ).append( name ).append( ">\n{\n" );
+	output.append( "\tstatic SysObjects::" ).append( type ).append( " stub;\n" );
 	output.append( "\tSysObjects::" ).append( type ).append( " *data = nullptr;\n" );
 	output.append( "\tSysObjects::" ).append( type );
-	output.append( " *operator->() const { Assert( data != nullptr ); return data; }\n" );
+	output.append( " *operator->() const { " );
+	output.append( "return UNLIKELY( data == nullptr ) ? &ObjectHandle<" ).append( name ).append( ">::stub : data; }\n" );
 	output.append( "\texplicit operator bool() const { return data != nullptr; }\n" );
 	output.append( "\tObjectHandle( void *object ) { data = reinterpret_cast<SysObjects::" );
 	output.append( type ).append( " *>( object ); }\n" );
@@ -1347,6 +1349,10 @@ void ObjectFile::write_source()
 	// Header Break
 	String output;
 	output.append( COMMENT_BREAK "\n\n" );
+
+	// ObjectHandle Stub
+	output.append( "SysObjects::" ).append( type ).append( " " );
+	output.append( "ObjectHandle<" ).append( name ).append(">::stub = { };\n\n" );
 
 	// Global Data
 	for( String &str : globalVariableSource ) { output.append( str ).append( "\n" ); }

@@ -7,6 +7,7 @@
 
 #include <core/debug.hpp>
 #include <core/types.hpp>
+#include <core/math.hpp>
 
 #include <vendor/stdlib.hpp>
 #include <vendor/string.hpp>
@@ -14,90 +15,128 @@
 #include <manta/engine.hpp>
 #include <manta/input.hpp>
 #include <manta/gfx.hpp>
-#include <manta/math.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define WINDOW_TITLE PROJECT_CAPTION
-#define WINDOW_STYLE \
-	( NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | \
-	  NSWindowStyleMaskResizable | NSWindowStyleMaskMiniaturizable )
+
+#define WINDOW_STYLE ( \
+	NSWindowStyleMaskTitled | \
+	NSWindowStyleMaskClosable | \
+	NSWindowStyleMaskResizable | \
+	NSWindowStyleMaskMiniaturizable )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Subclass Application
 @interface GameApplication : NSApplication @end
-@implementation GameApplication
-
-//- (void)terminate:(id)sender { Engine::exit(); }
-
-@end
-
-// Subclass Window
 @interface GameWindow : NSWindow @end
-@implementation GameWindow
+@interface GameWindowDelegate : NSObject @end
+@interface GameView : NSView @end
 
-- (BOOL)canBecomeKeyWindow  { return YES; }
-- (BOOL)canBecomeMainWindow { return YES; }
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+@implementation GameApplication
 @end
 
-// Window Delegate
-@interface GameWindowDelegate : NSObject @end
-@implementation GameWindowDelegate
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+@implementation GameWindow
+- (BOOL)canBecomeKeyWindow
+{
+	return YES;
+}
+
+
+- (BOOL)canBecomeMainWindow
+{
+	return YES;
+}
+@end
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+@implementation GameWindowDelegate
 - (BOOL)windowShouldClose:(NSWindow *)sender
 {
-	// Terminate the application when window is closed
-	[ NSApp terminate:nil ];
-
-	// The window will be closed implicitly when the applicaiton exists
+	[NSApp terminate: nil];
 	return NO;
 }
 
-// Toggling fullscreen is asynch in Cocoa, so these callbacks tell us
-- (void)windowDidEnterFullScreen:(NSNotification *)notification { Window::fullscreen = true; }
-- (void)windowDidExitFullScreen:(NSNotification *)notification  { Window::fullscreen = false; }
 
-// Called when the window gains/loses focus
-- (void)windowDidBecomeKey:(NSNotification *)notification { Window::hasFocus = true; }
-- (void)windowDidResignKey:(NSNotification *)notification { Window::hasFocus = false; }
+- (void)windowDidEnterFullScreen:(NSNotification *)notification
+{
+	Window::fullscreen = true;
+}
 
+
+- (void)windowDidExitFullScreen:(NSNotification *)notification
+{
+	Window::fullscreen = false;
+}
+
+
+- (void)windowDidBecomeKey:(NSNotification *)notification
+{
+	Window::hasFocus = true;
+}
+
+
+- (void)windowDidResignKey:(NSNotification *)notification
+{
+	Window::hasFocus = false;
+}
 @end
 
-// Subclass View
-@interface GameView : NSView @end
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 @implementation GameView
-
-- (BOOL)canBecomeKeyView { return YES; }
-- (BOOL)acceptsFirstResponder { return YES; }
-- (BOOL)acceptsFirstMouse:(NSEvent *)event { return YES; }
-
-// A regular key was pressed or released
-- (void)keyDown: (NSEvent *)event
-	{
-		BOOL isRepeat = [event isARepeat];
-		Keyboard::state().keyCurrent[event.keyCode] = true;
-		Keyboard::state().keyRepeat[event.keyCode] = isRepeat;
-		//PrintLn( "Key Hex: 0x%02X", static_cast<u8>( event.keyCode ) );
-
-		// IME
-		char *buffer = Keyboard::state().inputBuffer;
-		const char *input = [[event characters] UTF8String];
-		const usize length = strlen( input );
-		memory_copy( buffer, input, length < 8 ? length : 8 );
-		buffer[8] = '\0';
-	}
-
-- (void)keyUp: (NSEvent *)event
-	{
-		Keyboard::state().keyCurrent[event.keyCode] = false;
-		Keyboard::state().keyRepeat[event.keyCode] = false;
-	}
-
-// A modifier key was pressed or released
-- (void)flagsChanged: (NSEvent *)event
+- (BOOL)canBecomeKeyView
 {
+	return YES;
+}
+
+
+- (BOOL)acceptsFirstResponder
+{
+	return YES;
+}
+
+
+- (BOOL)acceptsFirstMouse:(NSEvent *)event
+{
+	return YES;
+}
+
+
+- (void)keyDown:(NSEvent *)event
+{
+#if WINDOW_ENABLED
+	BOOL isRepeat = [event isARepeat];
+	Keyboard::state().keyCurrent[event.keyCode] = true;
+	Keyboard::state().keyRepeat[event.keyCode] = isRepeat;
+	//PrintLn( "Key Hex: 0x%02X", static_cast<u8>( event.keyCode ) );
+
+	char *buffer = Keyboard::state().inputBuffer;
+	const char *input = [[event characters] UTF8String];
+	const usize length = strlen( input );
+	memory_copy( buffer, input, length < 8 ? length : 8 );
+	buffer[8] = '\0';
+#endif
+}
+
+
+- (void)keyUp:(NSEvent *)event
+{
+#if WINDOW_ENABLED
+	Keyboard::state().keyCurrent[event.keyCode] = false;
+	Keyboard::state().keyRepeat[event.keyCode] = false;
+#endif
+}
+
+
+- (void)flagsChanged:(NSEvent *)event
+{
+#if WINDOW_ENABLED
 	static NSUInteger previousFlags = 0;
 	NSUInteger currentFlags = event.modifierFlags & NSEventModifierFlagDeviceIndependentFlagsMask;
 
@@ -141,81 +180,104 @@
 
 	// Update the previous flags
 	previousFlags = currentFlags;
+#endif
 }
 
-// Left Mouse Button
-- (void)mouseDown: (NSEvent *)event
+
+- (void)mouseDown:(NSEvent *)event
+{
+#if WINDOW_ENABLED
+	if( !Keyboard::state().keyCurrent[vk_control] )
 	{
-		if( !Keyboard::state().keyCurrent[vk_control] )
-		{
-			Mouse::state().buttonCurrent |= mb_left;
-		}
-		else
-		{
-			Mouse::state().buttonCurrent |= mb_middle;
-		}
+		Mouse::state().buttonCurrent |= mb_left;
 	}
-
-- (void)mouseUp: (NSEvent *)event
-	{
-		Mouse::state().buttonCurrent &= ~mb_left;
-
-		if( Keyboard::state().keyCurrent[vk_control] )
-		{
-			Mouse::state().buttonCurrent  &= ~mb_middle;
-		}
-	}
-
-- (void)rightMouseDown:(NSEvent *)event
-	{
-		Mouse::state().buttonCurrent |= mb_right;
-	}
-
-- (void)rightMouseUp: (NSEvent *)event
-	{
-		Mouse::state().buttonCurrent &= ~mb_right;
-	}
-
-- (void)otherMouseDown: (NSEvent *)event
+	else
 	{
 		Mouse::state().buttonCurrent |= mb_middle;
 	}
+#endif
+}
 
-- (void)otherMouseUp: (NSEvent *)event
+
+- (void)mouseUp:(NSEvent *)event
+{
+#if WINDOW_ENABLED
+	Mouse::state().buttonCurrent &= ~mb_left;
+
+	if( Keyboard::state().keyCurrent[vk_control] )
 	{
-		Mouse::state().buttonCurrent &= ~mb_middle;
+		Mouse::state().buttonCurrent  &= ~mb_middle;
+	}
+#endif
+}
+
+
+- (void)rightMouseDown:(NSEvent *)event
+{
+#if WINDOW_ENABLED
+	Mouse::state().buttonCurrent |= mb_right;
+#endif
+}
+
+
+- (void)rightMouseUp:(NSEvent *)event
+{
+#if WINDOW_ENABLED
+	Mouse::state().buttonCurrent &= ~mb_right;
+#endif
+}
+
+
+- (void)otherMouseDown:(NSEvent *)event
+{
+#if WINDOW_ENABLED
+	Mouse::state().buttonCurrent |= mb_middle;
+#endif
+}
+
+
+- (void)otherMouseUp:(NSEvent *)event
+{
+#if WINDOW_ENABLED
+	Mouse::state().buttonCurrent &= ~mb_middle;
+#endif
+}
+
+
+- (void)scrollWheel:(NSEvent *)event
+{
+#if WINDOW_ENABLED
+	if( event.deltaY > 0 )
+	{
+		Mouse::state().wheelY = -1; // up
+		Mouse::state().wheelYVelocity = static_cast<float>( event.deltaY ) * 0.25f;
 	}
 
-- (void)scrollWheel: (NSEvent *)event
+	else if( event.deltaY < 0 )
 	{
-		if( event.deltaY > 0 )
-		{
-			Mouse::state().wheelY = -1; // up
-			Mouse::state().wheelYVelocity = static_cast<float>( event.deltaY ) * 0.25f;
-		}
-
-		else if( event.deltaY < 0 )
-		{
-			Mouse::state().wheelY = 1; // down
-			Mouse::state().wheelYVelocity = static_cast<float>( -event.deltaY ) * 0.25f;
-		}
-
-		if( event.deltaX > 0 )
-		{
-			Mouse::state().wheelX = 1; // right
-			Mouse::state().wheelXVelocity = static_cast<float>( event.deltaX ) * 0.25f;
-		}
-
-		else if( event.deltaX < 0 )
-		{
-			Mouse::state().wheelX = -1; // left
-			Mouse::state().wheelXVelocity = static_cast<float>( -event.deltaX ) * 0.25f;
-		}
+		Mouse::state().wheelY = 1; // down
+		Mouse::state().wheelYVelocity = static_cast<float>( -event.deltaY ) * 0.25f;
 	}
+
+	if( event.deltaX > 0 )
+	{
+		Mouse::state().wheelX = 1; // right
+		Mouse::state().wheelXVelocity = static_cast<float>( event.deltaX ) * 0.25f;
+	}
+
+	else if( event.deltaX < 0 )
+	{
+		Mouse::state().wheelX = -1; // left
+		Mouse::state().wheelXVelocity = static_cast<float>( -event.deltaX ) * 0.25f;
+	}
+#endif
+}
+
 
 // Mouse Position was changed
 - (void)mouseMoved:(NSEvent *)event
 {
+#if WINDOW_ENABLED
 	NSRect frame = [self frame];
 	NSPoint point = [event locationInWindow];
 
@@ -229,22 +291,38 @@
 	Mouse::state().positionYPrevious = Mouse::state().positionY;
 	Mouse::state().positionX = static_cast<float>( point.x );
 	Mouse::state().positionY = static_cast<float>( frame.size.height - point.y );
+#endif
 }
 
 // For some reason, when a mouse button is being held down, cocoa doesn't send
 // mouse move events, instead sends us "dragged" events corresponding to the
 // buttons being held. Let's just forward these to regular mouseMoved events
-- (void)mouseDragged:     (NSEvent *)event { [self mouseMoved:event]; }
-- (void)rightMouseDragged:(NSEvent *)event { [self mouseMoved:event]; }
-- (void)otherMouseDragged:(NSEvent *)event { [self mouseMoved:event]; }
+- (void)mouseDragged:(NSEvent *)event
+{
+	[self mouseMoved:event];
+}
 
-// The view was resized
+
+- (void)rightMouseDragged:(NSEvent *)event
+{
+	[self mouseMoved:event];
+}
+
+
+- (void)otherMouseDragged:(NSEvent *)event
+{
+	[self mouseMoved:event];
+}
+
+
 - (void)drawRect:(NSRect)dirtyRect
 {
+#if WINDOW_ENABLED
 	Window::width = static_cast<int>( dirtyRect.size.width );
 	Window::height = static_cast<int>( dirtyRect.size.height );
 	Window::resized = true;
 	Gfx::viewport_update();
+#endif
 }
 
 @end
@@ -259,6 +337,7 @@ namespace SysWindow
 
 	bool init( const int defaultWidth, const int defaultHeight )
 	{
+	#if WINDOW_ENABLED
 		// TODO
 		Window::width = defaultWidth;
 		Window::height = defaultHeight;
@@ -267,7 +346,7 @@ namespace SysWindow
 		// Lazy-initialize the application singleton into the global 'NSApp' variable
 		[GameApplication sharedApplication];
 
-		// Turning ARC on in the compiler (default) is nto the end of the story
+		// Turning ARC on in the compiler (default) is not the end of the story
 		// Objects marked 'autorelease' still require an active autorelease pool if you
 		// don't want to leak memory
 		pool = [NSAutoreleasePool new];
@@ -278,72 +357,108 @@ namespace SysWindow
 		Window::scale = [screen backingScaleFactor];
 
 		// Create Window
-		SysWindow::window = [[GameWindow alloc] initWithContentRect: NSMakeRect( static_cast<int>( area.size.width - defaultWidth ) >> 1,
-																				 static_cast<int>( area.size.height - defaultHeight ) >> 1,
-																				 defaultWidth, defaultHeight )
-																				 styleMask: WINDOW_STYLE
-																				 backing: NSBackingStoreBuffered
-																				 defer: NO ];
+		SysWindow::window = [[GameWindow alloc]
+			initWithContentRect:NSMakeRect(
+				static_cast<int>( area.size.width - defaultWidth ) >> 1,
+				static_cast<int>( area.size.height - defaultHeight ) >> 1,
+				defaultWidth, defaultHeight )
+			styleMask:WINDOW_STYLE
+			backing:NSBackingStoreBuffered
+			defer:NO];
 
 		// Check Window
 		if( SysWindow::window == nil )
-			{ ErrorReturnMsg( false, "COCOA: Failed to create cocoa window" ); }
+		{
+			ErrorReturnMsg( false, "COCOA: Failed to create cocoa window" );
+		}
 
 		// Create Window View
 		SysWindow::view = [GameView new];
 
 		// Setup Window Properties
-		[SysWindow::window setContentView: SysWindow::view];
-		[SysWindow::window makeFirstResponder: SysWindow::view];
-		[SysWindow::window setDelegate: (id)[GameWindowDelegate new]];
-		[SysWindow::window setAcceptsMouseMovedEvents: YES];
-		[SysWindow::window setTitle: @WINDOW_TITLE];
-		[SysWindow::window setRestorable: NO];
-		[SysWindow::window setContentMinSize: NSMakeSize( WINDOW_WIDTH_MIN, WINDOW_WIDTH_MAX ) ];
+		[SysWindow::window setContentView:SysWindow::view];
+		[SysWindow::window makeFirstResponder:SysWindow::view];
+		[SysWindow::window setDelegate:(id)[GameWindowDelegate new]];
+		[SysWindow::window setAcceptsMouseMovedEvents:YES];
+		[SysWindow::window setTitle:@WINDOW_TITLE];
+		[SysWindow::window setRestorable:NO];
+		[SysWindow::window setContentMinSize:NSMakeSize( WINDOW_WIDTH_MIN, WINDOW_WIDTH_MAX )];
 
 		// Setup Apple Menu
-		// TODO
+		{
+			NSMenu *appleMenu = [NSMenu new];
+
+			NSMenuItem *aboutItem = [[NSMenuItem alloc]
+				initWithTitle:@"About " PROJECT_NAME
+				action:@selector(orderFrontStandardAboutPanel:)
+				keyEquivalent:@""];
+			[appleMenu addItem:aboutItem];
+
+			[appleMenu addItem:[NSMenuItem separatorItem]];
+
+			NSMenuItem *quitItem = [[NSMenuItem alloc]
+				initWithTitle:@"Quit " PROJECT_NAME
+				action:@selector(terminate:)
+				keyEquivalent:@"q"];
+			[appleMenu addItem:quitItem];
+
+			NSMenuItem *appleItem = [[NSMenuItem alloc]
+				initWithTitle:@PROJECT_NAME
+				action:nil
+				keyEquivalent:@""];
+
+			NSMenu *mainMenu = [NSMenu new];
+			[mainMenu addItem:appleItem];
+			[appleItem setSubmenu:appleMenu];
+
+			[NSApp setMainMenu:mainMenu];
+		}
 
 		// macOS applications that are not bundled must be explicitly made into UI
 		// apps by calling this function otherwise we won't appear in the dock and
 		// the window will not be visible
-		[NSApp setActivationPolicy: NSApplicationActivationPolicyRegular];
+		[NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
 
 		[NSApp finishLaunching];
+	#endif
 
-		// Success
 		return true;
 	}
 
 
 	bool free()
 	{
-		// Success
+	#if WINDOW_ENABLED
+		// ...
+	#endif
+
 		return true;
 	}
 
 
 	void show()
 	{
+	#if WINDOW_ENABLED
 		// Bring the Application into focus
-		[NSApp activateIgnoringOtherApps: YES];
+		[NSApp activateIgnoringOtherApps:YES];
 
 		// Bring the Window into focus
-		[SysWindow::window makeKeyAndOrderFront: nil];
+		[SysWindow::window makeKeyAndOrderFront:nil];
+	#endif
 	}
 
 
 	void poll()
 	{
-		//PROFILE_FUNCTION();
-
+	#if WINDOW_ENABLED
 		for( ;; )
 		{
 			// Get the next event in the queue
-			NSEvent *event = [NSApp nextEventMatchingMask: NSEventMaskAny
-									untilDate: nil
-									inMode: NSDefaultRunLoopMode
-									dequeue: YES ];
+			NSEvent *event = [NSApp
+				nextEventMatchingMask:NSEventMaskAny
+				untilDate:nil
+				inMode:NSDefaultRunLoopMode
+				dequeue:YES ];
 
 			// There are no more events, break
 			if( event == nil ) { break; }
@@ -358,32 +473,39 @@ namespace SysWindow
 
 		// Next, create the pool for the next frame
 		pool = [NSAutoreleasePool new];
+	#endif
 	}
 
 
 	void set_caption( const char *caption )
 	{
+	#if WINDOW_ENABLED
 		// TODO
-		//[SysWindow::window setTitle: @caption ];
+		//[SysWindow::window setTitle:@caption ];
+	#endif
 	}
 
 
 	void mouse_get_position( double &x, double &y )
 	{
+	#if WINDOW_ENABLED
 		NSRect frame = [SysWindow::view frame];
 		NSPoint point = [SysWindow::window mouseLocationOutsideOfEventStream];
 		x = point.x;
 		y = frame.size.height - point.y;
+	#endif
 	}
 
 
 	void mouse_set_position( const int x, const int y )
 	{
+	#if WINDOW_ENABLED
 		NSRect rect = [SysWindow::window frame];
 		CGWarpMouseCursorPosition( CGPointMake( rect.origin.x + x, rect.origin.y + y ) );
 
 		// HACK
 		CGAssociateMouseAndMouseCursorPosition( true );
+	#endif
 	}
 };
 
@@ -393,28 +515,33 @@ namespace Window
 {
 	void show_message( const char *title, const char *message )
 	{
+	#if WINDOW_ENABLED
 		NSApplication *app = [NSApplication sharedApplication];
 		NSAlert *alert = [[NSAlert alloc] init];
 		[alert setIcon:nil];
 		[alert setMessageText:[NSString stringWithUTF8String:title]];
 		[alert setInformativeText:[NSString stringWithUTF8String:message]];
 		[alert runModal];
+	#endif
 	}
 
 
 	void show_message_error( const char *title, const char *message )
 	{
+	#if WINDOW_ENABLED
 		NSApplication *app = [NSApplication sharedApplication];
 		NSAlert *alert = [[NSAlert alloc] init];
 		[alert setAlertStyle:NSAlertStyleCritical];
 		[alert setMessageText:[NSString stringWithUTF8String:title]];
 		[alert setInformativeText:[NSString stringWithUTF8String:message]];
 		[alert runModal];
+	#endif
 	}
 
 
-	bool resize( int width, int height )
+	void set_size( int width, int height )
 	{
+	#if WINDOW_ENABLED
 		// Resize Window
 		NSRect contentRect = { { 0, 0 }, { static_cast<CGFloat>( width ), static_cast<CGFloat>( height ) } };
 		NSRect frame = [SysWindow::window frameRectForContentRect:contentRect];
@@ -425,14 +552,13 @@ namespace Window
 		frame.origin.y = ( screenRect.size.height - frame.size.height ) / 2;
 
 		[SysWindow::window setFrame:frame display:YES animate:YES];
-
-		// Success
-		return true;
+	#endif
 	}
 
 
 	void set_fullscreen( bool enabled )
 	{
+	#if WINDOW_ENABLED
 		if( enabled != Window::fullscreen )
 		{
 			[SysWindow::window toggleFullScreen:nil];
@@ -443,17 +569,21 @@ namespace Window
 				Keyboard::state().keyCurrent[i] = false;
 			}
 		}
+	#endif
 	}
 
 
 	void set_caption( const char *caption )
 	{
+	#if WINDOW_ENABLED
 		// TODO
+	#endif
 	}
 
 
 	bool set_clipboard( const char *buffer )
 	{
+	#if WINDOW_ENABLED
 		// Get the clipboard
 		NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
 		if( !pasteboard ) { return false; }
@@ -466,11 +596,14 @@ namespace Window
 		if( !text ) { return false; }
 		BOOL success = [pasteboard setString:text forType:NSPasteboardTypeString];
 		return success;
+	#endif
+		return false;
 	}
 
 
 	bool get_clipboard( char *buffer, const usize size )
 	{
+	#if WINDOW_ENABLED
 		// Get the cipboard
 		buffer[0] = '\0';
 		NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
@@ -482,21 +615,26 @@ namespace Window
 		const char *clipboardText = [text UTF8String];
 		if( !clipboardText ) { return false; }
 		snprintf( buffer, size, "%s", clipboardText );
+	#endif
 		return true;
 	}
 
 
 	bool set_selection( const char *buffer )
 	{
+	#if WINDOW_ENABLED
 		// Do nothing on MacOS
+	#endif
 		return true;
 	}
 
 
 	bool get_selection( char *buffer, const usize size )
 	{
+	#if WINDOW_ENABLED
 		// Do nothing on MacOS
 		buffer[0] = '\0';
+	#endif
 		return true;
 	}
 

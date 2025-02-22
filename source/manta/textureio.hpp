@@ -25,10 +25,10 @@ namespace SysTextureIO
 
 struct Texture2DBuffer
 {
-_PUBLIC:
+public:
 	Texture2DBuffer() : data( nullptr ), width( 0 ), height( 0 ) { }
 
-_PUBLIC:
+public:
 	void init( const u16 width, const u16 height );
 	void free();
 	void copy( const Texture2DBuffer &other );
@@ -74,7 +74,7 @@ _PUBLIC:
 	inline rgba &operator[]( const u32 index ) { return at( index ); }
 	explicit operator bool() const { return data != nullptr; }
 
-_PUBLIC:
+public:
 	rgba *data = nullptr;
 	u16 width;
 	u16 height;

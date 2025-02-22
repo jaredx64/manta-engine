@@ -29,13 +29,18 @@ extern char chrupper( char c );
 extern void strlower( char *buffer );
 extern void strupper( char *buffer );
 
+extern bool streq( const char *str1, const char *str2 );
+extern bool strneq( const char *str1, const char *str2, const usize size );
+extern bool streq_case_insensitive( const char *str1, const char *str2 );
+extern bool strneq_case_insensitive( const char *str1, const char *str2, const usize size );
+
 extern bool char_whitespace( const char c );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class StringView
 {
-_PUBLIC:
+public:
 	StringView() = default;
 	StringView( const char *data ) : data{ data }, length{ strlen( data ) } { }
 	StringView( const char *data, usize length ) : data{ data }, length{ length } { }
@@ -46,7 +51,7 @@ _PUBLIC:
 	u32 hash();
 	char *cstr( char *buffer, const usize size );
 
-_PUBLIC:
+public:
 	const char *data = nullptr;
 	usize length = 0;
 };
@@ -68,7 +73,7 @@ namespace Hash
 
 class String
 {
-_PUBLIC:
+public:
 #if true // MEMORY_RAII
 	String( const char *string = "" ) { init( string ); }
 	String( const StringView &other ) { init( other.data, other.length ); }
@@ -95,10 +100,10 @@ _PUBLIC:
 	}
 #endif
 #endif
-_PRIVATE:
+private:
 	void grow();
 
-_PUBLIC:
+public:
 	void init( const char *string = "", const usize length = USIZE_MAX );
 	void free();
 	String &copy( const String &other );
@@ -171,13 +176,13 @@ _PUBLIC:
 	// Forward iterator
 	class forward_iterator
 	{
-	_PUBLIC:
+	public:
 		forward_iterator( char *element ) : element( element ) { }
 		forward_iterator &operator++() { ++element; return *this; }
 		bool operator!=( const forward_iterator &other ) const { return element != other.element; }
 		char &operator*() { return *element; }
 		const char &operator*() const { return *element; }
-	_PRIVATE:
+	private:
 		char *element;
 	};
 
@@ -189,13 +194,13 @@ _PUBLIC:
 	// Reverse iterator
 	class reverse_iterator
 	{
-	_PUBLIC:
+	public:
 		reverse_iterator( char *element ) : element{ element } { }
 		reverse_iterator &operator++() { element--; return *this; }
 		bool operator!=( const reverse_iterator &other ) const { return element != other.element; }
 		char &operator*() { return *element; }
 		const char &operator*() const { return *element; }
-	_PRIVATE:
+	private:
 		char *element;
 	};
 
@@ -204,13 +209,13 @@ _PUBLIC:
 	reverse_iterator rbegin() const { MemoryAssert( data != nullptr ); return reverse_iterator( &data[current] - 1 ); }
 	reverse_iterator rend() const { MemoryAssert( data != nullptr ); return reverse_iterator( &data[0] - 1 ); }
 
-_PUBLIC:
+public:
 	static void write( class Buffer &buffer, const String &string );
 	static void read( class Buffer &buffer, String &string );
 	static void serialize( class Buffer &buffer, const String &string );
 	static void deserialize( class Buffer &buffer, String &string );
 
-_PUBLIC:
+public:
 	char *data = nullptr;
 	usize capacity = 0;
 	usize current = 0;
@@ -222,11 +227,11 @@ _PUBLIC:
 template <usize N>
 class StringBuffer
 {
-_PRIVATE:
+private:
 	// ...
-_PUBLIC:
+public:
 	// ...
-_PUBLIC:
+public:
 	char data[N];
 };
 

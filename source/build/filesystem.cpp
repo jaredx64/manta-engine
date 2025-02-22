@@ -47,34 +47,93 @@ static bool char_is_slash( const char c )
 	}
 
 
-	void directory_create( const char *path )
+	bool file_delete( const char *path )
 	{
-		CreateDirectoryA( path, nullptr );
+		return DeleteFileA( path );
+	}
+
+
+	bool file_rename( const char *path, const char *name )
+	{
+		char pathNew[MAX_PATH];
+
+		const char *lastSlash = strrchr( path, '\\' );
+		if( !lastSlash ) { return false; }
+
+		usize dirLength = lastSlash - path + 1;
+		if( dirLength >= MAX_PATH ) { return false; }
+		strncpy( pathNew, path, dirLength );
+		pathNew[dirLength] = '\0';
+
+		if( strlen( pathNew ) + dirLength >= MAX_PATH ) { return false; }
+		strcat( pathNew, name );
+
+		return MoveFileA( path, pathNew );
+	}
+
+
+	bool file_copy( const char *source, const char *destination )
+	{
+		HANDLE hSrc, hDst;
+		DWORD bytesRead, bytesWritten, totalWritten;
+		char buffer[4096];
+
+		hSrc = CreateFileA( source, GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr );
+		if( hSrc == INVALID_HANDLE_VALUE ) { PrintLn( "fail open src" ); return false; }
+
+		hDst = CreateFileA( destination, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr );
+		if( hDst == INVALID_HANDLE_VALUE ) { PrintLn( "fail open dst" ); CloseHandle( hSrc ); return false; }
+
+		while( ReadFile( hSrc, buffer, sizeof( buffer ), &bytesRead, nullptr ) && bytesRead > 0 )
+		{
+			totalWritten = 0;
+			while( totalWritten < bytesRead )
+			{
+				if( !WriteFile( hDst, buffer + totalWritten, bytesRead - totalWritten, &bytesWritten, nullptr ) )
+				{
+					CloseHandle( hSrc );
+					CloseHandle( hDst );
+					DeleteFileA( destination );
+					PrintLn( "fail transfer" );
+					return false;
+				}
+				totalWritten += bytesWritten;
+			}
+		}
+
+		CloseHandle( hSrc );
+		CloseHandle( hDst );
+		return true;
+	}
+
+
+	bool directory_create( const char *path )
+	{
+		return CreateDirectoryA( path, nullptr );
 	}
 
 
 	bool directory_iterate( List<FileInfo> &list, const char *path, const char *extension, const bool recurse )
 	{
 		WIN32_FIND_DATAA findData;
-		HANDLE findFile;
+		HANDLE hFind;
 
-		// Find First File
 		char buffer[512];
 		strjoin( buffer, path, SLASH, "*" );
-		if( ( findFile = FindFirstFileA( buffer, &findData ) ) == INVALID_HANDLE_VALUE ) { return false; }
+		if( ( hFind = FindFirstFileA( buffer, &findData ) ) == INVALID_HANDLE_VALUE ) { return false; }
 
 		do
 		{
-			// Ignore Hidden Directories
-			if( findData.cFileName[0] == '.' ) { continue; }
+			if( strcmp( findData.cFileName, "." ) == 0 || strcmp( findData.cFileName, ".." ) == 0 )
+			{
+				continue;
+			}
 
-			// Recurse Into Directories
 			if( findData.dwFileAttributes == FILE_ATTRIBUTE_DIRECTORY && recurse )
 			{
 				strjoin( buffer, path, SLASH, findData.cFileName );
 				directory_iterate( list, buffer, extension, recurse );
 			}
-			// Add File
 			else
 			{
 				// Filter extension
@@ -93,9 +152,92 @@ static bool char_is_slash( const char c )
 				info.time.time = findData.ftLastWriteTime;
 				list.add( info );
 			}
-		} while ( FindNextFileA( findFile, &findData ) );
+		}
+		while( FindNextFileA( hFind, &findData ) );
 
-		// Success
+		FindClose( hFind );
+		return true;
+	}
+
+
+	bool directory_delete( const char *path )
+	{
+		WIN32_FIND_DATAA findData;
+		char searchPath[MAX_PATH];
+		snprintf( searchPath, sizeof( searchPath ), "%s\\*", path );
+
+		HANDLE hFind = FindFirstFileA( searchPath, &findData );
+		if (hFind == INVALID_HANDLE_VALUE) { return false; }
+
+		do
+		{
+			if( strcmp( findData.cFileName, "." ) == 0 || strcmp( findData.cFileName, ".." ) == 0 )
+			{
+				continue;
+			}
+
+			char fullPath[MAX_PATH];
+			snprintf(fullPath, sizeof(fullPath), "%s\\%s", path, findData.cFileName);
+
+			if( findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY )
+			{
+				if( !directory_delete( fullPath ) ) { FindClose( hFind ); return false; }
+			}
+			else
+			{
+				if( !file_delete( fullPath ) ) { FindClose( hFind ); return false; }
+			}
+		}
+		while( FindNextFileA( hFind, &findData ) );
+
+		FindClose(hFind);
+
+		if( !RemoveDirectoryA( path ) ) { return false; }
+		return true;
+	}
+
+
+	bool directory_rename( const char *path, const char *name )
+	{
+		return file_rename( path, name );
+	}
+
+
+	bool directory_copy( const char *source, const char *destination )
+	{
+		WIN32_FIND_DATAA findFileData;
+		HANDLE hFind;
+		char pathSource[MAX_PATH];
+		char pathDestination[MAX_PATH];
+		snprintf( pathSource, MAX_PATH, "%s\\*", source );
+
+		hFind = FindFirstFileA( pathSource, &findFileData );
+		if( hFind == INVALID_HANDLE_VALUE ) { return false; }
+
+		if( !CreateDirectoryA( destination, nullptr ) ) { FindClose( hFind ); return false; }
+
+		do
+		{
+			if( strcmp( findFileData.cFileName, "." ) == 0 || strcmp( findFileData.cFileName, ".." ) == 0 )
+			{
+				continue;
+			}
+
+			snprintf( pathSource, MAX_PATH, "%s\\%s", source, findFileData.cFileName );
+			snprintf( pathDestination, MAX_PATH, "%s\\%s", destination, findFileData.cFileName );
+
+			if( findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY )
+			{
+				if( !directory_copy( pathSource, pathDestination ) ) { FindClose( hFind ); return false; }
+			}
+			else
+			{
+				if( !file_copy( pathSource, pathDestination ) ) { FindClose( hFind ); return false; }
+			}
+		}
+		while( FindNextFileA(hFind, &findFileData ) );
+
+		FindClose( hFind );
 		return true;
 	}
 
@@ -104,7 +246,7 @@ static bool char_is_slash( const char c )
 	bool file_time( const char *path, FileTime *result )
 	{
 		struct stat file_stat;
-		int file = open( path, O_RDONLY);
+		int file = open( path, O_RDONLY );
 		if( file == -1 ) { return false; }
 		if( fstat( file, &file_stat ) == -1 ) { return false; }
 
@@ -124,11 +266,77 @@ static bool char_is_slash( const char c )
 	}
 
 
-	void directory_create( const char *path )
+	bool file_delete( const char *path )
+	{
+		return ( unlink( path ) == 0 );
+	}
+
+
+	bool file_rename( const char *path, const char *name )
+	{
+		char pathSrc[PATH_SIZE];
+		snprintf( pathSrc, sizeof( pathSrc ), "%s", path );
+		char pathNew[PATH_SIZE];
+
+		char *dir = dirname( pathSrc );
+		if( snprintf( pathNew, PATH_SIZE, "%s/%s", dir, name ) >= PATH_SIZE ) { return false; }
+
+		int result = rename( path, pathNew );
+		return ( result == 0 );
+	}
+
+
+	bool file_copy( const char *source, const char *destination )
+	{
+		int fdSrc, fdDst;
+		i64 bytesRead, bytesWritten, totalWritten;
+		char buffer[4096];
+
+		fdSrc = open( source, O_RDONLY );
+		if( fdSrc < 0 ) { return false; }
+
+		struct stat srcStat;
+		if( fstat( fdSrc, &srcStat ) < 0 )
+		{
+			close( fdSrc );
+			return false;
+		}
+
+		fdDst = open( destination, O_WRONLY | O_CREAT | O_TRUNC, srcStat.st_mode );
+		if( fdDst < 0 )
+		{
+			close( fdSrc );
+			return false;
+		}
+
+		while( ( bytesRead = read( fdSrc, buffer, sizeof( buffer ) ) ) > 0 )
+		{
+			totalWritten = 0;
+			while( totalWritten < bytesRead )
+			{
+				bytesWritten = write( fdDst, buffer + totalWritten, bytesRead - totalWritten );
+				if( bytesWritten < 0 )
+				{
+					close( fdSrc );
+					close( fdDst );
+					unlink( destination );
+					return false;
+				}
+				totalWritten += bytesWritten;
+			}
+		}
+
+		close( fdSrc );
+		close( fdDst );
+		return true;
+	}
+
+
+	bool directory_create( const char *path )
 	{
 		char dir[PATH_SIZE];
 		strjoin( dir, "." SLASH, path );
-		mkdir( dir, 0777 );
+		return mkdir( dir, 0777 ) == 0;
 	}
 
 
@@ -173,6 +381,110 @@ static bool char_is_slash( const char c )
 				list.add( info );
 			}
 		} while ( ( entry = readdir( dir ) ) != nullptr );
+
+		closedir( dir );
+		return true;
+	}
+
+
+	bool directory_delete( const char *path )
+	{
+		struct dirent *entry;
+		DIR *dir = opendir( path );
+		if( !dir ) { return false; }
+
+		while( ( entry = readdir( dir ) ) != NULL )
+		{
+			if( strcmp( entry->d_name, "." ) == 0 || strcmp( entry->d_name, ".." ) == 0 )
+			{
+				continue;
+			}
+
+			char fullPath[PATH_SIZE];
+			snprintf( fullPath, sizeof( fullPath ), "%s/%s", path, entry->d_name );
+
+			struct stat statBuf;
+			if( lstat( fullPath, &statBuf ) != 0 )
+			{
+				closedir( dir );
+				return false;
+			}
+
+			if( S_ISDIR( statBuf.st_mode ) )
+			{
+				if( !directory_delete( fullPath ) ) { closedir(dir); return false; }
+			}
+			else
+			{
+				if( !file_delete( fullPath ) ) { closedir(dir); return false; }
+			}
+		}
+
+		closedir(dir);
+
+		if( rmdir( path ) != 0 ) { return false; }
+		return true;
+	}
+
+
+	bool directory_rename( const char *path, const char *name )
+	{
+		return file_rename( path, name );
+	}
+
+
+	bool directory_copy( const char *source, const char *destination )
+	{
+		struct stat statBuf;
+		DIR *dir;
+		struct dirent *entry;
+
+		// Get source directory information
+		if( lstat( source, &statBuf ) != 0 ) { return false; }
+
+		// Create the destination directory
+		if( mkdir( destination, statBuf.st_mode ) != 0 )
+		{
+			//if( errno != EEXIST ) { return false; }
+			return false;
+		}
+
+		// Open the source directory
+		dir = opendir( source );
+		if( !dir ) { return false; }
+
+		// Traverse the directory
+		while( ( entry = readdir( dir ) ) != NULL )
+		{
+			// Skip "." and ".."
+			if( strcmp( entry->d_name, "." ) == 0 || strcmp( entry->d_name, ".." ) == 0 )
+			{
+				continue;
+			}
+
+			char pathSource[PATH_SIZE];
+			char pathDestination[PATH_SIZE];
+
+			snprintf( pathSource, PATH_SIZE, "%s/%s", source, entry->d_name );
+			snprintf( pathDestination, PATH_SIZE, "%s/%s", destination, entry->d_name );
+
+			if( lstat( pathSource, &statBuf ) == 0 )
+			{
+				if( S_ISDIR( statBuf.st_mode ) )
+				{
+					if( !directory_copy( pathSource, pathDestination ) ) { closedir( dir ); return false; }
+				}
+				else if( S_ISREG( statBuf.st_mode ) )
+				{
+					if( !file_copy( pathSource, pathDestination ) ) { closedir( dir ); return false; }
+				}
+			}
+			else
+			{
+				closedir( dir );
+				return false;
+			}
+		}
 
 		closedir( dir );
 		return true;
@@ -436,30 +748,6 @@ bool File::close()
 	if( file == nullptr ) { return true; }
 	if( fclose( file ) != 0 ) { return false; }
 	file = nullptr;
-	return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-bool file_copy( const char *srcPath, const char *dstPath )
-{
-	// Open file
-	File file { srcPath };
-	if( !file )
-	{
-		file.close();
-		return false;
-	}
-
-	// Save file
-	if( !file.save( dstPath ) )
-	{
-		file.close();
-		return false;
-	}
-
-	// Success
-	file.close();
 	return true;
 }
 

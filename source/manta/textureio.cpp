@@ -1,8 +1,7 @@
 #include <build/textureio.hpp>
 
 #include <core/memory.hpp>
-
-#include <build/math.hpp>
+#include <core/math.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -19,7 +18,6 @@ void Texture2DBuffer::init( const u16 width, const u16 height )
 	// Allocate blank texture
 	const usize size = width * height * sizeof( rgba );
 	data = reinterpret_cast<rgba *>( memory_alloc( size ) );
-	ErrorIf( data == nullptr, "Failed to allocate memory for init Texture2DBuffer (%p: alloc %llu bytes)", data, size );
 	memory_set( data, 0, size );
 	this->width = width;
 	this->height = height;

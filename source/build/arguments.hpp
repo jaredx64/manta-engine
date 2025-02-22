@@ -62,6 +62,7 @@ struct Arguments
 	const char *clean;
 	const char *codegen;
 	const char *build;
+	const char *package;
 	const char *run;
 	const char *os;
 	const char *architecture;
@@ -86,7 +87,10 @@ struct Arguments
 		parse_argument( argc, argv, "-codegen=", codegen, ARG_OPTIONAL, "1", "0" );
 
 		// Build
-		parse_argument( argc, argv, "-build=", this->build, ARG_OPTIONAL, "1", "0" );
+		parse_argument( argc, argv, "-build=", build, ARG_OPTIONAL, "1", "0" );
+
+		// Package
+		parse_argument( argc, argv, "-package=", package, ARG_OPTIONAL, "1", "0" );
 
 		// Run
 		parse_argument( argc, argv, "-run=", run, ARG_OPTIONAL, "1", "0" );

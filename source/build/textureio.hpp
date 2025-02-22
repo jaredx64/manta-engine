@@ -10,7 +10,7 @@
 
 class Texture2DBuffer
 {
-_PUBLIC:
+public:
 	Texture2DBuffer() : data( nullptr ), width( 0 ), height( 0 ) { }
 	Texture2DBuffer( const u16 width, const u16 height ) { init( width, height ); }
 	Texture2DBuffer( const char *path ) { load( path ); }
@@ -21,7 +21,7 @@ _PUBLIC:
 	Texture2DBuffer &operator=( const Texture2DBuffer &other ) { copy( other ); return *this; }
 	Texture2DBuffer &operator=( Texture2DBuffer &&other ) { move( static_cast<Texture2DBuffer &&>( other ) ); return *this; }
 
-_PUBLIC:
+public:
 	void init( const u16 width, const u16 height );
 	void free();
 	void copy( const Texture2DBuffer &other );
@@ -67,8 +67,14 @@ _PUBLIC:
 	rgba &operator[]( const u32 index ) { return at( index ); }
 	explicit operator bool() const { return data != nullptr; }
 
-_PUBLIC:
+public:
 	rgba *data = nullptr;
 	u16 width;
 	u16 height;
 };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+extern bool png_to_ico( const char *pathPNG, const char *pathICO );
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

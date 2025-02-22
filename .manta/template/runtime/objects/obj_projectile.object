@@ -11,7 +11,7 @@ SOURCE_INCLUDES
 #include <manta/window.hpp>
 #include <manta/input.hpp>
 #include <manta/draw.hpp>
-#include <manta/math.hpp>
+#include <core/math.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Object

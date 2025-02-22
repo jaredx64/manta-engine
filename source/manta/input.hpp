@@ -4,17 +4,16 @@
 
 #include <core/debug.hpp>
 #include <core/types.hpp>
-
-#include <manta/math.hpp>
+#include <core/math.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class Keyboard
 {
-_PRIVATE:
+private:
 	static Keyboard *keyboard;
 
-_PUBLIC:
+public:
 	Keyboard()
 	{
 		keyboard_clear();
@@ -58,7 +57,7 @@ _PUBLIC:
 	static void update( const Delta delta ) { return keyboard->keyboard_update( delta ); }
 	static void clear() { return keyboard->keyboard_clear(); }
 
-_PRIVATE:
+private:
 	// Private API
 	bool keyboard_check( u8 key );
 	bool keyboard_check_pressed( u8 key );
@@ -76,7 +75,7 @@ _PRIVATE:
 	void keyboard_update( const Delta delta );
 	void keyboard_clear();
 
-_PUBLIC:
+public:
 	State keyboardState;
 };
 
@@ -338,10 +337,10 @@ enum
 
 class Mouse
 {
-_PRIVATE:
+private:
 	static Mouse *mouse;
 
-_PUBLIC:
+public:
 	Mouse()
 	{
 		mouse_clear();
@@ -395,7 +394,7 @@ _PUBLIC:
 	static void update( const Delta delta ) { mouse->mouse_update( delta ); }
 	static void clear() { mouse->mouse_clear(); }
 
-_PRIVATE:
+private:
 	// Private API
 	bool mouse_check( u8 button );
 	bool mouse_check_pressed( u8 button );
@@ -417,7 +416,7 @@ _PRIVATE:
 	void mouse_update( const Delta delta );
 	void mouse_clear();
 
-_PUBLIC:
+public:
 	State mouseState;
 };
 

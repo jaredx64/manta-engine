@@ -1,11 +1,12 @@
 #include <manta/audio.hpp>
 
 #include <vendor/new.hpp>
+
 #include <core/debug.hpp>
+#include <core/math.hpp>
 
 #include <manta/thread.hpp>
 #include <manta/assets.hpp>
-#include <manta/math.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -411,6 +412,7 @@ static_assert( ARRAY_LENGTH( effectFunctions ) == SysAudio::EFFECTTYPE_COUNT, "M
 
 bool SysAudio::init()
 {
+#if AUDIO_ENABLED
 	// Initialize Audio Buses & Voices
 	for( int i = 0; i < AUDIO_BUS_COUNT; i++ ) { new ( &buses[i] ) SysAudio::Bus { }; }
 	for( int i = 0; i < AUDIO_VOICE_COUNT; i++ ) { new ( &voices[i] ) SysAudio::Voice { }; }
@@ -420,21 +422,20 @@ bool SysAudio::init()
 	if constexpr ( Assets::soundSampleDataSize == 0 ) { return true; }
 
 	g_AUDIO_SAMPLES = reinterpret_cast<i16 *>( memory_alloc( Assets::soundSampleDataSize ) );
-	ErrorReturnIf( g_AUDIO_SAMPLES == nullptr, false,
-		"Audio: failed to allocate samples buffer (%llu bytes)", Assets::soundSampleDataSize );
 	memory_copy( g_AUDIO_SAMPLES, &Assets::binary.data[Assets::soundSampleDataOffset], Assets::soundSampleDataSize );
 
 	// Initialize Backend
 	bool failure = !init_backend();
 	ErrorReturnIf( failure, false, "Audio: failed to initialize audio backend" );
+#endif
 
-	// Success
 	return true;
 }
 
 
 bool SysAudio::free()
 {
+#if AUDIO_ENABLED
 	// Free Backend
 	bool failure = !free_backend();
 	ErrorReturnIf( failure, false, "Audio: failed to free audio backend" );
@@ -451,8 +452,8 @@ bool SysAudio::free()
 	{
 		new ( &voices[i] ) Voice { };
 	}
+#endif
 
-	// Success
 	return true;
 }
 
@@ -488,13 +489,13 @@ static int find_bus()
 
 void SysAudio::audio_mixer( i16 *output, u32 frames )
 {
+#if AUDIO_ENABLED
 	const int CHANNELS = 2; // TODO
 	const usize framesBufferI16Size = frames * CHANNELS * sizeof( i16 );
 	const usize framesBufferFloatSize = frames * CHANNELS * sizeof( float );
 
 	// Allocate float buffer
 	byte *buffer = reinterpret_cast<byte *>( memory_alloc( 3 * framesBufferFloatSize ) ); // TODO: Remove malloc
-	ErrorIf( buffer == nullptr, "Audio: Failed to allocate memory for mixing buffer" );
 	float *bufferBus = reinterpret_cast<float *>( &buffer[0 * framesBufferFloatSize] );
 	float *bufferVoice = reinterpret_cast<float *>( &buffer[1 * framesBufferFloatSize] );
 	float *bufferMaster = reinterpret_cast<float *>( &buffer[2 * framesBufferFloatSize] );
@@ -619,6 +620,7 @@ void SysAudio::audio_mixer( i16 *output, u32 frames )
 
 	// Free float buffer
 	memory_free( buffer );
+#endif
 }
 
 

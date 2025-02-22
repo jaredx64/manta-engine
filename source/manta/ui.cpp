@@ -1,8 +1,14 @@
 #include <manta/ui.hpp>
 
+#include <core/math.hpp>
+
 #include <manta/objects.hpp>
 #include <manta/gfx.hpp>
-#include <manta/math.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Object UI::hoverWidgetID = Object { };
+UIContext *UI::hoverWidgetContext = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -15,6 +21,15 @@ bool SysUI::init()
 bool SysUI::free()
 {
 	return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void UI::update( const Delta delta )
+{
+	if( Mouse::check( mb_left ) ) { return; }
+	hoverWidgetID = Object { };
+	hoverWidgetContext = nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -452,15 +467,12 @@ Object UIContext::get_widget_top()
 void UIContext::update_widgets( const Delta delta )
 {
 	// Mouse & Top Widget
-	if( !Mouse::check( mb_left ) )
+	hoverWidget = ( !Mouse::check( mb_left ) ) ? Object { } : hoverWidget;
+	for( auto widget = widgets.rbegin(); widget != widgets.rend(); ++widget )
 	{
-		hoverWidget = Object { };
-		for( auto widget = widgets.rbegin(); widget != widgets.rend(); ++widget )
-		{
-			ObjectHandle<UIWidget> handle = objects.handle<UIWidget>( *widget ); Assert( handle );
-			if( !handle->hoverable || handle->parent ) { continue; }
-			if( test_widget( handle ) ) { break; }
-		}
+		ObjectHandle<UIWidget> handle = objects.handle<UIWidget>( *widget ); Assert( handle );
+		if( !handle->hoverable || handle->parent ) { continue; }
+		if( test_widget( handle ) ) { break; }
 	}
 	if( hoverWidget && Mouse::check_pressed( mb_left ) ) { widget_send_top( hoverWidget ); }
 
@@ -572,7 +584,12 @@ bool UIContext::test_widget( ObjectHandle<UIWidget> &widgetHandle )
 
 	// Test Widget
 	const bool hovering = widgetHandle->contains_point( floatv2 { mouse_x, mouse_y } );
-	if( hovering ) { hoverWidget = widgetHandle->id; }
+	if( hovering )
+	{
+		if( !Mouse::check( mb_left ) ) { hoverWidget = widgetHandle->id; } // TODO: Clean this
+		UI::hoverWidgetID = hoverWidget;
+		UI::hoverWidgetContext = this;
+	}
 
 	// Test Children
 	if( widgetHandle->children.count() > 0 && ( hovering || !widgetHandle->container ) )

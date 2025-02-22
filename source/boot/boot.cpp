@@ -27,7 +27,7 @@ static char pathOutputGeneratedConfig[PATH_SIZE];
 static char pathOutputRuntime[PATH_SIZE];
 static char pathOutputRuntimeLicenses[PATH_SIZE];
 static char pathOutputRuntimeDistributables[PATH_SIZE];
-static char pathOutputPackage[PATH_SIZE];
+static char pathPackage[PATH_SIZE];
 
 static char pathSourceManta[PATH_SIZE];
 static char pathSourceMantaBuild[PATH_SIZE];
@@ -97,7 +97,7 @@ int main( int argc, char **argv )
 		strjoin_path( pathOutputRuntimeDistributables, pathOutputRuntime, "distributables" );
 
 		// projects/<project>/output/package
-		strjoin_path( pathOutputPackage, pathOutput, "package" );
+		strjoin_path( pathPackage, pathOutput, "packages" );
 	}
 
 	// C++ Source Paths
@@ -146,7 +146,7 @@ int main( int argc, char **argv )
 		directory_delete( pathOutputBuild, true );
 		directory_delete( pathOutputGenerated, true );
 		directory_delete( pathOutputRuntime, true );
-		directory_delete( pathOutputPackage, true );
+		directory_delete( pathPackage, true );
 	}
 
 	directory_create( pathOutputBuild );
@@ -201,6 +201,7 @@ int main( int argc, char **argv )
 				swrite( buffer, file );
 
 		swrite( "\n// Graphics Backend\n", file );
+		MACRO_GRAPHICS_API( "GRAPHICS_NONE", "none" );
 		MACRO_GRAPHICS_API( "GRAPHICS_D3D12", "d3d12" );
 		MACRO_GRAPHICS_API( "GRAPHICS_D3D11", "d3d11" );
 		MACRO_GRAPHICS_API( "GRAPHICS_OPENGL", "opengl" );

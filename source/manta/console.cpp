@@ -2,16 +2,18 @@
 
 #include <core/list.hpp>
 #include <core/string.hpp>
+#include <core/math.hpp>
+#include <core/color.hpp>
 
 #include <manta/window.hpp>
 #include <manta/input.hpp>
 #include <manta/window.hpp>
 #include <manta/draw.hpp>
 #include <manta/text.hpp>
-#include <manta/color.hpp>
 #include <manta/ui.hpp>
 #include <manta/objects.hpp>
-#include <manta/math.hpp>
+#include <manta/time.hpp>
+#include <manta/thread.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -71,7 +73,7 @@ enum_type( CommandCompare, int )
 
 class Token
 {
-_PUBLIC:
+public:
 	Token()
 	{
 		string[0] = '\0';
@@ -166,7 +168,7 @@ _PUBLIC:
 		}
 	};
 
-_PUBLIC:
+public:
 	char string[TOKEN_SIZE];
 	u8 length;
 };
@@ -175,7 +177,7 @@ _PUBLIC:
 
 class Command
 {
-_PUBLIC:
+public:
 	Command() { };
 	Command( const Command &other ) { }
 	Command( Command &&other ) { }
@@ -228,7 +230,8 @@ _PUBLIC:
 				numRequiredTokens++;
 			}
 
-			ErrorIf( numParams > PARAMETERS_MAX, "Console: exceeded maximum number of allowed parameters (%d)\n\n\t'%s'",
+			ErrorIf( numParams > PARAMETERS_MAX,
+				"Console: exceeded maximum number of allowed parameters (%d)\n\n\t'%s'",
 				PARAMETERS_MAX, definition )
 
 			// Register token
@@ -353,7 +356,8 @@ _PUBLIC:
 		Console::set_input( buffer );
 	}
 
-_PUBLIC:
+public:
+	CommandHandle handle = 0;
 	char string[COMMAND_SIZE];
 	const char *description;
 	CONSOLE_COMMAND_FUNCTION_POINTER( function ) = nullptr;
@@ -383,17 +387,17 @@ struct CommandHistory
 
 struct LogLine
 {
-	LogLine( const char *string, const char *command, const Color color )
+	LogLine( const Color color, const char *command, const char *string )
 	{
-		snprintf( this->string, sizeof( this->string ), "%s", string );
-		snprintf( this->command, sizeof( this->command ), "%s", command );
 		this->color = color;
+		snprintf( this->command, sizeof( this->command ), "%s", command );
+		snprintf( this->string, sizeof( this->string ), "%s", string );
 	}
 
-	char string[COMMAND_SIZE];
-	char command[COMMAND_SIZE];
-
 	Color color;
+	char command[COMMAND_SIZE];
+	char string[COMMAND_SIZE];
+
 	float tween = 0.0f;
 };
 
@@ -401,7 +405,7 @@ struct LogLine
 
 class Region
 {
-_PUBLIC:
+public:
 	Region() { reset(); }
 
 	void reset()
@@ -580,7 +584,7 @@ _PUBLIC:
 		valueTo = clamp( position, 0.0f, 1.0f );
 	}
 
-_PUBLIC:
+public:
 	bool dirty;
 	bool hover;
 	intv2 offset;
@@ -606,6 +610,9 @@ namespace SysConsole
 	static bool updateCandidates = false;
 	static bool hideCandidates = false;
 
+	static bool stdinAlive = false;
+	static bool stdinKill = false;
+
 	static TextEditor input;
 	static char buffer[LINE_SIZE];
 
@@ -613,7 +620,9 @@ namespace SysConsole
 	static List<Token> tokens;
 	static List<Command> commands;
 	static List<CommandHistory> history;
-	static List<CommandHandle> candidates[COMMANDCOMPARE_COUNT];
+	static List<usize> candidates[COMMANDCOMPARE_COUNT];
+
+	static CommandHandle handleCurrent = 0;
 
 	static usize logIndex = USIZE_MAX;
 	static usize historyIndex = USIZE_MAX;
@@ -638,7 +647,7 @@ namespace SysConsole
 			for( const usize &candidate : SysConsole::candidates[i] )
 			{
 				Assert( candidate < SysConsole::commands.count() );
-				if( j++ == index ) { return SysConsole::commands[candidate]; }
+				if( static_cast<usize>( j++ ) == index ) { return SysConsole::commands[candidate]; }
 			}
 		}
 
@@ -695,6 +704,25 @@ namespace SysConsole
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+THREAD_FUNCTION( stdin_listener )
+{
+	char buffer[256];
+
+	SysConsole::stdinAlive = true;
+	while( !SysConsole::stdinKill )
+	{
+		Thread::sleep( 100 );
+		if( fgets( buffer, sizeof( buffer ), stdin ) == nullptr ) { continue; }
+		Console::command_execute( buffer );
+		buffer[0] = '\0';
+	}
+	SysConsole::stdinAlive = false;
+
+	return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 bool SysConsole::init()
 {
 	// Init Objects & UI Context
@@ -724,30 +752,6 @@ bool SysConsole::init()
 	// System Ready
 	SysConsole::initialized = true;
 
-	// Built-in Commands
-	Console::command_register( "help", "Lists all available commands", CONSOLE_COMMAND_LAMBDA
-		{
-			char buffer[COMMAND_SIZE];
-
-			Console::Log( "" );
-			for( auto itr = SysConsole::commands.rbegin(); itr != SysConsole::commands.rend(); ++itr )
-			{
-				const Command &command = *itr;
-				if( command.hidden || command.disabled ) { continue; }
-
-				const u8 length = min( static_cast<usize>( strlen( command.string ) ),
-					min( static_cast<usize>( strchr( command.string, PARAMETER_CHAR_REQUIRED ) - command.string ),
-						 static_cast<usize>( strchr( command.string, PARAMETER_CHAR_OPTIONAL ) - command.string ) ) );
-
-				snprintf( buffer, sizeof( buffer ), "  %.*s", length, command.string );
-				Console::Log( buffer, c_white, &buffer[2] );
-			}
-			Console::Log( "Available Commands:", c_yellow );
-		} );
-
-	Console::command_register( "clear", "Clears the log", CONSOLE_COMMAND_LAMBDA
-		{ Console::clear_log(); } );
-
 	// Initialize Deferred DVars
 	SysConsole::DVarInitializer &initializer = SysConsole::DVarInitializer::get_instance();
 	initializer.defer = false;
@@ -763,6 +767,45 @@ bool SysConsole::init()
 	}
 	SysConsole::DVarInitializer::reset_instance();
 
+	// Built-in Commands
+	Console::command_init( "help", "Lists all available commands", CONSOLE_COMMAND_LAMBDA
+		{
+			char buffer[COMMAND_SIZE];
+
+			Console::Log( c_white, "" );
+			for( auto itr = SysConsole::commands.rbegin(); itr != SysConsole::commands.rend(); ++itr )
+			{
+				const Command &command = *itr;
+				if( command.hidden || command.disabled ) { continue; }
+
+				const u8 length = min( static_cast<usize>( strlen( command.string ) ),
+					min( static_cast<usize>( strchr( command.string, PARAMETER_CHAR_REQUIRED ) - command.string ),
+						 static_cast<usize>( strchr( command.string, PARAMETER_CHAR_OPTIONAL ) - command.string ) ) );
+
+				snprintf( buffer, sizeof( buffer ), "  %.*s", length, command.string );
+				Console::LogCommand( c_white, &buffer[2], buffer );
+			}
+			Console::Log( c_yellow, "Available Commands:" );
+		} );
+
+	Console::command_init( "clear", "Clears the log", CONSOLE_COMMAND_LAMBDA
+		{
+			Console::clear_log();
+		} );
+
+	Console::command_init( "fps [limit]", "Sets the maximum fps", CONSOLE_COMMAND_LAMBDA
+		{
+			Frame::fpsLimit = Console::get_parameter_u32( 0, Frame::fpsLimit );
+			Console::Log( c_lime, "fps %u", Frame::fpsLimit );
+		} );
+
+#if 0
+	// Standard In Listener
+	SysConsole::stdinAlive = false;
+	SysConsole::stdinKill = false;
+	Thread::create( stdin_listener );
+#endif
+
 	// Success
 	return true;
 }
@@ -770,6 +813,12 @@ bool SysConsole::init()
 
 bool SysConsole::free()
 {
+#if 0
+	// Standard In Listener
+	SysConsole::stdinKill = true;
+	while( SysConsole::stdinAlive ) { Thread::sleep( 1 ); }
+#endif
+
 	// Close Console
 	Console::close();
 
@@ -786,6 +835,16 @@ bool SysConsole::free()
 	// Success
 	SysConsole::initialized = false;
 	return true;
+}
+
+
+Command *SysConsole::command( const CommandHandle handle )
+{
+	for( usize i = 0; i < SysConsole::commands.count(); i++ )
+	{
+		if( SysConsole::commands[i].handle == handle ) { return &SysConsole::commands[i]; }
+	}
+	return nullptr;
 }
 
 
@@ -1083,14 +1142,14 @@ void SysConsole::draw_input( const Delta delta )
 				int xOffset = input.screenX + widthInput + 1;
 				int yOffset = input.screenY + 2;
 
-				const bool skipParam = SysConsole::tokens.count() <= command->numRequiredTokens;
+				const bool skipParam = SysConsole::tokens.count() <= static_cast<usize>( command->numRequiredTokens );
 				if( skipParam && input[input->length() - 1].codepoint == ' ' ) { xOffset -= widthSpace; } else
 				if( !skipParam && input[input->length() - 1].codepoint != ' ' ) { xOffset += widthSpace; }
 
 				for( usize i = SysConsole::tokens.count(); i < command->tokens.count() + skipParam; i++ )
 				{
 					// Command Tokens
-					if( i <= command->numRequiredTokens )
+					if( i <= static_cast<usize>( command->numRequiredTokens ) )
 					{
 						const Token &token = command->tokens[i - skipParam];
 
@@ -1263,7 +1322,7 @@ void SysConsole::draw_candidates( const Delta delta )
 			const int tX = bX1 + 8 + region.offset.x;
 			const int tY = bY1 + 8 + yOffset + region.offset.y;
 
-			const bool navigating = SysConsole::candidateIndex == j++;
+			const bool navigating = SysConsole::candidateIndex == static_cast<usize>( j++ );
 			const Color colorCommand = color_mix( COLOR_COMMAND, COLOR_NAVIGATE, navigating );
 			const Color colorRequired = color_mix( COLOR_HINT_PARAMETER_REQUIRED, COLOR_NAVIGATE, navigating );
 			const Color colorOptional = color_mix( COLOR_HINT_PARAMETER_OPTIONAL, COLOR_NAVIGATE, navigating );
@@ -1361,6 +1420,19 @@ void SysConsole::draw_candidates( const Delta delta )
 	Gfx::reset_scissor();
 }
 
+
+void SysConsole::Log( const Color color, const char *command, const char *message )
+{
+	// Reset log seek position
+	SysConsole::logIndex = USIZE_MAX;
+
+	// Add line
+	if( SysConsole::log.count() >= LOG_MAX ) { SysConsole::log.remove( 0 ); }
+	SysConsole::log.add( LogLine { color, command, message } );
+	SysConsole::logRegion.set_position_percent( 0.0f, true );
+	SysConsole::logRegion.set_position_percent( 0.0f, false );
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 SysConsole::DVarInitializer &SysConsole::DVarInitializer::get_instance()
@@ -1407,7 +1479,7 @@ void SysConsole::DVarInitializer::dvar_register( const char *definition, const c
 	{
 		SysConsole::buffer[0] = '\0';
 		snprintf( SysConsole::buffer, sizeof( SysConsole::buffer ), "dv %s %s", definition, parameter );
-		CommandHandle handle = Console::command_register( SysConsole::buffer, description, function, payload );
+		CommandHandle handle = Console::command_init( SysConsole::buffer, description, function, payload );
 	}
 }
 
@@ -1450,7 +1522,7 @@ void SysConsole::DVarInitializer::dvar_release( void *payload )
 			const Command &command = SysConsole::commands[i];
 			if( command.payload == payload )
 			{
-				Console::command_release( i );
+				Console::command_free( i );
 				return;
 			}
 		}
@@ -1519,6 +1591,137 @@ void SysConsole::DVarInitializer::dvar_set_enabled( void *payload, const bool en
 				Console::command_set_enabled( i, enabled );
 				return;
 			}
+		}
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+static void dvar_color_picker_window( Color *variable )
+{
+	static Object window;
+	static Object spectrum;
+	static Object textboxes;
+	static Color *color;
+	color = variable;
+
+	// Log
+	char buffer[COMMAND_SIZE];
+	snprintf( buffer, sizeof( buffer ), "Color picker opened for %p", variable );
+	Console::Log( c_white, buffer );
+
+	// Destroy Existing window
+	ui.destroy_widget( window );
+
+	// Create New Window
+	window = ui.create_widget( UIWidget_Window );
+	auto windowHandle = ui.handle<UIWidget_Window>( window );
+	if( windowHandle )
+	{
+		windowHandle->x = 64;
+		windowHandle->y = 64;
+		windowHandle->width = 264;
+		windowHandle->height = 320;
+		windowHandle->set_min_size( 264, COMMAND_SIZE );
+		windowHandle->color = c_dkgray;
+	}
+
+	spectrum = ui.create_widget( UIWidget_ColorPicker_Spectrum, window );
+	auto spectrumHandle = ui.handle<UIWidget_ColorPicker_Spectrum>( spectrum ); Assert( spectrumHandle );
+	if( spectrumHandle )
+	{
+		spectrumHandle->set_rgba( color != nullptr ? *color : c_teal );
+
+		spectrumHandle->callbackOnUpdate = []( UIContext &context, Object widget )
+			{
+				auto widgetHandle = context.handle<UIWidget_ColorPicker_Spectrum>( widget );
+				Assert( widgetHandle );
+				auto parentHandle = context.handle<UIWidget_Window>( widgetHandle->parent );
+				Assert( parentHandle );
+
+				widgetHandle->x = 4;
+				widgetHandle->y = 4;
+				widgetHandle->width = parentHandle->width - 8;
+				widgetHandle->height = parentHandle->height - 80;
+			};
+
+		spectrumHandle->callbackOnInteract = []( UIContext &context, Object widget )
+			{
+				auto textboxesHandle = context.handle<UIWidget_ColorPicker_TextBox>( textboxes );
+				Assert( textboxesHandle );
+				auto spectrumHandle = context.handle<UIWidget_ColorPicker_Spectrum>( spectrum );
+				Assert( spectrumHandle );
+
+				const Color c = spectrumHandle->get_rgba();
+				textboxesHandle->set_rgba( c );
+				if( color != nullptr ) { *color = c; }
+			};
+	}
+
+	textboxes = ui.create_widget( UIWidget_ColorPicker_TextBox, window );
+	auto textboxesHandle = ui.handle<UIWidget_ColorPicker_TextBox>( textboxes ); Assert( spectrumHandle );
+	if( textboxesHandle )
+	{
+		textboxesHandle->set_rgba( c_teal );
+
+		textboxesHandle->callbackOnUpdate = []( UIContext &context, Object widget )
+			{
+				auto widgetHandle = context.handle<UIWidget_ColorPicker_TextBox>( widget );
+				Assert( widgetHandle );
+				auto parentHandle = context.handle<UIWidget_Window>( widgetHandle->parent );
+				Assert( parentHandle );
+
+				widgetHandle->x = 4;
+				widgetHandle->y = parentHandle->height - 68;
+			};
+
+		textboxesHandle->callbackOnInteract = []( UIContext &context, Object widget )
+			{
+				auto textboxesHandle = context.handle<UIWidget_ColorPicker_TextBox>( textboxes );
+				Assert( textboxesHandle );
+				auto spectrumHandle = context.handle<UIWidget_ColorPicker_Spectrum>( spectrum );
+				Assert( spectrumHandle );
+
+				const Color c = textboxesHandle->get_rgba();
+				spectrumHandle->set_rgba( c );
+				if( color != nullptr ) { *color = c; }
+			};
+	}
+}
+
+
+static void dvar_render_target_window( GfxRenderTarget2D *variable )
+{
+	// Log
+	char buffer[COMMAND_SIZE];
+	snprintf( buffer, sizeof( buffer ), "Render target inspector opened for %p", variable );
+	Console::Log( c_white, buffer );
+
+	// Find name
+	const char *name = "GfxRenderTarget2D";
+	for( Command &command : SysConsole::commands )
+	{
+		if( command.payload == reinterpret_cast<void *>( variable ) )
+		{
+			name = &command.string[3];
+		}
+	}
+
+	// Window
+	Object window = ui.create_widget( UIWidget_Window_GfxRenderTarget2D );
+	auto windowHandle = ui.handle<UIWidget_Window_GfxRenderTarget2D>( window );
+	if( windowHandle )
+	{
+		windowHandle->x = 64;
+		windowHandle->y = 64;
+		windowHandle->color = c_dkgray;
+		windowHandle->name = name;
+
+		if( variable != nullptr )
+		{
+			windowHandle->rt = variable;
+			windowHandle->width = variable->width;
+			windowHandle->height = variable->height;
 		}
 	}
 }
@@ -1622,99 +1825,6 @@ SysConsole::DVar::DVar( bool scoped, float *variable, const char *definition, co
 }
 
 
-static void color_picker_window( Color *variable )
-{
-	static Object window;
-	static Object spectrum;
-	static Object textboxes;
-	static Color *color;
-	color = variable;
-
-	// Log
-	char buffer[COMMAND_SIZE];
-	snprintf( buffer, sizeof( buffer ), "Color picker opened for %p", variable );
-	Console::Log( buffer );
-
-	// Destroy Existing window
-	ui.destroy_widget( window );
-
-	// Create New Window
-	window = ui.create_widget( UIWidget_Window );
-	auto windowHandle = ui.handle<UIWidget_Window>( window );
-	if( windowHandle )
-	{
-		windowHandle->x = 64;
-		windowHandle->y = 64;
-		windowHandle->width = 264;
-		windowHandle->height = 320;
-		windowHandle->set_min_size( 264, COMMAND_SIZE );
-		windowHandle->color = c_dkgray;
-	}
-
-	spectrum = ui.create_widget( UIWidget_ColorPicker_Spectrum, window );
-	auto spectrumHandle = ui.handle<UIWidget_ColorPicker_Spectrum>( spectrum ); Assert( spectrumHandle );
-	if( spectrumHandle )
-	{
-		spectrumHandle->set_rgba( color != nullptr ? *color : c_teal );
-
-		spectrumHandle->callbackOnUpdate = []( UIContext &context, Object widget )
-			{
-				auto widgetHandle = context.handle<UIWidget_ColorPicker_Spectrum>( widget );
-				Assert( widgetHandle );
-				auto parentHandle = context.handle<UIWidget_Window>( widgetHandle->parent );
-				Assert( parentHandle );
-
-				widgetHandle->x = 4;
-				widgetHandle->y = 4;
-				widgetHandle->width = parentHandle->width - 8;
-				widgetHandle->height = parentHandle->height - 80;
-			};
-
-		spectrumHandle->callbackOnInteract = []( UIContext &context, Object widget )
-			{
-				auto textboxesHandle = context.handle<UIWidget_ColorPicker_TextBox>( textboxes );
-				Assert( textboxesHandle );
-				auto spectrumHandle = context.handle<UIWidget_ColorPicker_Spectrum>( spectrum );
-				Assert( spectrumHandle );
-
-				const Color c = spectrumHandle->get_rgba();
-				textboxesHandle->set_rgba( c );
-				if( color != nullptr ) { *color = c; }
-			};
-	}
-
-	textboxes = ui.create_widget( UIWidget_ColorPicker_TextBox, window );
-	auto textboxesHandle = ui.handle<UIWidget_ColorPicker_TextBox>( textboxes ); Assert( spectrumHandle );
-	if( textboxesHandle )
-	{
-		textboxesHandle->set_rgba( c_teal );
-
-		textboxesHandle->callbackOnUpdate = []( UIContext &context, Object widget )
-			{
-				auto widgetHandle = context.handle<UIWidget_ColorPicker_TextBox>( widget );
-				Assert( widgetHandle );
-				auto parentHandle = context.handle<UIWidget_Window>( widgetHandle->parent );
-				Assert( parentHandle );
-
-				widgetHandle->x = 4;
-				widgetHandle->y = parentHandle->height - 68;
-			};
-
-		textboxesHandle->callbackOnInteract = []( UIContext &context, Object widget )
-			{
-				auto textboxesHandle = context.handle<UIWidget_ColorPicker_TextBox>( textboxes );
-				Assert( textboxesHandle );
-				auto spectrumHandle = context.handle<UIWidget_ColorPicker_Spectrum>( spectrum );
-				Assert( spectrumHandle );
-
-				const Color c = textboxesHandle->get_rgba();
-				spectrumHandle->set_rgba( c );
-				if( color != nullptr ) { *color = c; }
-			};
-	}
-}
-
-
 SysConsole::DVar::DVar( bool scoped, Color *variable, const char *definition, const char *description )
 {
 	Assert( variable != nullptr );
@@ -1726,7 +1836,7 @@ SysConsole::DVar::DVar( bool scoped, Color *variable, const char *definition, co
 			Assert( payload != nullptr );
 			if( Console::get_parameter_count() == 0 )
 			{
-				color_picker_window( reinterpret_cast<Color *>( payload ) );
+				dvar_color_picker_window( reinterpret_cast<Color *>( payload ) );
 			}
 			else
 			{
@@ -1739,9 +1849,23 @@ SysConsole::DVar::DVar( bool scoped, Color *variable, const char *definition, co
 		} );
 }
 
+
+SysConsole::DVar::DVar( bool scoped, GfxRenderTarget2D *variable, const char *definition, const char *description )
+{
+	Assert( variable != nullptr );
+	payload = scoped ? reinterpret_cast<void *>( variable ) : nullptr;
+
+	SysConsole::DVarInitializer::dvar_register( definition, "", description, variable,
+		CONSOLE_COMMAND_LAMBDA
+		{
+			Assert( payload != nullptr );
+			dvar_render_target_window( reinterpret_cast<GfxRenderTarget2D *>( payload ) );
+		} );
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-CommandHandle Console::command_register( const char *definition, const char *description,
+CommandHandle Console::command_init( const char *definition, const char *description,
 	CONSOLE_COMMAND_FUNCTION_POINTER( function ), void *payload )
 {
 	Assert( SysConsole::initialized );
@@ -1758,43 +1882,46 @@ CommandHandle Console::command_register( const char *definition, const char *des
 	}
 
 	// Register Command
-	const CommandHandle handle = SysConsole::commands.count();
 	Command &command = SysConsole::commands.add( Command { } );
 	command.init( definition, description, function, payload );
+	command.handle = SysConsole::handleCurrent++;
 	command.hidden = hidden;
 	for( int i = 0; i < PARAMETERS_MAX; i++ ) { command.paramDesc[i] = ""; }
 	SysConsole::updateCandidates = true;
-	return handle;
+	return command.handle ;
 }
 
 
 void Console::command_param_description( const CommandHandle command, const int param, const char *description )
 {
 	Assert( SysConsole::initialized );
-	Assert( command < SysConsole::commands.count() );
-	Command &cmd = SysConsole::commands[command];
-	Assert( param < cmd.numParams );
-	cmd.paramDesc[param] = description;
+	Command *cmd = SysConsole::command( command );
+	Assert( cmd != nullptr );
+	Assert( param < cmd->numParams );
+	cmd->paramDesc[param] = description;
 }
 
 
-void Console::command_release( const CommandHandle command )
+void Console::command_free( const CommandHandle command )
 {
 	Assert( SysConsole::initialized );
-	Assert( command < SysConsole::commands.count() );
-	Command &cmd = SysConsole::commands[command];
-	cmd.free();
-	SysConsole::commands.remove( command );
-	SysConsole::updateCandidates = true;
+	for( usize i = 0; i < SysConsole::commands.count(); i++ )
+	{
+		Command &cmd = SysConsole::commands[i];
+		if( cmd.handle != command ) { continue; }
+		cmd.free();
+		SysConsole::commands.remove( i );
+		SysConsole::updateCandidates = true;
+	}
 }
 
 
 void Console::command_set_hidden( const CommandHandle command, const bool hidden )
 {
 	Assert( SysConsole::initialized );
-	Assert( command < SysConsole::commands.count() );
-	Command &cmd = SysConsole::commands[command];
-	cmd.hidden = hidden;
+	Command *cmd = SysConsole::command( command );
+	Assert( cmd != nullptr );
+	cmd->hidden = hidden;
 	SysConsole::updateCandidates = true;
 }
 
@@ -1802,9 +1929,9 @@ void Console::command_set_hidden( const CommandHandle command, const bool hidden
 void Console::command_set_enabled( const CommandHandle command, const bool enabled )
 {
 	Assert( SysConsole::initialized );
-	Assert( command < SysConsole::commands.count() );
-	Command &cmd = SysConsole::commands[command];
-	cmd.disabled = !enabled;
+	Command *cmd = SysConsole::command( command );
+	Assert( cmd != nullptr );
+	cmd->disabled = !enabled;
 	SysConsole::updateCandidates = true;
 }
 
@@ -2103,7 +2230,7 @@ bool Console::command_execute( const char *command )
 	// Error
 	char buffer[COMMAND_SIZE];
 	snprintf( buffer, sizeof( buffer ), "Unknown command: '%s'", command );
-	Console::Log( buffer, c_red );
+	Console::Log( c_red, buffer );
 	return false;
 }
 
@@ -2111,13 +2238,14 @@ bool Console::command_execute( const char *command )
 bool Console::command_execute( const CommandHandle command, const char *parameters )
 {
 	Assert( command < SysConsole::commands.count() );
-	const Command &cmd = SysConsole::commands[command];
+	Command *cmd = SysConsole::command( command );
+	Assert( cmd != nullptr );
 
 	// Command Tokens
 	SysConsole::buffer[0] = '\0';
-	for( int i = 0; i <= cmd.numRequiredParams; i++ )
+	for( int i = 0; i <= cmd->numRequiredParams; i++ )
 	{
-		strappend( SysConsole::buffer, cmd.tokens[i].string );
+		strappend( SysConsole::buffer, cmd->tokens[i].string );
 		strappend( SysConsole::buffer, " " );
 	}
 
@@ -2148,16 +2276,27 @@ void Console::dump_log( const char *path )
 }
 
 
-void Console::Log( const char *string, const Color color, const char *command )
+void Console::Log( const Color color, const char *message, ... )
 {
-	// Reset log seek position
-	SysConsole::logIndex = USIZE_MAX;
+	va_list args;
+	va_start( args, message );
+	char buffer[1024];
+	vsnprintf( buffer, sizeof( buffer ), message, args );
+	va_end( args );
 
-	// Add line
-	if( SysConsole::log.count() >= LOG_MAX ) { SysConsole::log.remove( 0 ); }
-	SysConsole::log.add( LogLine { string, command, color } );
-	SysConsole::logRegion.set_position_percent( 0.0f, true );
-	SysConsole::logRegion.set_position_percent( 0.0f, false );
+	SysConsole::Log( color, "", buffer );
+}
+
+
+void Console::LogCommand( const Color color, const char *command, const char *message, ... )
+{
+	va_list args;
+	va_start( args, message );
+	char buffer[1024];
+	vsnprintf( buffer, sizeof( buffer ), message, args );
+	va_end( args );
+
+	SysConsole::Log( color, command, buffer );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2214,6 +2353,17 @@ bool Console::get_parameter_bool( const int param, const bool defaultValue )
 {
 	const char *parameter = Console::get_parameter_string( param );
 	if( parameter[0] == '\0' ) { return defaultValue; }
+	if( parameter[0] == 't' || parameter[0] == 'y' ) { return true; }
+	if( parameter[0] == 'f' || parameter[0] == 'n' ) { return false; }
+	return atoi( parameter );
+}
+
+
+bool Console::get_parameter_toggle( const int param, const bool currentValue )
+{
+	if( Console::get_parameter_count() <= static_cast<usize>( param ) ) { return !currentValue; }
+	const char *parameter = Console::get_parameter_string( param );
+	if( parameter[0] == '\0' ) { return currentValue; }
 	if( parameter[0] == 't' || parameter[0] == 'y' ) { return true; }
 	if( parameter[0] == 'f' || parameter[0] == 'n' ) { return false; }
 	return atoi( parameter );

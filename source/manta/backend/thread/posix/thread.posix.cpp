@@ -33,56 +33,56 @@ void *Thread::create( ThreadFunction function )
 
 void Mutex::init()
 {
-	//pthread_mutex_init( &mutex, nullptr );
+	pthread_mutex_init( &mutex, nullptr );
 }
 
 
 void Mutex::free()
 {
-	//pthread_mutex_destroy( &mutex );
+	pthread_mutex_destroy( &mutex );
 }
 
 
 void Mutex::lock()
 {
-	//pthread_mutex_lock( &mutex );
+	pthread_mutex_lock( &mutex );
 }
 
 
 void Mutex::unlock()
 {
-	//pthread_mutex_unlock( &mutex );
+	pthread_mutex_unlock( &mutex );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void Condition::init()
 {
-	//pthread_cond_init( &condition, nullptr );
+	pthread_cond_init( &condition, nullptr );
 }
 
 
 void Condition::free()
 {
-	//pthread_cond_destroy( &condition );
+	pthread_cond_destroy( &condition );
 }
 
 
 void Condition::sleep( Mutex &mutex )
 {
-	//pthread_cond_wait( &condition, &mutex.mutex );
+	pthread_cond_wait( &condition, &mutex.mutex );
 }
 
 
 void Condition::wake()
 {
-	//pthread_cond_signal( &condition );
+	pthread_cond_signal( &condition );
 }
 
 
 void Condition::wake_all()
 {
-	//pthread_cond_broadcast( &condition );
+	pthread_cond_broadcast( &condition );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

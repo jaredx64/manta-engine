@@ -14,6 +14,9 @@
 	#define min CONFLICT_min
 	#define max CONFLICT_max
 
+	// time.h (MacOS)
+	#define time CONFLICT_time
+
 	// stdlib.h
 	#define random CONFLICT_random
 
@@ -34,6 +37,9 @@
 	// ...
 	#undef min
 	#undef max
+
+	// time.h (MacOS)
+	#undef time
 
 	// stdlib.h
 	#undef random

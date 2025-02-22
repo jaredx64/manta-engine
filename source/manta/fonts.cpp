@@ -7,12 +7,12 @@
 #include <core/string.hpp>
 #include <core/list.hpp>
 #include <core/utf8.hpp>
+#include <core/color.hpp>
 
 #include <manta/draw.hpp>
 #include <manta/filesystem.hpp>
 #include <manta/textureio.hpp>
 #include <manta/gfx.hpp>
-#include <manta/color.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -107,7 +107,6 @@ bool SysFonts::init()
 	                       SysFonts::FONTS_TABLE_SIZE *
 	                       sizeof( SysFonts::FontGlyphEntry );
 	data = reinterpret_cast<SysFonts::FontGlyphEntry *>( memory_alloc( size ) );
-	ErrorReturnIf( data == nullptr, false, "Fonts: failed to allocate memory for table" );
 	memory_set( data, 0, size ); // Zero memory
 
 	// Load Font Metrics
@@ -129,11 +128,10 @@ bool SysFonts::init()
 	textureBuffer.clear( rgba{ 0, 0, 0, 0 } );
 
 	// Init Texture2D
-	texture2D.init( textureBuffer.data, textureBuffer.width, textureBuffer.height, GfxColorFormat_R8G8B8A8 );
+	texture2D.init( textureBuffer.data, textureBuffer.width, textureBuffer.height, GfxColorFormat_R8G8B8A8_FLOAT );
 
 	// Init bitmap buffer
 	bitmap = reinterpret_cast<byte *>( memory_alloc( SysFonts::FONTS_GLYPH_SIZE_MAX * SysFonts::FONTS_GLYPH_SIZE_MAX ) );
-	ErrorReturnIf( bitmap == nullptr, false, "Fonts: failed to allocate memory for bitmap buffer" );
 
 	// Success
 	return true;
@@ -262,7 +260,7 @@ void SysFonts::flush()
 
 	// Update GPU texture
 	texture2D.free();
-	texture2D.init( textureBuffer.data, textureBuffer.width, textureBuffer.height, GfxColorFormat_R8G8B8A8 );
+	texture2D.init( textureBuffer.data, textureBuffer.width, textureBuffer.height, GfxColorFormat_R8G8B8A8_FLOAT );
 
 	// Reset packing state
 	insertX = FONTS_GLYPH_PADDING;
@@ -308,7 +306,7 @@ void SysFonts::update()
 
 	// Update GPU texture
 	texture2D.free();
-	texture2D.init( textureBuffer.data, textureBuffer.width, textureBuffer.height, GfxColorFormat_R8G8B8A8 );
+	texture2D.init( textureBuffer.data, textureBuffer.width, textureBuffer.height, GfxColorFormat_R8G8B8A8_FLOAT );
 }
 
 

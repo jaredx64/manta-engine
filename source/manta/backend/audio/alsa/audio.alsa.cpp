@@ -113,11 +113,6 @@ static THREAD_FUNCTION ( audio_mixer_thread )
 
     // Allocate buffer
     buffer = reinterpret_cast<i16 *>( memory_alloc( buffer_size * CHANNELS * sizeof( i16 ) ) );
-	if( buffer == nullptr )
-	{
-		errorMessage = "ALSA: Failed to allocate buffer";
-		goto error;
-	}
 
     // Setup Software Parameters
     if( snd_pcm_sw_params_malloc ( &sw_params ) < 0 )
@@ -191,18 +186,22 @@ error:
 
 bool SysAudio::init_backend()
 {
+#if AUDIO_ENABLED
 	// Start Mixer Thread
 	bool failure = Thread::create( audio_mixer_thread ) == nullptr;
 	ErrorReturnIf( failure, false, "ALSA: failed to create mixer thread" );
+#endif
 
-    // Success
 	return true;
 }
 
 
 bool SysAudio::free_backend()
 {
-	// TODO
+#if AUDIO_ENABLED
+	// ...
+#endif
+
 	return true;
 }
 

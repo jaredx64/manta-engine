@@ -18,6 +18,7 @@ namespace Build
 	// Paths
 	char pathEngine[PATH_SIZE];
 	char pathProject[PATH_SIZE];
+	char pathPackages[PATH_SIZE];
 	char pathOutput[PATH_SIZE];
 	char pathOutputBoot[PATH_SIZE];
 	char pathOutputBuild[PATH_SIZE];
@@ -26,8 +27,19 @@ namespace Build
 	char pathOutputRuntime[PATH_SIZE];
 	char pathOutputRuntimeLicenses[PATH_SIZE];
 	char pathOutputRuntimeDistributables[PATH_SIZE];
-	char pathOutputPackage[PATH_SIZE];
+	char pathOutputRuntimeExecutable[PATH_SIZE];
+	char pathOutputRuntimeBinary[PATH_SIZE];
 	char pathOutputBuildCache[PATH_SIZE];
+
+	// Package
+	String packageName;
+	String packageCompany;
+	String packageVersionA;
+	String packageVersionB;
+	String packageVersionC;
+	String packageVersionD;
+	String packageIcon;
+	Source packageRC { "", "" };
 
 	// Commands
 	char commandNinja[1024];
@@ -107,45 +119,6 @@ void Build::compile_add_include_directory( const char *includePath )
 	Build::includeDirectories.add( includePath );
 }
 
-
-#if PIPELINE_OS_WINDOWS
-void Build::compile_add_rc( const char *srcPath, char *objPath )
-{
-	char buffer[PATH_SIZE];
-	path_change_extension( buffer, sizeof( buffer ), objPath, ".res"/*Build::tc.linkerExtensionObj*/ );
-	Build::rcs.add( { srcPath, buffer } );
-}
-#endif
-
-#if PIPELINE_OS_WINDOWS
-u32 Build::compile_add_rcs( const char *rcDirectory, const char *outputDirectory, const bool recurse )
-{
-	// Gather sources files
-	Timer timer;
-	List<FileInfo> sourceFiles;
-	directory_iterate( sourceFiles, rcDirectory, ".rc", recurse ); // C++
-
-	// Add sources
-	char objPath[PATH_SIZE];
-	for( FileInfo &sourceFile : sourceFiles )
-	{
-		strjoin( objPath, "objects" SLASH, sourceFile.path );
-		PrintLnColor( LOG_MAGENTA, "%s", sourceFile.path );
-		Build::compile_add_rc( sourceFile.path, objPath );
-	}
-
-	// Logging
-	const u32 sourcesCount = sourceFiles.size();
-	if( verbose_output() )
-	{
-		PrintColor( LOG_CYAN, TAB TAB "%u source%s found in: %s",
-			sourcesCount, sourcesCount == 1 ? "" : "s", rcDirectory );
-		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
-	}
-	return sourcesCount;
-}
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void BuilderCore::build( int argc, char **argv )
@@ -168,6 +141,7 @@ void BuilderCore::build( int argc, char **argv )
 		// Paths
 		strjoin( Build::pathEngine, "source" );
 		strjoin( Build::pathProject, "projects" SLASH, Build::args.project );
+		strjoin( Build::pathPackages, Build::pathProject, SLASH "packages" );
 		strjoin( Build::pathOutput, Build::pathProject, SLASH "output" );
 		strjoin( Build::pathOutputBoot, Build::pathOutput, SLASH, "boot" );
 		strjoin( Build::pathOutputBuild, Build::pathOutput, SLASH, "build" );
@@ -176,10 +150,17 @@ void BuilderCore::build( int argc, char **argv )
 		strjoin( Build::pathOutputRuntime, Build::pathOutput, SLASH, "runtime" );
 		strjoin( Build::pathOutputRuntimeLicenses, Build::pathOutputRuntime, SLASH, "licenses" );
 		strjoin( Build::pathOutputRuntimeDistributables, Build::pathOutputRuntime, SLASH, "distributables" );
-		strjoin( Build::pathOutputPackage, Build::pathOutput, SLASH, "package" );
+		strjoin( Build::pathOutputRuntimeExecutable, Build::pathOutputRuntime, SLASH,
+			Build::args.project, Build::tc.linkerExtensionExe );
+		strjoin( Build::pathOutputRuntimeBinary, Build::pathOutputRuntime, SLASH,
+			Build::args.project, ".bin" );
 		strjoin( Build::pathOutputBuildCache, Build::pathOutputBuild, SLASH "build.cache" );
 
+		// Load Package
+		package_load();
+
 		// Output Directories
+		directory_create( Build::pathPackages );
 		directory_create( Build::pathOutputRuntime );
 		directory_create( Build::pathOutputRuntimeLicenses );
 		directory_create( Build::pathOutputRuntimeDistributables );
@@ -187,68 +168,70 @@ void BuilderCore::build( int argc, char **argv )
 		directory_create( Build::pathOutputGeneratedShaders );
 	}
 
-	// Check Cache
-	{
-		build_cache();
-	}
-
 	// Build Conditions
 	bool codegen = ( strcmp( Build::args.codegen, "1" ) == 0 );
 	bool build = ( strcmp( Build::args.build, "1" ) == 0 );
+	bool package = ( strcmp( Build::args.package, "1" ) == 0 );
 	bool run = ( strcmp( Build::args.run, "1" ) == 0 );
 
-	// Build Objects
+	// Gather
 	if( codegen )
 	{
-		PrintLnColor( LOG_WHITE, "\nBuild Objects" );
+		PrintLnColor( LOG_WHITE, "\nGather Assets" );
 		Timer timer;
 
 		Objects::begin();
+		Gfx::begin();
+		Assets::begin();
+
 		objects_gather();
-		objects_cache();
-		objects_parse();
-		objects_write();
+		shaders_gather();
+		assets_gather();
 
 		PrintLnColor( LOG_WHITE, TAB "Finished (%.3f ms)", timer.elapsed_ms() );
 	}
 
-	// Build Graphics
-	if( build )
+	// Cache
+	if( codegen )
 	{
-		PrintLnColor( LOG_WHITE, "\nBuild Graphics" );
+		PrintLnColor( LOG_WHITE, "\nCheck Cache" );
 		Timer timer;
 
-		Gfx::begin();
-		shaders_gather();
+		// TODO: A dirty cache currently forces everything to be rebuilt
+
+		build_cache();
+		objects_cache();
 		shaders_cache();
-		shaders_build();
-		shaders_write();
+		assets_cache();
+		binary_cache();
 
 		PrintLnColor( LOG_WHITE, TAB "Finished (%.3f ms)", timer.elapsed_ms() );
 	}
 
-	// Build Assets
-	if( build )
+	// Build
+	if( codegen )
 	{
 		PrintLnColor( LOG_WHITE, "\nBuild Assets" );
 		Timer timer;
 
-		Assets::begin();
-		assets_gather();
-		assets_cache();
+		objects_parse();
+		objects_write();
+
+		shaders_build();
+		shaders_write();
+
 		assets_build();
 		assets_write();
 
 		PrintLnColor( LOG_WHITE, TAB "Finished (%.3f ms)", timer.elapsed_ms() );
 	}
 
-	// Build Binary
+	// Write Binary
 	if( build )
 	{
-		PrintLnColor( LOG_WHITE, "\nBuild Binary" );
+		PrintLnColor( LOG_WHITE, "\nWrite Binary" );
 		Timer timer;
 
-		binary_cache();
 		binary_write();
 
 		PrintLnColor( LOG_WHITE, TAB "Finished (%.3f ms)", timer.elapsed_ms() );
@@ -265,7 +248,7 @@ void BuilderCore::build( int argc, char **argv )
 		compile_write_ninja();
 		compile_run_ninja();
 
-		PrintLnColor( LOG_WHITE, "\n" TAB "Compile finished: %.3f s (%.3f ms)", timer.elapsed_s(), timer.elapsed_ms() );
+		PrintLnColor( LOG_WHITE, "\n" TAB "Finished: %.3f s (%.3f ms)", timer.elapsed_s(), timer.elapsed_ms() );
 	}
 
 	// Finish
@@ -273,6 +256,32 @@ void BuilderCore::build( int argc, char **argv )
 		PrintColor( LOG_GREEN, "\nBuild Finished!" );
 		PrintLnColor( LOG_WHITE, " (%.3f s)", Build::timer.elapsed_s() );
 		Build::cacheBufferCurrent.save( Build::pathOutputBuildCache );
+	}
+
+	// Package
+	if( build && package )
+	{
+		PrintLnColor( LOG_WHITE, "\nCreate Package" );
+		Timer timer;
+
+		if( strcmp( Build::args.os, "windows" ) == 0 )
+		{
+			ErrorIf( !package_windows(), "Create Package: package_windows failed" );
+		}
+		else if( strcmp( Build::args.os, "linux" ) == 0 )
+		{
+			ErrorIf( !package_linux(), "Create Package: package_linux failed" );
+		}
+		else if( strcmp( Build::args.os, "macOS" ) == 0 )
+		{
+			ErrorIf( !package_macos(), "Create Package: package_macos failed" );
+		}
+		else
+		{
+			Error( "Create Package: Unsupported OS: %s", Build::args.os );
+		}
+
+		PrintLnColor( LOG_WHITE, TAB "Finished: %.3f s (%.3f ms)", timer.elapsed_s(), timer.elapsed_ms() );
 	}
 
 	// Run Executable
@@ -293,27 +302,12 @@ void BuilderCore::parse_arguments( int argc, char **argv )
 
 void BuilderCore::build_cache()
 {
-	// Force build? (arg: -clean=1)
-	const bool force = ( strcmp( Build::args.clean, "1" ) == 0 );
-	Build::cacheDirty |= force;
+	Build::cacheDirty  = false;
+	Build::cacheDirty |= ( strcmp( Build::args.clean, "1" ) == 0 );
+	Build::cacheDirty |= ( !Build::cacheBufferPrevious.load( Build::pathOutputBuildCache, true ) );
 
-	// Cache File
-	if( !Build::cacheBufferPrevious.load( Build::pathOutputBuildCache, true ) )
-	{
-		Build::cacheDirty = true;
-	}
-
-	// Log
-	PrintColor( LOG_WHITE, "Build Cache... " );
-
-	if( Build::cacheDirty )
-	{
-		PrintLnColor( LOG_RED, force ? "dirty (force)" : "dirty" );
-	}
-	else
-	{
-		PrintLnColor( LOG_GREEN, "clean" );
-	}
+	PrintColor( LOG_WHITE, TAB "Build Cache... " );
+	PrintLnColor( Build::cacheDirty ? LOG_RED : LOG_GREEN, Build::cacheDirty ? "dirty" : "clean" );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -335,22 +329,19 @@ void BuilderCore::objects_gather()
 
 void BuilderCore::objects_cache()
 {
-	// Full rebuild?
-	Build::cacheDirtyObjects |= Build::cacheDirty;
-
-	// Mismatch object file count?
-	Build::cacheDirtyObjects |= ( Build::cacheDirty || Objects::objectFilesCount != Build::cacheBufferPrevious.read<usize>() );
+	Build::cacheDirtyObjects |= Build::cacheDirty ||
+		( Objects::objectFilesCount != Build::cacheBufferPrevious.read<usize>() );
+	Build::cacheDirty |= Build::cacheDirtyObjects;
 	Build::cacheBufferCurrent.write( Objects::objectFilesCount );
 
-	// Log
 	PrintColor( LOG_WHITE, TAB "Objects Cache... " );
-	PrintLnColor( Build::cacheDirtyObjects ? LOG_RED : LOG_GREEN, Build::cacheDirtyObjects ? "dirty" : "skip stage" );
+	PrintLnColor( Build::cacheDirtyObjects ? LOG_RED : LOG_GREEN, Build::cacheDirtyObjects ? "dirty" : "clean" );
 }
 
 
 void BuilderCore::objects_parse()
 {
-	if( !Build::cacheDirtyObjects ) { return; }
+	if( !Build::cacheDirty ) { return; }
 	PrintLnColor( LOG_WHITE, TAB "Parse Objects..." );
 
 	// Parse
@@ -360,7 +351,7 @@ void BuilderCore::objects_parse()
 
 void BuilderCore::objects_write()
 {
-	if( !Build::cacheDirtyObjects ) { return; }
+	if( !Build::cacheDirty ) { return; }
 	PrintLnColor( LOG_WHITE, TAB "Write Objects..." );
 
 	// Resolve inheritance tree
@@ -390,25 +381,19 @@ void BuilderCore::shaders_gather()
 
 void BuilderCore::shaders_cache()
 {
-	// Full rebuild?
-	Build::cacheDirtyShaders |= Build::cacheDirty;
-
-	// Mismatch asset file count?
-	Build::cacheDirtyShaders |= ( Build::cacheDirty || Gfx::shaderFileCount != Build::cacheBufferPrevious.read<usize>() );
+	Build::cacheDirtyShaders |= Build::cacheDirty ||
+		( Gfx::shaderFileCount != Build::cacheBufferPrevious.read<usize>() );
+	Build::cacheDirty |= Build::cacheDirtyShaders;
 	Build::cacheBufferCurrent.write( Gfx::shaderFileCount );
 
-	// TODO: Fix this properly (both shaders and assets depend on the binary)
-	Build::cacheDirtyAssets |= Build::cacheDirtyShaders;
-
-	// Log
 	PrintColor( LOG_WHITE, TAB "Shaders Cache... " );
-	PrintLnColor( Build::cacheDirtyShaders ? LOG_RED : LOG_GREEN, Build::cacheDirtyShaders ? "dirty" : "skip stage" );
+	PrintLnColor( Build::cacheDirtyShaders ? LOG_RED : LOG_GREEN, Build::cacheDirtyShaders ? "dirty" : "clean" );
 }
 
 
 void BuilderCore::shaders_build()
 {
-	if( !Build::cacheDirtyShaders ) { return; }
+	if( !Build::cacheDirty ) { return; }
 	PrintLnColor( LOG_WHITE, TAB "Build Shaders..." );
 
 	Gfx::build();
@@ -417,7 +402,7 @@ void BuilderCore::shaders_build()
 
 void BuilderCore::shaders_write()
 {
-	if( !Build::cacheDirtyShaders ) { return; }
+	if( !Build::cacheDirty ) { return; }
 	PrintLnColor( LOG_WHITE, TAB "Write Shaders..." );
 
 	Gfx::write();
@@ -452,31 +437,28 @@ void BuilderCore::assets_gather()
 	// Gather Meshes
 	Assets::meshes.gather( Build::pathEngine );
 	Assets::meshes.gather( Build::pathProject );
+
+	// Gather Skeleton2Ds
+	Assets::skeleton2Ds.gather( Build::pathEngine );
+	Assets::skeleton2Ds.gather( Build::pathProject );
 }
 
 
 void BuilderCore::assets_cache()
 {
-	// Full rebuild?
-	Build::cacheDirtyAssets |= Build::cacheDirty;
-
-	// Mismatch asset file count?
-	Build::cacheDirtyAssets |=
-		(
-			Build::cacheDirty ||
-			Assets::assetFileCount != Build::cacheBufferPrevious.read<usize>()
-		);
+	Build::cacheDirtyAssets |= Build::cacheDirty ||
+		( Assets::assetFileCount != Build::cacheBufferPrevious.read<usize>() );
+	Build::cacheDirty |= Build::cacheDirtyAssets;
 	Build::cacheBufferCurrent.write( Assets::assetFileCount );
 
-	// Log
 	PrintColor( LOG_WHITE, TAB "Assets Cache... " );
-	PrintLnColor( Build::cacheDirtyAssets ? LOG_RED : LOG_GREEN, Build::cacheDirtyAssets ? "dirty" : "skip stage" );
+	PrintLnColor( Build::cacheDirtyAssets ? LOG_RED : LOG_GREEN, Build::cacheDirtyAssets ? "dirty" : "clean" );
 }
 
 
 void BuilderCore::assets_build()
 {
-	if( !Build::cacheDirtyAssets ) { return; }
+	if( !Build::cacheDirty ) { return; }
 	PrintLnColor( LOG_WHITE, TAB "Build Assets..." );
 
 	// Write Textures
@@ -502,12 +484,15 @@ void BuilderCore::assets_build()
 
 	// Write Meshes
 	Assets::meshes.write();
+
+	// Write Skeleton2Ds
+	Assets::skeleton2Ds.write();
 }
 
 
 void BuilderCore::assets_write()
 {
-	if( !Build::cacheDirtyAssets ) { return; }
+	if( !Build::cacheDirty ) { return; }
 	PrintLnColor( LOG_WHITE, TAB "Write Assets..." );
 
 	// assets.generated.hpp
@@ -562,23 +547,11 @@ void BuilderCore::assets_write()
 
 void BuilderCore::binary_cache()
 {
-	// Full rebuild?
 	Build::cacheDirtyBinary |= Build::cacheDirty;
-
-	// Any binary contents to save?
 	Build::cacheDirtyBinary |= ( Assets::binary.size() > 0 );
 
-	// Log
 	PrintColor( LOG_WHITE, TAB "Binary Cache... " );
-
-	if( Build::cacheDirtyBinary )
-	{
-		PrintLnColor( LOG_RED, "dirty" );
-	}
-	else
-	{
-		PrintLnColor( LOG_GREEN, "skip stage" );
-	}
+	PrintLnColor( Build::cacheDirtyBinary ? LOG_RED : LOG_GREEN, Build::cacheDirtyBinary ? "dirty" : "clean" );
 }
 
 
@@ -586,16 +559,15 @@ void BuilderCore::binary_write()
 {
 	if( !Build::cacheDirtyBinary ) { return; }
 
-	char path[PATH_SIZE];
-	strjoin( path, Build::pathOutput, SLASH "runtime" SLASH, Build::args.project, ".bin" );
-
 	// Log
-	PrintLnColor( LOG_WHITE, TAB "Writing Binary" );
-	if( verbose_output() ) { PrintColor( LOG_CYAN, TAB TAB "Write %s", path ); }
+	PrintColor( LOG_WHITE, TAB "Writing Binary" );
+	PrintLnColor( LOG_CYAN, " (%.2f MB)", MB( Assets::binary.size() ) );
+	if( verbose_output() ) { PrintColor( LOG_CYAN, TAB TAB "Write %s", Build::pathOutputRuntimeBinary ); }
 	Timer timer;
 
 	// Write
-	ErrorIf( !Assets::binary.save( path ), "Failed to write binary (%s)", path );
+	ErrorIf( !Assets::binary.save( Build::pathOutputRuntimeBinary ),
+		"Failed to write binary (%s)", Build::pathOutputRuntimeBinary );
 
 	// Log
 	if( verbose_output() ) { PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() ); }
@@ -616,9 +588,6 @@ void BuilderCore::compile_project()
 		PrintLnColor( LOG_WHITE, TAB "Gather Project Sources..." );
 		strjoin( path, Build::pathProject, SLASH "runtime" );
 		Build::compile_add_sources( path, true, ".cpp", Build::tc.linkerExtensionObj ); // Project
-#if PIPELINE_OS_WINDOWS
-		Build::compile_add_rcs( Build::pathProject, "project", true ); // RC
-#endif
 	}
 }
 
@@ -840,16 +809,12 @@ void BuilderCore::compile_write_ninja()
 		output.append( "\n" );
 
 #if PIPELINE_OS_WINDOWS
-		// Build rc
-		for( Source &rc : Build::rcs )
-		{
-			output.append( "build " );
-			output.append( rc.objPath );
-			output.append( ": rc .." SLASH ".." SLASH ".." SLASH ".." SLASH );
-			output.append( rc.srcPath );
-			output.append( "\n" );
-		}
-		output.append( "\n" );
+		// Package RC
+		output.append( "build " );
+		output.append( Build::packageRC.objPath );
+		output.append( ": rc .." SLASH ".." SLASH ".." SLASH ".." SLASH );
+		output.append( Build::packageRC.srcPath );
+		output.append( "\n\n" );
 #endif
 
 		// Build Exe
@@ -859,7 +824,7 @@ void BuilderCore::compile_write_ninja()
 		output.append( ": link" );
 		for( Source &source : Build::sources ) { output.append( " " ).append( source.objPath ); }
 #if PIPELINE_OS_WINDOWS
-		for( Source &rc : Build::rcs ) { output.append( " " ).append( rc.objPath ); }
+		output.append( " " ).append( Build::packageRC.objPath );
 #endif
 		output.append( "\n" );
 
@@ -889,10 +854,262 @@ void BuilderCore::compile_run_ninja()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void BuilderCore::package_load()
+{
+	// Load <project>/package.json
+	String jsonFile;
+	char pathPackage[PATH_SIZE];
+	strjoin_path( pathPackage, "projects", Build::args.project, "package.json" );
+	ErrorIf( !jsonFile.load( pathPackage ), "Failed to load package.json file: %s\n", pathPackage );
+
+	// Read package.json
+	JSON json = JSON( jsonFile );
+	Build::packageName = json.get_string( "name", Build::args.project );
+	Build::packageCompany = json.get_string( "company", Build::args.project );
+	Build::packageVersionA = json.get_string( "versionA", "1" );
+	Build::packageVersionB = json.get_string( "versionB", "0" );
+	Build::packageVersionC = json.get_string( "versionC", "0" );
+	Build::packageVersionD = json.get_string( "versionD", "0" );
+
+	Build::packageIcon = json.get_string( "icon", "" );
+	if( Build::packageIcon.length_bytes() > 0 )
+	{
+		char iconPath[PATH_SIZE];
+		strjoin( iconPath, Build::pathProject, SLASH, Build::packageIcon.cstr() );
+		Build::packageIcon = iconPath;
+	}
+	else
+	{
+		Build::packageIcon = ".manta" SLASH "icon.png";
+	}
+
+	// package.rc
+#if PIPELINE_OS_WINDOWS
+	package_generate_rc();
+#endif
+}
+
+
+void BuilderCore::package_generate_rc()
+{
+	// package.rc
+	String rc = "";
+	rc.append( "1 ICON \"" ).append( Build::args.project ).append( ".ico\"\n" );
+	rc.append( "1 VERSIONINFO\n" );
+	rc.append( "\tFILEVERSION " );
+	rc.append( Build::packageVersionA ).append( "," );
+	rc.append( Build::packageVersionB ).append( "," );
+	rc.append( Build::packageVersionC ).append( "," );
+	rc.append( Build::packageVersionD ).append( "\n" );
+	rc.append( "\tPRODUCTVERSION " );
+	rc.append( Build::packageVersionA ).append( "," );
+	rc.append( Build::packageVersionB ).append( "," );
+	rc.append( Build::packageVersionC ).append( "," );
+	rc.append( Build::packageVersionD ).append( "\n" );
+	rc.append( "\tFILEFLAGSMASK 0x3F\n" );
+	rc.append( "\tFILEOS 0x04\n" );
+	rc.append( "\tFILETYPE 0x01\n" );
+	rc.append( "BEGIN\n" );
+	rc.append( "\tBLOCK \"StringFileInfo\"\n" );
+	rc.append( "\tBEGIN\n" );
+	rc.append( "\t\tBLOCK \"040904b0\"\n" );
+	rc.append( "\t\tBEGIN\n" );
+	rc.append( "\t\t\tVALUE \"CompanyName\", \"" ).append( Build::packageCompany ).append( "\"\n" );
+	rc.append( "\t\t\tVALUE \"FileDescription\", \"" ).append( Build::packageName ).append( "\"\n" );
+	rc.append( "\t\t\tVALUE \"FileVersion\", \"" );
+	rc.append( Build::packageVersionA ).append( "." );
+	rc.append( Build::packageVersionB ).append( "." );
+	rc.append( Build::packageVersionC ).append( "." );
+	rc.append( Build::packageVersionD ).append( "\"\n" );
+	rc.append( "\t\t\tVALUE \"LegalCopyright\", \"\"\n" );
+	rc.append( "\t\t\tVALUE \"ProductName\", \"" ).append( Build::packageName ).append( "\"\n" );
+	rc.append( "\t\t\tVALUE \"ProductVersion\", \"" );
+	rc.append( Build::packageVersionA ).append( "." );
+	rc.append( Build::packageVersionB ).append( "." );
+	rc.append( Build::packageVersionC ).append( "." );
+	rc.append( Build::packageVersionD ).append( "\"\n" );
+	rc.append( "\t\tEND\n" );
+	rc.append( "\tEND\n\n" );
+	rc.append( "\tBLOCK \"VarFileInfo\"\n" );
+	rc.append( "\tBEGIN\n" );
+	rc.append( "\t\tVALUE \"Translation\", 0x409, 0x4B0\n" );
+	rc.append( "\tEND\n" );
+	rc.append( "END\n" );
+
+	char pathSrc[PATH_SIZE];
+	char pathObj[PATH_SIZE];
+
+	strjoin( pathSrc, Build::pathOutputRuntime, SLASH, Build::args.project, ".rc" );
+	strjoin( pathObj, "objects" SLASH, Build::args.project, ".res" );
+
+	PrintLn( "%s", pathSrc );
+	ErrorIf( !rc.save( pathSrc ), "Failed to save %s", pathSrc );
+
+	Build::packageRC.srcPath = pathSrc;
+	Build::packageRC.objPath = pathObj;
+
+	// <project>.ico
+	char pathIco[PATH_SIZE];
+	strjoin( pathIco, Build::pathOutputRuntime, SLASH, Build::args.project, ".ico" );
+	ErrorIf( !png_to_ico( Build::packageIcon, pathIco ), "Failed to save %s.ico",
+		Build::args.project );
+}
+
+
+bool BuilderCore::package_windows()
+{
+	// Create Package Directory
+	char pathPackage[PATH_SIZE];
+	snprintf( pathPackage, PATH_SIZE, "%s" SLASH "%s-%s-%s-%s-%s", Build::pathPackages,
+		Build::args.project, Build::args.config, Build::args.architecture, Build::args.toolchain, Build::args.gfx );
+
+	directory_delete( pathPackage );
+	directory_create( pathPackage );
+
+	// Copy Package Contents
+	char pathSrc[PATH_SIZE];
+	char pathDst[PATH_SIZE];
+	{
+		// Copy exe
+		strjoin( pathSrc, Build::pathOutputRuntimeExecutable );
+		strjoin( pathDst, pathPackage, SLASH, Build::args.project, Build::tc.linkerExtensionExe );
+		if( !file_copy( pathSrc, pathDst ) ) { return false; }
+
+		// Copy .bin
+		strjoin( pathSrc, Build::pathOutputRuntimeBinary );
+		strjoin( pathDst, pathPackage, SLASH, Build::args.project, ".bin" );
+		if( !file_copy( pathSrc, pathDst ) ) { return false; }
+
+		// Copy Licenses
+		strjoin( pathSrc, Build::pathOutputRuntimeLicenses );
+		strjoin( pathDst, pathPackage, SLASH, "licenses" );
+		if( !directory_copy( pathSrc, pathDst ) ) { return false; }
+	}
+
+	PrintLn( TAB "> %s", pathPackage );
+	return true;
+}
+
+
+bool BuilderCore::package_linux()
+{
+	// Linux is basically the same as Windows in this regard
+	return package_windows();
+}
+
+
+bool BuilderCore::package_macos()
+{
+	// Create Package
+	char pathPackage[PATH_SIZE];
+	snprintf( pathPackage, PATH_SIZE, "%s" SLASH "%s-%s-%s-%s-%s.app", Build::pathPackages,
+		Build::args.project, Build::args.config, Build::args.architecture, Build::args.toolchain, Build::args.gfx );
+	directory_delete( pathPackage );
+	directory_create( pathPackage );
+
+	// Package Contents
+	char pathSrc[PATH_SIZE];
+	char pathDst[PATH_SIZE];
+	{
+		// Create .iconset directory
+		char pathIconSet[PATH_SIZE];
+		strjoin( pathIconSet, Build::pathOutputRuntime, SLASH, Build::args.project, ".iconset" );
+		directory_delete( pathIconSet );
+		if( !directory_create( pathIconSet ) ) { return false; }
+
+		// Fill <project>.iconset directory
+		char pathIconPng[PATH_SIZE];
+		strjoin( pathIconPng, pathIconSet, SLASH, "icon_16x16.png" );
+		if( !file_copy( Build::packageIcon.cstr(), pathIconPng ) ) { return false; }
+		strjoin( pathIconPng, pathIconSet, SLASH, "icon_32x32.png" );
+		if( !file_copy( Build::packageIcon.cstr(), pathIconPng ) ) { return false; }
+		strjoin( pathIconPng, pathIconSet, SLASH, "icon_64x64.png" );
+		if( !file_copy( Build::packageIcon.cstr(), pathIconPng ) ) { return false; }
+		strjoin( pathIconPng, pathIconSet, SLASH, "icon_128x128.png" );
+		if( !file_copy( Build::packageIcon.cstr(), pathIconPng ) ) { return false; }
+		strjoin( pathIconPng, pathIconSet, SLASH, "icon_256x256.png" );
+		if( !file_copy( Build::packageIcon.cstr(), pathIconPng ) ) { return false; }
+		strjoin( pathIconPng, pathIconSet, SLASH, "icon_512x512.png" );
+		if( !file_copy( Build::packageIcon.cstr(), pathIconPng ) ) { return false; }
+		strjoin( pathIconPng, pathIconSet, SLASH, "icon_512x512@2.png" );
+		if( !file_copy( Build::packageIcon.cstr(), pathIconPng ) ) { return false; }
+
+		// Generate icons (system: iconutil)
+		char iconCommand[PATH_SIZE];
+		snprintf( iconCommand, sizeof( iconCommand ), "iconutil -c icns %s", pathIconSet );
+		if( system( iconCommand ) != 0 ) { return false; }
+
+		// Copy icons
+		char pathIconIcs[PATH_SIZE];
+		strjoin( pathIconIcs, Build::pathOutputRuntime, SLASH, Build::args.project, ".icns" );
+		char pathIconPackage[PATH_SIZE];
+		strjoin( pathIconPackage, pathPackage, SLASH, Build::args.project, ".icns" );
+		if( !file_copy( pathIconIcs, pathIconPackage ) ) { return false; }
+
+		// Copy exe
+		strjoin( pathSrc, Build::pathOutputRuntimeExecutable );
+		strjoin( pathDst, pathPackage, SLASH, Build::args.project, Build::tc.linkerExtensionExe );
+		if( !file_copy( pathSrc, pathDst ) ) { return false; }
+
+		// Copy .bin
+		strjoin( pathSrc, Build::pathOutputRuntimeBinary );
+		strjoin( pathDst, pathPackage, SLASH, Build::args.project, ".bin" );
+		if( !file_copy( pathSrc, pathDst ) ) { return false; }
+
+		// Copy Licenses
+		strjoin( pathSrc, Build::pathOutputRuntimeLicenses );
+		strjoin( pathDst, pathPackage, SLASH, "licenses" );
+		if( !directory_copy( pathSrc, pathDst ) ) { return false; }
+
+		// Info.plist
+		String info = "";
+		info.append( "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" );
+		info.append( "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" " );
+		info.append( "\"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n" );
+		info.append( "<plist version=\"1.0\">\n" );
+		info.append( "<dict>\n\n" );
+		{
+			info.append( "\t<key>CFBundleExecutable</key>\n" );
+			info.append( "\t<string>" ).append( Build::args.project ).append( "</string>\n\n" );
+
+			info.append( "\t<key>CFBundleIconFile</key>\n" );
+			info.append( "\t<string>" ).append( Build::args.project ).append( "</string>\n\n" );
+
+			info.append( "\t<key>CFBundleIdentifier</key>\n" );
+			info.append( "\t<string>" );
+			info.append( "com.manta." );
+			info.append( Build::args.project ).append( "_" );
+			info.append( Build::args.config ).append( "_" );
+			info.append( Build::args.architecture ).append( "_" );
+			info.append( Build::args.gfx );
+			info.append( "</string>\n\n" );
+
+			info.append( "\t<key>CFBundleVersion</key>\n" );
+			info.append( "\t<string>1.0</string>\n\n" );
+
+			info.append( "\t<key>CFBundleShortVersionString</key>\n" );
+			info.append( "\t<string>1.0</string>\n\n" );
+
+			info.append( "\t<key>CFBundlePackageType</key>\n" );
+			info.append( "\t<string>APPL</string>\n\n" );
+		}
+		info.append( "</dict>\n" );
+		info.append( "</plist>\n" );
+
+		strjoin( pathDst, pathPackage, SLASH, "Info.plist" );
+		if( !info.save( pathDst ) ) { return false; }
+	}
+
+	PrintLn( TAB "> %s", pathPackage );
+	return true;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void BuilderCore::executable_run( int argc, char **argv )
 {
-	strjoin( Build::commandRun, Build::pathOutput, SLASH "runtime" SLASH,
-		Build::args.project, Build::tc.linkerExtensionExe );
+	strjoin( Build::commandRun, Build::pathOutputRuntimeExecutable );
 
 	// Run Executable
 	int code = system( Build::commandRun );

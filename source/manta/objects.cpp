@@ -54,7 +54,6 @@ void Object::Serialization::InstanceTable::init( const u32 reserve )
 	current = 0;
 	if( capacity == 0 ) { return; }
 	keys = reinterpret_cast<u32 *>( memory_alloc( capacity * sizeof( u32 ) ) );
-	ErrorIf( keys == nullptr, "Failed to allocate memory for ObjectSerialization::InstanceTable!" );
 }
 
 
@@ -264,18 +263,6 @@ bool ObjectContext::init()
 	buckets = reinterpret_cast<ObjectBucket *>( memory_alloc( capacity * sizeof( ObjectBucket ) ) );
 	objectCount = reinterpret_cast<u32 *>( memory_alloc( capacity * sizeof( u32 ) ) );
 	bucketCache = reinterpret_cast<u16 *>( memory_alloc( capacity * sizeof( u16 ) ) );
-
-	// Allocation failure?
-	if( buckets == nullptr || objectCount == nullptr || bucketCache == nullptr )
-	{
-		memory_free( buckets );
-		buckets = nullptr;
-		memory_free( objectCount );
-		objectCount = nullptr;
-		memory_free( bucketCache );
-		bucketCache = nullptr;
-		return false;
-	}
 
 	// Zero memory
 	memory_set( objectCount, 0, capacity * sizeof( u32 ) );
@@ -617,8 +604,8 @@ bool ObjectContext::ObjectBucket::init( const u16 type )
 
 	// Allocate Memory
 	data = reinterpret_cast<byte *>( memory_alloc( SysObjects::TYPE_BUCKET_CAPACITY[type] * SysObjects::TYPE_SIZE[type] ) );
-	if( data != nullptr ) { memory_set( data, 0, SysObjects::TYPE_BUCKET_CAPACITY[type] * SysObjects::TYPE_SIZE[type] ); return true; }
-	return false;
+	memory_set( data, 0, SysObjects::TYPE_BUCKET_CAPACITY[type] * SysObjects::TYPE_SIZE[type] );
+	return true;
 }
 
 

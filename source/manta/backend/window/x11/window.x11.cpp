@@ -39,7 +39,8 @@ namespace SysWindow
 
 	bool init( const int defaultWidth, const int defaultHeight )
 	{
-		XVisualInfo *visual;
+	#if WINDOW_ENABLED
+		XVisualInfo *visual = nullptr;
 		XSetWindowAttributes attributes;
 		XSizeHints hints;
 
@@ -51,17 +52,21 @@ namespace SysWindow
 		if( ( SysWindow::display = XOpenDisplay( nullptr ) ) == nullptr )
 			{ ErrorReturnMsg( false, "X11: Failed to open X11 display" ); }
 
+	#if GRAPHICS_OPENGL
 		// Setup Window Visual
 		if( ( visual = SysWindow::x11_create_visual() ) == nullptr )
 			{ ErrorReturnMsg( false, "X11: Failed to create X11 visual" ); }
+	#endif
 
 		// Setup Window Attribute
 		attributes.background_pixel = BlackPixel( SysWindow::display, DefaultScreen( SysWindow::display ) );
 		attributes.border_pixel = BlackPixel( SysWindow::display, DefaultScreen( SysWindow::display ) );
 		attributes.event_mask = KeyPressMask | KeyReleaseMask | ButtonPressMask |
 		                        ButtonReleaseMask | PointerMotionMask | FocusChangeMask | StructureNotifyMask;
+
+		// TODO: dependency on 'visual'
 		attributes.colormap = XCreateColormap( SysWindow::display, DefaultRootWindow( SysWindow::display ),
-		                                       visual->visual, AllocNone );
+		                                       visual != nullptr ? visual->visual : 0, AllocNone );
 
 		// Create Window
 		SysWindow::handle =
@@ -73,9 +78,9 @@ namespace SysWindow
 				Window::width,
 				Window::height,
 				0,
-				visual->depth,
+			 	visual != nullptr ?	visual->depth : 0,
 				InputOutput,
-				visual->visual,
+				visual != nullptr ? visual->visual : 0,
 				CWBackPixel | CWBorderPixel | CWEventMask | CWColormap,
 				&attributes
 			);
@@ -108,6 +113,7 @@ namespace SysWindow
 
 		// Enable detectable key auto-repeat #include <X11/XKBlib.h>
 		XkbSetDetectableAutoRepeat( SysWindow::display, true, 0 );
+	#endif
 
 		// Success
 		return true;
@@ -116,19 +122,23 @@ namespace SysWindow
 
 	bool free()
 	{
-		// Success
+	#if WINDOW_ENABLED
+		// ...
+	#endif
 		return true;
 	}
 
 
 	void show()
 	{
+	#if WINDOW_ENABLED
 		XMapRaised( SysWindow::display, SysWindow::handle );
+	#endif
 	}
 
 	void poll()
 	{
-		//PROFILE_FUNCTION();
+	#if WINDOW_ENABLED
 		while( XPending( SysWindow::display ) )
 		{
 			XEvent event;
@@ -319,21 +329,26 @@ namespace SysWindow
 				break;
 			}
 		}
+	#endif
 	}
 
 
 	void mouse_get_position( double &x, double &y )
 	{
+	#if WINDOW_ENABLED
 		// On X11, this function doesn't need to do anything special
 		x = Mouse::x();
 		y = Mouse::y();
+	#endif
 	}
 
 
 	void mouse_set_position( const int x, const int y )
 	{
+	#if WINDOW_ENABLED
 		XWarpPointer( SysWindow::display, None, SysWindow::handle, 0, 0, 0, 0, x, y );
 		XSync( SysWindow::display, false );
+	#endif
 	}
 };
 
@@ -343,32 +358,38 @@ namespace Window
 {
 	void show_message( const char *title, const char *message )
 	{
+	#if WINDOW_ENABLED
 		// TODO: implement this on linux
+	#endif
 	}
 
 
 	void show_message_error( const char *title, const char *message )
 	{
+	#if WINDOW_ENABLED
 		// TODO: implement this on linux
+	#endif
 	}
 
 
-	bool resize( int width, int height )
+	void set_size( int width, int height )
 	{
+	#if WINDOW_ENABLED
 		const XScreen *const screen = DefaultScreenOfDisplay( SysWindow::display );
-		if( !screen ) { return false; }
+		if( !screen ) { return; }
 
 		const int x = ( screen->width - width ) / 2;
 		const int y = ( screen->height - height ) / 2;
 		XResizeWindow( SysWindow::display, SysWindow::handle, width, height );
 		XMoveWindow( SysWindow::display, SysWindow::handle, x, y );
 		XFlush( SysWindow::display );
-		return true;
+	#endif
 	}
 
 
 	void set_fullscreen( bool enabled )
 	{
+	#if WINDOW_ENABLED
 		// TODO:
 		// This is based on the 'Extended Window Manager Hints' specification, so
 		// maybe you need a "modern" window manager for anything to happen.
@@ -392,29 +413,35 @@ namespace Window
 
 		// Don't forget to update the internal fullscreen state!
 		Window::fullscreen = enabled;
+	#endif
 	}
 
 
 	void set_caption( const char *caption )
 	{
+	#if WINDOW_ENABLED
 		XStoreName( SysWindow::display, SysWindow::handle, caption );
+	#endif
 	}
 
 
 	bool set_clipboard( const char *buffer )
 	{
+	#if WINDOW_ENABLED
 		// Copy 'buffer' to our local clipboard cache
 		snprintf( clipboard, sizeof( clipboard ), "%s", buffer );
 
 		// Trigger SelectionRequest events (processed in Window::poll() above)
 		XSetSelectionOwner( SysWindow::display, CLIPBOARD, SysWindow::handle, CurrentTime );
 		if( XGetSelectionOwner( SysWindow::display, CLIPBOARD ) != SysWindow::handle ) { return false; }
+	#endif
 		return true;
 	}
 
 
 	bool get_clipboard( char *buffer, const usize size )
 	{
+	#if WINDOW_ENABLED
 		// Request the clipboard
 		buffer[0] = '\0';
 		if( XGetSelectionOwner( SysWindow::display, CLIPBOARD ) == None ) { return false; }
@@ -475,6 +502,7 @@ namespace Window
 				return true;
 			}
 		}
+	#endif
 
 		// Failure
 		return false;
@@ -483,18 +511,22 @@ namespace Window
 
 	bool set_selection( const char *buffer )
 	{
+	#if WINDOW_ENABLED
 		// Copy 'buffer' to our local selection cache
 		snprintf( primary, sizeof( primary ), "%s", buffer );
 
 		// Trigger SelectionRequest events (processed in Window::poll() above)
 		XSetSelectionOwner( SysWindow::display, PRIMARY, SysWindow::handle, CurrentTime );
 		if( XGetSelectionOwner( SysWindow::display, PRIMARY ) != SysWindow::handle ) { return false; }
+	#endif
+
 		return true;
 	}
 
 
 	bool get_selection( char *buffer, const usize size )
 	{
+	#if WINDOW_ENABLED
 		// Request the selection
 		buffer[0] = '\0';
 		if( XGetSelectionOwner( SysWindow::display, PRIMARY ) == None ) { return false; }
@@ -555,6 +587,7 @@ namespace Window
 				return true;
 			}
 		}
+	#endif
 
 		// Failure
 		return false;
