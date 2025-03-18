@@ -14,9 +14,9 @@ Manta is a personal learning project not meant for open use. That said, the sour
 
 # Showcase Projects
 
-Vitality (https://www.youtube.com/watch?v=_YdTRmEN9xs) (Work in progress indie game)
+Vitality (https://www.youtube.com/watch?v=y05wb1y-OQc) (Work in progress indie game)
 
-[![Youtube Redirect](https://img.youtube.com/vi/_YdTRmEN9xs/0.jpg)](https://www.youtube.com/watch?v=_YdTRmEN9xs)
+[![Youtube Redirect](https://img.youtube.com/vi/y05wb1y-OQc/0.jpg)](https://www.youtube.com/watch?v=y05wb1y-OQc)
 
 Voxel Renderer (https://www.youtube.com/watch?v=Q8Q8c5H9kaU)
 
