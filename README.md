@@ -10,7 +10,7 @@ Manta is C++ game engine & build system currently under development designed to 
 - Employ build-time code generation for engine systems (boilerplate internals of object, asset, and render systems, etc.)
 - Have an “IDE-like” experience facilitated by a Visual Studio Code plugin (build + compile + run, debugging, project/workspace navigation, IntelliSense)
 
-Manta is a personal project not meant for open use. That said, the source is available here to browse as you please.
+Manta is a personal learning project not meant for open use. That said, the source is available here to browse as you please!
 
 # Showcase Projects
 
