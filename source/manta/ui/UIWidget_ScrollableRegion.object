@@ -40,7 +40,7 @@ PUBLIC bool hideScrollbarVertical = false;
 
 PUBLIC int scrollbarThickness = 20;
 
-PUBLIC void ( *callbackOnRenderContents )( const Delta delta, const int x, const int y ) = nullptr;
+PUBLIC void ( *callbackOnRenderContents )( const Delta delta, const int x, const int y, const Alpha alpha ) = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // CORE EVENTS
@@ -182,17 +182,17 @@ PROTECTED void update( const Delta delta )
 }
 
 
-PROTECTED void render( const Delta delta )
+PROTECTED void render( const Delta delta, const Alpha alpha )
 {
 	// Scissor
-	const intv2 b1 = intv2( x, y ).multiply( context->matrix_get() );
-	const intv2 b2 = intv2( x + width, y + height ).multiply( context->matrix_get() );
+	const int_v2 b1 = int_v2( x, y ).multiply( context->matrix_get() );
+	const int_v2 b2 = int_v2( x + width, y + height ).multiply( context->matrix_get() );
 	context->scissor_set_nested( { b1.x, b1.y, b2.x, b2.y } );
 
 	// Render Contents Callback
 	if( callbackOnRenderContents )
 	{
-		callbackOnRenderContents( delta, b1.x - offsetX, b1.y - offsetY );
+		callbackOnRenderContents( delta, b1.x - offsetX, b1.y - offsetY, alpha );
 	}
 }
 
@@ -202,12 +202,12 @@ PROTECTED void apply_matrix()
 	INHERIT::apply_matrix();
 
 	// Scroll Offset Matrix
-	const Matrix matrix = matrix_build_translation( -offsetX, -offsetY, 0.0f );
-	context->matrix_multiply( matrix );
+	const float_m44 matrix = float_m44_build_translation( -offsetX, -offsetY, 0.0f );
+	context->float_m44_multiply( matrix );
 }
 
 
-// PROTECTED bool contains_point( const floatv2 point ) { }
+// PROTECTED bool contains_point( const float_v2 point ) { }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // UTILITY FUNCTIONS

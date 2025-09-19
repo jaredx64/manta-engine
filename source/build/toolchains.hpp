@@ -14,7 +14,7 @@ struct Toolchain
 		if( strcmp( args.toolchain, "msvc" ) == 0 )
 		{
 			compilerName = "cl";
-			compilerFlags = "-c -showIncludes -nologo -std:c++20 -EHsc -DUNICODE -DCOMPILE_ENGINE";
+			compilerFlags = "-c -showIncludes -nologo -std:c++20 -EHsc -MD -DUNICODE -DCOMPILE_ENGINE";
 			compilerFlagsIncludes = "-I\"%s\"";
 			compilerFlagsWarnings = "-wd4100 -wd4101 -wd4189 -wd4201 -wd4244 -wd4324 -wd4456 -wd4458 -wd4459 -wd4505 -wd4702 -wd4804 -wd4996";
 			if( strcmp( args.architecture,   "x64" ) == 0 ) { compilerFlagsArchitecture = ""; } else

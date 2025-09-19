@@ -1,0 +1,170 @@
+{
+	"name": "GLSL",
+	"scopeName": "source.glsl",
+	"patterns": [
+		{ "include": "#numbers" },
+		{ "include": "#backslash" },
+
+		{ "name": "keyword.control.glsl",                    "match": "\\b(break|case|continue|default|discard|do|else|for|if|return|switch|while)\\b" },
+		{ "name": "keyword.language.glsl",                   "match": "\\b(layout|precision|struct|subroutine)\\b" },
+		{ "name": "constant.language.glsl",                  "match": "\\b(false|true)\\b" },
+		{ "name": "constant.language.glsl",                  "match": "\\b(gl_(BackColor|BackSecondaryColor|BaseInstance|BaseVertex|ClipDistance|ClipVertex|CullDistance|DrawID|FogFragCoord|FragColor|FragCoord|FragDepth|FrontColor|FrontFacing|FrontSecondaryColor|GlobalInvocationID|HelperInvocation|InstanceID|InstanceIndex|Layer|LocalInvocationID|LocalInvocationIndex|NumWorkGroups|PointCoord|PointSize|Position|PrimitiveID|SampleID|SampleMask|SampleMaskIn|SamplePosition|TexCoord|VertexID|VertexIndex|ViewportIndex|WorkGroupID|WorkGroupSize)|(gm_(BaseTexture|Matrices)))\\b" },
+		{ "name": "storage.modifier.glsl",                   "match": "\\b(attribute|buffer|const|in|inout|invariant|out|precise|shared|uniform|varying)\\b" },
+		{ "name": "storage.modifier.auxiliary.glsl",         "match": "\\b(centroid|patch|sample)\\b" },
+		{ "name": "storage.modifier.memory.glsl",            "match": "\\b(coherent|readonly|restrict|volatile|writeonly)\\b" },
+		{ "name": "storage.modifier.interpolation.glsl",     "match": "\\b(flat|noperspective|smooth)\\b" },
+		{ "name": "storage.modifier.precision.glsl",         "match": "\\b(highp|lowp|mediump)\\b" },
+		{ "name": "storage.type.built-in.primitive.glsl",    "match": "\\b(atomic_uint|bool|bvec2|bvec3|bvec4|dmat2|dmat2x2|dmat2x3|dmat2x4|dmat3|dmat3x2|dmat3x3|dmat3x4|dmat4|dmat4x2|dmat4x3|dmat4x4|double|dvec2|dvec3|dvec4|float|int|ivec2|ivec3|ivec4|mat2|mat2x2|mat2x3|mat2x4|mat3|mat3x2|mat3x3|mat3x4|mat4|mat4x2|mat4x3|mat4x4|uint|uvec2|uvec3|uvec4|vec2|vec3|vec4|void)\\b" },
+		{ "name": "support.type.glsl",                       "match": "\\b(iimage1D|iimage1DArray|iimage2D|iimage2DArray|iimage2DMS|iimage2DMSArray|iimage2DRect|iimage3D|iimageBuffer|iimageCube|iimageCubeArray|image1D|image1DArray|image2D|image2DArray|image2DMS|image2DMSArray|image2DRect|image3D|imageBuffer|imageCube|imageCubeArray|isampler1D|isampler1DArray|isampler2D|isampler2DArray|isampler2DMS|isampler2DMSArray|isampler2DRect|isampler3D|isamplerBuffer|isamplerCube|isamplerCubeArray|sampler1D|sampler1DArray|sampler1DArrayShadow|sampler1DShadow|sampler2D|sampler2DArray|sampler2DArrayShadow|sampler2DMS|sampler2DMSArray|sampler2DRect|sampler2DRectShadow|sampler2DShadow|sampler3D|samplerBuffer|samplerCube|samplerCubeArray|samplerCubeArrayShadow|samplerCubeShadow|uimage1D|uimage1DArray|uimage2D|uimage2DArray|uimage2DMS|uimage2DMSArray|uimage2DRect|uimage3D|uimageBuffer|uimageCube|uimageCubeArray|usampler1D|usampler1DArray|usampler2D|usampler2DArray|usampler2DMS|usampler2DMSArray|usampler2DRect|usampler3D|usamplerBuffer|usamplerCube|usamplerCubeArray)\\b" },
+
+		{ "name": "entity.name.function.preprocessor.glsl",  "match": "\\b[A-Z_][A-Z_]+\\b" },
+		{ "name": "support.function.glsl",                   "match": "\\b[a-zA-Z_]\\w*\\b(?=\\s*\\()" },
+		{ "name": "support.type.glsl",                       "match": "\\b[A-Z]\\w+\\b" },
+		{ "name": "support.variable.glsl",                   "match": "\\b[a-zA-Z_]\\w*\\b" },
+
+		{ "name": "comment.line.double-slash.splitter.glsl", "begin": "//~",  "end": "$",    "patterns": [{ "include": "#comment-scope" }] },
+		{ "name": "comment.line.double-slash.glsl",          "begin": "//",   "end": "$",    "patterns": [{ "include": "#comment-scope" }] },
+		{ "name": "comment.block.glsl",                      "begin": "/\\*", "end": "\\*/", "patterns": [{ "include": "#comment-scope" }] },
+
+		{ "name": "punctuation.begin.bracket.round.glsl",    "match": "\\(" },
+		{ "name": "punctuation.end.bracket.round.glsl",      "match": "\\)" },
+		{ "name": "punctuation.begin.bracket.square.glsl",   "match": "\\[" },
+		{ "name": "punctuation.end.bracket.square.glsl",     "match": "\\]" },
+		{ "name": "punctuation.begin.bracket.curly.glsl",    "match": "{" },
+		{ "name": "punctuation.end.bracket.curly.glsl",      "match": "}" },
+		{ "name": "punctuation.separator.delimiter.glsl",    "match": "," },
+		{ "name": "punctuation.separator.dot-access.glsl",   "match": "\\." },
+		{ "name": "punctuation.separator.colon.glsl",        "match": ":" },
+		{ "name": "punctuation.terminator.statement.glsl",   "match": ";" },
+
+		{ "include": "#operators" },
+
+		{
+			"name": "meta.preprocessor.glsl",
+			"match": "^\\s*((#)\\s*(ifdef|ifndef))\\b\\s*([a-zA-Z_]\\w*)?\\b",
+			"captures": {
+				"1": { "name": "keyword.control.directive.conditional.glsl" },
+				"2": { "name": "punctuation.definition.directive.glsl" },
+				"4": { "name": "entity.name.function.preprocessor.glsl" }
+			}
+		},
+		{
+			"name": "meta.preprocessor.glsl",
+			"begin": "^\\s*((#)\\s*(if|elif))\\b",
+			"end": "(?=(?://|/\\*))|(?<!\\\\)(?=\\n)",
+			"beginCaptures": {
+				"1": { "name": "keyword.control.directive.conditional.glsl" },
+				"2": { "name": "punctuation.definition.directive.glsl" }
+			},
+			"patterns": [
+				{ "include": "#numbers" },
+				{ "include": "#operators" },
+				{ "include": "#backslash" },
+				{ "name": "keyword.control.directive.conditional.defined.glsl", "match": "\\bdefined\\b" }
+			]
+		},
+		{
+			"name": "meta.preprocessor.glsl",
+			"match": "^\\s*((#)\\s*(else|endif))\\b",
+			"captures": {
+				"1": { "name": "keyword.control.directive.conditional.glsl" },
+				"2": { "name": "punctuation.definition.directive.glsl" }
+			}
+		},
+		{
+			"name": "meta.preprocessor.glsl",
+			"match": "^\\s*((#)\\s*undef)\\b\\s*([a-zA-Z_]\\w*)?\\b",
+			"captures": {
+				"1": { "name": "keyword.control.directive.undef.glsl" },
+				"2": { "name": "punctuation.definition.directive.glsl" },
+				"3": { "name": "entity.name.function.preprocessor.glsl" }
+			}
+		},
+		{
+			"name": "meta.preprocessor.macro.glsl",
+			"match": "^\\s*((#)\\s*define)\\b\\s*([a-zA-Z_]\\w*)?((\\()([^)]*)(\\)))?",
+			"captures": {
+				"1": { "name": "keyword.control.directive.define.glsl" },
+				"2": { "name": "punctuation.definition.directive.glsl" },
+				"3": { "name": "entity.name.function.preprocessor.glsl" },
+				"5": { "name": "punctuation.definition.parameters.begin.glsl" },
+				"6": {
+					"patterns": [
+						{
+							"match": "(?<=[(,])\\s*((?<!\\w)[a-zA-Z_]\\w*(?!\\w))\\s*",
+							"captures": { "1": { "name": "variable.parameter.preprocessor.glsl" } }
+						},
+						{ "match": ",", "name": "punctuation.separator.parameters.glsl" }
+					]
+				},
+				"7": { "name": "punctuation.definition.parameters.end.glsl" }
+			}
+		},
+		{
+			"name": "meta.preprocessor.error.glsl",
+			"begin": "^\\s*((#)\\s*error)\\b(\\s+.*)?",
+			"end": "(?=(?://|/\\*))|(?<!\\\\)(?=\\n)",
+			"beginCaptures": {
+				"1": { "name": "keyword.control.directive.error.glsl" },
+				"2": { "name": "punctuation.definition.directive.glsl" },
+				"3": { "name": "string.unquoted.preprocessor.message.glsl" }
+			},
+			"patterns": [
+				{ "include": "#backslash" }
+			]
+		},
+		{
+			"name": "meta.preprocessor.$3.glsl",
+			"begin": "^\\s*((#)\\s*(extension|pragma|version))\\b",
+			"end": "(?=(?://|/\\*))|(?<!\\\\)(?=\\n)",
+			"beginCaptures": {
+				"1": { "name": "keyword.control.directive.$3.glsl" },
+				"2": { "name": "punctuation.definition.directive.glsl" }
+			},
+			"patterns": [
+				{ "include": "#numbers" },
+				{ "include": "#backslash" },
+
+				{ "name": "entity.other.attribute-name.preprocessor.glsl", "match": "\\b[a-zA-Z_]\\w*\\b" }
+			]
+		}
+	],
+	"repository": {
+		"numbers": {
+			"patterns": [
+				{ "name": "constant.numeric.decimal.glsl",     "match": "\\b[0-9]+\\.[0-9]+(lf)?\\b" },
+				{ "name": "constant.numeric.decimal.glsl",     "match": "\\b[0-9]+\\b" },
+				{ "name": "constant.numeric.hexadecimal.glsl", "match": "\\b0[xX][a-fA-F0-9]+\\b" }
+			]
+		},
+		"operators": {
+			"patterns": [
+				{ "name": "keyword.operator.increment.glsl",                   "match": "\\+\\+" },
+				{ "name": "keyword.operator.decrement.glsl",                   "match": "--" },
+				{ "name": "keyword.operator.assignment.compound.glsl",         "match": "\\+=|-=|\\*=|/=|%=" },
+				{ "name": "keyword.operator.assignment.compound.bitwise.glsl", "match": "&=|\\|=|\\^=|<<=|>>=" },
+				{ "name": "keyword.operator.bitwise.shift.glsl",               "match": "<<|>>" },
+				{ "name": "keyword.operator.comparison.glsl",                  "match": "!=|<=|>=|==|<|>" },
+				{ "name": "keyword.operator.logical.glsl",                     "match": "!|&&|\\|\\|" },
+				{ "name": "keyword.operator.glsl",                             "match": "\\+|-|\\*|/|%|&|\\||\\^|~" },
+				{ "name": "keyword.operator.assignment.glsl",                  "match": "=" },
+				{ "name": "keyword.operator.ternary.glsl",                     "match": "\\?" }
+			]
+		},
+		"backslash": {
+			"patterns": [
+				{ "match": "(\\\\)\\n", "captures": { "1": { "name": "constant.character.escape.line-continuation.glsl" } } }
+			]
+		},
+		"comment-scope": {
+			"patterns": [
+				{ "name": "string.quoted.double.glsl",      "begin": "`", "end": "$|`" },
+				{ "name": "comment.keyword.todo.glsl",      "match": "\\bTODO\\b" },
+				{ "name": "comment.keyword.note.glsl",      "match": "\\bNOTE\\b" },
+				{ "name": "comment.keyword.hack.glsl",      "match": "\\bHACK\\b" },
+				{ "name": "comment.keyword.metadata.glsl",  "match": "\\$[a-zA-Z_]\\w*\\b" },
+				{ "name": "comment.keyword.attribute.glsl", "match": "\\@[a-zA-Z_]\\w*\\b" }
+			]
+		}
+	}
+}

@@ -6,14 +6,14 @@
 
 #include <build/build.hpp>
 #include <build/assets.hpp>
-#include <build/assets/textures.hpp>
 #include <build/filesystem.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Sounds::make_new( const Sound &sound )
+SoundID Sounds::make_new( const Sound &sound )
 {
 	sounds.add( sound );
+	return sounds.size() - 1;
 }
 
 
@@ -22,7 +22,8 @@ void Sounds::gather( const char *path, const bool recurse )
 	// Gather & Load Sounds
 	Timer timer;
 	List<FileInfo> files;
-	directory_iterate( files, path, ".sound.wav", recurse );
+	directory_iterate( files, path, ".wav", recurse );
+	directory_iterate( files, path, ".ogg", recurse );
 	for( FileInfo &fileInfo : files ) { load( fileInfo.path ); }
 
 	// Log
@@ -41,10 +42,13 @@ void Sounds::load( const char *path )
 	Sound &sound = sounds.add( { } );
 	sound.path = path;
 
-	char filename[PATH_SIZE];
-	path_get_filename( filename, sizeof( filename ), path );
-	String name = filename;
-	sound.name = name.substr( 0, name.find( "." ) );
+	char buffer[PATH_SIZE];
+	path_get_filename( buffer, sizeof( buffer ), path );
+
+	String filepath = buffer;
+	sound.streamed = filepath.contains( ".stream" );
+	sound.compressed = filepath.contains( ".ogg" );
+	sound.name = filepath.substr( 0, filepath.find( "." ) );
 
 	// Build Cache
 	Assets::assetFileCount++;
@@ -93,22 +97,39 @@ void Sounds::write()
 	Buffer &binary = Assets::binary;
 	String &header = Assets::header;
 	String &source = Assets::source;
-	usize soundsSampleDataOffset;
-	usize soundsSampleDataSize;
+	usize voiceSampleDataOffset;
+	usize voiceSampleDataSize;
+	usize streamSampleDataOffset;
+	usize streamSampleDataSize;
 	Timer timer;
 
 	// Binary
 	{
-		soundsSampleDataOffset = binary.tell;
+		voiceSampleDataOffset = binary.tell;
 		for( Sound &sound : sounds )
 		{
-			// Write Sample Data
-			sound.sampleOffsetBytes = binary.tell - soundsSampleDataOffset;
+			if( sound.streamed ) { continue; }
+
+			// Write Sound Sample Data
+			sound.sampleOffsetBytes = binary.tell - voiceSampleDataOffset;
 			sound.sampleCountBytes = sound.sampleDataSize;
 			binary.write( sound.sampleData, sound.sampleDataSize );
 		}
-		soundsSampleDataSize = binary.tell - soundsSampleDataOffset;
-		ErrorIf( soundsSampleDataSize & 1, "Sounds: Sample data size is not even!" );
+		voiceSampleDataSize = binary.tell - voiceSampleDataOffset;
+		ErrorIf( voiceSampleDataSize & 1, "Sounds: Sample data size is not even!" );
+
+		streamSampleDataOffset = binary.tell;
+		for( Sound &sound : sounds )
+		{
+			if( !sound.streamed ) { continue; }
+
+			// Write Stream Sample Data
+			sound.sampleOffsetBytes = binary.tell - streamSampleDataOffset;
+			sound.sampleCountBytes = sound.sampleDataSize;
+			binary.write( sound.sampleData, sound.sampleDataSize );
+		}
+		streamSampleDataSize = binary.tell - streamSampleDataOffset;
+		ErrorIf( streamSampleDataSize & 1, "Streams: Sample data size is not even!" );
 	}
 
 	// Header
@@ -117,12 +138,7 @@ void Sounds::write()
 		assets_group( header );
 
 		// Struct
-		assets_struct( header,
-			"DiskSound",
-			"int channels;",
-			"usize sampleOffset;",
-			"usize sampleCount;",
-			"DEBUG( const char *name );" );
+		header.append( "struct BinSound;\n\n" );
 
 		// Enums
 		header.append( "enum\n{\n" );
@@ -136,9 +152,11 @@ void Sounds::write()
 		header.append( "namespace Assets\n{\n" );
 		header.append( "\tconstexpr u32 soundCount = " );
 		header.append( static_cast<int>( sounds.size() ) ).append( ";\n" );
-		header.append( "\textern const DiskSound sounds[];\n" );
-		header.append( "\tconstexpr usize soundSampleDataOffset = " ).append( soundsSampleDataOffset ).append( "ULL;\n" );
-		header.append( "\tconstexpr usize soundSampleDataSize = " ).append( soundsSampleDataSize ).append( "ULL;\n" );
+		header.append( "\textern const BinSound sounds[];\n" );
+		header.append( "\tconstexpr usize voiceSampleDataOffset = " ).append( voiceSampleDataOffset ).append( "ULL;\n" );
+		header.append( "\tconstexpr usize voiceSampleDataSize = " ).append( voiceSampleDataSize ).append( "ULL;\n" );
+		header.append( "\tconstexpr usize streamSampleDataOffset = " ).append( streamSampleDataOffset ).append( "ULL;\n" );
+		header.append( "\tconstexpr usize streamSampleDataSize = " ).append( streamSampleDataSize ).append( "ULL;\n" );
 		header.append( "}\n\n" );
 	}
 
@@ -150,11 +168,13 @@ void Sounds::write()
 
 		// Table
 		char buffer[PATH_SIZE];
-		source.append( "\tconst DiskSound sounds[soundCount] =\n\t{\n" );
+		source.append( "\tconst BinSound sounds[soundCount] =\n\t{\n" );
 		for( Sound &sound : sounds )
 		{
 			snprintf( buffer, PATH_SIZE,
-				"\t\t{ %d, %lluULL, %lluULL, DEBUG( \"%s\" ) },\n",
+				"\t\t{ %d, %d, %d, %lluULL, %lluULL, DEBUG( \"%s\" ) },\n",
+				sound.streamed,
+				sound.compressed,
 				sound.numChannels,
 				sound.sampleOffsetBytes / sizeof( i16 ),
 				sound.sampleCountBytes / sizeof( i16 ),

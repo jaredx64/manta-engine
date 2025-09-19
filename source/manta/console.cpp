@@ -412,16 +412,16 @@ public:
 	{
 		dirty = false;
 		hover = false;
-		offset = intv2 { 0, 0 };
-		dimensionsArea = intv2 { 0, 0 };
-		dimensionsView = intv2 { 0, 0 };
-		anchorMouse = intv2 { 0.0f, 0.0f };
-		scrollbarVisible = boolv2 { true, true };
-		scrollbarValue = floatv2 { 0.0f, 0.0f };
-		scrollbarValueTo = floatv2 { 0.0f, 0.0f };
-		scrollbarSliding = boolv2 { false, false };
-		scrollbarTweenH = floatv2 { 0.0f, 0.0f };
-		scrollbarTweenV = floatv2 { 0.0f, 0.0f };
+		offset = int_v2 { 0, 0 };
+		dimensionsArea = int_v2 { 0, 0 };
+		dimensionsView = int_v2 { 0, 0 };
+		anchorMouse = int_v2 { 0.0f, 0.0f };
+		scrollbarVisible = bool_v2 { true, true };
+		scrollbarValue = float_v2 { 0.0f, 0.0f };
+		scrollbarValueTo = float_v2 { 0.0f, 0.0f };
+		scrollbarSliding = bool_v2 { false, false };
+		scrollbarTweenH = float_v2 { 0.0f, 0.0f };
+		scrollbarTweenV = float_v2 { 0.0f, 0.0f };
 	}
 
 	void draw_scrollbar( const Delta delta, const int x, const int y, bool vertical )
@@ -435,21 +435,21 @@ public:
 		bool &sliding = vertical ? scrollbarSliding.y : scrollbarSliding.x;
 		float &value = vertical ? scrollbarValue.y : scrollbarValue.x;
 		float &valueTo = vertical ? scrollbarValueTo.y : scrollbarValueTo.x;
-		floatv2 &tweens = vertical ? scrollbarTweenV : scrollbarTweenH;
+		float_v2 &tweens = vertical ? scrollbarTweenV : scrollbarTweenH;
 
 		// Calculate Positions
 		const float frac = static_cast<float>( sizeView ) / sizeArea;
-		const intv2 size = vertical ?
-			intv2 { scrollbarThickness, max( static_cast<int>( sizeView * frac ), 16 ) } :
-			intv2 { max( static_cast<int>( sizeView * frac ), 16 ), scrollbarThickness };
+		const int_v2 size = vertical ?
+			int_v2 { scrollbarThickness, max( static_cast<int>( sizeView * frac ), 16 ) } :
+			int_v2 { max( static_cast<int>( sizeView * frac ), 16 ), scrollbarThickness };
 
-		const intv4 bounds = vertical ?
-			intv4 { x + dimensionsView.x, y, x + dimensionsView.x + size.x, y + sizeView } :
-			intv4 { x, y + dimensionsView.y, x + sizeView, y + dimensionsView.y + size.y };
+		const int_v4 bounds = vertical ?
+			int_v4 { x + dimensionsView.x, y, x + dimensionsView.x + size.x, y + sizeView } :
+			int_v4 { x, y + dimensionsView.y, x + sizeView, y + dimensionsView.y + size.y };
 
-		const intv2 position = vertical ?
-			intv2 { 0, static_cast<int>( ( sizeView - size.y ) * value ) } :
-			intv2 { static_cast<int>( ( sizeView - size.x ) * value ), 0 };
+		const int_v2 position = vertical ?
+			int_v2 { 0, static_cast<int>( ( sizeView - size.y ) * value ) } :
+			int_v2 { static_cast<int>( ( sizeView - size.x ) * value ), 0 };
 
 		// Mouse Interaction
 		const int mX = mouse_x;
@@ -474,7 +474,7 @@ public:
 				sliding = true;
 				if( isHoveringSlider )
 				{
-					anchorMouse = intv2 { mouse_x - ( bounds.x + position.x + size.x / 2 ),
+					anchorMouse = int_v2 { mouse_x - ( bounds.x + position.x + size.x / 2 ),
 					                      mouse_y - ( bounds.y + position.y + size.y / 2 ) };
 				}
 			}
@@ -493,7 +493,7 @@ public:
 		if( Mouse::check_released( mb_left ) )
 		{
 			sliding = false;
-			anchorMouse = intv2 { 0, 0 };
+			anchorMouse = int_v2 { 0, 0 };
 		}
 		else if( sliding && Mouse::check( mb_left ) )
 		{
@@ -587,17 +587,17 @@ public:
 public:
 	bool dirty;
 	bool hover;
-	intv2 offset;
-	intv2 dimensionsArea;
-	intv2 dimensionsView;
-	intv2 anchorMouse;
-	boolv2 scrollbarVisible;
-	intv2 scrollbarSize;
-	floatv2 scrollbarValue;
-	floatv2 scrollbarValueTo;
-	boolv2 scrollbarSliding;
-	floatv2 scrollbarTweenH; // x = background, y = slider
-	floatv2 scrollbarTweenV; // x = background, y = slider
+	int_v2 offset;
+	int_v2 dimensionsArea;
+	int_v2 dimensionsView;
+	int_v2 anchorMouse;
+	bool_v2 scrollbarVisible;
+	int_v2 scrollbarSize;
+	float_v2 scrollbarValue;
+	float_v2 scrollbarValueTo;
+	bool_v2 scrollbarSliding;
+	float_v2 scrollbarTweenH; // x = background, y = slider
+	float_v2 scrollbarTweenV; // x = background, y = slider
 	constexpr static int scrollbarThickness = 12;
 };
 
@@ -1092,12 +1092,12 @@ void SysConsole::draw_input( const Delta delta )
 
 	// Region
 	Region &region = SysConsole::inputRegion;
-	region.scrollbarVisible = boolv2 { false, false };
+	region.scrollbarVisible = bool_v2 { false, false };
 	const int rX1 = 20;
 	const int rY1 = 4;
 	const int rX2 = Window::width - 8;
 	const int rY2 = rY1 + 32;
-	region.dimensionsView = intv2 { rX2 - rX1, rY2 - rY1 };
+	region.dimensionsView = int_v2 { rX2 - rX1, rY2 - rY1 };
 	if( SysText::ACTIVE_TEXT_EDITOR == &SysConsole::input )
 	{
 		const int caretX = input->get_position_from_index( input.caret_get_position() ).x;
@@ -1180,7 +1180,7 @@ void SysConsole::draw_input( const Delta delta )
 		// TextEditor
 		input.screenX = rX1 + 2 + region.offset.x;
 		input.screenY = rY1 + 8;
-		const intv2 dimensions = input.draw( delta, input.screenX, input.screenY );
+		const int_v2 dimensions = input.draw( delta, input.screenX, input.screenY );
 		region.dimensionsArea.x = max( dimensions.x + 4, region.dimensionsView.x );
 		region.dimensionsArea.y = region.dimensionsView.y;
 	}
@@ -1206,14 +1206,14 @@ void SysConsole::draw_log( const Delta delta )
 	const int rY1 = bY1;
 	const int rX2 = bX2 - Region::scrollbarThickness;
 	const int rY2 = bY2;
-	region.dimensionsView = intv2 { rX2 - rX1, rY2 - rY1 };
+	region.dimensionsView = int_v2 { rX2 - rX1, rY2 - rY1 };
 	region.draw( delta, rX1, rY1 );
 
 	// Draw Log
 	Gfx::set_scissor_nested( rX1, rY1, rX2, rY2 );
 	{
 		// Lines
-		intv2 dimensions = { 0, 0 };
+		int_v2 dimensions = { 0, 0 };
 
 		int yOffset = 0;
 		for( usize i = SysConsole::log.count(); i > 0; i-- )
@@ -1303,7 +1303,7 @@ void SysConsole::draw_candidates( const Delta delta )
 	const int rY1 = bY1;
 	const int rX2 = bX2;
 	const int rY2 = bY2;
-	region.dimensionsView = intv2 { rX2 - rX1, rY2 - rY1 };
+	region.dimensionsView = int_v2 { rX2 - rX1, rY2 - rY1 };
 	if( region.dirty || Window::resized ) { region.dimensionsArea = region.dimensionsView; }
 	region.draw( delta, rX1, rY1 );
 
@@ -1415,7 +1415,7 @@ void SysConsole::draw_candidates( const Delta delta )
 	}
 
 	region.dimensionsArea.y = yOffset + 4;
-	region.dimensionsView = intv2 { rX2 - rX1, rY2 - rY1 };
+	region.dimensionsView = int_v2 { rX2 - rX1, rY2 - rY1 };
 	region.dirty = false;
 	Gfx::reset_scissor();
 }

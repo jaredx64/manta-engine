@@ -15,7 +15,7 @@
 //     3. build.exe parses the preprocessed output and and builds an AST representation of the shader program
 //     4. build.exe generates .glsl/.hlsl/.metal output code based on the AST (see: output/generated/shaders)
 //     5. build.exe generates gfx.generated.hpp/cpp containing vertex layouts and shader metadata (for CPU engine use)
-//     6. build.exe packs the .glsl/.hlsl/.metal shaders (compiled or source) into the project binary
+//     6. build.exe packs the .glsl/.hlsl/.metal shaders into the project binary
 //
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -32,12 +32,10 @@
 	template <typename T> bool operator==( T other ); \
 	template <typename T> bool operator!=( T other );
 
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Keywords
 
-// Constant Buffer Slot
-#define cbuffer(slot) struct
+template <typename T> T buffer( T buffer, uint index );
 
 // Render Target Slot
 #define target(slot)
@@ -49,6 +47,23 @@
 	#define NORMAL
 	#define DEPTH
 	#define COLOR
+	#define BINORMAL
+	#define TANGENT
+	#define TARGET
+	#define COVERAGE
+	#define IS_FRONT_FACE
+	#define CLIP_DISTANCE
+	#define CULL_DISTANCE
+	#define INSTANCE_ID
+	#define VERTEX_ID
+	#define PRIMITIVE_ID
+	#define RENDERTARGET_INDEX
+	#define VIEWPORT_INDEX
+	#define SAMPLE_ID
+	#define GLOBAL_INVOCATION_ID
+	#define LOCAL_INVOCATION_ID
+	#define LOCAL_INVOCATION_INDEX
+	#define WORKGROUP_ID
 
 // Options: UNORM8, UNORM16, UNORM32, SNORM8, SNORM16, SNORM32, UINT8, UINT16, UINT32, SINT8, SINT16, SINT32, FLOAT16, FLOAT32
 #define format(f)
@@ -73,12 +88,28 @@
 #define fragment_output struct
 #define compute_input struct
 #define compute_output struct
-
 #define in
 #define out
 #define inout
-
 #define discard
+#define shared
+
+#define shared_struct struct
+
+// HLSL:  cbuffer buff : register( bN ) { ... };
+// GLSL:  layout( std140 ) uniform buff { ... };
+// Metal: struct Uniforms { ... }; constant Uniforms &buff [[buffer(N)]]
+#define uniform_buffer(slot) struct
+
+// HLSL:  StructuredBuffer<T> buff : register(tN);
+// GLSL:  layout(std430, binding = N) readonly buffer buff { T data[]; }
+// Metal: const device T *buff [[buffer(N)]]
+#define constant_buffer(count, slot) struct
+
+// HLSL:  RWStructuredBuffer<T> buff : register(uN);
+// GLSL:  layout(std430, binding = N) buffer buff { T data[]; };
+// Metal: device T *buff [[buffer(N)]]
+#define mutable_buffer(count, slot) struct
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Base Types
@@ -229,25 +260,25 @@ struct float4x4
 // Texures
 
 struct Texture1D { };
-#define texture1D(slot) Texture1D
+#define texture1D(slot, type) Texture1D
 
 struct Texture1DArray { };
-#define texture1DArray(slot) Texture1DArray
+#define texture1DArray(slot, type) Texture1DArray
 
 struct Texture2D { };
-#define texture2D(slot) Texture2D
+#define texture2D(slot, type) Texture2D
 
 struct Texture2DArray { };
-#define texture2DArray(slot) Texture2DArray
+#define texture2DArray(slot, type) Texture2DArray
 
 struct Texture3D { };
-#define texture3D(slot) Texture3D
+#define texture3D(slot, type) Texture3D
 
 struct TextureCube { };
-#define textureCube(slot) TextureCube
+#define textureCube(slot, type) TextureCube
 
 struct TextureCubeArray { };
-#define textureCubeArray(slot) TextureCubeArray
+#define textureCubeArray(slot, type) TextureCubeArray
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Trigonometric Functions
@@ -340,14 +371,18 @@ template <typename T> float uint_to_float_bits( T x );
 
 float4 texture_sample_1d( Texture1D texture, float x );
 float4 texture_sample_1d_array( Texture1DArray texture, float x );
+float4 texture_sample_1d_level( Texture1DArray texture, float x, int lod );
+float4 texture_index_1d( Texture2D texture, int x, int width, int lod );
 
 float4 texture_sample_2d( Texture2D texture, float2 uv );
 float4 texture_sample_2d_array( Texture2DArray texture, float2 uv );
-float4 texture_sample_2d_level( Texture2D texture, float2 uv );
+float4 texture_sample_2d_level( Texture2D texture, float2 uv, int lod );
+float4 texture_index_2d( Texture2D texture, int x, int y, int width, int height, int lod );
 
-float4 texture_sample_3d( Texture3D texture, float3 xyz );
-
-float4 texture_index_2d( Texture2D texture, int x, int y, int width, int height );
+float4 texture_sample_3d( Texture2D texture, float2 uvw );
+float4 texture_sample_3d_array( Texture2DArray texture, float2 uvw );
+float4 texture_sample_3d_level( Texture2D texture, float2 uvw, int lod );
+float4 texture_index_3d( Texture2D texture, int x, int y, int z, int width, int height, int depth, int lod );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Depth
@@ -356,5 +391,37 @@ float depth_unproject( float4 position );
 float depth_unproject_zw( float depthZ, float depthW );
 float depth_normalize( float depth, float near, float far );
 float depth_linearize( float depth, float near, float far );
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Built-in System-Value Semantics
+
+uint3 SV_DispatchThreadID; // gl_GlobalInvocationID
+uint3 SV_GroupID; // gl_WorkGroupID
+uint3 SV_GroupThreadID; // gl_LocalInvocationID
+uint SV_GroupIndex; // gl_LocalInvocationIndex
+uint SV_VertexID; // gl_VertexID
+uint SV_InstanceID; // gl_InstanceID
+bool SV_IsFrontFace; // gl_FrontFacing
+uint SV_SampleIndex; // gl_SampleID
+uint SV_PrimitiveID; // gl_PrimitiveID;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Stages
+
+#define vertex_main vertex_main
+#define fragment_main fragment_main
+#define compute_main(x,y,z) compute_main
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Runtime Compilation Preprocessor Macros
+
+#define DEFINE( x )
+#define IF( x )
+#define IF_DEFINED( x )
+#define IF_UNDEFINED( x )
+#define IF_USING( x )
+#define ELSE_IF( x )
+#define ELSE
+#define ENDIF
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

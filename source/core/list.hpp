@@ -529,7 +529,8 @@ public:
 		deserializer.end();
 	}
 
-private:
+//private:
+public:
 	T *data = nullptr;
 	usize capacity = 0;
 	usize current = 0;

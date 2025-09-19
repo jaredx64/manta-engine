@@ -186,7 +186,7 @@ struct ObjectFile
 	// Code Generation
 	List<Keyword> keywords;
 	Event events[EVENT_COUNT];
-	HashMap<u32, bool> categories; // TODO: Change to set?
+	HashMap<u32, bool> categories;
 
 	bool constructorHasDefault = false;
 	List<String> constructorHeader;

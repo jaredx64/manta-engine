@@ -32,11 +32,11 @@ namespace GfxCore
 	GfxSwapChain swapchain;
 	GfxViewport viewport;
 
-	Matrix matrixModel;
-	Matrix matrixView;
-	Matrix matrixViewInverse;
-	Matrix matrixPerspective;
-	Matrix matrixMVP;
+	doublem44 matrixModel;
+	doublem44 matrixView;
+	doublem44 matrixViewInverse;
+	doublem44 matrixPerspective;
+	doublem44 matrixMVP;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -142,7 +142,7 @@ void debug_overlay_gfx( const float x, const float y )
 	drawY += 20.0f;
 
 	draw_text_f( fnt_iosevka, 14, drawX, drawY, c_white,
-		"  Constant Buffers: %.4f mb", MB( stats.gpuMemoryConstantBuffers ) );
+		"  Constant Buffers: %.4f mb", MB( stats.gpuMemoryUniformBuffers ) );
 	drawY += 20.0f;
 
 	draw_text_f( fnt_iosevka, 14, drawX, drawY, c_white,
@@ -165,7 +165,7 @@ bool SysGfx::init()
 	ErrorIf( !SysGfx::init_shaders(), "%s: Failed to initialize shaders!", __FUNCTION__ );
 
 	// Initialize Constant Buffers
- 	ErrorIf( !GfxCore::rb_init_cbuffers(), "%s: Failed to initialize constant buffers!", __FUNCTION__ );
+ 	ErrorIf( !GfxCore::rb_init_uniform_buffers(), "%s: Failed to initialize constant buffers!", __FUNCTION__ );
 
 	// Initialize Quad Batch
 	ErrorIf( !SysGfx::quadBatch.init( RENDER_QUAD_BATCH_SIZE ),
@@ -184,7 +184,7 @@ bool SysGfx::free()
 	ErrorIf( !SysGfx::quadBatch.free(), "%s: Failed to free default quad batch!", __FUNCTION__ );
 
 	// Free Constant Buffers
-	ErrorIf( !GfxCore::rb_free_cbuffers(), "%s: Failed to free shaders!", __FUNCTION__ );
+	ErrorIf( !GfxCore::rb_free_uniform_buffers(), "%s: Failed to free shaders!", __FUNCTION__ );
 
 	// Free Shaders
 	ErrorIf( !SysGfx::free_shaders(), "%s: Failed to free shaders!", __FUNCTION__ );
@@ -207,9 +207,10 @@ bool SysGfx::init_textures()
 	// Load Textures
 	for( u32 i = 0; i < Assets::texturesCount; i++ )
 	{
-		const DiskTexture &diskTexture = Assets::textures[i];
-		GfxCore::textures[i].init( Assets::binary.data + diskTexture.offset,
-			diskTexture.width, diskTexture.height,
+		const BinTexture &binTexture = Assets::textures[i];
+
+		GfxCore::textures[i].init( Assets::binary.data + binTexture.offset,
+			binTexture.width, binTexture.height, binTexture.levels,
 			GfxColorFormat_R8G8B8A8_FLOAT );
 	}
 #endif
@@ -240,8 +241,8 @@ bool SysGfx::init_shaders()
 	// Load Shaders
 	for( u32 i = 0; i < Gfx::shadersCount; i++ )
 	{
-		const DiskShader &diskShader = Gfx::diskShaders[i];
-		GfxCore::shaders[i].init( i, diskShader );
+		const BinShader &binShader = Gfx::binShaders[i];
+		GfxCore::shaders[i].init( i, binShader );
 	}
 #endif
 
@@ -350,6 +351,350 @@ byte *SysGfx::scratch_buffer( const usize size )
 	}
 #endif
 	return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+u16 Gfx::mip_level_count_2d( u16 width, u16 height )
+{
+	u16 l = 1;
+	while( width > 1 && height > 1 ) { width >>= 1; height >>= 1; l++; }
+	return l;
+}
+
+
+bool Gfx::mip_level_validate_2d( u16 width, u16 height, u16 levels )
+{
+	return levels <= mip_level_count_2d( width, height );
+}
+
+
+usize Gfx::mip_buffer_size_2d( u16 width, u16 height, u16 levels,
+	const GfxColorFormat format )
+{
+	ErrorReturnIf( format >= GFXCOLORFORMAT_COUNT, 0,
+		"%s: invalid GfxColorFormat: %u", __FUNCTION__, format );
+	ErrorReturnIf( !mip_level_validate_2d( width, height, levels ), 0,
+		"%s: invalid levels (%u) for dimensions: %u x %u", __FUNCTION__,
+		levels, width, height );
+
+	usize count = 0;
+
+	while( levels > 0 )
+	{
+		count += width * height;
+		width >>= 1;
+		height >>= 1;
+		levels--;
+	}
+
+	return GfxCore::colorFormatPixelSizeBytes[format] * count;
+}
+
+
+bool Gfx::mip_generate_next_2d( void *data, const u16 width, const u16 height,
+	const GfxColorFormat format, void *dest, const usize size )
+{
+	ErrorReturnIf( format >= GFXCOLORFORMAT_COUNT, false,
+		"%s: invalid GfxColorFormat: %u", __FUNCTION__, format );
+	ErrorReturnIf( data == nullptr, false,
+		"%s: data is nullptr", __FUNCTION__ );
+	ErrorReturnIf( dest == nullptr, false,
+		"%s: dest is nullptr", __FUNCTION__ );
+	ErrorReturnIf( width <= 1 || height <= 1, false,
+		"%s: cannot generate mip for input dimensions: %u x %u", __FUNCTION__, width, height );
+
+	const u16 mipWidth = width / 2;
+	const u16 mipHeight = height / 2;
+
+	const u16 pixelSizeBytes = GfxCore::colorFormatPixelSizeBytes[format];
+	const usize mipSizeBytes = pixelSizeBytes * mipWidth * mipHeight;
+
+	ErrorReturnIf( size != mipSizeBytes, false,
+		"%s: dest size does not match request mip size (dst: %u bytes, mip: %u bytes)",
+		__FUNCTION__, size, mipSizeBytes );
+
+	for( u16 y = 0; y < mipHeight; y++ )
+	for( u16 x = 0; x < mipWidth; x++ )
+	{
+		u32 srcX = x * 2;
+		u32 srcY = y * 2;
+
+		const u8 *p00 = static_cast<u8 *>( data ) + ( ( srcY + 0 ) * width + ( srcX + 0 ) ) * pixelSizeBytes;
+		const u8 *p10 = static_cast<u8 *>( data ) + ( ( srcY + 0 ) * width + ( srcX + 1 ) ) * pixelSizeBytes;
+		const u8 *p01 = static_cast<u8 *>( data ) + ( ( srcY + 1 ) * width + ( srcX + 0 ) ) * pixelSizeBytes;
+		const u8 *p11 = static_cast<u8 *>( data ) + ( ( srcY + 1 ) * width + ( srcX + 1 ) ) * pixelSizeBytes;
+
+		u8 *out = static_cast<u8 *>( dest ) + ( y * mipWidth + x ) * pixelSizeBytes;
+
+		switch( format )
+		{
+			case GfxColorFormat_R8:
+			{
+				u32 v = p00[0] + p10[0] + p01[0] + p11[0];
+				out[0] = static_cast<u8>( v / 4 );
+			}
+			break;
+
+			case GfxColorFormat_R8G8:
+			{
+				for( int c = 0; c < 2; c++ )
+				{
+					out[c] = static_cast<u8>( ( p00[c] + p10[c] + p01[c] + p11[c] ) / 4 );
+				}
+			}
+			break;
+
+			case GfxColorFormat_R8G8B8A8_UINT:
+			case GfxColorFormat_R8G8B8A8_FLOAT:
+			{
+				for( int c = 0; c < 4; c++ )
+				{
+					out[c] = static_cast<u8>( ( p00[c] + p10[c] + p01[c] + p11[c] ) / 4 );
+				}
+			}
+			break;
+
+			case GfxColorFormat_R16:
+			case GfxColorFormat_R16_FLOAT:
+			{
+				u16 *o = reinterpret_cast<u16 *>( out );
+				const u16 *s0 = reinterpret_cast<const u16 *>( p00 );
+				const u16 *s1 = reinterpret_cast<const u16 *>( p10 );
+				const u16 *s2 = reinterpret_cast<const u16 *>( p01 );
+				const u16 *s3 = reinterpret_cast<const u16 *>( p11 );
+				o[0] = static_cast<u16>( static_cast<u32>( s0[0] ) + s1[0] + s2[0] + s3[0] ) / 4;
+			}
+			break;
+
+			case GfxColorFormat_R16G16:
+			case GfxColorFormat_R16G16F_FLOAT:
+			{
+				u16 *o = reinterpret_cast<u16 *>( out );
+				const u16* s0 = reinterpret_cast<const u16 *>( p00 );
+				const u16* s1 = reinterpret_cast<const u16 *>( p10 );
+				const u16* s2 = reinterpret_cast<const u16 *>( p01 );
+				const u16* s3 = reinterpret_cast<const u16 *>( p11 );
+				for( int c = 0; c < 2; c++ )
+				{
+					o[c] = static_cast<u16>( static_cast<u32>( s0[c] ) + s1[c] + s2[c] + s3[c] ) / 4;
+				}
+			}
+			break;
+
+			case GfxColorFormat_R16G16B16A16_UINT:
+			case GfxColorFormat_R16G16B16A16_FLOAT:
+			{
+				u16 *o = reinterpret_cast<u16 *>( out );
+				const u16 *s0 = reinterpret_cast<const u16 *>( p00 );
+				const u16 *s1 = reinterpret_cast<const u16 *>( p10 );
+				const u16 *s2 = reinterpret_cast<const u16 *>( p01 );
+				const u16 *s3 = reinterpret_cast<const u16 *>( p11 );
+				for( int c = 0; c < 4; c++ )
+				{
+					o[c] = static_cast<u16>( static_cast<u32>( s0[c] ) + s1[c] + s2[c] + s3[c] ) / 4;
+				}
+			}
+			break;
+
+			case GfxColorFormat_R32_FLOAT:
+			{
+				float *o = reinterpret_cast<float *>( out );
+				const float *s0 = reinterpret_cast<const float *>( p00 );
+				const float *s1 = reinterpret_cast<const float *>( p10 );
+				const float *s2 = reinterpret_cast<const float *>( p01 );
+				const float *s3 = reinterpret_cast<const float *>( p11 );
+				o[0] = ( s0[0] + s1[0] + s2[0] + s3[0] ) * 0.25f;
+			}
+			break;
+
+			case GfxColorFormat_R32G32_FLOAT:
+			{
+				float *o = reinterpret_cast<float *>( out );
+				const float *s0 = reinterpret_cast<const float *>( p00 );
+				const float *s1 = reinterpret_cast<const float *>( p10 );
+				const float *s2 = reinterpret_cast<const float *>( p01 );
+				const float *s3 = reinterpret_cast<const float *>( p11 );
+				for( int c = 0; c < 2; c++ )
+				{
+					o[c] = ( s0[c] + s1[c] + s2[c] + s3[c] ) * 0.25f;
+				}
+			}
+			break;
+
+			case GfxColorFormat_R32G32B32A32_FLOAT:
+			{
+				float *o = reinterpret_cast<float *>( out );
+				const float *s0 = reinterpret_cast<const float *>( p00 );
+				const float *s1 = reinterpret_cast<const float *>( p10 );
+				const float *s2 = reinterpret_cast<const float *>( p01 );
+				const float *s3 = reinterpret_cast<const float *>( p11 );
+				for( int c = 0; c < 4; c++ )
+				{
+					o[c] = ( s0[c] + s1[c] + s2[c] + s3[c] ) * 0.25f;
+				}
+			}
+			break;
+
+			case GfxColorFormat_R32G32B32A32_UINT:
+			{
+				u32 *o = reinterpret_cast<u32 *>( out );
+				const u32 *s0 = reinterpret_cast<const u32 *>( p00 );
+				const u32 *s1 = reinterpret_cast<const u32 *>( p10 );
+				const u32 *s2 = reinterpret_cast<const u32 *>( p01 );
+				const u32 *s3 = reinterpret_cast<const u32 *>( p11 );
+				for( int c = 0; c < 4; c++ )
+				{
+					o[c] = ( s0[c] + s1[c] + s2[c] + s3[c] ) / 4;
+				}
+			}
+			break;
+
+			case GfxColorFormat_R10G10B10A2_FLOAT:
+			{
+				// Packed as 32-bit
+				auto unpack = []( u32 v, int shift, int bits ) -> u32
+				{
+					return ( v >> shift ) & ( ( 1u << bits ) - 1u );
+				};
+
+				auto pack = []( u32 r, u32 g, u32 b, u32 a ) -> u32
+				{
+					return ( r & 0x3FF ) | ( ( g & 0x3FF) << 10 ) |
+						( ( b & 0x3FF ) << 20 ) | ( ( a & 0x3 ) << 30 );
+				};
+
+				const u32 *s0 = reinterpret_cast<const u32 *>( p00 );
+				const u32 *s1 = reinterpret_cast<const u32 *>( p10 );
+				const u32 *s2 = reinterpret_cast<const u32 *>( p01 );
+				const u32 *s3 = reinterpret_cast<const u32 *>( p11 );
+
+				u32 r = ( unpack( *s0, 0, 10 ) + unpack( *s1, 0, 10 ) +
+					unpack( *s2, 0, 10 ) + unpack( *s3, 0, 10 ) ) / 4;
+				u32 g = ( unpack( *s0, 10, 10 ) + unpack( *s1, 10, 10 ) +
+					unpack( *s2, 10, 10 ) + unpack( *s3, 10, 10 ) ) / 4;
+				u32 b = ( unpack( *s0, 20, 10 ) + unpack( *s1, 20, 10 ) +
+					unpack( *s2, 20, 10 ) + unpack( *s3, 20, 10 ) ) / 4;
+				u32 a = ( unpack( *s0, 30, 2 ) + unpack( *s1, 30, 2 ) +
+					unpack( *s2, 30, 2 ) + unpack( *s3, 30, 2 ) ) / 4;
+
+				*reinterpret_cast<u32 *>( out ) = pack( r, g, b, a );
+			}
+			break;
+
+			default:
+			{
+				ErrorReturnMsg( false, "%s: unsupported format %u", __FUNCTION__, format );
+			}
+			break;
+		}
+	}
+
+	return true;
+}
+
+
+bool Gfx::mip_generate_next_2d_alloc( void *data, const u16 width, const u16 height,
+	const GfxColorFormat format, void *&outData, usize &outSize )
+{
+	ErrorReturnIf( format >= GFXCOLORFORMAT_COUNT, false,
+		"%s: invalid GfxColorFormat: %u", __FUNCTION__, format );
+	ErrorReturnIf( data == nullptr, false,
+		"%s: data is nullptr", __FUNCTION__ );
+	ErrorReturnIf( outData != nullptr, false,
+		"%s: outData is not nullptr", __FUNCTION__ );
+	ErrorReturnIf( width <= 1 || height <= 1, false,
+		"%s: cannot generate mip for input dimensions: %u x %u", __FUNCTION__, width, height );
+
+	const u16 mipWidth = width / 2;
+	const u16 mipHeight = height / 2;
+
+	const u16 pixelSizeBytes = GfxCore::colorFormatPixelSizeBytes[format];
+	outSize = pixelSizeBytes * mipWidth * mipHeight;
+	outData = memory_alloc( outSize );
+
+	// Generate mip
+	if( !mip_generate_next_2d( data, width, height, format, outData, outSize ) )
+	{
+		memory_free( outData );
+		outData = nullptr;
+		outSize = 0;
+		return false;
+	}
+
+	return true;
+}
+
+
+bool Gfx::mip_generate_chain_2d( void *data, const u16 width, const u16 height,
+	const GfxColorFormat format, void *dest, const usize size )
+{
+	ErrorReturnIf( format >= GFXCOLORFORMAT_COUNT, false,
+		"%s: invalid GfxColorFormat: %u", __FUNCTION__, format );
+	ErrorReturnIf( data == nullptr, false,
+		"%s: data is nullptr", __FUNCTION__ );
+	ErrorReturnIf( dest == nullptr, false,
+		"%s: dest is nullptr", __FUNCTION__ );
+	ErrorReturnIf( width <= 1 || height <= 1, false,
+		"%s: cannot generate mip for input dimensions: %u x %u", __FUNCTION__, width, height );
+
+	const u16 levels = mip_level_count_2d( width, height );
+	const u16 pixelSizeBytes = GfxCore::colorFormatPixelSizeBytes[format];
+	const usize mipSizeBytes = mip_buffer_size_2d( width, height, levels, format );
+
+	ErrorReturnIf( size != mipSizeBytes, false,
+		"%s: dest size does not match request mip size (dest: %u bytes, mip: %u bytes)",
+		__FUNCTION__, size, mipSizeBytes );
+
+	// Full Resolution
+	byte *mipSrc = reinterpret_cast<byte *>( data );
+	byte *mipDst = reinterpret_cast<byte *>( dest );
+	memory_copy( mipDst, mipSrc, pixelSizeBytes * width * height );
+	mipDst += pixelSizeBytes * width * height;
+
+	// Generated Mips
+	for( u16 level = 1, w = width, h = height; level < levels; level++ )
+	{
+		if( !mip_generate_next_2d( mipSrc, w, h, format, mipDst, ( pixelSizeBytes * w * h ) / 4 ) ) { return false; }
+		w /= 2;
+		h /= 2;
+		mipSrc = mipDst;
+		mipDst += pixelSizeBytes * w * h;
+	}
+
+	return true;
+}
+
+
+bool Gfx::mip_generate_chain_2d_alloc( void *data, const u16 width, const u16 height,
+	const GfxColorFormat format, void *&outData, usize &outSize )
+{
+	// Generates a mip level half the size of width, height
+	Assert( format < GFXCOLORFORMAT_COUNT );
+	const u16 pixelSizeBytes = GfxCore::colorFormatPixelSizeBytes[format];
+
+	ErrorReturnIf( data == nullptr, false,
+		"%s: data is nullptr", __FUNCTION__ );
+	ErrorReturnIf( outData != nullptr, false,
+		"%s: outData is not nullptr", __FUNCTION__ );
+	ErrorReturnIf( width <= 1 || height <= 1, false,
+		"%s: cannot generate mip for input dimensions: %u x %u", __FUNCTION__, width, height );
+
+	const u16 levels = mip_level_count_2d( width, height );
+
+	outSize = mip_buffer_size_2d( width, height, levels, format );
+	outData = memory_alloc( outSize );
+
+	// Generate mips
+	if( !mip_generate_chain_2d( data, width, height, format, outData, outSize ) )
+	{
+		memory_free( outData );
+		outData = nullptr;
+		outSize = 0;
+		return false;
+	}
+
+	return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -485,8 +830,19 @@ void Gfx::quad_batch_write( const float x1, const float y1, const float x2, cons
 void GfxTexture2D::init( void *data, const u16 width, const u16 height, const GfxColorFormat &format )
 {
 #if GRAPHICS_ENABLED
-	ErrorIf( !GfxCore::rb_texture_2d_init( resource, data, width, height, format ),
-		"Failed to init Texture2D!" );
+	ErrorIf( !GfxCore::rb_texture_2d_init( resource, data, width, height, 1, format ),
+		"Failed to init GfxTexture2D!" );
+#endif
+}
+
+
+void GfxTexture2D::init( void *data, const u16 width, const u16 height, const u16 levels, const GfxColorFormat &format )
+{
+#if GRAPHICS_ENABLED
+	ErrorIf( levels == 0,
+		"Must have at least one mip level (highest resolution)" );
+	ErrorIf( !GfxCore::rb_texture_2d_init( resource, data, width, height, levels, format ),
+		"Failed to init GfxTexture2D!" );
 #endif
 }
 
@@ -496,7 +852,7 @@ void GfxTexture2D::free()
 #if GRAPHICS_ENABLED
 	if( resource == nullptr ) { return; }
 	ErrorIf( !GfxCore::rb_texture_2d_free( resource ),
-		"Failed to free Texture2D!" );
+		"Failed to free GfxTexture2D!" );
 #endif
 }
 
@@ -504,12 +860,14 @@ void GfxTexture2D::free()
 void GfxTexture2D::bind( const int slot ) const
 {
 #if GRAPHICS_ENABLED
-	// Texture binding forces a batch break
-	if( Gfx::state().textureResource[slot] != resource ) { draw_call(); }
+	if( Gfx::state().textureResource[slot] == resource ) { return; }
 
+	// Texture binding forces a batch break
+	draw_call();
 	Gfx::state().textureResource[slot] = resource;
+
 	ErrorIf( !GfxCore::rb_texture_2d_bind( resource, slot ),
-		"Failed to bind Texture2D to slot %d!", slot );
+		"Failed to bind GfxTexture2D to slot %d!", slot );
 #endif
 }
 
@@ -517,15 +875,21 @@ void GfxTexture2D::bind( const int slot ) const
 void GfxTexture2D::release() const
 {
 #if GRAPHICS_ENABLED
-	// ...
+	for( int i = 0; i < 32; i++ )
+	{
+		if( Gfx::state().textureResource[i] == resource )
+		{
+			Gfx::state().textureResource[i] = nullptr;
+		}
+	}
 #endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static Matrix RT_CACHE_MATRIX_MODEL;
-static Matrix RT_CACHE_MATRIX_VIEW;
-static Matrix RT_CACHE_MATRIX_PERSPECTIVE;
+static doublem44 RT_CACHE_MATRIX_MODEL;
+static doublem44 RT_CACHE_MATRIX_VIEW;
+static doublem44 RT_CACHE_MATRIX_PERSPECTIVE;
 static GfxViewport RT_CACHE_VIEWPORT;
 static GfxBlendState RT_CACHE_BLEND_STATE;
 
@@ -533,8 +897,8 @@ static GfxBlendState RT_CACHE_BLEND_STATE;
 void GfxRenderTarget2D::init( const u16 width, const u16 height, const GfxRenderTargetDescription &desc )
 {
 #if GRAPHICS_ENABLED
-	ErrorIf( !GfxCore::rb_render_target_2d_init( resource, textureColor.resource, textureDepth.resource,
-	                                             width, height, desc ),
+	ErrorIf( !GfxCore::rb_render_target_2d_init( resource,
+		textureColor.resource, textureDepth.resource, width, height, desc ),
 		"Failed to init RenderTarget2D!" );
 
 	this->width = width;
@@ -607,7 +971,7 @@ void GfxRenderTarget2D::copy_part( GfxRenderTarget2D &source, int srcX, int srcY
 	if( copyWidth == 0 || copyHeight == 0 ) { return; } // Early exit if we're copying nothing
 
 	// Manual Depth Buffer Copying
-	#if GRAPHICS_D3D11
+#if GRAPHICS_D3D11
 	if( this->textureDepth.resource && source.textureDepth.resource )
 	{
 		Gfx::shader_bind( SHADER_DEFAULT_COPY_DEPTH );
@@ -633,7 +997,7 @@ void GfxRenderTarget2D::copy_part( GfxRenderTarget2D &source, int srcX, int srcY
 		Gfx::set_depth_test_mode( GfxDepthTestMode_NONE );
 		Gfx::shader_release();
 	}
-	#endif
+#endif
 
 	// Copy Part
 	const bool success = GfxCore::rb_render_target_2d_copy_part(
@@ -662,11 +1026,11 @@ void GfxRenderTarget2D::bind( const int slot )
 	{
 		// MVP Matrix
 		RT_CACHE_MATRIX_MODEL = Gfx::get_matrix_model();
-		Gfx::set_matrix_model( matrix_build_identity() );
+		Gfx::set_matrix_model( doublem44_build_identity() );
 		RT_CACHE_MATRIX_VIEW = Gfx::get_matrix_view();
-		Gfx::set_matrix_view( matrix_build_identity() );
+		Gfx::set_matrix_view( doublem44_build_identity() );
 		RT_CACHE_MATRIX_PERSPECTIVE = Gfx::get_matrix_perspective();
-		Gfx::set_matrix_perspective( matrix_build_orthographic( 0.0f, width, 0.0f, height, 0.0f, 1.0f ) );
+		Gfx::set_matrix_perspective( doublem44_build_orthographic( 0.0, width, 0.0, height, 0.0, 1.0 ) );
 
 		// Viewport
 		RT_CACHE_VIEWPORT = GfxCore::viewport;
@@ -699,7 +1063,7 @@ void GfxRenderTarget2D::release()
 	draw_call();
 
 	// Backend
-	ErrorIf( !GfxCore::rb_render_target_2d_release( this->slot ),
+	ErrorIf( !GfxCore::rb_render_target_2d_release( this->resource, this->slot ),
 		"Failed to release RenderTarget2D!" );
 
 	if( this->slot == 0 )
@@ -726,11 +1090,11 @@ void GfxRenderTarget2D::release()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void GfxShader::init( const u32 shaderID, const DiskShader &diskShader )
+void GfxShader::init( const u32 shaderID, const BinShader &binShader )
 {
 #if GRAPHICS_ENABLED
 	this->shaderID = shaderID;
-	ErrorIf( !GfxCore::rb_shader_init( resource, shaderID, diskShader ),
+	ErrorIf( !GfxCore::rb_shader_init( resource, shaderID, binShader ),
 		"Failed to init shader! (%u)", this->shaderID );
 #endif
 }
@@ -756,12 +1120,12 @@ void GfxShader::bind()
 
 	ErrorIf( !GfxCore::rb_shader_bind( resource ),
 		"Failed to bind shader!" );
-	ErrorIf( !GfxCore::rb_shader_bind_constant_buffers_vertex[shaderID](),
-		"Failed to bind vertex shader cbuffers! (%u)", this->shaderID );
-	ErrorIf( !GfxCore::rb_shader_bind_constant_buffers_fragment[shaderID](),
-		"Failed to bind fragment shader cbuffers! (%u)", this->shaderID );
-	ErrorIf( !GfxCore::rb_shader_bind_constant_buffers_compute[shaderID](),
-		"Failed to bind compute shader cbuffers! (%u)", this->shaderID );
+	ErrorIf( !GfxCore::rb_shader_bind_uniform_buffers_vertex[shaderID](),
+		"Failed to bind vertex shader uniform buffers! (%u)", this->shaderID );
+	ErrorIf( !GfxCore::rb_shader_bind_uniform_buffers_fragment[shaderID](),
+		"Failed to bind fragment shader uniform buffers! (%u)", this->shaderID );
+	ErrorIf( !GfxCore::rb_shader_bind_uniform_buffers_compute[shaderID](),
+		"Failed to bind compute shader uniform buffers! (%u)", this->shaderID );
 #endif
 }
 
@@ -800,7 +1164,7 @@ void Gfx::frame_begin()
 	SysGfx::quadBatch.batch_begin();
 
 	// Reset Matrices
-	const Matrix identity = matrix_build_identity();
+	const doublem44 identity = doublem44_build_identity();
 	Gfx::set_matrix_model( identity );
 	Gfx::set_matrix_view( identity );
 	Gfx::set_matrix_perspective( identity );
@@ -864,7 +1228,7 @@ void Gfx::set_viewport_size( const u16 width, const u16 height, const bool fulls
 }
 
 
-void Gfx::set_shader_globals( const GfxCoreCBuffer::ShaderGlobals_t &globals )
+void Gfx::set_shader_globals( const GfxCoreUniformBuffer::ShaderGlobals_t &globals )
 {
 #if GRAPHICS_ENABLED
 	// Shader globals changes force a batch break
@@ -880,21 +1244,21 @@ void Gfx::set_shader_globals( const GfxCoreCBuffer::ShaderGlobals_t &globals )
 static void update_matrix_mvp()
 {
 #if GRAPHICS_ENABLED
-	GfxCore::matrixMVP = matrix_multiply( GfxCore::matrixPerspective,
-		matrix_multiply( GfxCore::matrixView, GfxCore::matrixModel ) );
+	GfxCore::matrixMVP = doublem44_multiply( GfxCore::matrixPerspective,
+		doublem44_multiply( GfxCore::matrixView, GfxCore::matrixModel ) );
 
-	auto &globals = GfxCBuffer::ShaderGlobals;
-	globals.matrixModel = GfxCore::matrixModel;
-	globals.matrixView = GfxCore::matrixView;
-	globals.matrixPerspective = GfxCore::matrixPerspective;
-	globals.matrixMVP = GfxCore::matrixMVP;
+	auto &globals = GfxUniformBuffer::ShaderGlobals;
+	globals.matrixModel = float_m44_from_doublem44( GfxCore::matrixModel );
+	globals.matrixView = float_m44_from_doublem44( GfxCore::matrixView );
+	globals.matrixPerspective = float_m44_from_doublem44( GfxCore::matrixPerspective );
+	globals.matrixMVP = float_m44_from_doublem44( GfxCore::matrixMVP );
 
 	Gfx::set_shader_globals( globals );
 #endif
 };
 
 
-void Gfx::set_matrix_model( const Matrix &matrix )
+void Gfx::set_matrix_model( const doublem44 &matrix )
 {
 #if GRAPHICS_ENABLED
 	GfxCore::matrixModel = matrix;
@@ -903,7 +1267,7 @@ void Gfx::set_matrix_model( const Matrix &matrix )
 }
 
 
-void Gfx::set_matrix_view( const Matrix &matrix )
+void Gfx::set_matrix_view( const doublem44 &matrix )
 {
 #if GRAPHICS_ENABLED
 	GfxCore::matrixView = matrix;
@@ -912,7 +1276,7 @@ void Gfx::set_matrix_view( const Matrix &matrix )
 }
 
 
-void Gfx::set_matrix_perspective( const Matrix &matrix )
+void Gfx::set_matrix_perspective( const doublem44 &matrix )
 {
 #if GRAPHICS_ENABLED
 	GfxCore::matrixPerspective = matrix;
@@ -921,7 +1285,7 @@ void Gfx::set_matrix_perspective( const Matrix &matrix )
 }
 
 
-void Gfx::set_matrix_mvp( const Matrix &matModel, const Matrix &matView, const Matrix &matPerspective )
+void Gfx::set_matrix_mvp( const doublem44 &matModel, const doublem44 &matView, const doublem44 &matPerspective )
 {
 #if GRAPHICS_ENABLED
 	GfxCore::matrixModel = matModel;
@@ -932,54 +1296,54 @@ void Gfx::set_matrix_mvp( const Matrix &matModel, const Matrix &matView, const M
 }
 
 
-void Gfx::set_matrix_mvp_2d_orthographic( const float x, const float y, const float zoom, const float angle,
-	const float width, const float height, const float znear, const float zfar )
+void Gfx::set_matrix_mvp_2d_orthographic( const double x, const double y, const double zoom, const double angle,
+	const double width, const double height, const double znear, const double zfar )
 {
 #if GRAPHICS_ENABLED
-	GfxCore::matrixModel = matrix_build_identity();
-	Matrix matrixView = matrix_build_rotation_z( angle * DEG2RAD );
-	matrixView = matrix_multiply( matrix_build_scaling( zoom, zoom, 1.0f ), matrixView );
-	matrixView = matrix_multiply( matrix_build_translation( -x, -y, 0.0f ), matrixView );
+	GfxCore::matrixModel = doublem44_build_identity();
+	doublem44 matrixView = doublem44_build_rotation_z( angle * DEG2RAD );
+	matrixView = doublem44_multiply( doublem44_build_scaling( zoom, zoom, 1.0 ), matrixView );
+	matrixView = doublem44_multiply( doublem44_build_translation( -x, -y, 0.0 ), matrixView );
 	GfxCore::matrixView = matrixView;
-	GfxCore::matrixPerspective = matrix_build_orthographic( 0.0f, width, 0.0f, height, znear, zfar );
+	GfxCore::matrixPerspective = doublem44_build_orthographic( 0.0, width, 0.0, height, znear, zfar );
 	update_matrix_mvp();
 #endif
 }
 
 
-void Gfx::set_matrix_mvp_3d_perspective( const float fov, const float aspect, const float znear, const float zfar,
-	const float x, const float y, const float z, const float xto, const float yto,
-	const float zto, const float xup, const float yup, const float zup )
+void Gfx::set_matrix_mvp_3d_perspective( const double fov, const double aspect, const double znear, const double zfar,
+	const double x, const double y, const double z, const double xto, const double yto,
+	const double zto, const double xup, const double yup, const double zup )
 {
 #if GRAPHICS_ENABLED
-	AssertMsg( znear > 0.0f, "znear must be > 0.0f!" );
-	GfxCore::matrixModel = matrix_build_identity();
-	GfxCore::matrixView = matrix_build_lookat( x, y, z, xto, yto, zto, xup, yup, zup );
-	GfxCore::matrixPerspective = matrix_build_perspective( fov, aspect, znear, zfar );
+	AssertMsg( znear > 0.0, "znear must be > 0.0f!" );
+	GfxCore::matrixModel = doublem44_build_identity();
+	GfxCore::matrixView = doublem44_build_lookat( x, y, z, xto, yto, zto, xup, yup, zup );
+	GfxCore::matrixPerspective = doublem44_build_perspective( fov, aspect, znear, zfar );
 	update_matrix_mvp();
 #endif
 }
 
 
-const Matrix &Gfx::get_matrix_model()
+const doublem44 &Gfx::get_matrix_model()
 {
 	return GfxCore::matrixModel;
 }
 
 
-const Matrix &Gfx::get_matrix_view()
+const doublem44 &Gfx::get_matrix_view()
 {
 	return GfxCore::matrixView;
 }
 
 
-const Matrix &Gfx::get_matrix_perspective()
+const doublem44 &Gfx::get_matrix_perspective()
 {
 	return GfxCore::matrixPerspective;
 }
 
 
-const Matrix &Gfx::get_matrix_mvp()
+const doublem44 &Gfx::get_matrix_mvp()
 {
 	return GfxCore::matrixMVP;
 }
@@ -1075,6 +1439,16 @@ void Gfx::set_filtering_mode( const GfxFilteringMode &mode )
 #if GRAPHICS_ENABLED
 	GfxSamplerState state = Gfx::state().sampler;
 	state.filterMode = mode;
+	Gfx::set_sampler_state( state );
+#endif
+}
+
+
+void Gfx::set_filtering_anisotropy( const int anisotropy )
+{
+#if GRAPHICS_ENABLED
+	GfxSamplerState state = Gfx::state().sampler;
+	state.anisotropy = clamp( anisotropy, 1, 16 );
 	Gfx::set_sampler_state( state );
 #endif
 }

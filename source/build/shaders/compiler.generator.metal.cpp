@@ -19,19 +19,26 @@ void GeneratorMetal::generate_structure( NodeStruct *node )
 	//
 	static const char *structNames[] =
 	{
-		"struct",  // StructType_Struct
-		"cbuffer", // StructType_CBuffer
-		"struct",  // StructType_VertexInput
-		"struct",  // StructType_VertexOutput
-		"struct",  // StructType_FragmentInput
-		"struct",  // StructType_FragmentOutput
-		"struct",  // StructType_ComputeInput
-		"struct",  // StructType_ComputeOutput
+		"struct",          // StructType_Struct
+		"struct",          // StructType_SharedStruct
+		"uniform_buffer",  // StructType_UniformBuffer
+		"constant_buffer", // StructType_ConstantBuffer
+		"mutable_buffer",  // StructType_MutuableBuffer
+		"struct",          // StructType_VertexInput
+		"struct",          // StructType_VertexOutput
+		"struct",          // StructType_FragmentInput
+		"struct",          // StructType_FragmentOutput
+		"struct",          // StructType_ComputeInput
+		"struct",          // StructType_ComputeOutput
 	};
 	static_assert( ARRAY_LENGTH( structNames ) == STRUCTTYPE_COUNT, "Missing TextureType" );
 
-	const bool expectSlot =  ( node->structType == StructType_CBuffer );
-	const bool expectMeta = !( node->structType == StructType_CBuffer || node->structType == StructType_Struct );
+	const bool expectSlot =  ( node->structType == StructType_UniformBuffer ||
+		node->structType == StructType_ConstantBuffer || node->structType == StructType_MutableBuffer );
+
+	const bool expectMeta = !( node->structType == StructType_UniformBuffer ||
+		node->structType == StructType_ConstantBuffer || node->structType == StructType_MutableBuffer ||
+		node->structType == StructType_Struct || node->structType == StructType_SharedStruct );
 
 	// <name> <type>
 	output.append( structNames[node->structType] ).append( " " ).append( typeName );
@@ -56,9 +63,11 @@ void GeneratorMetal::generate_structure( NodeStruct *node )
 		output.append( memberTypeName ).append( " " );
 
 		// <name>
-		if( node->structType == StructType_CBuffer )
+		if( node->structType == StructType_UniformBuffer ||
+			node->structType == StructType_ConstantBuffer ||
+			node->structType == StructType_MutableBuffer )
 		{
-			// cbuffer members are in global namespace, so we prefix them with the structure name
+			// buffer members are in global namespace, so we prefix them with the structure name
 			output.append( typeName ).append( "_" );
 		}
 		output.append( memberVariableName );
@@ -81,11 +90,14 @@ void GeneratorMetal::generate_structure( NodeStruct *node )
 			const char *semantic = "";
 			switch( memberVariable.semantic )
 			{
-				case TokenType_POSITION: semantic = "POSITION"; break;
-				case TokenType_TEXCOORD: semantic = "TEXCOORD"; break;
-				case TokenType_NORMAL:   semantic = "NORMAL"; break;
-				case TokenType_DEPTH:    semantic = "DEPTH"; break;
-				case TokenType_COLOR:    semantic = "COLOR"; break;
+				case SemanticType_POSITION: semantic = "POSITION"; break;
+				case SemanticType_TEXCOORD: semantic = "TEXCOORD"; break;
+				case SemanticType_NORMAL: semantic = "NORMAL"; break;
+				case SemanticType_DEPTH: semantic = "DEPTH"; break;
+				case SemanticType_COLOR: semantic = "COLOR"; break;
+				case SemanticType_BINORMAL: semantic = "BINORMAL"; break;
+				case SemanticType_TANGENT: semantic = "TANGENT"; break;
+				default: Error( "Unexpected semantic type: %u", memberVariable.semantic ); break;
 			};
 			output.append( " : " ).append( semantic );
 		}

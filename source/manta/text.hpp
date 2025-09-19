@@ -74,8 +74,8 @@ public:
 
 	u16 get_ttf() const;
 	SysFonts::FontGlyphInfo &get_glyph() const;
-	u16v2 get_glyph_dimensions( const usize index ) const;
-	u16v2 get_glyph_dimensions_raw() const;
+	u16_v2 get_glyph_dimensions( const usize index ) const;
+	u16_v2 get_glyph_dimensions_raw() const;
 
 public:
 	u32 codepoint;
@@ -147,13 +147,15 @@ public:
 	String substr( const usize start, const usize end );
 	void cstr( char *buffer, const usize size );
 
-	void draw_selection( const float x, const float y, const usize begin, const usize end );
-	void draw_caret( const float x, const float y, const usize caret, floatv4 *outCorners = nullptr );
-	intv2 draw( const float x, const float y );
+	void draw_selection( const float x, const float y, const usize begin, const usize end,
+			const Alpha alpha = { } );
+	void draw_caret( const float x, const float y, const usize caret,
+			float_v4 *outCorners = nullptr, const Alpha alpha = { } );
+	int_v2 draw( const float x, const float y, const Alpha alpha = { } );
 
 	usize get_index_from_position( const int x, const int y, const float bias = 1.0f );
-	intv3 get_position_from_index( const usize index );
-	intv2 get_dimensions();
+	int_v3 get_position_from_index( const usize index );
+	int_v2 get_dimensions();
 
 	TextChar &operator[]( const usize index ) { return char_at( index ); }
 	const TextChar &operator[]( const usize index ) const { return char_at( index ); }
@@ -393,7 +395,7 @@ public:
 	void caret_set_selection_paragraph( const usize index );
 	void caret_reset_selection();
 
-	intv2 draw( const Delta delta, const float x, const float y );
+	int_v2 draw( const Delta delta, const float x, const float y, const Alpha alpha = { } );
 
 	// Handle
 	Text *operator->() { MemoryAssert( text.data != nullptr ); return &text; }
@@ -454,7 +456,7 @@ public:
 	void ( *callbackOnError )( TextEditor &, const TextErr ) = nullptr;
 
 	// void callbackDraw( TextEditor &ime, const Delta delta detla, const float x, const float y )
-	void ( *callbackOnDraw )( TextEditor &, const Delta, const float, const float ) = nullptr;
+	void ( *callbackOnDraw )( TextEditor &, const Delta, const float, const float, const Alpha ) = nullptr;
 };
 
 

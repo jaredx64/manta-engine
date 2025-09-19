@@ -6,18 +6,18 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define PI ( 3.14159265358979f )
-#define DEG2RAD ( PI / 180.0f )
-#define RAD2DEG ( 180.0f / PI )
+#define PI ( 3.14159265358979 )
+#define DEG2RAD ( PI / 180.0 )
+#define RAD2DEG ( 180.0 / PI )
+
+#define PI_F ( 3.14159265358979f )
+#define DEG2RAD_F ( PI_F / 180.0f )
+#define RAD2DEG_F ( 180.0f / PI_F )
 
 #define ALIGN_16( value ) ( ( static_cast<int>( value ) >> 4 ) << 4 )
 #define ALIGN_16_CEIL( value ) ( ( ( static_cast<int>( value ) >> 4 ) + 1 ) << 4 )
 #define ALIGN_POWER( value, power ) ( ( static_cast<int>( value ) >> power ) << power )
 #define ALIGN_POWER_CEIL( value, power ) ( ( ( static_cast<int>( value ) >> power ) + 1 ) << power )
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-struct Matrix;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -131,21 +131,21 @@ template <typename T> inline T lerp_delta( const T &value1, const T value2, cons
 
 inline float lerp_angle_degrees( float value1, float value2, float amount )
 {
-	value1 *= DEG2RAD;
-	value2 *= DEG2RAD;
+	value1 *= DEG2RAD_F;
+	value2 *= DEG2RAD_F;
 	float dtheta = value2 - value1;
-	if( dtheta > PI ) { value1 += 2.0f * PI; }
-	if( dtheta < -PI ) { value1 -= 2.0f * PI; }
-	return lerp( value1, value2, amount ) * RAD2DEG;
+	if( dtheta > PI_F ) { value1 += 2.0f * PI_F; }
+	if( dtheta < -PI_F ) { value1 -= 2.0f * PI_F; }
+	return lerp( value1, value2, amount ) * RAD2DEG_F;
 }
 
 
 inline float lerp_angle_radians( float value1, float value2, float amount )
 {
 	float dtheta = value2 - value1;
-	if( dtheta > PI ) { value1 += 2.0f * PI; }
-	if( dtheta < -PI ) { value1 -= 2.0f * PI; }
-	return lerp( value1, value2, amount ) * RAD2DEG;
+	if( dtheta > PI_F ) { value1 += 2.0f * PI_F; }
+	if( dtheta < -PI_F ) { value1 -= 2.0f * PI_F; }
+	return lerp( value1, value2, amount ) * RAD2DEG_F;
 }
 
 
@@ -168,61 +168,6 @@ inline bool tween( T &variable, const T target, const T factor, const Delta delt
 #if !USE_OFFICIAL_HEADERS
 inline float fabsf( const float value ) { return static_cast<float>( fabs( value ) ); }
 #endif
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-extern bool matrix_equal( const Matrix &a, const Matrix &b );
-
-extern Matrix matrix_transpose( const Matrix &m );
-
-extern Matrix matrix_inverse( const Matrix &m );
-
-extern Matrix matrix_multiply( const Matrix &a, const Matrix &b );
-
-extern Matrix matrix_multiply_scalar( const Matrix &a, const float scalar );
-
-extern Matrix matrix_add( const Matrix &a, const Matrix &b );
-
-extern Matrix matrix_sub( const Matrix &a, const Matrix &b );
-
-extern Matrix matrix_build_zeros();
-
-extern Matrix matrix_build_identity();
-
-extern Matrix matrix_build_scaling( const float xscale, const float yscale, const float zscale );
-
-extern Matrix matrix_build_translation( const float xtrans, const float ytrans, const float ztrans );
-
-extern Matrix matrix_build_rotation_x( const float rad );
-
-extern Matrix matrix_build_rotation_y( const float rad );
-
-extern Matrix matrix_build_rotation_z( const float rad );
-
-extern Matrix matrix_build_orthographic( float left, float right, float top, float bottom, float znear, float zfar );
-
-extern Matrix matrix_build_perspective( const float fov, const float aspect, const float znear, const float zfar );
-
-extern Matrix matrix_build_lookat( const float x, const float y, const float z,
-	const float xto, const float yto, const float zto,
-	const float xup, const float yup, const float zup );
-
-extern Matrix matrix_build_ndc( const float width, const float height );
-
-struct Matrix
-{
-	float data[16];
-
-	Matrix() { for( int i = 0; i < 16; i++ ) { data[i] = 0.0f; } }
-	Matrix( const Matrix &m ) { for( int i = 0; i < 16; i++ ) { data[i] = m.data[i]; } }
-	Matrix( Matrix &&m ) { for( int i = 0; i < 16; i++ ) { data[i] = m.data[i]; } }
-	Matrix &operator=( const Matrix &m ) { for( int i = 0; i < 16; i++ ) { data[i] = m.data[i]; } return *this; }
-	Matrix &operator=( Matrix &&m ) { for( int i = 0; i < 16; i++ ) { data[i] = m.data[i]; } return *this; }
-
-	float &operator[]( const int index ) { return data[index]; }
-	float operator[]( const int index ) const { return data[index]; }
-	bool operator==( const Matrix &m ) { return matrix_equal( *this, m ); }
-};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

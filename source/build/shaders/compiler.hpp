@@ -6,6 +6,7 @@
 
 #include <build/filesystem.hpp>
 
+#define GFX_OUTPUT_STRUCTURE_SIZES true
 
 extern void compile_shader( struct Shader &shader, const char *path );
 
@@ -85,7 +86,10 @@ enum_type( TokenType, int )
 	TokenType_Integer,             // 64-bit Integer
 
 	Primitive_Struct,
-	Primitive_CBuffer,
+	Primitive_SharedStruct,
+	Primitive_UniformBuffer,
+	Primitive_ConstantBuffer,
+	Primitive_MutableBuffer,
 	Primitive_VertexInput,
 	Primitive_VertexOutput,
 	Primitive_FragmentInput,
@@ -113,7 +117,10 @@ enum_type( TokenType, int )
 	TokenType_Do,
 	TokenType_For,
 	TokenType_Struct,
-	TokenType_CBuffer,
+	TokenType_SharedStruct,
+	TokenType_UniformBuffer,
+	TokenType_ConstantBuffer,
+	TokenType_MutableBuffer,
 	TokenType_VertexInput,
 	TokenType_VertexOutput,
 	TokenType_FragmentInput,
@@ -134,6 +141,8 @@ enum_type( TokenType, int )
 	TokenType_NORMAL,
 	TokenType_DEPTH,
 	TokenType_COLOR,
+	TokenType_BINORMAL,
+	TokenType_TANGENT,
 	TokenType_InputFormat,
 	TokenType_UNORM8,
 	TokenType_UNORM16,
@@ -282,15 +291,22 @@ enum_type( Intrinsic, u32 )
 	Intrinsic_UIntToFloatBits,
 
 	// Texture Sampling Functions
-	Intrinsic_SampleTexture1D,
-	Intrinsic_SampleTexture1DArray,
-	Intrinsic_SampleTexture2D,
-	Intrinsic_SampleTexture2DArray,
-	Intrinsic_SampleTexture2DLevel,
-	Intrinsic_SampleTexture3D,
-	Intrinsic_SampleTextureCube,
-	Intrinsic_SampleTextureCubeArray,
-	Intrinsic_LoadTexture2D,
+	Intrinsic_TextureSample1D,
+	Intrinsic_TextureSample1DArray,
+	Intrinsic_TextureSample1DLevel,
+	Intrinsic_TextureSample2D,
+	Intrinsic_TextureSample2DArray,
+	Intrinsic_TextureSample2DLevel,
+	Intrinsic_TextureSample3D,
+	Intrinsic_TextureSample3DArray,
+	Intrinsic_TextureSample3DLevel,
+	Intrinsic_TextureSampleCube,
+	Intrinsic_TextureSampleCubeArray,
+	Intrinsic_TextureSampleCubeLevel,
+	Intrinsic_TextureLoad1D,
+	Intrinsic_TextureLoad2D,
+	Intrinsic_TextureLoad3D,
+	Intrinsic_TextureLoadCube,
 
 	// Depth
 	Intrinsic_DepthNormalize,
@@ -307,7 +323,10 @@ extern const char *Intrinsics[];
 enum_type( StructType, u32 )
 {
 	StructType_Struct,
-	StructType_CBuffer,
+	StructType_SharedStruct,
+	StructType_UniformBuffer,
+	StructType_ConstantBuffer,
+	StructType_MutableBuffer,
 	StructType_VertexInput,
 	StructType_VertexOutput,
 	StructType_FragmentInput,
@@ -322,13 +341,34 @@ extern const char *StructTypeNames[];
 
 enum_type( SemanticType, u32 )
 {
-	SemanticType_POSITION,  // TokenType_POSITION
-	SemanticType_TEXCOORD,  // TokenType_TEXCOORD
-	SemanticType_NORMAL,    // TokenType_NORMAL
-	SemanticType_DEPTH,     // TokenType_DEPTH
-	SemanticType_COLOR,     // TokenType_COLOR
+	SemanticType_POSITION, // TokenType_POSITION
+	SemanticType_TEXCOORD, // TokenType_TEXCOORD
+	SemanticType_NORMAL,   // TokenType_NORMAL
+	SemanticType_DEPTH,    // TokenType_DEPTH
+	SemanticType_COLOR,    // TokenType_COLOR
+	SemanticType_BINORMAL, // TokenType_BINORMAL
+	SemanticType_TANGENT,  // TokenType_TANGENT
 	SEMANTICTYPE_COUNT,
 };
+
+extern const char *Semantics[];
+
+
+enum_type( SVSemanticType, u32 )
+{
+	SVSemanticType_DISPATCH_THREAD_ID,
+	SVSemanticType_GROUP_ID,
+	SVSemanticType_GROUP_THREAD_ID,
+	SVSemanticType_GROUP_INDEX,
+	SVSemanticType_VERTEX_ID,
+	SVSemanticType_INSTANCE_ID,
+	SVSemanticType_PRIMITIVE_ID,
+	SVSemanticType_FRONT_FACING,
+	SVSemanticType_SAMPLE_ID,
+	SVSEMANTICTYPE_COUNT,
+};
+
+extern const char *SVSemantics[];
 
 
 enum_type( InputFormat, u32 )
@@ -347,7 +387,6 @@ enum_type( InputFormat, u32 )
 	InputFormat_SINT32,
 	InputFormat_FLOAT16,
 	InputFormat_FLOAT32,
-
 	PACKASTYPE_COUNT,
 };
 
@@ -405,6 +444,8 @@ struct Type : public Construct
 	bool builtin = false;
 	bool global = false;
 	bool pipelineIntermediate = false;
+	int sizeBytesPacked = 0;
+	int sizeBytesPadded = 0;
 };
 
 
@@ -412,6 +453,7 @@ struct Struct : public Construct
 {
 	TypeID typeID;
 	int slot = 0;
+	u32 size = 0;
 };
 
 
@@ -423,9 +465,9 @@ struct Variable : public Construct
 	InputFormat format = InputFormat_UNORM8;
 	SemanticType semantic = SemanticType_TEXCOORD;
 	TextureType texture = TextureType_Texture2D;
+	int slot = -1;
 	int arrayLengthX = 0;
 	int arrayLengthY = 0;
-	int slot = -1;
 	bool constant = false;
 	bool swizzle = false;
 	bool in = false;
@@ -500,6 +542,7 @@ enum_type( NodeType, u32 )
 	NodeType_VariableDeclaration,
 	NodeType_Variable,
 	NodeType_Swizzle,
+	NodeType_SVSemantic,
 	NodeType_Group,
 	NodeType_Integer,
 	NodeType_Number,
@@ -909,6 +952,17 @@ struct NodeSwizzle : public Node
 	}
 
 	SwizzleID swizzleID;
+};
+
+
+struct NodeSVSemantic : public Node
+{
+	NodeSVSemantic( const SVSemanticType svSemanticType ) : svSemanticType{ svSemanticType }
+	{
+		nodeType = NodeType_SVSemantic;
+	}
+
+	SVSemanticType svSemanticType;
 };
 
 

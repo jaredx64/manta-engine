@@ -38,37 +38,39 @@ PRIVATE const float border = 256.0f;
 
 CONSTRUCTOR( const float _size )
 {
-	size = _size;
-	speed = random<float>( 30.0f, 64.0f );
-	direction = random<float>( 360.0f );
+	Random random;
 
-	const int side = choose( 0, 1, 2, 3 );
+	size = _size;
+	speed = random.next_float( 30.0f, 64.0f );
+	direction = random.next_float( 360.0f );
+
+	const int side = random.choose( { 0, 1, 2, 3 } );
 	switch( side )
 	{
 		case 0: // Left
 		{
 			x = 0 - border * 0.5f;
-			y = random<float>( 0.0f, static_cast<float>( Window::height ) );
+			y = random.next_float( 0.0f, static_cast<float>( Window::height ) );
 		}
 		break;
 
 		case 1: // Right
 		{
 			x = static_cast<float>( Window::width ) + border * 0.5f;
-			y = random<float>( 0.0f, static_cast<float>( Window::height ) );
+			y = random.next_float( 0.0f, static_cast<float>( Window::height ) );
 		}
 		break;
 
 		case 2: // Top
 		{
-			x = random<float>( 0.0f, static_cast<float>( Window::width ) );
+			x = random.next_float( 0.0f, static_cast<float>( Window::width ) );
 			y = 0 - border * 0.5f;
 		}
 		break;
 
 		case 3: // Bottom
 		{
-			x = random<float>( 0.0f, static_cast<float>( Window::width ) );
+			x = random.next_float( 0.0f, static_cast<float>( Window::width ) );
 			y = static_cast<float>( Window::height ) + border * 0.5f;
 		}
 		break;
@@ -86,7 +88,8 @@ CONSTRUCTOR( const float _x, const float _y, const float _direction, const float
 
 EVENT_CREATE
 {
-	rotation = random<float>( 360.0 );
+	Random random;
+	rotation = random.next_float( 360.0 );
 
 	health = 100.0f * size;
 }
@@ -101,7 +104,9 @@ EVENT_UPDATE
 
 	// Destroy
 	constexpr float border = 256.0f;
-	if( x < -border || x > static_cast<float>( Window::width + border ) || y < -border || y > static_cast<float>( Window::height + border ) )
+	if( x < -border ||
+		x > static_cast<float>( Window::width + border ) ||
+		y < -border || y > static_cast<float>( Window::height + border ) )
 	{
 		Scene::objects.destroy( id );
 		return;
@@ -111,7 +116,7 @@ EVENT_UPDATE
 	const float radiusSqr = ( radius * size ) * ( radius * size );
 	for( auto projectile : Scene::objects.iterator_all<obj_projectile>() )
 	{
-		if( floatv2_distance_sqr( { x, y }, { projectile->x, projectile->y } ) < radiusSqr )
+		if( float_v2_distance_sqr( { x, y }, { projectile->x, projectile->y } ) < radiusSqr )
 		{
 			Scene::objects.destroy( projectile->id );
 			health -= 50.0f;

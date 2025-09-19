@@ -1,6 +1,7 @@
 #include <core/memory.hpp>
 
 #include <vendor/stdlib.hpp>
+
 #include <vendor/string.hpp>
 
 #include <core/debug.hpp>

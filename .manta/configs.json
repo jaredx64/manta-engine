@@ -30,7 +30,6 @@
 		],
 		"-toolchain=":
 		[
-			{ "label": "gnu" },
 			{ "label": "llvm" }
 		],
 		"-gfx=":

@@ -11,11 +11,13 @@ namespace ShaderCompiler
 {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct Generator
+class Generator
 {
+public:
 	Generator( Shader &shader, ShaderStage stage, Parser &parser ) :
 		shader{ shader }, stage{ stage }, parser{ parser }, output{ shader.outputs[stage] } { }
 
+public:
 	Shader &shader;
 	ShaderStage stage;
 	Parser &parser;
@@ -28,6 +30,7 @@ struct Generator
 	List<String> functionNames;
 	List<String> variableNames;
 
+public:
 	virtual void process_names();
 
 	virtual String &type_name( TypeID typeID );
@@ -39,8 +42,14 @@ struct Generator
 	virtual void leading_newline();
 	virtual void trailing_newline();
 
-	virtual void generate_stage( ShaderStage stage );
+	virtual int append_structure_padding( String &output, const char *indent,
+		int alignment, int current );
+	virtual void append_structure_member_padded( String &output, const char *indent,
+		Type &type, Variable &variable, int &structureByteOffset );
+	virtual void append_structure_member_packed( String &output, const char *indent,
+		Type &type,Variable &variable, int &structureByteOffset );
 
+	virtual void generate_stage( ShaderStage stage );
 	virtual void generate_node( Node *node );
 	virtual void generate_node_parenthesis( Node *node );
 
@@ -75,6 +84,7 @@ struct Generator
 	virtual void generate_variable_declaration( NodeVariableDeclaration *node );
 	virtual void generate_variable( NodeVariable *node );
 	virtual void generate_swizzle( NodeSwizzle *node );
+	virtual void generate_sv_semantic( NodeSVSemantic *node );
 	virtual void generate_group( NodeGroup *node );
 	virtual void generate_integer( NodeInteger *node );
 	virtual void generate_number( NodeNumber *node );
@@ -82,18 +92,24 @@ struct Generator
 
 	virtual void generate_structure( NodeStruct *node );
 	virtual void generate_structure_gfx( NodeStruct *node );
+	virtual bool generate_structure_gfx_shared_struct( NodeStruct *node );
+	virtual bool generate_structure_gfx_uniform_buffer( NodeStruct *node );
 	virtual bool generate_structure_gfx_vertex( NodeStruct *node );
-	virtual bool generate_structure_gfx_cbuffer( NodeStruct *node );
 
 	virtual void generate_texture( NodeTexture *node );
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct GeneratorHLSL : public Generator
+class GeneratorHLSL : public Generator
 {
+public:
 	GeneratorHLSL( Shader &shader, ShaderStage stage, Parser &parser ) :
 		Generator{ shader, stage, parser } { }
+
+public:
+	virtual void append_structure_member_padded( String &output, const char *indent,
+		Type &type, Variable &variable, int &structureByteOffset );
 
 	virtual void generate_stage( ShaderStage stage );
 
@@ -102,28 +118,42 @@ struct GeneratorHLSL : public Generator
 
 	virtual void generate_expression_binary_dot( NodeExpressionBinary *node );
 
+	virtual void generate_function_call_parameters( NodeFunctionCall *node );
 	virtual void generate_function_call_intrinsics( NodeFunctionCall *node );
+
+	virtual void generate_sv_semantic( NodeSVSemantic *node );
 
 	virtual void generate_structure( NodeStruct *node );
 	virtual bool generate_structure_gfx_vertex( NodeStruct *node );
 
 	virtual void generate_texture( NodeTexture *node );
+
+	void generate_sv_semantic_struct();
+	void generate_sv_semantic_entry_parameters();
+	void generate_sv_semantic_entry_caching();
+
+	void generate_statement_block_main( NodeStatementBlock *node );
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct GeneratorGLSL : public Generator
+class GeneratorGLSL : public Generator
 {
+public:
 	GeneratorGLSL( Shader &shader, ShaderStage stage, Parser &parser ) :
 		Generator{ shader, stage, parser } { }
 
+public:
 	virtual void process_names();
+
 	virtual void generate_stage( ShaderStage stage );
 
 	virtual void generate_function_declaration( NodeFunctionDeclaration *node );
 	virtual void generate_function_declaration_main( NodeFunctionDeclaration *node );
 
 	virtual void generate_function_call_intrinsics( NodeFunctionCall *node );
+
+	virtual void generate_sv_semantic( NodeSVSemantic *node );
 
 	virtual void generate_expression_binary( NodeExpressionBinary *node );
 
@@ -135,21 +165,25 @@ struct GeneratorGLSL : public Generator
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct GeneratorMetal : public Generator
+class GeneratorMetal : public Generator
 {
+public:
 	GeneratorMetal( Shader &shader, ShaderStage stage, Parser &parser ) :
 		Generator{ shader, stage, parser } { }
 
+public:
 	virtual void generate_structure( NodeStruct *node );
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct GeneratorVulkan : public Generator
+class GeneratorVulkan : public Generator
 {
+public:
 	GeneratorVulkan( Shader &shader, ShaderStage stage, Parser &parser ) :
 		Generator{ shader, stage, parser } { }
 
+public:
 	virtual void generate_structure( NodeStruct *node );
 };
 

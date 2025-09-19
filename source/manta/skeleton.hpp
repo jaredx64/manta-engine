@@ -6,8 +6,8 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-constexpr int BONE_ANIMATION_COUNT = 4;
-constexpr int BONE_ATTACHMENTS_COUNT = 4;
+constexpr u8 BONE_ANIMATION_COUNT = 4;
+constexpr u8 BONE_ATTACHMENTS_COUNT = 4;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -31,14 +31,14 @@ private:
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct DiskKeyframe
+struct BinKeyframe
 {
 	float time;
 	float value;
 };
 
-constexpr int numKeyframes = 14;
-static DiskKeyframe diskKeyframes[numKeyframes] =
+constexpr int numKeyframes = 17;
+static BinKeyframe binKeyframes[numKeyframes] =
 {
 	{ .time = 0.00f, .value = 0.0f },
 	{ .time = 0.25f, .value = 90.0f },
@@ -57,6 +57,9 @@ static DiskKeyframe diskKeyframes[numKeyframes] =
 	{ .time = 0.00f, .value = 4.0f },
 	{ .time = 0.33f, .value = -4.0f },
 	{ .time = 0.66f, .value = 4.0f },
+
+	{ .time = 0.00f, .value = 1.0f },
+	{ .time = 0.50f, .value = 2.0f },
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -74,7 +77,7 @@ enum_type( Timeline, int )
 };
 
 
-struct DiskAnimation
+struct BinAnimation
 {
 	u32 keyframeFirst[TIMELINE_COUNT];
 	u32 keyframeCount[TIMELINE_COUNT];
@@ -83,10 +86,9 @@ struct DiskAnimation
 
 
 constexpr int numAnimations = 2;
-static DiskAnimation diskAnimations[numAnimations] =
+static BinAnimation binAnimations[numAnimations] =
 {
-	{ .keyframeFirst = { 0, 0, 0, 0, 0, 0, 0 }, .keyframeCount = { 4, 0, 0, 0, 0, 0, 0 }, .duration = 1.0f },
-
+	{ .keyframeFirst = { 0, 0, 0, 14, 14, 0, 0 }, .keyframeCount = { 4, 0, 0, 2, 2, 0, 0 }, .duration = 5.0f },
 	{ .keyframeFirst = { 4, 8, 11, 0, 0, 0, 0 }, .keyframeCount = { 4, 3, 3, 0, 0, 0, 0 }, .duration = 1.0f },
 };
 
@@ -99,7 +101,7 @@ enum_type( AnimationID, u32 )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct DiskBone
+struct BinBone
 {
 	u32 animationFirst;
 	u32 animationCount;
@@ -121,7 +123,7 @@ enum_type( BoneID, u32 )
 };
 
 constexpr int numBones = 4;
-static DiskBone diskBones[numBones] =
+static BinBone binBones[numBones] =
 {
 	{ .animationFirst = 0, .animationCount = 1, .parent = U32_MAX,
 		.x = 0.0f, .y = 0.0f, .length = 16.0f, .scaleX = 1.0f, .scaleY = 1.0f, .rotation = 0.0f },
@@ -138,7 +140,7 @@ static DiskBone diskBones[numBones] =
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct DiskSkeleton
+struct BinSkeleton
 {
 	u32 boneFirst;
 	u32 boneCount;
@@ -153,7 +155,7 @@ enum_type( SkeletonID, u32 )
 
 
 constexpr int numSkeletons = 1;
-static DiskSkeleton diskSkeletons[numSkeletons] =
+static BinSkeleton binSkeletons[numSkeletons] =
 {
 	{ .boneFirst = 0, .boneCount = 4 },
 };
@@ -211,13 +213,12 @@ public:
 	bool animation_start( AnimationID animation, bool loop = true, float weight = 1.0, float ease = 0.0f );
 	void animation_stop( AnimationID animation, bool ease = 0.0f );
 	void animation_stop_all();
-	void animation_weight( AnimationID animation, float weight );
+	void animation_weight( AnimationID animation, float weight, float ease = 0.0f );
 	void animation_speed( AnimationID animation, float speed );
 	void animation_time( AnimationID animation, float time );
 
-	int attachment_add();
-	bool attachment_remove( int attachmentID );
-	Attachment &get_attachment( int attachmentID );
+	bool attachment_clear( u8 attachmentIndex );
+	Attachment &get_attachment( u8 attachmentIndex );
 
 	void set_color( const Color color );
 	Color get_color() const;
@@ -233,7 +234,7 @@ public:
 	float get_translation_x() const;
 	float get_translation_y() const;
 
-	void update( const DiskBone &diskBone, const Delta delta );
+	void update( const BinBone &binBone, const Delta delta );
 	void draw( const Delta delta, float x, float y, Color color, float depth = 0.0f );
 
 private:
@@ -276,7 +277,7 @@ public:
 	bool animation_start( AnimationID animation, bool loop = true, float weight = 1.0, float ease = 0.0f );
 	void animation_stop( AnimationID animation, bool ease = 0.0f );
 	void animation_stop_all();
-	void animation_weight( AnimationID animation, float weight );
+	void animation_weight( AnimationID animation, float weight, float ease = 0.0f );
 	void animation_speed( AnimationID animation, float speed );
 	void animation_time( AnimationID animation, float time );
 

@@ -209,8 +209,13 @@ void GeneratorGLSL::generate_function_declaration( NodeFunctionDeclaration *node
 			Variable &parameter = parser.variables[i];
 			Type &parameterType = parser.types[parameter.typeID];
 
-			// Skip CBuffers (global namespace)
-			if( parameterType.tokenType == TokenType_CBuffer ) { continue; }
+			// Skip buffers (global namespace)
+			if( parameterType.tokenType == TokenType_UniformBuffer ||
+				parameterType.tokenType == TokenType_ConstantBuffer ||
+				parameterType.tokenType == TokenType_MutableBuffer )
+			{
+				continue;
+			}
 
 			output.append( parameterCount == 0 ? " " : ", " );
 			const String &parameterTypeName = type_name( parameter.typeID );
@@ -277,13 +282,26 @@ void GeneratorGLSL::generate_function_call_intrinsics( NodeFunctionCall *node )
 	Assert( intrinsic < INTRINSIC_COUNT );
 
 	// Helper to output UV with flipped V
-	auto generate_node_uvs_flipped = [this]( Node *node )
+	auto generate_node_uv_flipped = [this]( Node *node )
 		{
 			output.append( "vec2( " );
 				generate_node_parenthesis( node );
 				output.append( ".x, 1.0 - " );
 				generate_node_parenthesis( node );
 				output.append( ".y" );
+			output.append( " )" );
+		};
+
+	// Helper to output UVW with flipped V
+	auto generate_node_uvw_flipped = [this]( Node *node )
+		{
+			output.append( "vec3( " );
+				generate_node_parenthesis( node );
+				output.append( ".x, 1.0 - " );
+				generate_node_parenthesis( node );
+				output.append( ".y, " );
+				generate_node_parenthesis( node );
+				output.append( ".z" );
 			output.append( " )" );
 		};
 
@@ -489,51 +507,117 @@ void GeneratorGLSL::generate_function_call_intrinsics( NodeFunctionCall *node )
 		return;
 
 	// Texture Sampling Functions
-		case Intrinsic_SampleTexture1D:
-		case Intrinsic_SampleTexture1DArray:
-		case Intrinsic_SampleTexture2D:
-		case Intrinsic_SampleTexture2DArray:
-		case Intrinsic_SampleTexture3D:
-		case Intrinsic_SampleTextureCube:
-		case Intrinsic_SampleTextureCubeArray:
+		case Intrinsic_TextureSample1D:
+		case Intrinsic_TextureSample1DArray:
+		case Intrinsic_TextureSample2D:
+		case Intrinsic_TextureSample2DArray:
+		case Intrinsic_TextureSample3D:
+		case Intrinsic_TextureSample3DArray:
+		case Intrinsic_TextureSampleCube:
+		case Intrinsic_TextureSampleCubeArray:
 		{
-			// <texture>.Sample( sampler, <uv> );
+			// texture( texture, location );
 			output.append( "texture" );
-
 			output.append( "( " );
 			generate_node( get_param( node->param, 0 )->expr );
 			output.append( ", " );
-			generate_node_uvs_flipped( get_param( node->param, 1 )->expr );
+			generate_node_uv_flipped( get_param( node->param, 1 )->expr );
 			output.append( " )" );
 		}
 		return;
 
-		case Intrinsic_SampleTexture2DLevel:
+		case Intrinsic_TextureSample1DLevel:
+		case Intrinsic_TextureSampleCubeLevel:
 		{
-			// <texture>.SampleLevel( sampler, <uv> );
-			output.append( "texture" );
-
+			// textureLod( texture, location, lod );
+			output.append( "textureLod" );
 			output.append( "( " );
 			generate_node( get_param( node->param, 0 )->expr );
 			output.append( ", " );
-			generate_node_uvs_flipped( get_param( node->param, 1 )->expr );
-			output.append( " )" );
-		}
-		return;
-
-		case Intrinsic_LoadTexture2D:
-		{
-			output.append( "texelFetch" );
-
-			output.append( "( " );
-			generate_node( get_param( node->param, 0 )->expr );
-			output.append( ", ivec2( " );
 			generate_node( get_param( node->param, 1 )->expr );
-			output.append( ", int( " );
-			generate_node( get_param( node->param, 4 )->expr );
-			output.append( " - 1 ) - ( " );
+			output.append( ", " );
 			generate_node( get_param( node->param, 2 )->expr );
-			output.append( " ) ), 0 )" );
+			output.append( " )" );
+		}
+		return;
+
+		case Intrinsic_TextureSample2DLevel:
+		{
+			// textureLod( texture, location, lod );
+			output.append( "textureLod" );
+			output.append( "( " );
+			generate_node( get_param( node->param, 0 )->expr );
+			output.append( ", " );
+			generate_node_uv_flipped( get_param( node->param, 1 )->expr ); // OpenGL: flip uv.v
+			output.append( ", " );
+			generate_node( get_param( node->param, 2 )->expr );
+			output.append( " )" );
+		}
+		return;
+
+		case Intrinsic_TextureSample3DLevel:
+		{
+			// textureLod( texture, location, lod );
+			output.append( "textureLod" );
+			output.append( "( " );
+			generate_node( get_param( node->param, 0 )->expr );
+			output.append( ", " );
+			generate_node_uvw_flipped( get_param( node->param, 1 )->expr ); // OpenGL: flip uvw.v
+			output.append( ", " );
+			generate_node( get_param( node->param, 2 )->expr );
+			output.append( " )" );
+		}
+		return;
+
+		case Intrinsic_TextureLoad1D:
+		{
+			// texelFetch( sampler1D texture, int location, int lod );
+			output.append( "texelFetch" );
+			output.append( "( " );
+			generate_node( get_param( node->param, 0 )->expr ); // texture
+			output.append( ", " );
+			generate_node( get_param( node->param, 1 )->expr ); // u
+			output.append( ", " );
+			generate_node( get_param( node->param, 3 )->expr ); // lod
+			output.append( ")" );
+		}
+		return;
+
+		case Intrinsic_TextureLoad2D:
+		{
+			// texelFetch( sampler2D texture, int_v2 location, int lod );
+			output.append( "texelFetch" );
+			output.append( "( " );
+			generate_node( get_param( node->param, 0 )->expr ); // texture
+			output.append( ", ivec2( " );
+			generate_node( get_param( node->param, 1 )->expr ); // u
+			output.append( ", int( " );
+			generate_node( get_param( node->param, 4 )->expr ); // height
+			output.append( " - 1 ) - ( " );
+			generate_node( get_param( node->param, 2 )->expr ); // v
+			output.append( " ) ), " );
+			generate_node( get_param( node->param, 5 )->expr ); // lod
+			output.append( ")" );
+		}
+		return;
+
+		case Intrinsic_TextureLoad3D:
+		{
+			// texelFetch( sampler3D texture, int_v3 location, int lod );
+			output.append( "texelFetch" );
+			output.append( "( " );
+			generate_node( get_param( node->param, 0 )->expr ); // texture
+			output.append( ", ivec3( " );
+			generate_node( get_param( node->param, 1 )->expr ); // u
+			output.append( ", int( " );
+			generate_node( get_param( node->param, 5 )->expr ); // height
+			output.append( " - 1 ) - ( " );
+			generate_node( get_param( node->param, 2 )->expr ); // v
+			output.append( " ), " );
+			generate_node( get_param( node->param, 3 )->expr ); // w
+			output.append( " ), " );
+			generate_node( get_param( node->param, 7 )->expr ); // lod
+			output.append( ")" );
 		}
 		return;
 
@@ -631,6 +715,25 @@ void GeneratorGLSL::generate_function_call_intrinsics( NodeFunctionCall *node )
 }
 
 
+void GeneratorGLSL::generate_sv_semantic( NodeSVSemantic *node )
+{
+	switch( node->svSemanticType )
+	{
+		case SVSemanticType_DISPATCH_THREAD_ID: output.append( "gl_GlobalInvocationID" ); return;
+		case SVSemanticType_GROUP_ID:  output.append( "gl_WorkGroupID" ); return;
+		case SVSemanticType_GROUP_THREAD_ID: output.append( "gl_LocalInvocationID" ); return;
+		case SVSemanticType_GROUP_INDEX: output.append( "gl_LocalInvocationIndex" ); return;
+		case SVSemanticType_VERTEX_ID: output.append( "gl_VertexID" ); return;
+		case SVSemanticType_INSTANCE_ID: output.append( "gl_InstanceID" ); return;
+		case SVSemanticType_PRIMITIVE_ID: output.append( "gl_PrimitiveID" ); return;
+		case SVSemanticType_FRONT_FACING: output.append( "gl_FrontFacing" ); return;
+		case SVSemanticType_SAMPLE_ID: output.append( "gl_SampleID" ); return;
+
+		default: Error( "Unexpected SV Semantic: %s", SVSemantics[node->svSemanticType] );
+	}
+}
+
+
 void GeneratorGLSL::generate_expression_binary( NodeExpressionBinary *node )
 {
 	static const char *binaryOperators[] =
@@ -683,7 +786,7 @@ void GeneratorGLSL::generate_expression_binary( NodeExpressionBinary *node )
 
 		case ExpressionBinaryType_Dot:
 		{
-			// CBuffer members are in the global namespace, so we prefix them by structure name
+			// buffer members are in the global namespace, so we prefix them by structure name
 			if( node->expr1->nodeType == NodeType_Variable )
 			{
 				NodeVariable *nodeVariable = reinterpret_cast<NodeVariable *>( node->expr1 );
@@ -707,7 +810,7 @@ void GeneratorGLSL::generate_expression_binary( NodeExpressionBinary *node )
 				}
 			}
 
-			// Only reachable if LHS not cbuffer type
+			// Only reachable if LHS not uniform_buffer type
 			generate_node( node->expr1 );
 			output.append( "." );
 			generate_node( node->expr2 );
@@ -736,7 +839,10 @@ void GeneratorGLSL::generate_structure( NodeStruct *node )
 	static const char *structNames[] =
 	{
 		"struct",                   // StructType_Struct
-		"layout( std140 ) uniform", // StructType_CBuffer
+		"struct",                   // StructType_SharedStruct
+		"layout( std140 ) uniform", // StructType_UniformBuffer
+		"layout( std140 ) uniform", // StructType_ConstantBuffer
+		"layout( std140 ) uniform", // StructType_MutuableBuffer
 		"",                         // StructType_VertexInput
 		"",                         // StructType_VertexOutput
 		"",                         // StructType_FragmentInput
@@ -747,15 +853,22 @@ void GeneratorGLSL::generate_structure( NodeStruct *node )
 	static_assert( ARRAY_LENGTH( structNames ) == STRUCTTYPE_COUNT,
 		"Missing TextureType" );
 
-	const bool expectSlot =  ( node->structType == StructType_CBuffer );
-	const bool expectMeta = !( node->structType == StructType_CBuffer || node->structType == StructType_Struct );
+	const bool expectSlot =  ( node->structType == StructType_UniformBuffer ||
+		node->structType == StructType_ConstantBuffer || node->structType == StructType_MutableBuffer );
+
+	const bool expectMeta = !( node->structType == StructType_UniformBuffer ||
+		node->structType == StructType_ConstantBuffer || node->structType == StructType_MutableBuffer ||
+		node->structType == StructType_Struct || node->structType == StructType_SharedStruct );
 
 	bool hasBody, hasIn, hasOut, hasLayout;
 	switch( node->structType )
 	{
 		default:
 		case StructType_Struct:         { hasBody = true;  hasIn = false; hasOut = false; hasLayout = false; } break;
-		case StructType_CBuffer:        { hasBody = true;  hasIn = false; hasOut = false; hasLayout = false; } break;
+		case StructType_SharedStruct:   { hasBody = true;  hasIn = false; hasOut = false; hasLayout = false; } break;
+		case StructType_UniformBuffer:  { hasBody = true;  hasIn = false; hasOut = false; hasLayout = false; } break;
+		case StructType_ConstantBuffer: { hasBody = true;  hasIn = false; hasOut = false; hasLayout = false; } break;
+		case StructType_MutableBuffer:  { hasBody = true;  hasIn = false; hasOut = false; hasLayout = false; } break;
 		case StructType_VertexInput:    { hasBody = false; hasIn = true;  hasOut = false; hasLayout = true;  } break;
 		case StructType_VertexOutput:   { hasBody = false; hasIn = false; hasOut = true;  hasLayout = true;  } break;
 		case StructType_FragmentInput:  { hasBody = false; hasIn = true;  hasOut = false; hasLayout = true;  } break;
@@ -873,7 +986,9 @@ void GeneratorGLSL::generate_structure( NodeStruct *node )
 		output.append( memberTypeName ).append( " " );
 
 		// <name>
-		if( node->structType == StructType_CBuffer || !hasBody )
+		if( node->structType == StructType_UniformBuffer ||
+			node->structType == StructType_ConstantBuffer ||
+			node->structType == StructType_MutableBuffer || !hasBody )
 		{
 			if( node->structType == StructType_VertexOutput || node->structType == StructType_FragmentInput )
 			{
@@ -884,8 +999,8 @@ void GeneratorGLSL::generate_structure( NodeStruct *node )
 			}
 			else
 			{
-				// CBuffer, vertex_input, and fragment_output are in global namespace,
-				// so we prefix them with the structure name
+				// uniform_buffer, constant_buffer, mutable_buffer, vertex_input, and fragment_output
+				// are in global namespace, so we prefix them with the structure name
 				output.append( typeName ).append( "_" );
 			}
 		}
@@ -932,8 +1047,6 @@ bool GeneratorGLSL::generate_structure_gfx_vertex( NodeStruct *node )
 	const String &structureName = type_name( structure.typeID );
 
 	int byteOffset = 0;
-	//u32 semanticIndex[SEMANTICTYPE_COUNT]; // TODO: unused?
-	//for( u32 i = 0; i < SEMANTICTYPE_COUNT; i++ ) { semanticIndex[i] = 0; }
 
 	String link;
 	String bind;
@@ -1134,7 +1247,6 @@ void GeneratorGLSL::generate_texture( NodeTexture *node )
 {
 	// TODO: Multiple sampler states for each texture (like OpenGL)
 	static bool generatedSampler = false;
-
 	Texture &texture = parser.textures[node->textureID];
 	const String &samplerName = type_name( parser.variables[texture.variableID].texture );
 	const String &variableName = variable_name( texture.variableID );

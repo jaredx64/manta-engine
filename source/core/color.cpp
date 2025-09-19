@@ -8,7 +8,7 @@ static constexpr float inv255 = 1.0f / 255.0f;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-Color Color::operator*( const Color &c )
+Color Color::operator*( const Color &c ) const
 {
 	Color outColor = *this;
 	if( c.r == 255 && c.g == 255 && c.b == 255 && c.a == 255 ) { return outColor; }
@@ -20,7 +20,7 @@ Color Color::operator*( const Color &c )
 }
 
 
-Color Color::operator*( Color &c )
+Color Color::operator*( Color &c ) const
 {
 	Color outColor = *this;
 	if( c.r == 255 && c.g == 255 && c.b == 255 && c.a == 255 ) { return outColor; }
@@ -32,7 +32,7 @@ Color Color::operator*( Color &c )
 }
 
 
-Color Color::operator*( const float s )
+Color Color::operator*( const float s ) const
 {
 	Color outColor;
 	outColor.r = static_cast<u8>( clamp( ( r * inv255 ) * s, 0.0f, 1.0f ) * 255.0f );
@@ -43,7 +43,15 @@ Color Color::operator*( const float s )
 }
 
 
-Color Color::operator*=( const Color &c )
+Color Color::operator*( const Alpha &alpha ) const
+{
+	Color outColor = *this;
+	outColor.a = static_cast<u8>( clamp( ( a * inv255 ) * alpha.value, 0.0f, 1.0f ) * 255.0f );
+	return outColor;
+}
+
+
+Color &Color::operator*=( const Color &c )
 {
 	if( c.r == 255 && c.g == 255 && c.b == 255 && c.a == 255 ) { return *this; }
 	r = static_cast<u8>( clamp( ( r * inv255 ) * ( c.r * inv255 ), 0.0f, 1.0f ) * 255.0f );
@@ -54,7 +62,7 @@ Color Color::operator*=( const Color &c )
 }
 
 
-Color Color::operator*=( Color &c )
+Color &Color::operator*=( Color &c )
 {
 	if( c.r == 255 && c.g == 255 && c.b == 255 && c.a == 255 ) { return *this; }
 	r = static_cast<u8>( clamp( ( r * inv255 ) * ( c.r * inv255 ), 0.0f, 1.0f ) * 255.0f );
@@ -65,7 +73,7 @@ Color Color::operator*=( Color &c )
 }
 
 
-Color Color::operator*=( const float s )
+Color &Color::operator*=( const float s )
 {
 	r = static_cast<u8>( clamp( ( r * inv255 ) * s, 0.0f, 1.0f ) * 255.0f );
 	g = static_cast<u8>( clamp( ( g * inv255 ) * s, 0.0f, 1.0f ) * 255.0f );
@@ -75,7 +83,14 @@ Color Color::operator*=( const float s )
 }
 
 
-Color Color::operator/( const Color &c )
+Color &Color::operator*=( const Alpha &alpha )
+{
+	a = static_cast<u8>( clamp( ( a * inv255 ) * alpha.value, 0.0f, 1.0f ) * 255.0f );
+	return *this;
+}
+
+
+Color Color::operator/( const Color &c ) const
 {
 	Color outColor = *this;
 	if( c.r == 255 && c.g == 255 && c.b == 255 && c.a == 255 ) { return outColor; }
@@ -87,7 +102,7 @@ Color Color::operator/( const Color &c )
 }
 
 
-Color Color::operator/( Color &c )
+Color Color::operator/( Color &c ) const
 {
 	Color outColor = *this;
 	if( c.r == 255 && c.g == 255 && c.b == 255 && c.a == 255 ) { return outColor; }
@@ -99,7 +114,7 @@ Color Color::operator/( Color &c )
 }
 
 
-Color Color::operator/( const float s )
+Color Color::operator/( const float s ) const
 {
 	Color outColor;
 	outColor.r = static_cast<u8>( clamp( ( r * inv255 ) / s, 0.0f, 1.0f ) * 255.0f );
@@ -110,7 +125,7 @@ Color Color::operator/( const float s )
 }
 
 
-Color Color::operator/=( const Color &c )
+Color &Color::operator/=( const Color &c )
 {
 	if( c.r == 255 && c.g == 255 && c.b == 255 && c.a == 255 ) { return *this; }
 	r = static_cast<u8>( clamp( ( r * inv255 ) / ( c.r * inv255 ), 0.0f, 1.0f ) * 255.0f );
@@ -121,7 +136,7 @@ Color Color::operator/=( const Color &c )
 }
 
 
-Color Color::operator/=( Color &c )
+Color &Color::operator/=( Color &c )
 {
 	if( c.r == 255 && c.g == 255 && c.b == 255 && c.a == 255 ) { return *this; }
 	r = static_cast<u8>( clamp( ( r * inv255 ) / ( c.r * inv255 ), 0.0f, 1.0f ) * 255.0f );
@@ -132,7 +147,7 @@ Color Color::operator/=( Color &c )
 }
 
 
-Color Color::operator/=( const float s )
+Color &Color::operator/=( const float s )
 {
 	r = static_cast<u8>( clamp( ( r * inv255 ) / s, 0.0f, 1.0f ) * 255.0f );
 	g = static_cast<u8>( clamp( ( g * inv255 ) / s, 0.0f, 1.0f ) * 255.0f );
@@ -142,7 +157,7 @@ Color Color::operator/=( const float s )
 }
 
 
-Color Color::operator+( const Color &c )
+Color Color::operator+( const Color &c ) const
 {
 	Color outColor;
 	outColor.r = static_cast<u8>( clamp( r + c.r, 0, 255 ) );
@@ -153,7 +168,7 @@ Color Color::operator+( const Color &c )
 }
 
 
-Color Color::operator+( Color &c )
+Color Color::operator+( Color &c ) const
 {
 	Color outColor;
 	outColor.r = static_cast<u8>( clamp( r + c.r, 0, 255 ) );
@@ -164,7 +179,7 @@ Color Color::operator+( Color &c )
 }
 
 
-Color Color::operator+=( const Color &c )
+Color &Color::operator+=( const Color &c )
 {
 	r = static_cast<u8>( clamp( r + c.r, 0, 255 ) );
 	g = static_cast<u8>( clamp( g + c.g, 0, 255 ) );
@@ -174,7 +189,7 @@ Color Color::operator+=( const Color &c )
 }
 
 
-Color Color::operator+=( Color &c )
+Color &Color::operator+=( Color &c )
 {
 	r = static_cast<u8>( clamp( r + c.r, 0, 255 ) );
 	g = static_cast<u8>( clamp( g + c.g, 0, 255 ) );
@@ -184,7 +199,7 @@ Color Color::operator+=( Color &c )
 }
 
 
-Color Color::operator-( const Color &c )
+Color Color::operator-( const Color &c ) const
 {
 	Color outColor;
 	outColor.r = static_cast<u8>( clamp( r - c.r, 0, 255 ) );
@@ -195,7 +210,7 @@ Color Color::operator-( const Color &c )
 }
 
 
-Color Color::operator-( Color &c )
+Color Color::operator-( Color &c ) const
 {
 	Color outColor;
 	outColor.r = static_cast<u8>( clamp( r - c.r, 0, 255 ) );
@@ -206,7 +221,7 @@ Color Color::operator-( Color &c )
 }
 
 
-Color Color::operator-=( const Color &c )
+Color &Color::operator-=( const Color &c )
 {
 	r = static_cast<u8>( clamp( r - c.r, 0, 255 ) );
 	g = static_cast<u8>( clamp( g - c.g, 0, 255 ) );
@@ -216,7 +231,7 @@ Color Color::operator-=( const Color &c )
 }
 
 
-Color Color::operator-=( Color &c )
+Color &Color::operator-=( Color &c )
 {
 	r = static_cast<u8>( clamp( r - c.r, 0, 255 ) );
 	g = static_cast<u8>( clamp( g - c.g, 0, 255 ) );

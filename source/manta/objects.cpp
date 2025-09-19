@@ -1035,7 +1035,7 @@ void ObjectContext::draw( const Delta delta, const float x, const float y )
 	if( label[0] != '\0' )
 	{
 		const int size = 14;
-		const intv2 bbox = text_dimensions( fnt_iosevka, size, label );
+		const int_v2 bbox = text_dimensions( fnt_iosevka, size, label );
 		const float mx = mouse_x + 16.0f;
 		const float my = mouse_y + 16.0f;
 		draw_rectangle( mx, my, mx + bbox.x + 16, my + bbox.y + 16, c_black, false );

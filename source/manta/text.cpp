@@ -125,7 +125,7 @@ SysFonts::FontGlyphInfo &TextChar::get_glyph() const
 }
 
 
-u16v2 TextChar::get_glyph_dimensions( const usize index ) const
+u16_v2 TextChar::get_glyph_dimensions( const usize index ) const
 {
 	static usize indexInLine = 0;
 	if( UNLIKELY( index == 0 ) ) { indexInLine = 0; }
@@ -137,7 +137,7 @@ u16v2 TextChar::get_glyph_dimensions( const usize index ) const
 		const SysFonts::FontGlyphInfo &glyph = SysFonts::get( SysFonts::FontGlyphKey { ' ', ttf, format.size } );
 		const u16 tabSize = 4 - ( indexInLine % 4 );
 		indexInLine += tabSize;
-		return u16v2 { static_cast<u16>( tabSize * glyph.advance ) , static_cast<u16>( glyph.height ) };
+		return u16_v2 { static_cast<u16>( tabSize * glyph.advance ) , static_cast<u16>( glyph.height ) };
 	}
 	// Newlines
 	else if( UNLIKELY( codepoint == '\n' ) )
@@ -145,22 +145,22 @@ u16v2 TextChar::get_glyph_dimensions( const usize index ) const
 		indexInLine++;
 		const u16 ttf = get_ttf();
 		const SysFonts::FontGlyphInfo &glyph = SysFonts::get( SysFonts::FontGlyphKey { ' ', ttf, format.size } );
-		return u16v2 { static_cast<u16>( format.size / 2 ), static_cast<u16>( glyph.height ) };
+		return u16_v2 { static_cast<u16>( format.size / 2 ), static_cast<u16>( glyph.height ) };
 	}
 	// Normal character
 	else
 	{
 		indexInLine++;
 		const SysFonts::FontGlyphInfo &glyph = get_glyph();
-		return u16v2 { static_cast<u16>( glyph.advance ), static_cast<u16>( glyph.height ) };
+		return u16_v2 { static_cast<u16>( glyph.advance ), static_cast<u16>( glyph.height ) };
 	}
 }
 
 
-u16v2 TextChar::get_glyph_dimensions_raw() const
+u16_v2 TextChar::get_glyph_dimensions_raw() const
 {
 	const SysFonts::FontGlyphInfo &glyph = get_glyph();
-	return u16v2 { static_cast<u16>( glyph.advance ), static_cast<u16>( glyph.height ) };
+	return u16_v2 { static_cast<u16>( glyph.advance ), static_cast<u16>( glyph.height ) };
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -571,7 +571,7 @@ Text::LineInfo Text::get_line( const usize index )
 			}
 
 			// Line Width
-			const u16v2 glyphDimensions = c.get_glyph_dimensions( i - line.begin );
+			const u16_v2 glyphDimensions = c.get_glyph_dimensions( i - line.begin );
 			if( pageWidth > 0 && line.width + glyphDimensions.x >= pageWidth )
 			{
 				if( wordBreakIndex != 0 )
@@ -645,7 +645,7 @@ usize Text::get_index_from_position( const int x, const int y, const float bias 
 			for( usize i = line.begin; i < line.end; i++ )
 			{
 				// X is within or before glyph, return this index
-				const u16v2 glyphDimensions = data[i].get_glyph_dimensions( i - line.begin );
+				const u16_v2 glyphDimensions = data[i].get_glyph_dimensions( i - line.begin );
 				if( x < xOffset + glyphDimensions.x * bias ) { return i; }
 				xOffset += glyphDimensions.x;
 			}
@@ -664,7 +664,7 @@ usize Text::get_index_from_position( const int x, const int y, const float bias 
 }
 
 
-intv3 Text::get_position_from_index( const usize index )
+int_v3 Text::get_position_from_index( const usize index )
 {
 	// Early out for empty Text
 
@@ -681,11 +681,11 @@ intv3 Text::get_position_from_index( const usize index )
 			int xOffset = line.offset;
 			for( usize i = line.begin; i < index; i++ )
 			{
-				const u16v2 glyphDimensions = data[i].get_glyph_dimensions( i - line.begin );
+				const u16_v2 glyphDimensions = data[i].get_glyph_dimensions( i - line.begin );
 				xOffset += glyphDimensions.x;
 			}
 
-			return intv3 { xOffset, yOffset, yOffset + line.height };
+			return int_v3 { xOffset, yOffset, yOffset + line.height };
 		}
 
 		// Incremenet yOffset
@@ -695,9 +695,9 @@ intv3 Text::get_position_from_index( const usize index )
 }
 
 
-intv2 Text::get_dimensions()
+int_v2 Text::get_dimensions()
 {
-	intv2 dimensions { 0, 0 };
+	int_v2 dimensions { 0, 0 };
 
 	// Calculate dimensions
 	for( LineInfo line = get_line( 0 ); true; line = get_line( line.next ) )
@@ -727,7 +727,7 @@ bool Text::limit_dimensions()
 {
 	if( limitWidth == 0 && limitHeight == 0 ) { return false; }
 
-	const intv2 dimensions = get_dimensions();
+	const int_v2 dimensions = get_dimensions();
 
 	const bool limitExceededWidth = pageWidth == 0 && limitWidth > 0 && dimensions.x > limitWidth;
 	const bool limitExceededHeight = limitHeight > 0 && dimensions.y > limitHeight;
@@ -738,9 +738,9 @@ bool Text::limit_dimensions()
 }
 
 
-void Text::draw_selection( const float x, const float y, const usize begin, const usize end )
+void Text::draw_selection( const float x, const float y, const usize begin, const usize end, const Alpha alpha )
 {
-	const Color color = Color { 0, 40, 100, 255 };
+	const Color colorSelection = Color { 0, 40, 100, 255 };
 
 	Assert( begin <= end );
 	Assert( begin <= current );
@@ -770,7 +770,7 @@ void Text::draw_selection( const float x, const float y, const usize begin, cons
 			{
 				if( batchX1 != -1 )
 				{
-					draw_rectangle( x + batchX1, y + batchY1, x + batchX2, y + batchY2, color );
+					draw_rectangle( x + batchX1, y + batchY1, x + batchX2, y + batchY2, colorSelection * alpha );
 				}
 
 				return;
@@ -779,7 +779,7 @@ void Text::draw_selection( const float x, const float y, const usize begin, cons
 			// Increment xOffset
 			TextChar c = data[i];
 			if( i == line.end && !c.is_newline() ) { break; }
-			const u16v2 glyphDimensions = c.get_glyph_dimensions( i - line.begin );
+			const u16_v2 glyphDimensions = c.get_glyph_dimensions( i - line.begin );
 			xOffset += glyphDimensions.x;
 
 			// Calculate Quad Bounds
@@ -801,7 +801,7 @@ void Text::draw_selection( const float x, const float y, const usize begin, cons
 				if( batchY1 != -1 && ( batchY1 != y1 || batchY2 != y2 ) )
 				{
 					// Draw the previous batch
-					draw_rectangle( x + batchX1, y + batchY1, x + batchX2, y + batchY2, color );
+					draw_rectangle( x + batchX1, y + batchY1, x + batchX2, y + batchY2, colorSelection * alpha );
 					batchX1 = -1;
 					batchX2 = -1;
 				}
@@ -820,7 +820,7 @@ void Text::draw_selection( const float x, const float y, const usize begin, cons
 		// Draw any remaining batch for the line
 		if( batchX1 != -1 )
 		{
-			draw_rectangle( x + batchX1, y + batchY1, x + batchX2, y + batchY2, color );
+			draw_rectangle( x + batchX1, y + batchY1, x + batchX2, y + batchY2, colorSelection * alpha );
 		}
 
 		// Increment yOffset
@@ -831,7 +831,7 @@ void Text::draw_selection( const float x, const float y, const usize begin, cons
 }
 
 
-void Text::draw_caret( const float x, const float y, const usize index, floatv4 *outCorners )
+void Text::draw_caret( const float x, const float y, const usize index, float_v4 *outCorners, const Alpha alpha )
 {
 	Assert( index <= current );
 
@@ -846,7 +846,7 @@ void Text::draw_caret( const float x, const float y, const usize index, floatv4 
 			int xOffset = line.offset;
 			for( usize i = line.begin; i < index; i++ )
 			{
-				const u16v2 glyphDimensions = data[i].get_glyph_dimensions( i - line.begin );
+				const u16_v2 glyphDimensions = data[i].get_glyph_dimensions( i - line.begin );
 				xOffset += glyphDimensions.x;
 			}
 
@@ -863,12 +863,12 @@ void Text::draw_caret( const float x, const float y, const usize index, floatv4 
 			const int x2 = xOffset + 2;
 			const int y1 = yOffset + caretGlyph.yshift + lineHeightOffset - caretHeightPadding;
 			const int y2 = yOffset + caretGlyph.yshift + lineHeightOffset + caretHeight + caretHeightPadding;
-			const floatv4 corners { x + x1, y + y1, x + x2, y + y2 };
+			const float_v4 corners { x + x1, y + y1, x + x2, y + y2 };
 
 			// Draw
 			if( outCorners == nullptr )
 			{
-				draw_rectangle( corners.x, corners.y, corners.z, corners.w, c_white );
+				draw_rectangle( corners.x, corners.y, corners.z, corners.w, c_white * alpha );
 			}
 			else
 			{
@@ -886,9 +886,9 @@ void Text::draw_caret( const float x, const float y, const usize index, floatv4 
 }
 
 
-intv2 Text::draw( const float x, const float y )
+int_v2 Text::draw( const float x, const float y, const Alpha alpha )
 {
-	intv2 dimensions { 0, 0 };
+	int_v2 dimensions { 0, 0 };
 
 	// Loop over lines
 	int yOffset = 0;
@@ -901,7 +901,7 @@ intv2 Text::draw( const float x, const float y )
 			// Retrieve glyph
 			const TextChar &c = data[i];
 			const SysFonts::FontGlyphInfo &glyph = c.get_glyph();
-			const u16v2 glyphDimensions = c.get_glyph_dimensions( i - line.begin );
+			const u16_v2 glyphDimensions = c.get_glyph_dimensions( i - line.begin );
 
 			// Skipped characters
 			const bool skipped = c.codepoint == '\t' || c.codepoint == '\n';
@@ -911,7 +911,7 @@ intv2 Text::draw( const float x, const float y )
 			{
 				const SysFonts::FontGlyphKey glyphKeySizeChar { CARET_CODEPOINT, c.get_ttf(), c.format.size };
 				const float lineHeightOffset = line.height - SysFonts::get( glyphKeySizeChar ).height;
-				draw_glyph( x + xOffset, y + yOffset, 0, lineHeightOffset, glyph, c.format.color );
+				draw_glyph( x + xOffset, y + yOffset, 0, lineHeightOffset, glyph, c.format.color * alpha );
 			}
 
 			// Increment xOffset
@@ -1393,7 +1393,7 @@ void TextEditor::event_up()
 	const usize length = text.length();
 	if( length == 0 || current == 0 ) { return; }
 
-	const intv3 position = text.get_position_from_index( caret_get_position() );
+	const int_v3 position = text.get_position_from_index( caret_get_position() );
 	caret_set_position( text.get_index_from_position( position.x, position.y - 1, 0.5f ) );
 }
 
@@ -1405,7 +1405,7 @@ void TextEditor::event_down()
 	const usize length = text.length();
 	if( length == 0 || current == length ) { return; }
 
-	const intv3 position = text.get_position_from_index( caret_get_position() );
+	const int_v3 position = text.get_position_from_index( caret_get_position() );
 	caret_set_position( text.get_index_from_position( position.x, position.z + 1, 0.5f ) );
 }
 
@@ -1767,10 +1767,10 @@ void TextEditor::caret_reset_selection()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-intv2 TextEditor::draw( const Delta delta, const float x, const float y )
+int_v2 TextEditor::draw( const Delta delta, const float x, const float y, const Alpha alpha )
 {
 	// Highlight
-	if( highlighting() ) { text.draw_selection( x, y, caretStart, caretEnd ); }
+	if( highlighting() ) { text.draw_selection( x, y, caretStart, caretEnd, alpha ); }
 
 	// Active Caret
 	if( SysText::ACTIVE_TEXT_EDITOR == this )
@@ -1791,17 +1791,17 @@ intv2 TextEditor::draw( const Delta delta, const float x, const float y )
 		if( caretTimer < 1.0f && caretTimerAlert == 0.0f ) { caretTimer += delta; } else { caretTimer = 0.0f; }
 		if( caretTimer < 0.5f )
 		{
-			floatv4 caret;
-			text.draw_caret( x, y, caret_get_position(), &caret );
-			draw_rectangle( caret.x, caret.y, caret.z, caret.w, color );
+			float_v4 caret;
+			text.draw_caret( x, y, caret_get_position(), &caret, alpha );
+			draw_rectangle( caret.x, caret.y, caret.z, caret.w, color * alpha );
 		}
 	}
 
 	// Text
-	const intv2 dimensions = text.draw( x, y );
+	const int_v2 dimensions = text.draw( x, y, alpha );
 
 	// Callback
-	if( callbackOnDraw != nullptr ) { callbackOnDraw( *this, delta, x, y ); }
+	if( callbackOnDraw != nullptr ) { callbackOnDraw( *this, delta, x, y, alpha ); }
 
 	// Return
 	return dimensions;

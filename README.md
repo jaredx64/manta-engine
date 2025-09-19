@@ -167,15 +167,14 @@ As an example, boot.exe and build.exe are less strict about memory allocations. 
 
 # Additional Build Information:
 
-Manta does not use precompiled headers or static/dynamic linkage for the engine "library." Rather, Manta sources are compiled directly as a part of the project executable.
+Manta does not use precompiled headers or static/dynamic linkage for the engine "library." Rather, sources are compiled directly as a part of the project executable.
 
 The reasons for this are:
 
-- Caching of builds and compiles is already done in boot.exe and build.exe (compiles cached with .ninja builds)
-- The build tool employs code generation for various systems (assets, objects, graphics backend) which would force frequent rebuilds of engine PCH
+- Caching of builds is already done in the boot.exe and build.exe stages (with C++ compilation caching provided by ninja)
+- The build tool generates C++ boilerplate for various runtime systems (assets, objects, graphics backend) which would cause frequent rebuilds of precompiled headers
 - The engine library code will likely be updated continously alongside project code (until the engine matures)
-- Compile times are already quite fast due to restrictions on C++ STL includes, "unofficial" C headers for development builds (USE_OFFICIAL_HEADERS 0), and general project structure
-- There are rarely any times when I would want to update an engine .dll without also wanting to update the application executable itself
+- Compile times are already quite fast due to restrictions on C++ STL includes, "unofficial" C headers for development builds (USE_OFFICIAL_HEADERS = 0), and general project structure
 - It is easier to reason about, understand, and maintain a system when it is simpler
 
 This may change in later versions of the engine, but for now it is structured this way.
@@ -190,15 +189,15 @@ Manta features a custom object system utilizing its own C++ "scripting language"
 
 The goal is to make the authoring and maintenance of object code as straightforward as possible with minimal compromise on runtime performance.
 
-In short, *.object* files contain psuedo-C++ code that describe an "object" class (data members, functions, events, etc.). The *.object* files are parsed by the build tool and transformed into engine-ready generated C++ header and source implementations.
+In short, *.object* files contain psuedo-C++ code that describe an "object" class (data members, functions, events, etc.). The *.object* files are parsed by the build tool and translated into engine-ready generated C++ header and source implementations.
 
-To aid with IntelliSense, *.object* files can optionally "#include <object_api.hpp>"
+To aid with IntelliSense, *.object* files can optionally `#include <object_api.hpp>`
 
-object_api.hpp provides both a reference to the available keywords of the "scripting" language, as well as enables C++ IntelliSense to work with *.object* code without the need for a custom language server. You can view the available keywords in that file.
+`object_api.hpp` provides a reference to the available keywords of the "scripting" language and allows C++ IntelliSense to work with *.object* code without the need for a custom language server. You can view the available keywords in that file.
 
-Objects in this engine use a single-inheritence model. Objects can inherit/extend other objects by specifying the __PARENT( name )__ keyword.
+Objects in this engine use a single-inheritence model. Objects can inherit/extend other objects by specifying the `PARENT( name )` keyword.
 
-This meets most needs for games that I create. Additionally, the data structure where object data is stored ensures sufficient locality for most gameplay needs: per-instance object data is allocated contiguously in memory within designated memory blocks for each object type.
+This meets most needs for games that I create. Additionally, the data structure where object data is managed ensures sufficient locality for most gameplay needs: per-instance object data is allocated contiguously in memory within designated memory blocks for each object type.
 
 If I ever desire more performance (i.e., must guarantee the _best_ cache locality possible) I would question whether utilizing the object system is the right solution for the problem at hand.
 
@@ -377,13 +376,13 @@ void SysObjects::obj_rabbit_t::process_death()
 The object system works off three fundamental types:
 
 1. **ObjectContext**
-   - The data structure and interface for object creation, destruction, data lookup, and looping
+   - The data structure and interface for object creation, destruction, lookup, and iteration
 2. **Object**
-   - A unique "identifier" for every instantiated object in an ObjectContext
+   - A unique identifier for every instantiated object in an ObjectContext
 3. **ObjectHandle\<_ObjectType_>**
    - A handle to a specific object instance data
 
-In the generated code above, you may notice that the object class names are suffixed with **_t** and wrapped within an internal namespace. The reason for this is "raw" object types are not to be used directly in game code. Rather, object types in game code are represented as __ObjectType__ enums. This allows them to be stored in variables and passed as runtime function parameters.
+In the generated code above, you may notice that the object class names are suffixed with **_t** and wrapped within an internal namespace. The reason for this is "raw" object types are not used directly in game code. Rather, object types in code are represented as __ObjectType__ enums. This allows them to be stored in variables and passed as runtime function parameters.
 
 The table looks something like:
 ```c++
@@ -453,11 +452,11 @@ context.free();
 
 ### I. Shader Language
 
-To seamlessly support multiple graphics backends without requiring duplicated shaders, Manta implements its own "common" shader language suffixed *.shader*. The *.shader* files are compiled/translated at build time into either .glsl or .hlsl (and eventually .metal) depending on the target graphics API.
+To seamlessly support multiple graphics backends without requiring duplicated shaders, Manta implements its own "common" shader language suffixed *.shader*. The *.shader* files are translated at build time into either .glsl or .hlsl (.metal WIP) depending on the target graphics API.
 
 The shader language also provides a seamless way to globally define vertex buffer layouts (vertex format structs) and constrant/structured buffers, as well as enables preprocessor directives (such as #include) within shader files.
 
-The generated output hlsl/glsl is placed in `projects/<project>/output/generated/shaders/`, along with associated graphics system boilerplate (for initializing vertex formats, buffers, etc.) in `projects/<project>/output/generated/gfx.generated.hpp`.
+The generated hlsl/glsl is placed in `projects/<project>/output/generated/shaders/`, along with associated graphics system boilerplate (for initializing vertex formats, buffers, etc.) in `projects/<project>/output/generated/gfx.generated.hpp`.
 
 Syntax highlighting and IntelliSense is possible by including `#include <shader_api.hpp>` at the top of a .shader file. This makes the file compatible with a typical C++ language server. The language API can also be referenced by looking at the contents of that header file.
 
@@ -507,8 +506,8 @@ cbuffer( 1 ) ShadowGlobals
 	float4x4 matrixPerspectiveShadows;
 };
 
-texture2D( 0 ) textureColor;
-texture2D( 1 ) textureShadowMap;
+texture2D( 0, float4 ) textureColor;
+texture2D( 1, float ) textureShadowMap;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

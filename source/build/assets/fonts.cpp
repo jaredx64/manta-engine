@@ -140,26 +140,18 @@ void Fonts::write()
 		// Group
 		assets_group( header );
 
-		// DiskTTF
-		assets_struct( header,
-			"DiskTTF",
-			"usize offset;",
-			"usize size;" );
-
-		// DiskFont
-		assets_struct( header,
-			"DiskFont",
-			"u16 ttfs[4];",
-			"DEBUG( const char *name );" );
+		// Struct
+		header.append( "struct BinTTF;\n" );
+		header.append( "struct BinFont;\n\n" );
 
 		// Tables
 		header.append( "namespace Assets\n{\n" );
 		header.append( "\tconstexpr u32 ttfsCount = " );
 		header.append( static_cast<int>( ttfs.size() ) ).append( ";\n" );
-		header.append( "\textern const DiskTTF ttfs[];\n" );
+		header.append( "\textern const BinTTF ttfs[];\n" );
 		header.append( "\tconstexpr u32 fontsCount = " );
 		header.append( static_cast<int>( fonts.size() ) ).append( ";\n" );
-		header.append( "\textern const DiskFont fonts[];\n" );
+		header.append( "\textern const BinFont fonts[];\n" );
 		header.append( "}\n\n" );
 
 		// Font Macros
@@ -179,8 +171,8 @@ void Fonts::write()
 		source.append( "namespace Assets\n{\n" );
 		char buffer[PATH_SIZE];
 		{
-			// DiskTTF Table
-			source.append( "\tconst DiskTTF ttfs[ttfsCount] =\n\t{\n" );
+			// BinTTF Table
+			source.append( "\tconst BinTTF ttfs[ttfsCount] =\n\t{\n" );
 			for( TTF &ttf : ttfs )
 			{
 				snprintf( buffer, PATH_SIZE,
@@ -192,8 +184,8 @@ void Fonts::write()
 			}
 			source.append( "\t};\n\n" );
 
-			// DiskFont Table
-			source.append( "\tconst DiskFont fonts[fontsCount] =\n\t{\n" );
+			// BinFont Table
+			source.append( "\tconst BinFont fonts[fontsCount] =\n\t{\n" );
 			for( Font &font : fonts )
 			{
 				snprintf( buffer, PATH_SIZE,

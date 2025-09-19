@@ -37,6 +37,7 @@
 		extern "C" double pow(double, double);
 		extern "C" int abs(int);
 		extern "C" double frexp(double, int *);
+		extern "C" double ldexp(double, int);
 
 		inline double abs(double x) { return fabs(x); }
 		inline float abs(float x) { return static_cast<float>(fabs(x)); }
@@ -70,6 +71,7 @@
 		inline double abs(double x) { return __builtin_fabs(x); }
 		inline float abs(float x) { return __builtin_fabsf(x); }
 		inline double frexp(double x, int *y) { return __builtin_frexp(x, y); }
+		inline double ldexp(double x, int y) { return __builtin_ldexp(x, y); }
 
 		// TODO: Why are the compilers so mad about this single function?
 		#if defined(__clang__)

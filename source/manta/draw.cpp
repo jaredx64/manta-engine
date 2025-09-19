@@ -12,8 +12,8 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static const DiskSprite &nullSprite = Assets::sprites[SPRITE_DEFAULT];
-static const DiskGlyph &nullGlyph = Assets::glyphs[nullSprite.glyph];
+static const BinSprite &nullSprite = Assets::sprites[SPRITE_DEFAULT];
+static const BinGlyph &nullGlyph = Assets::glyphs[nullSprite.glyph];
 static const GfxTexture2D *const nullTexture = &GfxCore::textures[nullSprite.texture];
 
 static Align halign = Align_Left;
@@ -150,8 +150,8 @@ void draw_sprite( const u32 sprite, const u16 subimg, float x, float y, const fl
 	const Color color, const float depth )
 {
 #if GRAPHICS_ENABLED
-	const DiskSprite &dSprite = Assets::sprites[sprite];
-	const DiskGlyph &dGlyph = Assets::glyphs[dSprite.glyph + ( subimg % Assets::sprites[sprite].count )];
+	const BinSprite &dSprite = Assets::sprites[sprite];
+	const BinGlyph &dGlyph = Assets::glyphs[dSprite.glyph + ( subimg % Assets::sprites[sprite].count )];
 	GfxTexture2D *texture = &GfxCore::textures[dSprite.texture];
 
 	float width  = dSprite.width * xscale;
@@ -171,8 +171,8 @@ void draw_sprite_part( const u32 sprite, const u16 subimg, float x, float y,
 	const float xscale, const float yscale, const Color color, const float depth )
 {
 #if GRAPHICS_ENABLED
-	const DiskSprite &dSprite = Assets::sprites[sprite];
-	const DiskGlyph &dGlyph = Assets::glyphs[dSprite.glyph + subimg];
+	const BinSprite &dSprite = Assets::sprites[sprite];
+	const BinGlyph &dGlyph = Assets::glyphs[dSprite.glyph + ( subimg % Assets::sprites[sprite].count )];
 	const GfxTexture2D *const texture = &GfxCore::textures[dSprite.texture];
 
 	float width  = dSprite.width * xscale;
@@ -197,8 +197,8 @@ void draw_sprite_part_quad( const u32 sprite, const u16 subimg,
 	const Color color, const float depth )
 {
 #if GRAPHICS_ENABLED
-	const DiskSprite &dSprite = Assets::sprites[sprite];
-	const DiskGlyph &dGlyph = Assets::glyphs[dSprite.glyph + subimg];
+	const BinSprite &dSprite = Assets::sprites[sprite];
+	const BinGlyph &dGlyph = Assets::glyphs[dSprite.glyph + ( subimg % Assets::sprites[sprite].count )];
 	const GfxTexture2D *const texture = &GfxCore::textures[dSprite.texture];
 
 	const u16 u = dGlyph.u2 - dGlyph.u1;
@@ -215,8 +215,8 @@ void draw_sprite_angle( const u32 sprite, const u16 subimg, float x, float y, co
 	const float xscale, const float yscale, const Color color, const float depth )
 {
 #if GRAPHICS_ENABLED
-	const DiskSprite &dSprite = Assets::sprites[sprite];
-	const DiskGlyph &dGlyph = Assets::glyphs[dSprite.glyph + subimg];
+	const BinSprite &dSprite = Assets::sprites[sprite];
+	const BinGlyph &dGlyph = Assets::glyphs[dSprite.glyph + ( subimg % Assets::sprites[sprite].count )];
 	const GfxTexture2D *const texture = &GfxCore::textures[dSprite.texture];
 
 	const float width = dSprite.width * xscale;
@@ -250,8 +250,8 @@ void draw_sprite_angle( const u32 sprite, const u16 subimg, float x, float y, co
 void draw_sprite_fast( const u32 sprite, const u16 subimg, float x, float y, const Color color )
 {
 #if GRAPHICS_ENABLED
-	const DiskSprite &dSprite = Assets::sprites[sprite];
-	const DiskGlyph &dGlyph = Assets::glyphs[dSprite.glyph + subimg];
+	const BinSprite &dSprite = Assets::sprites[sprite];
+	const BinGlyph &dGlyph = Assets::glyphs[dSprite.glyph + subimg];
 	const GfxTexture2D *const texture = &GfxCore::textures[dSprite.texture];
 
 	const float width = dSprite.width;
@@ -313,10 +313,10 @@ void draw_rectangle( const float x1, const float y1, const float x2, const float
 #if GRAPHICS_ENABLED
 	if( outline )
 	{
-		const floatv2 q1[] = { { x1, y1 }, { x1 + 1.0f, y2 } }; // Left
-		const floatv2 q2[] = { { x2 - 1.0f, y1 }, { x2, y2 } }; // Right
-		const floatv2 q3[] = { { x1 + 1.0f, y1 }, { x2 - 1.0f, y1 + 1.0f } }; // Top
-		const floatv2 q4[] = { { x1, y2 - 1.0f }, { x2, y2 } }; // Bottom
+		const float_v2 q1[] = { { x1, y1 }, { x1 + 1.0f, y2 } }; // Left
+		const float_v2 q2[] = { { x2 - 1.0f, y1 }, { x2, y2 } }; // Right
+		const float_v2 q3[] = { { x1 + 1.0f, y1 }, { x2 - 1.0f, y1 + 1.0f } }; // Top
+		const float_v2 q4[] = { { x1, y2 - 1.0f }, { x2, y2 } }; // Bottom
 
 		draw_rectangle( q1[0].x, q1[0].y, q1[1].x, q1[1].y, color, false, depth );
 		draw_rectangle( q2[0].x, q2[0].y, q2[1].x, q2[1].y, color, false, depth );
@@ -325,7 +325,7 @@ void draw_rectangle( const float x1, const float y1, const float x2, const float
 	}
 	else
 	{
-		const DiskGlyph &g = nullGlyph;
+		const BinGlyph &g = nullGlyph;
 		Gfx::quad_batch_write( x1, y1, x2, y2, g.u1, g.v1, g.u2, g.v2, color, nullTexture, depth );
 	}
 #endif
@@ -340,13 +340,13 @@ void draw_rectangle_angle( const float x1, const float y1, const float x2, const
 	{
 		if( angle != 0.0f )
 		{
-			const floatv2 x2y1 = floatv2( x2, y1 ).rotate( angle, { x1, y1 } );
-			const floatv2 x1y2 = floatv2( x1, y2 ).rotate( angle, { x1, y1 } );
+			const float_v2 x2y1 = float_v2( x2, y1 ).rotate( angle, { x1, y1 } );
+			const float_v2 x1y2 = float_v2( x1, y2 ).rotate( angle, { x1, y1 } );
 
-			const floatv2 q1[] = { { x1, y1 }, { x1 + 1.0f, y2 } }; // Left
-			const floatv2 q2[] = { { x2y1.x, x2y1.y }, { x2y1.x - 1.0f, x2y1.y + ( y2 - y1 ) } }; // Right
-			const floatv2 q3[] = { { x1, y1 }, { x2, y1 + 1.0f } }; // Top
-			const floatv2 q4[] = { { x1y2.x, x1y2.y }, { x1y2.x + ( x2 - x1 ), x1y2.y - 1.0f } }; // Bottom
+			const float_v2 q1[] = { { x1, y1 }, { x1 + 1.0f, y2 } }; // Left
+			const float_v2 q2[] = { { x2y1.x, x2y1.y }, { x2y1.x - 1.0f, x2y1.y + ( y2 - y1 ) } }; // Right
+			const float_v2 q3[] = { { x1, y1 }, { x2, y1 + 1.0f } }; // Top
+			const float_v2 q4[] = { { x1y2.x, x1y2.y }, { x1y2.x + ( x2 - x1 ), x1y2.y - 1.0f } }; // Bottom
 
 			draw_rectangle_angle( q1[0].x, q1[0].y, q1[1].x, q1[1].y, angle, color, false, depth );
 			draw_rectangle_angle( q2[0].x, q2[0].y, q2[1].x, q2[1].y, angle, color, false, depth );
@@ -355,10 +355,10 @@ void draw_rectangle_angle( const float x1, const float y1, const float x2, const
 		}
 		else
 		{
-			const floatv2 q1[] = { { x1, y1 }, { x1 + 1.0f, y2 } }; // Left
-			const floatv2 q2[] = { { x2 - 1.0f, y1 }, { x2, y2 } }; // Right
-			const floatv2 q3[] = { { x1 + 1.0f, y1 }, { x2 - 1.0f, y1 + 1.0f } }; // Top
-			const floatv2 q4[] = { { x1, y2 - 1.0f }, { x2, y2 } }; // Bottom
+			const float_v2 q1[] = { { x1, y1 }, { x1 + 1.0f, y2 } }; // Left
+			const float_v2 q2[] = { { x2 - 1.0f, y1 }, { x2, y2 } }; // Right
+			const float_v2 q3[] = { { x1 + 1.0f, y1 }, { x2 - 1.0f, y1 + 1.0f } }; // Top
+			const float_v2 q4[] = { { x1, y2 - 1.0f }, { x2, y2 } }; // Bottom
 
 			draw_rectangle( q1[0].x, q1[0].y, q1[1].x, q1[1].y, color, false, depth );
 			draw_rectangle( q2[0].x, q2[0].y, q2[1].x, q2[1].y, color, false, depth );
@@ -368,13 +368,13 @@ void draw_rectangle_angle( const float x1, const float y1, const float x2, const
 	}
 	else
 	{
-		const DiskGlyph &g = nullGlyph;
+		const BinGlyph &g = nullGlyph;
 
 		if( angle != 0.0f )
 		{
-			const floatv2 x2y1 = floatv2( x2, y1 ).rotate( angle, { x1, y1 } );
-			const floatv2 x1y2 = floatv2( x1, y2 ).rotate( angle, { x1, y1 } );
-			const floatv2 x2y2 = floatv2( x2, y2 ).rotate( angle, { x1, y1 } );
+			const float_v2 x2y1 = float_v2( x2, y1 ).rotate( angle, { x1, y1 } );
+			const float_v2 x1y2 = float_v2( x1, y2 ).rotate( angle, { x1, y1 } );
+			const float_v2 x2y2 = float_v2( x2, y2 ).rotate( angle, { x1, y1 } );
 			Gfx::quad_batch_write( x1, y1, x2y1.x, x2y1.y, x1y2.x, x1y2.y, x2y2.x, x2y2.y,
 			                       g.u1, g.v1, g.u2, g.v2, color, nullTexture, depth );
 		}
@@ -394,10 +394,10 @@ void draw_rectangle_gradient( const float x1, const float y1, const float x2, co
 #if GRAPHICS_ENABLED
 	if( outline )
 	{
-		const floatv2 q1[] = { { x1, y1 }, { x1 + 1.0f, y2 } }; // Left
-		const floatv2 q2[] = { { x2 - 1.0f, y1 }, { x2, y2 } }; // Right
-		const floatv2 q3[] = { { x1 + 1.0f, y1 }, { x2 - 1.0f, y1 + 1.0f } }; // Top
-		const floatv2 q4[] = { { x1, y2 - 1.0f }, { x2, y2 } }; // Bottom
+		const float_v2 q1[] = { { x1, y1 }, { x1 + 1.0f, y2 } }; // Left
+		const float_v2 q2[] = { { x2 - 1.0f, y1 }, { x2, y2 } }; // Right
+		const float_v2 q3[] = { { x1 + 1.0f, y1 }, { x2 - 1.0f, y1 + 1.0f } }; // Top
+		const float_v2 q4[] = { { x1, y2 - 1.0f }, { x2, y2 } }; // Bottom
 
 		draw_rectangle_gradient( q1[0].x, q1[0].y, q1[1].x, q1[1].y, c1, c1, c3, c3, false, depth );
 		draw_rectangle_gradient( q2[0].x, q2[0].y, q2[1].x, q2[1].y, c2, c2, c4, c4, false, depth );
@@ -406,7 +406,7 @@ void draw_rectangle_gradient( const float x1, const float y1, const float x2, co
 	}
 	else
 	{
-		const DiskGlyph &g = nullGlyph;
+		const BinGlyph &g = nullGlyph;
 		Gfx::quad_batch_write( x1, y1, x2, y2, g.u1, g.v1, g.u2, g.v2, c1, c2, c3, c4, nullTexture, depth );
 	}
 #endif
@@ -422,13 +422,13 @@ void draw_rectangle_gradient_angle( const float x1, const float y1, const float 
 	{
 		if( angle != 0.0f )
 		{
-			const floatv2 x2y1 = floatv2( x2, y1 ).rotate( angle, { x1, y1 } );
-			const floatv2 x1y2 = floatv2( x1, y2 ).rotate( angle, { x1, y1 } );
+			const float_v2 x2y1 = float_v2( x2, y1 ).rotate( angle, { x1, y1 } );
+			const float_v2 x1y2 = float_v2( x1, y2 ).rotate( angle, { x1, y1 } );
 
-			const floatv2 q1[] = { { x1, y1 }, { x1 + 1.0f, y2 } }; // Left
-			const floatv2 q2[] = { { x2y1.x, x2y1.y }, { x2y1.x - 1.0f, x2y1.y + ( y2 - y1 ) } }; // Reft
-			const floatv2 q3[] = { { x1, y1 }, { x2, y1 + 1.0f } }; // Top
-			const floatv2 q4[] = { { x1y2.x, x1y2.y }, { x1y2.x + ( x2 - x1 ), x1y2.y - 1.0f } }; // Bottom
+			const float_v2 q1[] = { { x1, y1 }, { x1 + 1.0f, y2 } }; // Left
+			const float_v2 q2[] = { { x2y1.x, x2y1.y }, { x2y1.x - 1.0f, x2y1.y + ( y2 - y1 ) } }; // Reft
+			const float_v2 q3[] = { { x1, y1 }, { x2, y1 + 1.0f } }; // Top
+			const float_v2 q4[] = { { x1y2.x, x1y2.y }, { x1y2.x + ( x2 - x1 ), x1y2.y - 1.0f } }; // Bottom
 
 			draw_rectangle_gradient_angle( q1[0].x, q1[0].y, q1[1].x, q1[1].y, angle, c1, c1, c3, c3, false, depth );
 			draw_rectangle_gradient_angle( q2[0].x, q2[0].y, q2[1].x, q2[1].y, angle, c2, c2, c4, c4, false, depth );
@@ -437,10 +437,10 @@ void draw_rectangle_gradient_angle( const float x1, const float y1, const float 
 		}
 		else
 		{
-			const floatv2 q1[] = { { x1, y1 }, { x1 + 1.0f, y2 } }; // Left
-			const floatv2 q2[] = { { x2 - 1.0f, y1 }, { x2, y2 } }; // Right
-			const floatv2 q3[] = { { x1 + 1.0f, y1 }, { x2 - 1.0f, y1 + 1.0f } }; // Top
-			const floatv2 q4[] = { { x1, y2 - 1.0f }, { x2, y2 } }; // Bottom
+			const float_v2 q1[] = { { x1, y1 }, { x1 + 1.0f, y2 } }; // Left
+			const float_v2 q2[] = { { x2 - 1.0f, y1 }, { x2, y2 } }; // Right
+			const float_v2 q3[] = { { x1 + 1.0f, y1 }, { x2 - 1.0f, y1 + 1.0f } }; // Top
+			const float_v2 q4[] = { { x1, y2 - 1.0f }, { x2, y2 } }; // Bottom
 
 			draw_rectangle_gradient( q1[0].x, q1[0].y, q1[1].x, q1[1].y, c1, c1, c3, c3, false, depth );
 			draw_rectangle_gradient( q2[0].x, q2[0].y, q2[1].x, q2[1].y, c2, c2, c4, c4, false, depth );
@@ -450,13 +450,13 @@ void draw_rectangle_gradient_angle( const float x1, const float y1, const float 
 	}
 	else
 	{
-		const DiskGlyph &g = nullGlyph;
+		const BinGlyph &g = nullGlyph;
 
 		if( angle != 0.0f )
 		{
-			const floatv2 x2y1 = floatv2( x2, y1 ).rotate( angle, { x1, y1 } );
-			const floatv2 x1y2 = floatv2( x1, y2 ).rotate( angle, { x1, y1 } );
-			const floatv2 x2y2 = floatv2( x2, y2 ).rotate( angle, { x1, y1 } );
+			const float_v2 x2y1 = float_v2( x2, y1 ).rotate( angle, { x1, y1 } );
+			const float_v2 x1y2 = float_v2( x1, y2 ).rotate( angle, { x1, y1 } );
+			const float_v2 x2y2 = float_v2( x2, y2 ).rotate( angle, { x1, y1 } );
 
 			Gfx::quad_batch_write( x1, y1, x2y1.x, x2y1.y, x1y2.x, x1y2.y, x2y2.x, x2y2.y,
 			                       g.u1, g.v1, g.u2, g.v2, c1, c2, c3, c4, nullTexture, depth );
@@ -489,7 +489,7 @@ void draw_line( const float x1, const float y1, const float x2, const float y2,
 	// Rotated line
 	{
 		const float angle = atanf( ( y2 - y1 ) / ( x2 - x1 ) ) + ( x2 < x1 ? PI : 0.0f );
-		const float length = floatv2_distance( { x1, y1 }, { x2, y2 } );
+		const float length = float_v2_distance( { x1, y1 }, { x2, y2 } );
 		draw_rectangle_angle( x1, y1, x1 + length, y1 + thickness, radtodeg( angle ), color, false, depth );
 	}
 #endif
@@ -517,7 +517,7 @@ void draw_circle_gradient( float x, float y, float radius,
         float x4 = x + radius * cos( angle2 );
         float y4 = y + radius * sin( angle2 );
 
-		const DiskGlyph &g = nullGlyph;
+		const BinGlyph &g = nullGlyph;
 
 		Gfx::quad_batch_write( x1, y1, x2, y2, x3, y3, x4, y4, g.u1, g.v1, g.u2, g.v2,
 		                       c1, c2, c2, c2, nullTexture, depth );
@@ -532,7 +532,7 @@ void draw_circle_outline_gradient( float x, float y, float radius, float thickne
 	const float increment = 2.0f * PI / resolution;
 	const float radiusOuter = ( radius + thickness * 0.5f );
 	const float radiusInner = ( radius - thickness * 0.5f );
-	const DiskGlyph &g = nullGlyph;
+	const BinGlyph &g = nullGlyph;
 
 	for( u32 i = 0; i < resolution; i++ )
 	{
@@ -632,14 +632,14 @@ void draw_text_f( const Font font, const u16 size, const float x, const float y,
 }
 
 
-intv2 text_dimensions( const Font font, const u16 size, const char *string )
+int_v2 text_dimensions( const Font font, const u16 size, const char *string )
 {
 	Assert( font.id < Assets::fontsCount );
 	Assert( size > 0 );
 
 	int offsetX = 0;
 	int offsetY = 0;
-	intv2 result = 0;
+	int_v2 result = 0;
 
 	u32 state = UTF8_ACCEPT;
 	u32 codepoint;
@@ -669,7 +669,7 @@ intv2 text_dimensions( const Font font, const u16 size, const char *string )
 }
 
 
-intv2 text_dimensions_f( const Font font, const u16 size, const char *format, ... )
+int_v2 text_dimensions_f( const Font font, const u16 size, const char *format, ... )
 {
 	va_list args;
 	va_start( args, format );

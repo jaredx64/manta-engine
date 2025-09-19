@@ -1,0 +1,179 @@
+{
+	"name": "Shader",
+	"scopeName": "source.shader",
+	"patterns": [
+		{ "include": "#numbers" },
+		{ "include": "#backslash" },
+
+		{ "name": "keyword.control.shader",                    "match": "\\b(break|case|continue|default|discard|do|else|for|if|return|switch|while)\\b" },
+		{ "name": "keyword.language.shader",                   "match": "\\b(cbuffer|register|struct)\\b" },
+		{ "name": "constant.language.shader",                  "match": "\\b(false|true)\\b" },
+		{ "name": "storage.modifier.shader",                   "match": "\\b(const|in|out|static|uniform)\\b" },
+		{ "name": "storage.modifier.interpolation.shader",     "match": "\\b(centroid|linear|nointerpolation|noperspective|sample)\\b" },
+		{ "name": "storage.type.built-in.primitive.shader",    "match": "\\b(bool|double|dword|float|half|int|min10float|min12int|min16float|min16int|min16uint|uint)(\\d(x\\d)?)?\\b" },
+		{ "name": "storage.type.built-in.primitive.shader",    "match": "\\b(float16_t|int16_t|int64_t|matrix|snorm|uint16_t|uint64_t|unorm|vector|void)\\b" },
+		{ "name": "support.type.shader",                       "match": "\\b(Buffer|SamplerState|Texture1D|Texture1DArray|Texture2D|Texture2DArray|Texture3D|TextureCube)\\b" },
+
+		{ "name": "support.function.shader",                   "match": "\\b[a-zA-Z_]\\w*\\b(?=\\s*\\()" },
+		{ "name": "support.semantic.shader",                   "match": "\\b(?<=:\\s*)[a-zA-Z_]\\w*\\b" },
+		{ "name": "support.type.shader",                       "match": "\\b[a-zA-Z_]\\w*_t\\b" },
+
+		{ "name": "comment.line.double-slash.splitter.shader", "begin": "//~",  "end": "$",    "patterns": [{ "include": "#comment-scope" }] },
+		{ "name": "comment.line.double-slash.shader",          "begin": "//",   "end": "$",    "patterns": [{ "include": "#comment-scope" }] },
+		{ "name": "comment.block.shader",                      "begin": "/\\*", "end": "\\*/", "patterns": [{ "include": "#comment-scope" }] },
+
+		{ "name": "punctuation.begin.bracket.round.shader",    "match": "\\(" },
+		{ "name": "punctuation.end.bracket.round.shader",      "match": "\\)" },
+		{ "name": "punctuation.begin.bracket.square.shader",   "match": "\\[" },
+		{ "name": "punctuation.end.bracket.square.shader",     "match": "\\]" },
+		{ "name": "punctuation.begin.bracket.curly.shader",    "match": "{" },
+		{ "name": "punctuation.end.bracket.curly.shader",      "match": "}" },
+		{ "name": "punctuation.separator.delimiter.shader",    "match": "," },
+		{ "name": "punctuation.separator.dot-access.shader",   "match": "\\." },
+		{ "name": "punctuation.separator.colon.shader",        "match": ":" },
+		{ "name": "punctuation.terminator.statement.shader",   "match": ";" },
+
+		{ "include": "#operators" },
+
+		{
+			"name": "meta.preprocessor.shader",
+			"match": "^\\s*((#)\\s*(ifdef|ifndef))\\b\\s*([a-zA-Z_]\\w*)?\\b",
+			"captures": {
+				"1": { "name": "keyword.control.directive.conditional.shader" },
+				"2": { "name": "punctuation.definition.directive.shader" },
+				"4": { "name": "entity.name.function.preprocessor.shader" }
+			}
+		},
+		{
+			"name": "meta.preprocessor.shader",
+			"begin": "^\\s*((#)\\s*(if|elif))\\b",
+			"end": "(?=(?://|/\\*))|(?<!\\\\)(?=\\n)",
+			"beginCaptures": {
+				"1": { "name": "keyword.control.directive.conditional.shader" },
+				"2": { "name": "punctuation.definition.directive.shader" }
+			},
+			"patterns": [
+				{ "include": "#numbers" },
+				{ "include": "#operators" },
+				{ "include": "#backslash" },
+				{ "name": "keyword.control.directive.conditional.defined.shader", "match": "\\bdefined\\b" }
+			]
+		},
+		{
+			"name": "meta.preprocessor.shader",
+			"match": "^\\s*((#)\\s*(else|endif))\\b",
+			"captures": {
+				"1": { "name": "keyword.control.directive.conditional.shader" },
+				"2": { "name": "punctuation.definition.directive.shader" }
+			}
+		},
+		{
+			"name": "meta.preprocessor.shader",
+			"match": "^\\s*((#)\\s*undef)\\b\\s*([a-zA-Z_]\\w*)?\\b",
+			"captures": {
+				"1": { "name": "keyword.control.directive.undef.shader" },
+				"2": { "name": "punctuation.definition.directive.shader" },
+				"3": { "name": "entity.name.function.preprocessor.shader" }
+			}
+		},
+		{
+			"name": "meta.preprocessor.macro.shader",
+			"match": "^\\s*((#)\\s*define)\\b\\s*([a-zA-Z_]\\w*)?((\\()([^)]*)(\\)))?",
+			"captures": {
+				"1": { "name": "keyword.control.directive.define.shader" },
+				"2": { "name": "punctuation.definition.directive.shader" },
+				"3": { "name": "entity.name.function.preprocessor.shader" },
+				"5": { "name": "punctuation.definition.parameters.begin.shader" },
+				"6": {
+					"patterns": [
+						{
+							"match": "(?<=[(,])\\s*((?<!\\w)[a-zA-Z_]\\w*(?!\\w))\\s*",
+							"captures": { "1": { "name": "variable.parameter.preprocessor.shader" } }
+						},
+						{ "match": ",", "name": "punctuation.separator.parameters.shader" }
+					]
+				},
+				"7": { "name": "punctuation.definition.parameters.end.shader" }
+			}
+		},
+		{
+			"name": "meta.preprocessor.include.shader",
+			"begin": "^\\s*((#)\\s*(include|include_next))\\b",
+			"end": "(?=(?://|/\\*))|(?<!\\\\)(?=\\n)",
+			"beginCaptures": {
+				"1": { "name": "keyword.control.directive.include.shader" },
+				"2": { "name": "punctuation.definition.directive.shader" }
+			},
+			"patterns": [
+				{ "name": "string.quoted.double.include.shader",      "begin": "\"", "end": "$|\"" },
+				{ "name": "string.quoted.other.lt-gt.include.shader", "begin": "<",  "end": "$|>" }
+			]
+		},
+		{
+			"name": "meta.preprocessor.error.shader",
+			"begin": "^\\s*((#)\\s*error)\\b(\\s+.*)?",
+			"end": "(?=(?://|/\\*))|(?<!\\\\)(?=\\n)",
+			"beginCaptures": {
+				"1": { "name": "keyword.control.directive.error.shader" },
+				"2": { "name": "punctuation.definition.directive.shader" },
+				"3": { "name": "string.unquoted.preprocessor.message.shader" }
+			},
+			"patterns": [
+				{ "include": "#backslash" }
+			]
+		},
+		{
+			"name": "meta.preprocessor.pragma.shader",
+			"begin": "^\\s*((#)\\s*pragma)\\b",
+			"end": "(?=(?://|/\\*))|(?<!\\\\)(?=\\n)",
+			"beginCaptures": {
+				"1": { "name": "keyword.control.directive.pragma.shader" },
+				"2": { "name": "punctuation.definition.directive.shader" }
+			},
+			"patterns": [
+				{ "include": "#numbers" },
+				{ "include": "#backslash" },
+
+				{ "name": "entity.other.attribute-name.preprocessor.shader", "match": "\\b[a-zA-Z_]\\w*\\b" }
+			]
+		}
+	],
+	"repository": {
+		"numbers": {
+			"patterns": [
+				{ "name": "constant.numeric.decimal.shader",     "match": "\\b[0-9]+\\.[0-9]+[fF]?\\b" },
+				{ "name": "constant.numeric.decimal.shader",     "match": "\\b[0-9]+\\b" },
+				{ "name": "constant.numeric.hexadecimal.shader", "match": "\\b0[xX][a-fA-F0-9]+\\b" }
+			]
+		},
+		"operators": {
+			"patterns": [
+				{ "name": "keyword.operator.increment.shader",                   "match": "\\+\\+" },
+				{ "name": "keyword.operator.decrement.shader",                   "match": "--" },
+				{ "name": "keyword.operator.assignment.compound.shader",         "match": "\\+=|-=|\\*=|/=|%=" },
+				{ "name": "keyword.operator.assignment.compound.bitwise.shader", "match": "&=|\\|=|\\^=|<<=|>>=" },
+				{ "name": "keyword.operator.bitwise.shift.shader",               "match": "<<|>>" },
+				{ "name": "keyword.operator.comparison.shader",                  "match": "!=|<=|>=|==|<|>" },
+				{ "name": "keyword.operator.logical.shader",                     "match": "!|&&|\\|\\|" },
+				{ "name": "keyword.operator.shader",                             "match": "\\+|-|\\*|/|%|&|\\||\\^|~" },
+				{ "name": "keyword.operator.assignment.shader",                  "match": "=" },
+				{ "name": "keyword.operator.ternary.shader",                     "match": "\\?" }
+			]
+		},
+		"backslash": {
+			"patterns": [
+				{ "match": "(\\\\)\\n", "captures": { "1": { "name": "constant.character.escape.line-continuation.shader" } } }
+			]
+		},
+		"comment-scope": {
+			"patterns": [
+				{ "name": "string.quoted.double.shader",      "begin": "`", "end": "$|`" },
+				{ "name": "comment.keyword.todo.shader",      "match": "\\bTODO\\b" },
+				{ "name": "comment.keyword.note.shader",      "match": "\\bNOTE\\b" },
+				{ "name": "comment.keyword.hack.shader",      "match": "\\bHACK\\b" },
+				{ "name": "comment.keyword.metadata.shader",  "match": "\\$[a-zA-Z_]\\w*\\b" },
+				{ "name": "comment.keyword.attribute.shader", "match": "\\@[a-zA-Z_]\\w*\\b" }
+			]
+		}
+	}
+}

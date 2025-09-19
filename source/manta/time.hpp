@@ -70,6 +70,33 @@ private:
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+template <typename T>
+class TimedInterpolator
+{
+public:
+	void set( const T start, const T end, const float timeMS )
+	{
+		vStart = start;
+		vEnd = end;
+		tStart = static_cast<float>( Time::value() );
+		tDurationInv = 1000.0f / timeMS;
+	}
+
+	T value() const
+	{
+		const float progress = []( const float a, const float b ) { return a < b ? a : b; } (
+			( static_cast<float>( Time::value() ) - tStart ) * tDurationInv, 1.0f );
+		return vStart + ( vEnd - vStart ) * progress;
+	}
+
+private:
+	T vStart, vEnd;
+	float tStart;
+	float tDurationInv = 0.0f;
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 namespace Frame
 {
 	extern u32 fps;

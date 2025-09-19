@@ -14,7 +14,7 @@ struct Model
 
 	bool init( const u32 meshID, const u16 materialID );
 	bool free();
-	void draw( float x, float y, float z, float scale, float rotation );
+	void draw( double x, double y, double z, double scale, double rotation );
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

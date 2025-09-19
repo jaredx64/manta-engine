@@ -104,17 +104,17 @@ PROTECTED void update( const Delta delta )
 	                    { input->pageWidth = 0; }
 
 	// Update Scrollable Region Area
-	const intv2 dimensionText = input->get_dimensions();
-	const intv2 dimensionsRegion = intv2 { max( regionHandle->viewWidth, dimensionText.x ),
+	const int_v2 dimensionText = input->get_dimensions();
+	const int_v2 dimensionsRegion = int_v2 { max( regionHandle->viewWidth, dimensionText.x ),
 	                                       max( regionHandle->viewHeight, dimensionText.y ) };
 	regionHandle->set_scrollable_area( dimensionsRegion.x, dimensionsRegion.y );
 
 	// Caret Scrolling
 	if( SysText::ACTIVE_TEXT_EDITOR == &input )
 	{
-		const intv3 caretPos = input->get_position_from_index( input.caret_get_position() );
-		const intv2 viewVer = { regionHandle->offsetY, regionHandle->offsetY + regionHandle->viewHeight };
-		const intv2 viewHor = { regionHandle->offsetX, regionHandle->offsetX + regionHandle->viewWidth };
+		const int_v3 caretPos = input->get_position_from_index( input.caret_get_position() );
+		const int_v2 viewVer = { regionHandle->offsetY, regionHandle->offsetY + regionHandle->viewHeight };
+		const int_v2 viewHor = { regionHandle->offsetX, regionHandle->offsetX + regionHandle->viewWidth };
 
 		auto verticalHandle = context->handle<UIWidget_Scrollbar>( regionHandle->scrollbarVertical );
 		Assert( verticalHandle );
@@ -152,39 +152,39 @@ PROTECTED void update( const Delta delta )
 }
 
 
-PROTECTED void render( const Delta delta )
+PROTECTED void render( const Delta delta, const Alpha alpha )
 {
-	const intv2 p1 = intv2( x, y ).multiply( context->matrix_get() );
-	const intv2 p2 = intv2( x + width, y + height ).multiply( context->matrix_get() );
+	const int_v2 p1 = int_v2( x, y ).multiply( context->matrix_get() );
+	const int_v2 p2 = int_v2( x + width, y + height ).multiply( context->matrix_get() );
 
 	// Colors
 	const Color colorMain = color_mix( color_mix( color, c_white, tweenHover * 0.25f ), c_lime, tweenClick );
 	const Color colorSide = color_mix( color_mix( color, c_white, tweenHover * 0.25f ), c_black, 0.85f );
 
 	// Outline
-	draw_rectangle( p1.x, p1.y, p2.x, p2.y, colorMain );
-	draw_rectangle( p1.x, p1.y, p2.x, p2.y, c_black, true );
+	draw_rectangle( p1.x, p1.y, p2.x, p2.y, colorMain * alpha );
+	draw_rectangle( p1.x, p1.y, p2.x, p2.y, c_black * alpha, true );
 
 	// Body & Scissor
-	draw_rectangle( p1.x + 2, p1.y + 2, p2.x - 2, p2.y - 2, colorSide );
+	draw_rectangle( p1.x + 2, p1.y + 2, p2.x - 2, p2.y - 2, colorSide * alpha );
 	context->scissor_set_nested( p1.x + 2, p1.y + 2, p2.x - 2, p2.y - 2 );
 
 	// Text Editor
 	auto regionHandle = context->handle<UIWidget_ScrollableRegion>( region );
 	Assert( regionHandle );
-	input.draw( delta, p1.x + 6 - regionHandle->offsetX, p1.y + 6 - regionHandle->offsetY );
+	input.draw( delta, p1.x + 6 - regionHandle->offsetX, p1.y + 6 - regionHandle->offsetY, alpha );
 	input.screenX = p1.x + 6 - regionHandle->offsetX;
 	input.screenY = p1.y + 6 - regionHandle->offsetY;
 
 	// Locked Overlay
-	if( locked ) { draw_rectangle( p1.x, p1.y, p2.x, p2.y, Color { 0, 0, 0, 150 } ); }
+	if( locked ) { draw_rectangle( p1.x, p1.y, p2.x, p2.y, Color { 0, 0, 0, 150 } * alpha ); }
 }
 
 
 // PROTECTED void apply_matrix() { INHERIT::apply_matrix(); }
 
 
-// PROTECTED bool contains_point( const floatv2 point ) { }
+// PROTECTED bool contains_point( const float_v2 point ) { }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // PUBLIC API

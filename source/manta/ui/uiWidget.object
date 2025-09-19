@@ -36,6 +36,7 @@ PUBLIC int width;
 PUBLIC int height;
 
 PUBLIC Color color;
+PUBLIC Alpha transparency;
 
 PUBLIC float tweenHover = 0.0f;
 PUBLIC float tweenClick = 0.0f;
@@ -52,7 +53,7 @@ PUBLIC u8 sortable      : 1; // Allows the widget to be reordered when clicked
 PUBLIC u8 ___unused     : 1;
 
 PUBLIC void ( *callbackOnUpdate )( UIContext &, Object ) = nullptr;
-PUBLIC void ( *callbackOnRender )( UIContext &, Object ) = nullptr;
+PUBLIC void ( *callbackOnRender )( UIContext &, Object, const Alpha ) = nullptr;
 PUBLIC void ( *callbackOnInteract )( UIContext &, Object ) = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -102,24 +103,24 @@ PROTECTED void update( const Delta delta )
 }
 
 
-PROTECTED void render( const Delta delta )
+PROTECTED void render( const Delta delta, const Alpha alpha )
 {
 	// ...
 }
 
 
-PROTECTED bool contains_point( const floatv2 point )
+PROTECTED bool contains_point( const float_v2 point )
 {
-	const floatv2 p1 = floatv2( x, y ).multiply( context->matrix_get() );
-	const floatv2 p2 = floatv2( x + width, y + height ).multiply( context->matrix_get() );
+	const float_v2 p1 = float_v2( x, y ).multiply( context->matrix_get() );
+	const float_v2 p2 = float_v2( x + width, y + height ).multiply( context->matrix_get() );
 	return point_in_rect( point.x, point.y, p1.x, p1.y, p2.x, p2.y );
 }
 
 
 PROTECTED void apply_matrix()
 {
-	const Matrix matrix = matrix_build_translation( x, y, 0.0f );
-	context->matrix_multiply( matrix );
+	const float_m44 matrix = float_m44_build_translation( x, y, 0.0f );
+	context->float_m44_multiply( matrix );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -127,9 +128,10 @@ PROTECTED void apply_matrix()
 
 PROTECTED void randomize_color()
 {
-	const u8 r = static_cast<u8>( random<int>( 50, 200 ) );
-	const u8 g = static_cast<u8>( random<int>( 50, 200 ) );
-	const u8 b = static_cast<u8>( random<int>( 50, 200 ) );
+	Random random;
+	const u8 r = static_cast<u8>( random.next_int( 50, 200 ) );
+	const u8 g = static_cast<u8>( random.next_int( 50, 200 ) );
+	const u8 b = static_cast<u8>( random.next_int( 50, 200 ) );
 	color = Color { r, g, b };
 }
 

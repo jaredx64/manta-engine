@@ -88,7 +88,11 @@
 #endif
 
 #ifndef AUDIO_VOICE_COUNT
-	#define AUDIO_VOICE_COUNT ( 32 )
+	#define AUDIO_VOICE_COUNT ( 8 )
+#endif
+
+#ifndef AUDIO_STREAM_COUNT
+	#define AUDIO_STREAM_COUNT ( 8 )
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

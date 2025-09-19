@@ -73,9 +73,9 @@ PROTECTED void update( const Delta delta )
 	const bool isHovering = isInteractable && is_hovering();
 
 	// Coordinates
-	const intv4 pS = get_spectrum_bounds(); // Spectrum bounds
-	const intv4 pH = get_hue_bounds(); // Hue Slider Bounds
-	const intv4 pA = get_alpha_bounds(); // Alpha Slider Bounds
+	const int_v4 pS = get_spectrum_bounds(); // Spectrum bounds
+	const int_v4 pH = get_hue_bounds(); // Hue Slider Bounds
+	const int_v4 pA = get_alpha_bounds(); // Alpha Slider Bounds
 	const int mX = static_cast<int>( mouse_x );
 	const int mY = static_cast<int>( mouse_y );
 
@@ -166,18 +166,18 @@ PROTECTED void update( const Delta delta )
 }
 
 
-PROTECTED void render( const Delta delta )
+PROTECTED void render( const Delta delta, const Alpha a )
 {
 	// Interaction State
 	const bool isInteractable = is_interactable();
 	const bool isHovering = isInteractable && is_hovering();
 
 	// Coordinates
-	const intv2 b1 = intv2( x, y ).multiply( context->matrix_get() );
-	const intv2 b2 = intv2( x + width, y + height ).multiply( context->matrix_get() );
-	const intv4 pS = get_spectrum_bounds(); // Spectrum bounds
-	const intv4 pH = get_hue_bounds(); // Hue Slider Bounds
-	const intv4 pA = get_alpha_bounds(); // Alpha Slider Bounds
+	const int_v2 b1 = int_v2( x, y ).multiply( context->matrix_get() );
+	const int_v2 b2 = int_v2( x + width, y + height ).multiply( context->matrix_get() );
+	const int_v4 pS = get_spectrum_bounds(); // Spectrum bounds
+	const int_v4 pH = get_hue_bounds(); // Hue Slider Bounds
+	const int_v4 pA = get_alpha_bounds(); // Alpha Slider Bounds
 
 	// Color
 	const Color colorS = color_mix( c_yellow, c_lime, tweenClickSpectrum );
@@ -295,7 +295,7 @@ PROTECTED void render( const Delta delta )
 // PROTECTED void apply_matrix() { INHERIT::apply_matrix(); }
 
 
-// PROTECTED bool contains_point( const floatv2 point ) { INHERIT::contains_point(); }
+// PROTECTED bool contains_point( const float_v2 point ) { INHERIT::contains_point(); }
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -336,7 +336,7 @@ PUBLIC void set_hsva_floats( const float h, const float s, const float v, const 
 }
 
 
-PUBLIC void set_hsva_floats( const floatv4 &vHSVA )
+PUBLIC void set_hsva_floats( const float_v4 &vHSVA )
 {
 	set_hsva_floats( vHSVA.x, vHSVA.y, vHSVA.z, vHSVA.w );
 }
@@ -377,7 +377,7 @@ PUBLIC void set_rgba_floats( const float r, const float g, const float b, const 
 }
 
 
-PUBLIC void set_rgba_floats( const floatv4 &vRGBA )
+PUBLIC void set_rgba_floats( const float_v4 &vRGBA )
 {
 	set_rgba_floats( vRGBA.x, vRGBA.y, vRGBA.z, vRGBA.w );
 }
@@ -389,9 +389,9 @@ PUBLIC Color get_rgba()
 }
 
 
-PUBLIC floatv4 get_rgba_floats()
+PUBLIC float_v4 get_rgba_floats()
 {
-	return floatv4 { rgba.r / 255.0f, rgba.g / 255.0f, rgba.b / 255.0f, rgba.a / 255.0f };
+	return float_v4 { rgba.r / 255.0f, rgba.g / 255.0f, rgba.b / 255.0f, rgba.a / 255.0f };
 }
 
 
@@ -401,29 +401,29 @@ PUBLIC Color get_hsva()
 }
 
 
-PUBLIC floatv4 get_hsva_floats()
+PUBLIC float_v4 get_hsva_floats()
 {
-	return floatv4 { hsva.h / 255.0f, hsva.s / 255.0f, hsva.v / 255.0f, hsva.a / 255.0f };
+	return float_v4 { hsva.h / 255.0f, hsva.s / 255.0f, hsva.v / 255.0f, hsva.a / 255.0f };
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // PRIVATE UTILITY
 
-PROTECTED intv4 get_spectrum_bounds()
+PROTECTED int_v4 get_spectrum_bounds()
 {
 	const int border = 3;
 	const int spacing = 6 * ( showHueSlider + showAlphaSlider );
 
 	const int w = width - border;
 	const int h = height - border - spacing - ( sliderThickness + border ) * ( showHueSlider + showAlphaSlider );
-	const intv2 p1 = intv2( x + border, y + border ).multiply( context->matrix_get() );
-	const intv2 p2 = intv2( x + w, y + h ).multiply( context->matrix_get() );
+	const int_v2 p1 = int_v2( x + border, y + border ).multiply( context->matrix_get() );
+	const int_v2 p2 = int_v2( x + w, y + h ).multiply( context->matrix_get() );
 
-	return intv4 { p1.x, p1.y, p2.x, p2.y };
+	return int_v4 { p1.x, p1.y, p2.x, p2.y };
 }
 
 
-PROTECTED intv4 get_hue_bounds()
+PROTECTED int_v4 get_hue_bounds()
 {
 	const int border = 3;
 	const int spacing = 6 * showAlphaSlider;
@@ -433,14 +433,14 @@ PROTECTED intv4 get_hue_bounds()
 	const int w = width - border;
 	const int h = sliderThickness;
 
-	const intv2 p1 = intv2( x + border, y + offsetY ).multiply( context->matrix_get() );
-	const intv2 p2 = intv2( x + w, y + offsetY + h ).multiply( context->matrix_get() );
+	const int_v2 p1 = int_v2( x + border, y + offsetY ).multiply( context->matrix_get() );
+	const int_v2 p2 = int_v2( x + w, y + offsetY + h ).multiply( context->matrix_get() );
 
-	return intv4 { p1.x, p1.y, p2.x, p2.y };
+	return int_v4 { p1.x, p1.y, p2.x, p2.y };
 }
 
 
-PROTECTED intv4 get_alpha_bounds()
+PROTECTED int_v4 get_alpha_bounds()
 {
 	constexpr int border = 3;
 
@@ -448,10 +448,10 @@ PROTECTED intv4 get_alpha_bounds()
 	const int w = width - border;
 	const int h = sliderThickness;
 
-	const intv2 p1 = intv2( x + border, y + offsetY ).multiply( context->matrix_get() );
-	const intv2 p2 = intv2( x + w, y + offsetY + h ).multiply( context->matrix_get() );
+	const int_v2 p1 = int_v2( x + border, y + offsetY ).multiply( context->matrix_get() );
+	const int_v2 p2 = int_v2( x + w, y + offsetY + h ).multiply( context->matrix_get() );
 
-	return intv4 { p1.x, p1.y, p2.x, p2.y };
+	return int_v4 { p1.x, p1.y, p2.x, p2.y };
 }
 
 

@@ -82,26 +82,13 @@ void Meshes::write()
 		assets_group( header );
 
 		// Struct
-		assets_struct( header,
-			"DiskMesh",
-			"usize vertexBufferOffset;",
-			"usize vertexBufferSize;",
-			"usize vertexCount;",
-			"usize indexBufferOffset;",
-			"usize indexBufferSize;",
-			"usize indexCount;",
-			"float minX;",
-			"float minY;",
-			"float minZ;",
-			"float maxX;",
-			"float maxY;",
-			"float maxZ;" );
+		header.append( "struct BinMesh;\n\n" );
 
 		// Table
 		header.append( "namespace Assets\n{\n" );
 		header.append( "\tconstexpr u32 meshCount = " );
 		header.append( static_cast<int>( meshes.size() ) ).append( ";\n" );
-		header.append( "\textern const DiskMesh meshes[];\n" );
+		header.append( "\textern const BinMesh meshes[];\n" );
 		header.append( "}\n\n" );
 	}
 
@@ -113,7 +100,7 @@ void Meshes::write()
 
 		// Table
 		char buffer[PATH_SIZE];
-		source.append( "\tconst DiskMesh meshes[meshCount] =\n\t{\n" );
+		source.append( "\tconst BinMesh meshes[meshCount] =\n\t{\n" );
 		for( Mesh &mesh : meshes )
 		{
 			snprintf( buffer, PATH_SIZE,

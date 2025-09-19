@@ -652,6 +652,8 @@
 #define GL_WRITE_ONLY                                    0x88B9
 #define GL_READ_WRITE                                    0x88BA
 #define GL_BUFFER_ACCESS                                 0x88BB
+#define GL_MULTISAMPLE                                   0x809D
+#define GL_TEXTURE_2D_MULTISAMPLE                        0x9100
 
 // Define OpenGL Types
 using GLchar     = char;
@@ -735,7 +737,11 @@ using GLclampf   = float;
 	#define nglGetBufferParameteriv glGetBufferParameteriv
 	//#define nglFenceSync glFenceSync
 	#define nglClientWaitSync glClientWaitSync
-
+	#define nglGenRenderbuffers glGenRenderbuffers
+	#define nglBindRenderbuffer glBindRenderbuffer
+	#define nglRenderbufferStorageMultisample glRenderbufferStorageMultisample
+	#define nglFramebufferRenderbuffer glFramebufferRenderbuffer
+	#define nglTexImage2DMultisample glTexImage2DMultisample
 #endif
 
 
@@ -774,6 +780,7 @@ extern "C"
 	GL_EXTERN void           GL_API glViewport(GLint, GLint, GLsizei, GLsizei);
 	GL_EXTERN void           GL_API glDepthFunc(GLenum);
 	GL_EXTERN void           GL_API glColorMask(GLboolean, GLboolean, GLboolean, GLboolean);
+	GL_EXTERN void           GL_API glDrawBuffer(GLenum);
 	GL_EXTERN void           GL_API glReadBuffer(GLenum);
 	GL_EXTERN void           GL_API glReadPixels(GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, void *);
 	GL_EXTERN void           GL_API glFlush();

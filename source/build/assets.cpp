@@ -28,7 +28,6 @@ namespace Assets
 	Materials materials;
 	Fonts fonts;
 	Sounds sounds;
-	Songs songs;
 	Meshes meshes;
 	Skeleton2Ds skeleton2Ds;
 }

@@ -14,9 +14,9 @@ struct Font
 	constexpr Font( const u16 id, const u16 ttf ) : id{ id }, ttf{ ttf } { };
 	constexpr operator u8() const { return static_cast<u8>( id ); }
 
-	constexpr Font regular()      const { return Font { id, Assets::fonts[id].ttfs[0] }; }
-	constexpr Font italics()      const { return Font { id, Assets::fonts[id].ttfs[1] }; }
-	constexpr Font bold()         const { return Font { id, Assets::fonts[id].ttfs[2] }; }
+	constexpr Font regular() const { return Font { id, Assets::fonts[id].ttfs[0] }; }
+	constexpr Font italics() const { return Font { id, Assets::fonts[id].ttfs[1] }; }
+	constexpr Font bold() const { return Font { id, Assets::fonts[id].ttfs[2] }; }
 	constexpr Font bold_italics() const { return Font { id, Assets::fonts[id].ttfs[3] }; }
 
 	const u16 id, ttf;
@@ -29,7 +29,7 @@ namespace SysFonts
 	constexpr u32 FONTS_GROUP_SIZE = 4;
 	constexpr u32 FONTS_TABLE_DEPTH = 8;
 	constexpr u32 FONTS_TABLE_SIZE = 4096;
-	constexpr u32 FONTS_TEXTURE_SIZE = 2048;//1024;
+	constexpr u32 FONTS_TEXTURE_SIZE = 2048; //1024;
 	constexpr u32 FONTS_GLYPH_PADDING = 1;
 	constexpr u32 FONTS_GLYPH_SIZE_MAX = 256; // FontGlyphInfo width/height is u8
 

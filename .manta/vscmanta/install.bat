@@ -1,7 +1,9 @@
 @echo off
 
-:: Setup Directory
-if not exist output mkdir output
+mkdir extension
+xcopy syntax       extension\syntax /i
+xcopy extension.js extension
+xcopy package.json extension
 
-:: Build Extension
-vsce package -o output\vscmanta.vsix && code --install-extension output\vscmanta.vsix
+7z a -tzip -sdel custom.vsix extension
+code --install-extension custom.vsix && del custom.vsix

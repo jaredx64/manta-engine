@@ -5,7 +5,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// TODO: 'Color' should potentially alias floatv4 and uint8v4 vectors
+// TODO: 'Color' should potentially alias float_v4 and uint8v4 vectors
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -29,6 +29,60 @@ extern struct Color color_rgb_to_hsv( const struct Color &rgb );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+struct Alpha
+{
+    constexpr Alpha() : value{ 1.0f } { }
+    constexpr Alpha( const Alpha &other ) : value{ other.value } { }
+    constexpr Alpha( float alpha ) : value{ alpha } { }
+    constexpr Alpha( double alpha ) : value{ static_cast<float>( alpha ) } {}
+    constexpr Alpha( u8 alpha ) : value{ alpha / 255.0f } { }
+
+    constexpr Alpha &operator=( const Alpha &other ) = default;
+
+    constexpr Alpha operator+( const Alpha &other ) const { return Alpha { value + other.value }; }
+    constexpr Alpha operator-( const Alpha &other ) const { return Alpha { value - other.value }; }
+    constexpr Alpha operator*( const Alpha &other ) const { return Alpha { value * other.value }; }
+    constexpr Alpha operator/( const Alpha &other ) const { return Alpha { value / other.value }; }
+
+    constexpr Alpha operator+( float other ) const { return Alpha { value + other }; }
+    constexpr Alpha operator-( float other ) const { return Alpha { value - other }; }
+    constexpr Alpha operator*( float other ) const { return Alpha { value * other }; }
+    constexpr Alpha operator/( float other ) const { return Alpha { value / other }; }
+
+    constexpr friend Alpha operator+( float lhs, const Alpha &rhs ) { return Alpha{ lhs + rhs.value }; }
+    constexpr friend Alpha operator-( float lhs, const Alpha &rhs ) { return Alpha{ lhs - rhs.value }; }
+    constexpr friend Alpha operator*( float lhs, const Alpha &rhs ) { return Alpha{ lhs * rhs.value }; }
+    constexpr friend Alpha operator/( float lhs, const Alpha &rhs ) { return Alpha{ lhs / rhs.value }; }
+
+    constexpr Alpha &operator+=( const Alpha &other ) { value += other.value; return *this; }
+    constexpr Alpha &operator-=( const Alpha &other ) { value -= other.value; return *this; }
+    constexpr Alpha &operator*=( const Alpha &other ) { value *= other.value; return *this; }
+    constexpr Alpha &operator/=( const Alpha &other ) { value /= other.value; return *this; }
+
+    constexpr Alpha &operator+=( float other ) { value += other; return *this; }
+    constexpr Alpha &operator-=( float other ) { value -= other; return *this; }
+    constexpr Alpha &operator*=( float other ) { value *= other; return *this; }
+    constexpr Alpha &operator/=( float other ) { value /= other; return *this; }
+
+    constexpr bool operator==( const Alpha &other ) const { return value == other.value; }
+    constexpr bool operator!=( const Alpha &other ) const { return value != other.value; }
+    constexpr bool operator<( const Alpha &other ) const { return value < other.value; }
+    constexpr bool operator<=( const Alpha &other ) const { return value <= other.value; }
+    constexpr bool operator>( const Alpha &other ) const { return value > other.value; }
+    constexpr bool operator>=( const Alpha &other ) const { return value >= other.value; }
+
+    constexpr Alpha operator+() const { return *this; }
+    constexpr Alpha operator-() const { return Alpha { -value }; }
+
+    constexpr operator float() const { return value; }
+	constexpr operator double() const { return static_cast<double>( value ); }
+	constexpr operator u8() const { return static_cast<u8>( value * 255.0f ); }
+
+    float value = 1.0f;
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 struct Color
 {
 	constexpr Color( const u8 r = 0, const u8 g = 0, const u8 b = 0, const u8 a = 255 ) :
@@ -43,33 +97,35 @@ struct Color
           b{ static_cast<u8>( ( code >>  8 ) & 0xFF ) },
           a{ static_cast<u8>( ( code       ) & 0xFF ) } { }
 
-	Color operator*( const Color &c );
-	Color operator*( Color &c );
-	Color operator*( const float s );
+	Color operator*( const Color &c ) const;
+	Color operator*( Color &c ) const;
+	Color operator*( const float s ) const;
+	Color operator*( const Alpha &alpha ) const;
 
-	Color operator*=( const Color &c );
-	Color operator*=( Color &c );
-	Color operator*=( const float s );
+	Color &operator*=( const Color &c );
+	Color &operator*=( Color &c );
+	Color &operator*=( const float s );
+	Color &operator*=( const Alpha &alpha );
 
-	Color operator/( const Color &c );
-	Color operator/( Color &c );
-	Color operator/( const float s );
+	Color operator/( const Color &c ) const;
+	Color operator/( Color &c ) const;
+	Color operator/( const float s ) const;
 
-	Color operator/=( const Color &c );
-	Color operator/=( Color &c );
-	Color operator/=( const float s );
+	Color &operator/=( const Color &c );
+	Color &operator/=( Color &c );
+	Color &operator/=( const float s );
 
-	Color operator+( const Color &c );
-	Color operator+( Color &c );
+	Color operator+( const Color &c ) const;
+	Color operator+( Color &c ) const;
 
-	Color operator+=( const Color &c );
-	Color operator+=( Color &c );
+	Color &operator+=( const Color &c );
+	Color &operator+=( Color &c );
 
-	Color operator-( const Color &c );
-	Color operator-( Color &c );
+	Color operator-( const Color &c ) const;
+	Color operator-( Color &c ) const;
 
-	Color operator-=( const Color &c );
-	Color operator-=( Color &c );
+	Color &operator-=( const Color &c );
+	Color &operator-=( Color &c );
 
 	bool operator==( const Color &c ) const
 	{

@@ -4,9 +4,9 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define public public
-#define protected protected
-#define private private
+//#define public public
+//#define protected protected
+//#define private private
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -155,5 +155,87 @@ template <typename T> struct remove_reference<T &&> { using type = T; };
 
 #define ALIGN_TYPE_ADDRESS(type, address) \
 	reinterpret_cast<type *>( ( reinterpret_cast<usize>( address ) + alignof( type ) - 1 ) & ~( alignof( type ) - 1 ) )
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template<typename T> struct pad16
+{
+	alignas( 16 ) T value;
+
+	operator T&() { return value; }
+	operator const T&() const { return value; }
+	T *operator->() { return &value; }
+	const T *operator->() const { return &value; }
+
+    pad16<T> &operator=( const T &rhs ) { value = rhs; return *this; }
+    pad16<T> &operator=( const pad16<T> &rhs ) { value = rhs.value; return *this; }
+
+    pad16<T> operator+( const T &rhs ) const { return value + rhs; }
+    pad16<T> operator-( const T &rhs ) const { return value - rhs; }
+    pad16<T> operator*( const T &rhs ) const { return value * rhs; }
+    pad16<T> operator/( const T &rhs ) const { return value / rhs; }
+    pad16<T> operator%( const T &rhs ) const { return value % rhs; }
+
+    pad16<T> &operator+=( const T &rhs ) { value += rhs; return *this; }
+    pad16<T> &operator-=( const T &rhs ) { value -= rhs; return *this; }
+    pad16<T> &operator*=( const T &rhs ) { value *= rhs; return *this; }
+    pad16<T> &operator/=( const T &rhs ) { value /= rhs; return *this; }
+    pad16<T> &operator%=( const T &rhs ) { value %= rhs; return *this; }
+
+    pad16<T> &operator++() { ++value; return *this; }
+    pad16<T> operator++( int ) { pad16<T> tmp = *this; ++value; return tmp; }
+    pad16<T> &operator--() { --value; return *this; }
+    pad16<T> operator--( int ) { pad16<T> tmp = *this; --value; return tmp; }
+
+    bool operator==( const T& rhs ) const { return value == rhs; }
+    bool operator!=( const T& rhs ) const { return value != rhs; }
+    bool operator<( const T& rhs ) const { return value < rhs; }
+    bool operator<=( const T& rhs ) const { return value <= rhs; }
+    bool operator>( const T& rhs ) const { return value > rhs; }
+    bool operator>=( const T& rhs ) const { return value >= rhs; }
+};
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// std140_array_1d
+
+// HLSL
+template <typename Type, usize Count> class std140_array_1d_hlsl
+{
+private:
+	enum : int { padding = ( 16 - ( sizeof( Type ) % 16 ) ) % 16 };
+	template <int P> struct TypePadded { Type value; char pad[P]; };
+	template <> struct TypePadded<0> { Type value; };
+
+	TypePadded<padding> elements[Count - 1];
+	Type last;
+
+public:
+	Type &operator[]( usize index ) { return index == Count - 1 ? last : elements[index].value; }
+	const Type &operator[]( usize index ) const { return index == Count - 1 ? last : elements[index].value; }
+};
+
+// HLSL (Count == 1 specialization):
+template <typename Type> class std140_array_1d_hlsl<Type, 1>
+{
+private:
+	Type element;
+
+public:
+	Type &operator[]( usize index ) { return element; }
+	const Type &operator[]( usize index ) const { return element; }
+};
+
+// STD140 (GLSL)
+template <typename Type, usize Count> class std140_array_1d
+{
+private:
+	struct alignas( 16 ) TypePadded { Type value; };
+	TypePadded elements[Count];
+
+public:
+	Type &operator[]( usize index ) { return elements[index].value; }
+	const Type &operator[]( usize index ) const { return elements[index].value; }
+};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

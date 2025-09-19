@@ -17,7 +17,6 @@ void SchedulerJob::execute( const Delta delta )
 
 void SchedulerJob::rebalance()
 {
-	PrintLn( "Executions per second: %d", rollingCount );
 	if( rollingCount <= 0 ) { return; }
 	cost = static_cast<float>( rollingCost / rollingCount );
 	rollingCost = 0.0;
@@ -72,10 +71,7 @@ void Scheduler::update( const Delta delta )
 	timeSecond += delta;
 	if( timeSecond >= 1.0 )
 	{
-		PrintLn( "\n" );
-		PrintLn( "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" );
-		for( SchedulerJob &job : jobs ) { job.rebalance(); PrintLn( "%.3f", job.cost ); }
-		PrintLn( "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" );
+		for( SchedulerJob &job : jobs ) { job.rebalance(); }
 		timeSecond = 0.0;
 
 		cost = static_cast<float>( rollingCost / rollingCount );

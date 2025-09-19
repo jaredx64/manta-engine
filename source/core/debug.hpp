@@ -101,7 +101,7 @@ class EnumInfo
 public:
 	constexpr EnumInfo( const char *str, const Color col ) : str{ str }, col{ col } { };
 	const char *name() const { return str; }
-	const Color color() const { return col; }
+	Color color() const { return col; }
 private:
 	const char *str = "";
 	const Color col = c_white;
@@ -109,7 +109,7 @@ private:
 public:
 	constexpr EnumInfo( const char *str, const Color col ) { }
 	const char *name() const { return "..."; }
-	const Color color() const { return c_white; }
+	Color color() const { return c_white; }
 #endif
 };
 

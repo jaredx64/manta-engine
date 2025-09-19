@@ -30,6 +30,7 @@
 
 #define GFX_TEXTURE_SLOT_COUNT       ( 8 )
 #define GFX_RENDER_TARGET_SLOT_COUNT ( 8 )
+#define GFX_MIP_DEPTH_MAX            ( 16 )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -50,7 +51,7 @@ struct GfxStatistics
 	usize gpuMemoryRenderTargets = 0;
 	usize gpuMemoryVertexBuffers = 0;
 	usize gpuMemoryIndexBuffers = 0;
-	usize gpuMemoryConstantBuffers = 0;
+	usize gpuMemoryUniformBuffers = 0;
 	usize gpuMemoryShaderPrograms = 0;
 
 	usize total_memory() const
@@ -60,7 +61,7 @@ struct GfxStatistics
 			gpuMemoryRenderTargets +
 			gpuMemoryVertexBuffers +
 			gpuMemoryIndexBuffers +
-			gpuMemoryConstantBuffers +
+			gpuMemoryUniformBuffers +
 			gpuMemoryShaderPrograms;
 	}
 };
@@ -104,7 +105,7 @@ struct GfxResource
 
 struct GfxIndexBufferResource;
 struct GfxVertexBufferResource;
-struct GfxConstantBufferResource;
+struct GfxUniformBufferResource;
 struct GfxShaderResource;
 struct GfxTexture1DResource;
 struct GfxTexture2DResource;
@@ -128,6 +129,7 @@ enum_type( GfxColorFormat, u8 )
 	GfxColorFormat_R16G16,
 	GfxColorFormat_R16G16F_FLOAT,
 	GfxColorFormat_R16G16B16A16_FLOAT,
+	GfxColorFormat_R16G16B16A16_UINT,
 	GfxColorFormat_R32_FLOAT,
 	GfxColorFormat_R32G32_FLOAT,
 	GfxColorFormat_R32G32B32A32_FLOAT,
@@ -151,6 +153,7 @@ namespace GfxCore
 		4,  // GfxColorFormat_R16G16
 		4,  // GfxColorFormat_R16G16F_FLOAT
 		8,  // GfxColorFormat_R16G16B16A16_FLOAT
+		8,  // GfxColorFormat_R16G16B16A16_UINT
 		4,  // GfxColorFormat_R32_FLOAT
 		8,  // GfxColorFormat_R32G32_FLOAT
 		16, // GfxColorFormat_R32G32B32A32_FLOAT
@@ -171,6 +174,7 @@ namespace GfxCore
 		"R16G16",             // GfxColorFormat_R16G16
 		"R16G16_FLOAT",       // GfxColorFormat_R16G16F_FLOAT
 		"R16B16G16A16_FLOAT", // GfxColorFormat_R16G16B16A16_FLOAT
+		"R16B16G16A16_UINT",  // GfxColorFormat_R16G16B16A16_UINT
 		"R32_FLOAT",          // GfxColorFormat_R32_FLOAT
 		"R32G32_FLOAT",       // GfxColorFormat_R32G32_FLOAT
 		"R32G32B32A32_FLOAT", // GfxColorFormat_R32G32B32A32_FLOAT
@@ -412,10 +416,13 @@ struct GfxSamplerState // TODO: Per texture?
 {
 	GfxFilteringMode filterMode = GfxFilteringMode_NEAREST;
 	GfxUVWrapMode wrapMode = GfxUVWrapMode_WRAP;
+	int anisotropy = 1;
 
 	bool operator==( const GfxSamplerState &other ) const
 	{
-		return filterMode == other.filterMode && wrapMode == other.wrapMode;
+		return filterMode == other.filterMode &&
+			wrapMode == other.wrapMode  &&
+			anisotropy == other.anisotropy;
 	}
 };
 
@@ -460,7 +467,7 @@ struct GfxDepthState
 struct GfxShaderState
 {
 	GfxShaderResource *resource = nullptr;
-	GfxCoreCBuffer::ShaderGlobals_t globals;
+	GfxCoreUniformBuffer::ShaderGlobals_t globals;
 
 	bool operator==( const GfxShaderState &other ) const
 	{
@@ -597,30 +604,30 @@ public:
 
 namespace GfxCore
 {
-	extern bool rb_constant_buffer_init( GfxConstantBufferResource *&resource,
+	extern bool rb_uniform_buffer_init( GfxUniformBufferResource *&resource,
 	                                     const char *name, const int index, const u32 size );
-	extern bool rb_constant_buffer_free( GfxConstantBufferResource *&resource );
+	extern bool rb_uniform_buffer_free( GfxUniformBufferResource *&resource );
 
-	extern void rb_constant_buffered_write_begin( GfxConstantBufferResource *&resource );
-	extern void rb_constant_buffered_write_end( GfxConstantBufferResource *&resource );
-	extern bool rb_constant_buffered_write( GfxConstantBufferResource *&resource, const void *data );
+	extern void rb_constant_buffered_write_begin( GfxUniformBufferResource *&resource );
+	extern void rb_constant_buffered_write_end( GfxUniformBufferResource *&resource );
+	extern bool rb_constant_buffered_write( GfxUniformBufferResource *&resource, const void *data );
 
-	extern bool rb_constant_buffer_bind_vertex( GfxConstantBufferResource *&resource, const int slot );
-	extern bool rb_constant_buffer_bind_fragment( GfxConstantBufferResource *&resource, const int slot );
-	extern bool rb_constant_buffer_bind_compute( GfxConstantBufferResource *&resource, const int slot );
+	extern bool rb_uniform_buffer_bind_vertex( GfxUniformBufferResource *&resource, const int slot );
+	extern bool rb_uniform_buffer_bind_fragment( GfxUniformBufferResource *&resource, const int slot );
+	extern bool rb_uniform_buffer_bind_compute( GfxUniformBufferResource *&resource, const int slot );
 
-	inline bool rb_constant_buffer_bind_all( GfxConstantBufferResource *&resource, const int slot )
+	inline bool rb_uniform_buffer_bind_all( GfxUniformBufferResource *&resource, const int slot )
 	{
-		if( !rb_constant_buffer_bind_vertex( resource, slot ) ) { return false; }
-		if( !rb_constant_buffer_bind_fragment( resource, slot ) ) { return false; }
-		if( !rb_constant_buffer_bind_compute( resource, slot ) ) { return false; }
+		if( !rb_uniform_buffer_bind_vertex( resource, slot ) ) { return false; }
+		if( !rb_uniform_buffer_bind_fragment( resource, slot ) ) { return false; }
+		if( !rb_uniform_buffer_bind_compute( resource, slot ) ) { return false; }
 		return true;
 	}
 
 	// gfx.generated.cpp
-	extern GfxConstantBufferResource *gfxCBufferResources[GfxCore::constantBufferCount];
-	extern bool rb_init_cbuffers();
-	extern bool rb_free_cbuffers();
+	extern GfxUniformBufferResource *gfxUniformBufferResources[GfxCore::uniformBufferCount];
+	extern bool rb_init_uniform_buffers();
+	extern bool rb_free_uniform_buffers();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -629,6 +636,7 @@ class GfxTexture2D
 {
 public:
 	void init( void *data, const u16 width, const u16 height, const GfxColorFormat &format );
+	void init( void *data, const u16 width, const u16 height, const u16 levels, const GfxColorFormat &format );
 	void free();
 	void bind( const int slot = 0 ) const;
 	void release() const;
@@ -641,14 +649,13 @@ public:
 namespace GfxCore
 {
 	extern bool rb_texture_2d_init( GfxTexture2DResource *&resource, void *data,
-		const u16 width, const u16 height,
+		const u16 width, const u16 height, const u16 levels,
 		const GfxColorFormat &format );
 
 	extern bool rb_texture_2d_free( GfxTexture2DResource *&resource );
 
 	extern bool rb_texture_2d_bind( const GfxTexture2DResource *const &resource, const int slot );
-
-	extern bool rb_texture_2d_release( const int slot );
+	extern bool rb_texture_2d_release( const GfxTexture2DResource *const &resource, const int slot );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -658,6 +665,7 @@ struct GfxRenderTargetDescription
 	GfxColorFormat colorFormat = GfxColorFormat_R8G8B8A8_FLOAT;
 	GfxDepthFormat depthFormat = GfxDepthFormat_NONE;
 	bool cpuAccess = false;
+	int sampleCount = 0;
 };
 
 
@@ -696,7 +704,7 @@ namespace GfxCore
 
 	extern bool rb_render_target_2d_bind( const GfxRenderTarget2DResource *const &resource, const int slot );
 
-	extern bool rb_render_target_2d_release( const int slot );
+	extern bool rb_render_target_2d_release( const GfxRenderTarget2DResource *const &resource, const int slot );
 
 	extern bool rb_render_target_2d_copy(
 		GfxRenderTarget2DResource *&srcResource,
@@ -756,7 +764,7 @@ namespace GfxCore
 class GfxShader
 {
 public:
-	void init( const u32 shaderID, const struct DiskShader &diskShader );
+	void init( const u32 shaderID, const struct BinShader &binShader );
 	void free();
 	void bind();
 	void release();
@@ -769,14 +777,14 @@ public:
 
 namespace GfxCore
 {
-	extern bool rb_shader_init( GfxShaderResource *&resource, const u32 shaderID, const struct DiskShader &diskShader );
+	extern bool rb_shader_init( GfxShaderResource *&resource, const u32 shaderID, const struct BinShader &binShader );
 	extern bool rb_shader_free( GfxShaderResource *&resource );
 	extern bool rb_shader_bind( GfxShaderResource *&resource );
 
 	// gfx.generated.cpp
-	extern FUNCTION_POINTER_ARRAY( bool, rb_shader_bind_constant_buffers_vertex );
-	extern FUNCTION_POINTER_ARRAY( bool, rb_shader_bind_constant_buffers_fragment );
-	extern FUNCTION_POINTER_ARRAY( bool, rb_shader_bind_constant_buffers_compute );
+	extern FUNCTION_POINTER_ARRAY( bool, rb_shader_bind_uniform_buffers_vertex );
+	extern FUNCTION_POINTER_ARRAY( bool, rb_shader_bind_uniform_buffers_fragment );
+	extern FUNCTION_POINTER_ARRAY( bool, rb_shader_bind_uniform_buffers_compute );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -939,10 +947,10 @@ namespace GfxCore
 	extern GfxSwapChain swapchain;
 	extern GfxViewport viewport;
 
-	extern Matrix matrixModel;
-	extern Matrix matrixView;
-	extern Matrix matrixPerspective;
-	extern Matrix matrixMVP;
+	extern doublem44 matrixModel;
+	extern doublem44 matrixView;
+	extern doublem44 matrixPerspective;
+	extern doublem44 matrixMVP;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -985,28 +993,29 @@ namespace Gfx
 	extern void set_swapchain_size( const u16 width, const u16 height, const bool fullscreen );
 	extern void set_viewport_size( const u16 width, const u16 height, const bool fullscreen );
 
-	extern void set_shader_globals( const GfxCoreCBuffer::ShaderGlobals_t &globals );
+	extern void set_shader_globals( const GfxCoreUniformBuffer::ShaderGlobals_t &globals );
 
-	extern void set_matrix_model( const Matrix &matrix );
-	extern void set_matrix_view( const Matrix &matrix );
-	extern void set_matrix_perspective( const Matrix &matrix );
-	extern void set_matrix_mvp( const Matrix &matModel, const Matrix &matView, const Matrix &matPerspective );
+	extern void set_matrix_model( const doublem44 &matrix );
+	extern void set_matrix_view( const doublem44 &matrix );
+	extern void set_matrix_perspective( const doublem44 &matrix );
+	extern void set_matrix_mvp( const doublem44 &matModel, const doublem44 &matView,
+		const doublem44 &matPerspective );
 
-	extern void set_matrix_mvp_2d_orthographic( const float x, const float y,
-		const float zoom, const float angle,
-		const float width, const float height,
-		const float znear = 0.0f, const float zfar = 1.0f );
+	extern void set_matrix_mvp_2d_orthographic( const double x, const double y,
+		const double zoom, const double angle,
+		const double width, const double height,
+		const double znear = 0.0f, const double zfar = 1.0f );
 
-	extern void set_matrix_mvp_3d_perspective( const float fov, const float aspect,
-		const float znear, const float zfar,
-		const float x, const float y, const float z,
-		const float xto, const float yto, const float zto,
-		const float xup, const float yup, const float zup );
+	extern void set_matrix_mvp_3d_perspective( const double fov, const double aspect,
+		const double znear, const double zfar,
+		const double x, const double y, const double z,
+		const double xto, const double yto, const double zto,
+		const double xup, const double yup, const double zup );
 
-	extern const Matrix &get_matrix_model();
-	extern const Matrix &get_matrix_view();
-	extern const Matrix &get_matrix_perspective();
-	extern const Matrix &get_matrix_mvp();
+	extern const doublem44 &get_matrix_model();
+	extern const doublem44 &get_matrix_view();
+	extern const doublem44 &get_matrix_perspective();
+	extern const doublem44 &get_matrix_mvp();
 
 	extern void set_raster_state( const GfxRasterState &state );
 	extern void set_fill_mode( const GfxFillMode &mode );
@@ -1017,6 +1026,7 @@ namespace Gfx
 
 	extern void set_sampler_state( const GfxSamplerState &state );
 	extern void set_filtering_mode( const GfxFilteringMode &mode );
+	extern void set_filtering_anisotropy( const int anisotropy );
 	extern void set_uv_wrap_mode( const GfxUVWrapMode &mode );
 
 	extern void set_blend_state( const GfxBlendState &state );
@@ -1040,6 +1050,25 @@ namespace Gfx
 
 	inline void shader_bind( const u32 shader ) { GfxCore::shaders[shader].bind(); }
 	inline void shader_release() { GfxCore::shaders[SHADER_DEFAULT].bind(); }
+
+	// Mips
+	extern u16 mip_level_count_2d( u16 width, u16 height );
+	extern bool mip_level_validate_2d( u16 width, u16 height, u16 levels );
+
+	extern usize mip_buffer_size_2d( u16 width, u16 height, u16 levels,
+		const GfxColorFormat format );
+
+	extern bool mip_generate_next_2d( void *data, const u16 width, const u16 height,
+		const GfxColorFormat format, void *dest, const usize size );
+
+	extern bool mip_generate_next_2d_alloc( void *data, const u16 width, const u16 height,
+		const GfxColorFormat format, void *&outData, usize &outSize );
+
+	extern bool mip_generate_chain_2d( void *data, const u16 width, const u16 height,
+		const GfxColorFormat format, void *dest, const usize size );
+
+	extern bool mip_generate_chain_2d_alloc( void *data, const u16 width, const u16 height,
+		const GfxColorFormat format, void *&outData, usize &outSize );
 
 	// Builtin Quad Batch
 	extern bool quad_batch_break();

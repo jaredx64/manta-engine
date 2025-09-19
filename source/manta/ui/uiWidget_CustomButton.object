@@ -34,12 +34,12 @@ PUBLIC DVAR( color );
 // PROTECTED void update( const Delta delta ) { }
 
 
-// PROTECTED void render( const Delta delta );
+// PROTECTED void render( const Delta delta, const Alpha alpha );
 
 
 // PROTECTED void apply_matrix() { INHERIT::apply_matrix(); }
 
 
-// PROTECTED bool contains_point( const floatv2 point ) { }
+// PROTECTED bool contains_point( const float_v2 point ) { }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

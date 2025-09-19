@@ -30,13 +30,17 @@ namespace Gfx
 	List<FileInfo> shaderFiles;
 	List<Shader> shaders;
 
+	// Shared Structs
+	List<SharedStruct> sharedStructs;
+	HashMap<u32, u32> sharedStructCache;
+
+	// Uniform Buffers
+	List<UniformBuffer> uniformBuffers;
+	HashMap<u32, u32> uniformBufferCache;
+
 	// Vertex Structs
 	List<VertexFormat> vertexFormats;
 	HashMap<u32, u32> vertexFormatCache;
-
-	// Constant Buffers
-	List<ConstantBuffer> constantBuffers;
-	HashMap<u32, u32> constantBufferCache;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -175,7 +179,7 @@ void Gfx::write()
 		header.append( COMMENT_BREAK "\n\n" );
 		{
 			assets_struct( header,
-				"DiskShader",
+				"BinShader",
 				"u32 offsetVertex;",
 				"u32 sizeVertex;",
 				"u32 offsetFragment;",
@@ -195,7 +199,7 @@ void Gfx::write()
 			header.append( "namespace Gfx\n{\n" );
 			header.append( "\tconstexpr u32 shadersCount = " );
 			header.append( static_cast<int>( Gfx::shaders.size() ) ).append( ";\n" );
-			header.append( "\textern const DiskShader diskShaders[];\n" );
+			header.append( "\textern const BinShader binShaders[];\n" );
 			header.append( "}\n\n" );
 		}
 
@@ -223,21 +227,38 @@ void Gfx::write()
 
 		header.append( COMMENT_BREAK "\n\n" );
 		{
-			header.append( "namespace GfxCoreCBuffer\n{\n" );
-			for( ConstantBuffer &cbuffer : Gfx::constantBuffers )
+			header.append( "namespace GfxStructPacked\n{\n" );
+			for( SharedStruct &sharedStruct : Gfx::sharedStructs )
 			{
-				header.append( cbuffer.header );
+				header.append( sharedStruct.headerTight );
+			}
+			header.append( "}\n\n" );
+
+			header.append( "namespace GfxStructPadded\n{\n" );
+			for( SharedStruct &sharedStruct : Gfx::sharedStructs )
+			{
+				header.append( sharedStruct.headerAlign );
 			}
 			header.append( "}\n\n" );
 		}
 
 		header.append( COMMENT_BREAK "\n\n" );
 		{
-			header.append( "namespace GfxCBuffer\n{\n" );
-			for( ConstantBuffer &cbuffer : Gfx::constantBuffers )
+			header.append( "namespace GfxCoreUniformBuffer\n{\n" );
+			for( UniformBuffer &uniformBuffer : Gfx::uniformBuffers )
 			{
-				header.append( "\textern GfxCoreCBuffer::" ).append( cbuffer.name ).append("_t " );
-				header.append( cbuffer.name ).append( ";\n" );
+				header.append( uniformBuffer.header );
+			}
+			header.append( "}\n\n" );
+		}
+
+		header.append( COMMENT_BREAK "\n\n" );
+		{
+			header.append( "namespace GfxUniformBuffer\n{\n" );
+			for( UniformBuffer &uniformBuffer : Gfx::uniformBuffers )
+			{
+				header.append( "\textern GfxCoreUniformBuffer::" ).append( uniformBuffer.name ).append("_t " );
+				header.append( uniformBuffer.name ).append( ";\n" );
 			}
 			header.append( "}\n\n" );
 		}
@@ -246,8 +267,8 @@ void Gfx::write()
 		{
 			header.append( "namespace GfxCore\n{\n" );
 
-			header.append( "\tconstexpr u32 constantBufferCount = " );
-			header.append( static_cast<int>( Gfx::constantBuffers.size() ) ).append( ";\n" );
+			header.append( "\tconstexpr u32 uniformBufferCount = " );
+			header.append( static_cast<int>( Gfx::uniformBuffers.size() ) ).append( ";\n" );
 			header.append( "}\n\n" );
 		}
 
@@ -269,7 +290,7 @@ void Gfx::write()
 			source.append( "namespace Gfx\n{\n" );
 
 			char buffer[PATH_SIZE];
-			source.append( "\tconst DiskShader diskShaders[shadersCount] =\n\t{\n" );
+			source.append( "\tconst BinShader binShaders[shadersCount] =\n\t{\n" );
 			for( Shader &shader : shaders )
 			{
 				snprintf( buffer, PATH_SIZE, "\t\t{ %u, %u, %u, %u, %u, %u, %u, \"%s\" },",
@@ -291,11 +312,11 @@ void Gfx::write()
 
 		source.append( COMMENT_BREAK "\n\n" );
 		{
-			source.append( "namespace GfxCBuffer\n{\n" );
-			for( ConstantBuffer &cbuffer : Gfx::constantBuffers )
+			source.append( "namespace GfxUniformBuffer\n{\n" );
+			for( UniformBuffer &uniformBuffer : Gfx::uniformBuffers )
 			{
-				source.append( "\tGfxCoreCBuffer::" ).append( cbuffer.name ).append("_t " );
-				source.append( cbuffer.name ).append( ";\n" );
+				source.append( "\tGfxCoreUniformBuffer::" ).append( uniformBuffer.name ).append("_t " );
+				source.append( uniformBuffer.name ).append( ";\n" );
 			}
 			source.append( "}\n\n" );
 		}
@@ -304,29 +325,29 @@ void Gfx::write()
 		{
 			source.append( "namespace GfxCore\n{\n" );
 
-			source.append( "\tGfxConstantBufferResource *gfxCBufferResources[GfxCore::constantBufferCount];\n\n" );
+			source.append( "\tGfxUniformBufferResource *gfxUniformBufferResources[GfxCore::uniformBufferCount];\n\n" );
 
-			source.append( "\tbool rb_init_cbuffers()\n\t{\n" );
-			for( ConstantBuffer &cbuffer : Gfx::constantBuffers )
+			source.append( "\tbool rb_init_uniform_buffers()\n\t{\n" );
+			for( UniformBuffer &uniformBuffer : Gfx::uniformBuffers )
 			{
-				source.append( "\t\tgfxCBufferResources[" ).append( static_cast<int>( cbuffer.id ) );
+				source.append( "\t\tgfxUniformBufferResources[" ).append( static_cast<int>( uniformBuffer.id ) );
 				source.append( "] = nullptr;\n" );
-				source.append( "\t\tGfxCBuffer::" ).append( cbuffer.name ).append( ".zero();\n" );
-				source.append( "\t\tif( !GfxCore::rb_constant_buffer_init( " );
-				source.append( "gfxCBufferResources[" ).append( static_cast<int>( cbuffer.id ) );
-				source.append( "], \"t_" ).append( cbuffer.name );
-				source.append( "\", " ).append( static_cast<int>( cbuffer.id ) );
-				source.append( ", sizeof( GfxCoreCBuffer::" );
-				source.append( cbuffer.name ).append( "_t ) ) ) { return false; }\n\n" );
+				source.append( "\t\tGfxUniformBuffer::" ).append( uniformBuffer.name ).append( ".zero();\n" );
+				source.append( "\t\tif( !GfxCore::rb_uniform_buffer_init( " );
+				source.append( "gfxUniformBufferResources[" ).append( static_cast<int>( uniformBuffer.id ) );
+				source.append( "], \"t_" ).append( uniformBuffer.name );
+				source.append( "\", " ).append( static_cast<int>( uniformBuffer.id ) );
+				source.append( ", sizeof( GfxCoreUniformBuffer::" );
+				source.append( uniformBuffer.name ).append( "_t ) ) ) { return false; }\n\n" );
 			}
 			source.append( "\t\t// Success!\n" );
 			source.append( "\t\treturn true;\n" );
 			source.append( "\t}\n\n" );
 
-			source.append( "\tbool rb_free_cbuffers()\n\t{\n" );
-			source.append( "\t\tfor( u32 i = 0; i < constantBufferCount; i++ )\n" );
+			source.append( "\tbool rb_free_uniform_buffers()\n\t{\n" );
+			source.append( "\t\tfor( u32 i = 0; i < uniformBufferCount; i++ )\n" );
 			source.append( "\t\t{\n" );
-			source.append( "\t\t\tif( !GfxCore::rb_constant_buffer_free( gfxCBufferResources[i] ) ) { return false; }\n" );
+			source.append( "\t\t\tif( !GfxCore::rb_uniform_buffer_free( gfxUniformBufferResources[i] ) ) { return false; }\n" );
 			source.append( "\t\t}\n" );
 			source.append( "\n\t\t// Success!\n" );
 			source.append( "\t\treturn true;\n" );
@@ -340,37 +361,39 @@ void Gfx::write()
 			};
 			static_assert( ARRAY_LENGTH( shaderStages ) == SHADERSTAGE_COUNT, "Missing ShaderStage!" );
 
-			// shader_bind_constant_buffers_*
+			// shader_bind_uniform_buffers_*
 			for( Shader &shader : shaders )
 			{
 				for( ShaderStage stage = 0; stage < SHADERSTAGE_COUNT; stage++ )
 				{
-					source.append( "\tstatic bool rb_shader_bind_constant_buffers_" ).append( shaderStages[stage] ).append( "_" );
+					source.append( "\tstatic bool rb_shader_bind_uniform_buffers_" );
+					source.append( shaderStages[stage] ).append( "_" );
 					source.append( shader.name ).append( "()\n\t{\n" );
-					for( usize i = 0; i < shader.constantBufferIDs[stage].size(); i++ )
+					for( usize i = 0; i < shader.uniformBufferIDs[stage].size(); i++ )
 					{
-						int cbufferID = shader.constantBufferIDs[stage][i];
-						int cbufferSlot = shader.constantBufferSlots[stage][i];
-						ConstantBuffer &cbuffer = Gfx::constantBuffers[cbufferID];
-						source.append( "\t\tif( !GfxCore::rb_constant_buffer_bind_" ).append( shaderStages[stage] );
-						source.append( "( GfxCore::gfxCBufferResources[" );
-						source.append( cbufferID ).append( "], " ).append( cbufferSlot ).append ( " ) ) { return false; }" );
-						source.append( " // ").append( cbuffer.name ).append( "\n" );
+						int uniformBufferID = shader.uniformBufferIDs[stage][i];
+						int uniformBufferSlot = shader.uniformBufferSlots[stage][i];
+						UniformBuffer &uniformBuffer = Gfx::uniformBuffers[uniformBufferID];
+						source.append( "\t\tif( !GfxCore::rb_uniform_buffer_bind_" ).append( shaderStages[stage] );
+						source.append( "( GfxCore::gfxUniformBufferResources[" );
+						source.append( uniformBufferID ).append( "], " ).append( uniformBufferSlot );
+						source.append( " ) ) { return false; }" );
+						source.append( " // ").append( uniformBuffer.name ).append( "\n" );
 					}
 					source.append( "\t\treturn true;\n" );
 					source.append( "\t}\n\n" );
 				}
 			}
 
-			// rb_shader_bind_constant_buffers_vs/fs/cs[] function pointer table
+			// rb_shader_bind_uniform_buffers_vs/fs/cs[] function pointer table
 			for( ShaderStage stage = 0; stage < SHADERSTAGE_COUNT; stage++ )
 			{
 				if( stage != 0 ) { source.append( "\n" ); }
-				source.append( "\tFUNCTION_POINTER_ARRAY( bool, rb_shader_bind_constant_buffers_" );
+				source.append( "\tFUNCTION_POINTER_ARRAY( bool, rb_shader_bind_uniform_buffers_" );
 				source.append( shaderStages[stage] ).append( " ) =\n\t{\n" );
 				for( Shader &shader : shaders )
 				{
-					source.append( "\t\trb_shader_bind_constant_buffers_" ).append( shaderStages[stage] ).append( "_" );
+					source.append( "\t\trb_shader_bind_uniform_buffers_" ).append( shaderStages[stage] ).append( "_" );
 					source.append( shader.name ).append( ",\n" );
 				}
 				source.append( "\t};\n" );
@@ -381,10 +404,10 @@ void Gfx::write()
 
 		source.append( COMMENT_BREAK "\n\n" );
 		{
-			source.append( "namespace GfxCoreCBuffer\n{\n" );
-			for( ConstantBuffer &cbuffer : Gfx::constantBuffers )
+			source.append( "namespace GfxCoreUniformBuffer\n{\n" );
+			for( UniformBuffer &uniformBuffer : Gfx::uniformBuffers )
 			{
-				source.append( cbuffer.source );
+				source.append( uniformBuffer.source );
 			}
 			source.append( "}\n\n" );
 		}
@@ -583,15 +606,32 @@ void Gfx::write_source_api_d3d12( String &source )
 
 void Gfx::write_header_api_metal( String &header )
 {
-	// TODO
-	Error( "Metal unsupported!" );
+	// Metal Header
+	header.append( "#include <manta/backend/gfx/metal/metal.hpp>\n\n" );
+
+	// GfxCore
+	header.append( "namespace GfxCore\n{\n" );
+	header.append( COMMENT_BREAK "\n\n" );
+	{
+		// TODO
+		// ...
+	}
+	header.append( COMMENT_BREAK "\n" );
+	header.append( "}" );
 }
 
 
 void Gfx::write_source_api_metal( String &source )
 {
-	// TODO
-	Error( "Metal unsupported!" );
+	// GfxCore
+	source.append( "namespace GfxCore\n{\n" );
+	source.append( COMMENT_BREAK "\n\n" );
+	{
+		// TODO
+		// ...
+	}
+	source.append( COMMENT_BREAK "\n" );
+	source.append( "}" );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -47,16 +47,13 @@ void Glyphs::write()
 		assets_group( header );
 
 		// Struct
-		assets_struct( header,
-			"DiskGlyph",
-			"u16 u1, v1;",
-			"u16 u2, v2;" );
+		header.append( "struct BinGlyph;\n\n" );
 
 		// Table
 		header.append( "namespace Assets\n{\n" );
 		header.append( "\tconstexpr u32 glyphsCount = " );
 		header.append( static_cast<int>( glyphs.size() ) ).append( ";\n" );
-		header.append( "\textern const DiskGlyph glyphs[];\n" );
+		header.append( "\textern const BinGlyph glyphs[];\n" );
 		header.append( "}\n\n" );
 	}
 
@@ -68,7 +65,7 @@ void Glyphs::write()
 
 		// Table
 		char buffer[PATH_SIZE];
-		source.append( "\tconst DiskGlyph glyphs[glyphsCount] =\n\t{\n" );
+		source.append( "\tconst BinGlyph glyphs[glyphsCount] =\n\t{\n" );
 		for( Glyph &glyph : glyphs )
 		{
 			snprintf( buffer, PATH_SIZE,

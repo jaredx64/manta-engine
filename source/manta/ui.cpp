@@ -38,7 +38,7 @@ void UIContext::init()
 {
 	objects.init();
 	widgets.init();
-	matrix = matrix_build_identity();
+	matrix = float_m44_build_identity();
 }
 
 
@@ -137,6 +137,36 @@ Object UIContext::create_widget_window( u16 type, int x, int y, int width, int h
 		handle->width = width;
 		handle->height = height;
 		handle->resizable = resizeable;
+		handle->init();
+	}
+
+	// Return
+	return widget;
+}
+
+
+Object UIContext::create_widget_scrollable_region( u16 type, int x, int y, int width, int height,
+	const bool hasVerticalScrollbar, const bool hasHorizontalScrollbar, Object parent )
+{
+	// Validate Type
+	AssertMsg( type == UIWidget_ScrollableRegion || object_is_child_of( type, UIWidget_ScrollableRegion ),
+		"Attempting to create button of non-UIWidget_ScrollableRegion type! (%s)", SysObjects::TYPE_NAME[type] );
+
+	// Create Widget
+	const Object widget = instantiate_widget( type, parent );
+
+	// Initialize Widget
+	ObjectHandle<UIWidget_ScrollableRegion> handle = objects.handle<UIWidget_ScrollableRegion>( widget );
+	if( handle )
+	{
+		handle->x = x;
+		handle->y = y;
+		handle->width = width;
+		handle->height = height;
+		handle->viewWidth = width;
+		handle->viewHeight = height;
+		handle->hideScrollbarVertical = false;//!hasVerticalScrollbar;
+		handle->hideScrollbarHorizontal = false;//!hasHorizontalScrollbar;
 		handle->init();
 	}
 
@@ -357,15 +387,15 @@ Object UIContext::create_widget_labeltext( u16 type, int x, int y, const char *l
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void UIContext::matrix_set( const Matrix &m )
+void UIContext::matrix_set( const float_m44 &m )
 {
 	this->matrix = m;
 }
 
 
-void UIContext::matrix_multiply( const Matrix &m )
+void UIContext::float_m44_multiply( const float_m44 &m )
 {
-	matrix = ::matrix_multiply( matrix, m );
+	matrix = ::float_m44_multiply( matrix, m );
 }
 
 
@@ -408,15 +438,15 @@ void UIContext::scissor_set_nested( const UIScissor &s )
 }
 
 
-floatv2 UIContext::position_floatv2( const float x, const float y )
+float_v2 UIContext::position_float_v2( const float x, const float y )
 {
-	return floatv2( x, y ).multiply( this->matrix );
+	return float_v2( x, y ).multiply( this->matrix );
 }
 
 
-intv2 UIContext::position_i32( const int x, const int y )
+int_v2 UIContext::position_i32( const int x, const int y )
 {
-	return intv2( x, y ).multiply( this->matrix );
+	return int_v2( x, y ).multiply( this->matrix );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -487,7 +517,7 @@ void UIContext::update_widgets( const Delta delta )
 }
 
 
-void UIContext::render_widgets( const Delta delta )
+void UIContext::render_widgets( const Delta delta, const Alpha alpha )
 {
 	// Draw Widgets
 	for( const Object &widget : widgets )
@@ -495,7 +525,7 @@ void UIContext::render_widgets( const Delta delta )
 		ObjectHandle<UIWidget> handle = objects.handle<UIWidget>( widget ); Assert( handle );
 		if( handle->parent ) { continue; }
 		if( !handle->renderEnabled ) { continue; }
-		render_widget( handle, delta );
+		render_widget( handle, delta, alpha );
 	}
 }
 
@@ -509,11 +539,11 @@ void UIContext::update_widget( const Object &widget, const Delta delta )
 }
 
 
-void UIContext::render_widget( const Object &widget, const Delta delta )
+void UIContext::render_widget( const Object &widget, const Delta delta, const Alpha alpha )
 {
 	// Draw Widget
 	ObjectHandle<UIWidget> widgetHandle = objects.handle<UIWidget>( widget );
-	if( widgetHandle ) { render_widget( widgetHandle, delta ); }
+	if( widgetHandle ) { render_widget( widgetHandle, delta, alpha ); }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -528,7 +558,7 @@ void UIContext::update_widget( ObjectHandle<UIWidget> &widgetHandle, const Delta
 	if( widgetHandle->children.count() > 0 )
 	{
 		// Update Matrix
-		const Matrix matrix = matrix_get();
+		const float_m44 matrix = matrix_get();
 		widgetHandle->apply_matrix();
 
 		for( Object &child : widgetHandle->children )
@@ -543,7 +573,7 @@ void UIContext::update_widget( ObjectHandle<UIWidget> &widgetHandle, const Delta
 }
 
 
-void UIContext::render_widget( ObjectHandle<UIWidget> &widgetHandle, const Delta delta )
+void UIContext::render_widget( ObjectHandle<UIWidget> &widgetHandle, const Delta delta, const Alpha alpha )
 {
 	// Skip invisible widgets
 	if( !widgetHandle->renderEnabled ) { return; }
@@ -552,20 +582,21 @@ void UIContext::render_widget( ObjectHandle<UIWidget> &widgetHandle, const Delta
 	const UIScissor scissor = scissor_get();
 
 	// Draw Widget
-	if( widgetHandle->callbackOnRender ) { widgetHandle->callbackOnRender( *this, widgetHandle->id ); }
-	widgetHandle->render( delta );
+	const Alpha widgetTransparency = widgetHandle->transparency * alpha;
+	if( widgetHandle->callbackOnRender ) { widgetHandle->callbackOnRender( *this, widgetHandle->id, widgetTransparency ); }
+	widgetHandle->render( delta, widgetTransparency );
 
 	// Draw Children
 	if( widgetHandle->children.count() > 0 )
 	{
 		// Update Matrix
-		const Matrix matrix = matrix_get();
+		const float_m44 matrix = matrix_get();
 		widgetHandle->apply_matrix();
 
 		for( Object &child : widgetHandle->children )
 		{
 			ObjectHandle<UIWidget> childHandle = objects.handle<UIWidget>( child );
-			if( childHandle ) { render_widget( childHandle, delta ); }
+			if( childHandle ) { render_widget( childHandle, delta, childHandle->transparency * widgetTransparency ); }
 		}
 
 		// Reset Matrix
@@ -583,7 +614,7 @@ bool UIContext::test_widget( ObjectHandle<UIWidget> &widgetHandle )
 	if( !widgetHandle->renderEnabled ) { return false; }
 
 	// Test Widget
-	const bool hovering = widgetHandle->contains_point( floatv2 { mouse_x, mouse_y } );
+	const bool hovering = widgetHandle->contains_point( float_v2 { mouse_x, mouse_y } );
 	if( hovering )
 	{
 		if( !Mouse::check( mb_left ) ) { hoverWidget = widgetHandle->id; } // TODO: Clean this
@@ -595,7 +626,7 @@ bool UIContext::test_widget( ObjectHandle<UIWidget> &widgetHandle )
 	if( widgetHandle->children.count() > 0 && ( hovering || !widgetHandle->container ) )
 	{
 		// Update Matrix
-		const Matrix matrix = matrix_get();
+		const float_m44 matrix = matrix_get();
 		widgetHandle->apply_matrix();
 
 		for( auto child = widgetHandle->children.rbegin(); child != widgetHandle->children.rend(); ++child )

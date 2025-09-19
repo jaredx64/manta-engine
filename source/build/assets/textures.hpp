@@ -18,6 +18,7 @@ struct Texture
 	usize offset;
 	u16 width = 0;
 	u16 height = 0;
+	u16 levels = 0;
 
 	bool atlasTexture = true;
 	List<GlyphID> glyphs;

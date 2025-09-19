@@ -36,6 +36,12 @@
 			{ "command": "vscmanta.debugRuntime",       "title": "Manta: Debug Runtime" },
 			{ "command": "vscmanta.renderdoc",          "title": "Manta: RenderDoc" },
 			{ "command": "vscmanta.insertCommentBreak", "title": "Manta: Inserts comment break" }
+		],
+		"languages": [
+			{ "id": "shader", "aliases": [ "Shader", "shader" ], "extensions": [ ".shader" ], "configuration": "syntax/shader.config.json" }
+		],
+		"grammars": [
+			{ "language": "shader", "scopeName": "source.shader", "path": "syntax/shader.syntax.json" }
 		]
 	},
 	"devDependencies": {

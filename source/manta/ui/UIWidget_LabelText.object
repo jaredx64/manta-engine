@@ -42,10 +42,10 @@ PROTECTED Align alignHorizontal;
 // PROTECTED void update( const Delta delta ) { INHERIT::update(); }
 
 
-PROTECTED void render( const Delta delta )
+PROTECTED void render( const Delta delta, const Alpha alpha )
 {
 	// Label
-	const intv2 labelDimensions = label.get_dimensions();
+	const int_v2 labelDimensions = label.get_dimensions();
 	int offsetX, offsetY;
 
 	if( alignHorizontal == Align_Center ) { offsetX = ( width - labelDimensions.x ) / 2; } else
@@ -56,15 +56,15 @@ PROTECTED void render( const Delta delta )
 	if( alignVertical == Align_Bottom ) { offsetY = height - labelDimensions.y; } else
 	                                    { offsetY = 0; }
 
-	const intv2 p = intv2( x, y ).multiply( context->matrix_get() );
-	label.draw( p.x + offsetX, p.y + offsetY );
+	const int_v2 p = int_v2( x, y ).multiply( context->matrix_get() );
+	label.draw( p.x + offsetX, p.y + offsetY, alpha );
 }
 
 
 // PROTECTED void apply_matrix() { INHERIT::apply_matrix(); }
 
 
-// PROTECTED bool contains_point( const floatv2 point ) { }
+// PROTECTED bool contains_point( const float_v2 point ) { }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // PUBLIC API

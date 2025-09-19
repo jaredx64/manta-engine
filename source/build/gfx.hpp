@@ -40,8 +40,8 @@ struct Shader
 	ShaderType type;
 
 	// C++ Code
-	List<u32> constantBufferIDs[SHADERSTAGE_COUNT];
-	List<int> constantBufferSlots[SHADERSTAGE_COUNT];
+	List<u32> uniformBufferIDs[SHADERSTAGE_COUNT];
+	List<int> uniformBufferSlots[SHADERSTAGE_COUNT];
 	u32 vertexFormatID;
 	String header; // gfx.api.generated.hpp
 	String source; // gfx.api.generated.cpp
@@ -54,7 +54,16 @@ struct Shader
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct VertexFormat
+struct SharedStruct
+{
+	String name;
+	u32 id = 0;
+	u32 checksum = 0;
+	String headerTight;
+	String headerAlign;
+};
+
+struct UniformBuffer
 {
 	String name;
 	u32 id = 0;
@@ -63,8 +72,7 @@ struct VertexFormat
 	String source;
 };
 
-
-struct ConstantBuffer
+struct VertexFormat
 {
 	String name;
 	u32 id = 0;
@@ -97,13 +105,17 @@ namespace Gfx
 	extern List<FileInfo> shaderFiles;
 	extern List<Shader> shaders;
 
+	// Shader Structs
+	extern List<SharedStruct> sharedStructs;
+	extern HashMap<u32, u32> sharedStructCache;
+
+	// Uniform Buffers
+	extern List<UniformBuffer> uniformBuffers;
+	extern HashMap<u32, u32> uniformBufferCache;
+
 	// Vertex Formats
 	extern List<VertexFormat> vertexFormats;
 	extern HashMap<u32, u32> vertexFormatCache;
-
-	// Constant Buffers
-	extern List<ConstantBuffer> constantBuffers;
-	extern HashMap<u32, u32> constantBufferCache;
 
 	// Stages
 	extern void begin();

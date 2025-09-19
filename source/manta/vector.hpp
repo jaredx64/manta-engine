@@ -3,6 +3,8 @@
 #include <core/types.hpp>
 #include <core/math.hpp>
 
+#include <manta/matrix.hpp>
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
@@ -71,7 +73,7 @@ struct Vector2D
 		return *this;
 	}
 
-    VectorType &multiply( const Matrix &matrix )
+    VectorType &multiply( const float_m44 &matrix )
 	{
 		const float h[4] =
 		{
@@ -82,6 +84,25 @@ struct Vector2D
 		};
 
 		float r[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+
+		for( int i = 0; i < 16; ++i ) { r[i % 4] += matrix[i] * h[i / 4]; }
+
+		x = static_cast<T>( r[0] / r[3] );
+		y = static_cast<T>( r[1] / r[3] );
+		return *this;
+    }
+
+    VectorType &multiply( const doublem44 &matrix )
+	{
+		const double h[4] =
+		{
+			static_cast<double>( x ),
+			static_cast<double>( y ),
+			0.0,
+			1.0
+		};
+
+		double r[4] = { 0.0, 0.0, 0.0, 0.0 };
 
 		for( int i = 0; i < 16; ++i ) { r[i % 4] += matrix[i] * h[i / 4]; }
 
@@ -150,6 +171,16 @@ struct Vector2D
 		return *this;
 	}
 
+	T angle_degrees() const
+	{
+		return static_cast<T>( atan2( static_cast<double>( y ), static_cast<double>( x ) ) * RAD2DEG );
+	}
+
+	T angle_radians() const
+	{
+		return static_cast<T>( atan2( static_cast<double>( y ), static_cast<double>( x ) ) );
+	}
+
 	VectorType operator+( const VectorType &v ) const { VectorType r { *this }; r.add( v );      return r; }
 	VectorType operator-( const VectorType &v ) const { VectorType r { *this }; r.sub( v );      return r; }
 	VectorType operator*( const VectorType &v ) const { VectorType r { *this }; r.multiply( v ); return r; }
@@ -195,17 +226,17 @@ struct Vector2D
 		{ Vec r { b.x - a.x, b.y - a.y }; return r.length_sqr(); }
 
 
-VECTOR_TYPE_2D( i8v2, i8 )
-VECTOR_TYPE_2D( u8v2, u8 )
-VECTOR_TYPE_2D( i16v2, i16 )
-VECTOR_TYPE_2D( u16v2, u16 )
-VECTOR_TYPE_2D( intv2, i32 )
-VECTOR_TYPE_2D( u32v2, u32 )
-VECTOR_TYPE_2D( i64v2, i64 )
-VECTOR_TYPE_2D( u64v2, u64 )
-VECTOR_TYPE_2D( boolv2, bool )
-VECTOR_TYPE_2D( floatv2, float )
-VECTOR_TYPE_2D( doublev2, double )
+VECTOR_TYPE_2D( i8_v2, i8 )
+VECTOR_TYPE_2D( u8_v2, u8 )
+VECTOR_TYPE_2D( i16_v2, i16 )
+VECTOR_TYPE_2D( u16_v2, u16 )
+VECTOR_TYPE_2D( int_v2, i32 )
+VECTOR_TYPE_2D( u32_v2, u32 )
+VECTOR_TYPE_2D( i64_v2, i64 )
+VECTOR_TYPE_2D( u64_v2, u64 )
+VECTOR_TYPE_2D( bool_v2, bool )
+VECTOR_TYPE_2D( float_v2, float )
+VECTOR_TYPE_2D( double_v2, double )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -283,7 +314,7 @@ struct Vector3D
 		return *this;
 	}
 
-	VectorType &multiply( const Matrix &matrix )
+	VectorType &multiply( const float_m44 &matrix )
 	{
 		const float h[4] =
 		{
@@ -294,6 +325,26 @@ struct Vector3D
 		};
 
 		float r[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+
+		for( int i = 0; i < 16; ++i ) { r[i % 4] += matrix[i] * h[i / 4]; }
+
+		x = static_cast<T>( r[0] / r[3] );
+		y = static_cast<T>( r[1] / r[3] );
+		z = static_cast<T>( r[2] / r[3] );
+		return *this;
+	}
+
+	VectorType &multiply( const doublem44 &matrix )
+	{
+		const double h[4] =
+		{
+			static_cast<double>( x ),
+			static_cast<double>( y ),
+			static_cast<double>( z ),
+			1.0
+		};
+
+		double r[4] = { 0.0, 0.0, 0.0, 0.0 };
 
 		for( int i = 0; i < 16; ++i ) { r[i % 4] += matrix[i] * h[i / 4]; }
 
@@ -443,17 +494,17 @@ struct Vector3D
 		{ Vec r { b.x - a.x, b.y - a.y, b.z - a.z }; return r.length_sqr(); }
 
 
-VECTOR_TYPE_3D( i8v3, i8 )
-VECTOR_TYPE_3D( u8v3, u8 )
-VECTOR_TYPE_3D( i16v3, i16 )
-VECTOR_TYPE_3D( u16v3, u16 )
-VECTOR_TYPE_3D( intv3, i32 )
-VECTOR_TYPE_3D( u32v3, u32 )
-VECTOR_TYPE_3D( i64v3, i64 )
-VECTOR_TYPE_3D( u64v3, u64 )
-VECTOR_TYPE_3D( boolv3, bool );
-VECTOR_TYPE_3D( floatv3, float )
-VECTOR_TYPE_3D( doublev3, double )
+VECTOR_TYPE_3D( i8_v3, i8 )
+VECTOR_TYPE_3D( u8_v3, u8 )
+VECTOR_TYPE_3D( i16_v3, i16 )
+VECTOR_TYPE_3D( u16_v3, u16 )
+VECTOR_TYPE_3D( int_v3, i32 )
+VECTOR_TYPE_3D( u32_v3, u32 )
+VECTOR_TYPE_3D( i64_v3, i64 )
+VECTOR_TYPE_3D( u64_v3, u64 )
+VECTOR_TYPE_3D( bool_v3, bool );
+VECTOR_TYPE_3D( float_v3, float )
+VECTOR_TYPE_3D( double_v3, double )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -539,7 +590,7 @@ struct Vector4D
 		return *this;
 	}
 
-	VectorType &multiply( const Matrix &matrix )
+	VectorType &multiply( const float_m44 &matrix )
 	{
 		const float h[4] =
 		{
@@ -550,6 +601,27 @@ struct Vector4D
 		};
 
 		float r[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+
+		for( int i = 0; i < 16; ++i ) { r[i % 4] += matrix[i] * h[i / 4]; }
+
+		x = static_cast<T>( r[0] / r[3] );
+		y = static_cast<T>( r[1] / r[3] );
+		z = static_cast<T>( r[2] / r[3] );
+		w = static_cast<T>( r[3] );
+		return *this;
+	}
+
+	VectorType &multiply( const doublem44 &matrix )
+	{
+		const double h[4] =
+		{
+			static_cast<double>( x ),
+			static_cast<double>( y ),
+			static_cast<double>( z ),
+			static_cast<double>( w ),
+		};
+
+		double r[4] = { 0.0, 0.0, 0.0, 0.0 };
 
 		for( int i = 0; i < 16; ++i ) { r[i % 4] += matrix[i] * h[i / 4]; }
 
@@ -705,21 +777,21 @@ struct Vector4D
 		{ Vec r { b.x - a.x, b.y - a.y, b.z - a.z, b.w - a.w }; return r.length_sqr(); }
 
 
-VECTOR_TYPE_4D( i8v4, i8 )
-VECTOR_TYPE_4D( u8v4, u8 )
-VECTOR_TYPE_4D( i16v4, i16 )
-VECTOR_TYPE_4D( u16v4, u16 )
-VECTOR_TYPE_4D( intv4, i32 )
-VECTOR_TYPE_4D( u32v4, u32 )
-VECTOR_TYPE_4D( i64v4, i64 )
-VECTOR_TYPE_4D( u64v4, u64 )
-VECTOR_TYPE_4D( boolv4, bool )
-VECTOR_TYPE_4D( floatv4, float )
-VECTOR_TYPE_4D( doublev4, double )
+VECTOR_TYPE_4D( i8_v4, i8 )
+VECTOR_TYPE_4D( u8_v4, u8 )
+VECTOR_TYPE_4D( i16_v4, i16 )
+VECTOR_TYPE_4D( u16_v4, u16 )
+VECTOR_TYPE_4D( int_v4, i32 )
+VECTOR_TYPE_4D( u32_v4, u32 )
+VECTOR_TYPE_4D( i64_v4, i64 )
+VECTOR_TYPE_4D( u64_v4, u64 )
+VECTOR_TYPE_4D( bool_v4, bool )
+VECTOR_TYPE_4D( float_v4, float )
+VECTOR_TYPE_4D( double_v4, double )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-inline floatv2 cubic_bezier( floatv2 root0, floatv2 root1, floatv2 handle0, floatv2 handle1, float t )
+inline float_v2 cubic_bezier( float_v2 root0, float_v2 root1, float_v2 handle0, float_v2 handle1, float t )
 {
 	const float tSqr = t * t;
 	const float tInv = 1.0f - t;
@@ -727,7 +799,7 @@ inline floatv2 cubic_bezier( floatv2 root0, floatv2 root1, floatv2 handle0, floa
 	const float tCube = tSqr * t;
 	const float tInvCube = tInvSqr * tInv;
 
-	return floatv2
+	return float_v2
 		{
 			tInvCube * root0.x + 3.0f * tInvSqr * t * handle0.x + 3.0f * tInv * tSqr * handle1.x + tCube * root1.x,
 			tInvCube * root0.y + 3.0f * tInvSqr * t * handle0.y + 3.0f * tInv * tSqr * handle1.y + tCube * root1.y,
@@ -735,7 +807,7 @@ inline floatv2 cubic_bezier( floatv2 root0, floatv2 root1, floatv2 handle0, floa
 }
 
 
-inline doublev2 cubic_bezier( doublev2 root0, doublev2 root1, doublev2 handle0, doublev2 handle1, double t )
+inline double_v2 cubic_bezier( double_v2 root0, double_v2 root1, double_v2 handle0, double_v2 handle1, double t )
 {
 	const double tSqr = t * t;
 	const double tInv = 1.0 - t;
@@ -743,11 +815,112 @@ inline doublev2 cubic_bezier( doublev2 root0, doublev2 root1, doublev2 handle0, 
 	const double tCube = tSqr * t;
 	const double tInvCube = tInvSqr * tInv;
 
-	return doublev2
+	return double_v2
 		{
 			tInvCube * root0.x + 3.0 * tInvSqr * t * handle0.x + 3.0 * tInv * tSqr * handle1.x + tCube * root1.x,
 			tInvCube * root0.y + 3.0 * tInvSqr * t * handle0.y + 3.0 * tInv * tSqr * handle1.y + tCube * root1.y,
 		};
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct float_r2
+{
+	float_r2( const float_v2 &origin, const float_v2 &vector ) :
+		origin { origin }, vector { vector } { };
+	float_r2( float oX, float oY, float vX, float vY ) :
+		origin { float_v2 { oX, oY } }, vector { float_v2 { vX, vY } } { };
+
+	struct hit
+	{
+		float distance = 0.0f; // negative if no hit
+		float_v2 normal = float_v2 { 0.0f, 0.0f };
+	};
+
+	float_v2 origin;
+	float_v2 vector;
+};
+
+
+struct double_r2
+{
+	double_r2( const double_v2 &origin, const double_v2 &vector ) :
+		origin { origin }, vector { vector } { };
+	double_r2( double oX, double oY, double vX, double vY ) :
+		origin { double_v2 { oX, oY } }, vector { double_v2 { vX, vY } } { };
+
+	struct hit
+	{
+		double distance = 0.0; // negative if no hit
+		double_v2 normal = double_v2 { 0.0, 0.0 };
+	};
+
+	double_v2 origin;
+	double_v2 vector;
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct float_r3
+{
+	float_r3( const float_v3 &origin, const float_v3 &vector ) :
+		origin { origin }, vector { vector } { };
+	float_r3( float oX, float oY, float oZ, float vX, float vY, float vZ ) :
+		origin { float_v3 { oX, oY, oZ } }, vector { float_v3 { vX, vY, vZ } } { };
+
+	struct hit
+	{
+		float distance = 0.0f; // negative if no hit
+		float_v3 normal = float_v3 { 0.0f, 0.0f, 0.0f };
+		usize triangleID = 0;
+	};
+
+	float_v3 origin;
+	float_v3 vector;
+};
+
+extern float_r3::hit float_r3_intersect_triangle( const float_r3 &ray,
+	const float_v3 &v0, const float_v3 &v1, const float_v3 &v2 );
+
+extern float_r3::hit float_r3_intersect_triangle( const float_r3 &ray,
+	const double_v3 &v0, const double_v3 &v1, const double_v3 &v2 );
+
+extern float_r3::hit float_r3_intersect_triangle_list( const float_r3 &ray,
+	const float_v3 *verts, const usize count );
+
+extern float_r3::hit float_r3_intersect_triangle_list( const float_r3 &ray,
+	const double_v3 *verts, const usize count );
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct double_r3
+{
+	double_r3( const double_v3 &origin, const double_v3 &vector ) :
+		origin { origin }, vector { vector } { };
+	double_r3( double oX, double oY, double oZ, double vX, double vY, double vZ ) :
+		origin { double_v3 { oX, oY, oZ } }, vector { double_v3 { vX, vY, vZ } } { };
+
+	struct hit
+	{
+		double distance = 0.0; // negative if no hit
+		double_v3 normal = double_v3 { 0.0, 0.0, 0.0 };
+		usize triangleID = 0;
+	};
+
+	double_v3 origin;
+	double_v3 vector;
+};
+
+extern double_r3::hit double_r3_intersect_triangle( const double_r3 &ray,
+	const float_v3 &v0, const float_v3 &v1, const float_v3 &v2 );
+
+extern double_r3::hit double_r3_intersect_triangle( const double_r3 &ray,
+	const double_v3 &v0, const double_v3 &v1, const double_v3 &v2 );
+
+extern double_r3::hit double_r3_intersect_triangle_list( const double_r3 &ray,
+	const float_v3 *verts, const usize count );
+
+extern double_r3::hit double_r3_intersect_triangle_list( const double_r3 &ray,
+	const double_v3 *verts, const usize count );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

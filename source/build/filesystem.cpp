@@ -79,10 +79,10 @@ static bool char_is_slash( const char c )
 		char buffer[4096];
 
 		hSrc = CreateFileA( source, GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr );
-		if( hSrc == INVALID_HANDLE_VALUE ) { PrintLn( "fail open src" ); return false; }
+		if( hSrc == INVALID_HANDLE_VALUE ) { return false; }
 
 		hDst = CreateFileA( destination, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr );
-		if( hDst == INVALID_HANDLE_VALUE ) { PrintLn( "fail open dst" ); CloseHandle( hSrc ); return false; }
+		if( hDst == INVALID_HANDLE_VALUE ) { CloseHandle( hSrc ); return false; }
 
 		while( ReadFile( hSrc, buffer, sizeof( buffer ), &bytesRead, nullptr ) && bytesRead > 0 )
 		{
@@ -94,7 +94,6 @@ static bool char_is_slash( const char c )
 					CloseHandle( hSrc );
 					CloseHandle( hDst );
 					DeleteFileA( destination );
-					PrintLn( "fail transfer" );
 					return false;
 				}
 				totalWritten += bytesWritten;

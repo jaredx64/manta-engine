@@ -11,14 +11,14 @@
 bool Model::init( const u32 meshID, u16 materialID )
 {
 	Assert( meshID < Assets::meshCount );
-	const DiskMesh &diskMesh = Assets::meshes[meshID];
+	const BinMesh &binMesh = Assets::meshes[meshID];
 
-	vertexBuffer.init( diskMesh.vertexCount, GfxCPUAccessMode_WRITE_NO_OVERWRITE );
+	vertexBuffer.init( binMesh.vertexCount, GfxCPUAccessMode_WRITE_NO_OVERWRITE );
 	material = materialID;
 
 	GfxCore::rb_vertex_buffered_write_begin( vertexBuffer.resource );
 	GfxCore::rb_vertex_buffered_write( vertexBuffer.resource, Assets::binary.data +
-		diskMesh.vertexBufferOffset, diskMesh.vertexBufferSize );
+		binMesh.vertexBufferOffset, binMesh.vertexBufferSize );
 	GfxCore::rb_vertex_buffered_write_end( vertexBuffer.resource );
 
 	return true;
@@ -33,20 +33,20 @@ bool Model::free()
 }
 
 
-void Model::draw( float x, float y, float z, float scale, float rotation )
+void Model::draw( double x, double y, double z, double scale, double rotation )
 {
 	GfxState &state = Gfx::state();
-	Matrix matrixModelCache = Gfx::get_matrix_model();
+	doublem44 matrixModelCache = Gfx::get_matrix_model();
 
-	Matrix matrixWorld = matrix_build_identity();
-	Matrix matrixScale = matrix_build_scaling( scale, scale, scale );
-	matrixWorld = matrix_multiply( matrixScale, matrixWorld );
-	Matrix matrixRotationY = matrix_build_rotation_x( -90.0f * DEG2RAD );
-	Matrix matrixRotationZ = matrix_build_rotation_z( rotation * DEG2RAD );
-	matrixWorld = matrix_multiply( matrixRotationY, matrixWorld );
-	matrixWorld = matrix_multiply( matrixRotationZ, matrixWorld );
-	Matrix matrixTranslation = matrix_build_translation( x, y, z );
-	matrixWorld = matrix_multiply( matrixTranslation, matrixWorld );
+	doublem44 matrixWorld = doublem44_build_identity();
+	doublem44 matrixScale = doublem44_build_scaling( scale, scale, scale );
+	matrixWorld = doublem44_multiply( matrixScale, matrixWorld );
+	doublem44 matrixRotationY = doublem44_build_rotation_x( -90.0 * DEG2RAD );
+	doublem44 matrixRotationZ = doublem44_build_rotation_z( rotation * DEG2RAD );
+	matrixWorld = doublem44_multiply( matrixRotationY, matrixWorld );
+	matrixWorld = doublem44_multiply( matrixRotationZ, matrixWorld );
+	doublem44 matrixTranslation = doublem44_build_translation( x, y, z );
+	matrixWorld = doublem44_multiply( matrixTranslation, matrixWorld );
 
 	Gfx::set_matrix_model( matrixWorld );
 	{

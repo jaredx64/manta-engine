@@ -11,7 +11,6 @@
 #include <build/assets/materials.hpp>
 #include <build/assets/fonts.hpp>
 #include <build/assets/sounds.hpp>
-#include <build/assets/songs.hpp>
 #include <build/assets/meshes.hpp>
 #include <build/assets/skeleton2d.hpp>
 
@@ -39,7 +38,6 @@ namespace Assets
 	extern Materials materials;
 	extern Fonts fonts;
 	extern Sounds sounds;
-	extern Songs songs;
 	extern Meshes meshes;
 	extern Skeleton2Ds skeleton2Ds;
 

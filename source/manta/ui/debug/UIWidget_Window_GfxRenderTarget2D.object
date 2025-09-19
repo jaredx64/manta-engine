@@ -173,16 +173,16 @@ PROTECTED void update( const Delta delta )
 }
 
 
-PROTECTED void render( const Delta delta )
+PROTECTED void render( const Delta delta, const Alpha alpha )
 {
 	if( rt == nullptr ) { context->destroy_widget( id ); return; }
-	INHERIT::render( delta );
+	INHERIT::render( delta, alpha );
 
 	// Coordinates
-	const intv2 b1 = intv2( x - border, y - border ).multiply( context->matrix_get() );
-	const intv2 b2 = intv2( x + width + border, y + height + border ).multiply( context->matrix_get() );
-	const intv2 c1 = intv2( x, y ).multiply( context->matrix_get() );
-	const intv2 c2 = intv2( x + width, y + height ).multiply( context->matrix_get() );
+	const int_v2 b1 = int_v2( x - border, y - border ).multiply( context->matrix_get() );
+	const int_v2 b2 = int_v2( x + width + border, y + height + border ).multiply( context->matrix_get() );
+	const int_v2 c1 = int_v2( x, y ).multiply( context->matrix_get() );
+	const int_v2 c2 = int_v2( x + width, y + height ).multiply( context->matrix_get() );
 
 	// Scale
 	const float scaleX = ( width < rt->width ) ? ( width / static_cast<float>( rt->width ) ) : 1.0;
@@ -237,7 +237,7 @@ PROTECTED void render( const Delta delta )
 // PROTECTED void apply_matrix() { INHERIT::apply_matrix(); }
 
 
-// PROTECTED bool contains_point( const floatv2 point ) { }
+// PROTECTED bool contains_point( const float_v2 point ) { }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // PUBLIC API

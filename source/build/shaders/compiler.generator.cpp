@@ -21,10 +21,7 @@ void Generator::generate_stage( ShaderStage stage )
 	for( Node *node : parser.program )
 	{
 		// Skip "unseen" nodes (dead-code elimination)
-		if( !parser.node_seen( node ) )
-		{
-			continue;
-		}
+		if( !parser.node_seen( node ) ) { continue; }
 
 		// Generate Node
 		generate_node( node );
@@ -102,6 +99,12 @@ void Generator::generate_node( Node *node )
 		case NodeType_Swizzle:
 		{
 			generate_swizzle( reinterpret_cast<NodeSwizzle *>( node ) );
+		}
+		break;
+
+		case NodeType_SVSemantic:
+		{
+			generate_sv_semantic( reinterpret_cast<NodeSVSemantic *>( node ) );
 		}
 		break;
 
@@ -627,9 +630,10 @@ void Generator::generate_function_call( NodeFunctionCall *node )
 
 void Generator::generate_function_call_parameters( NodeFunctionCall *node )
 {
+	output.append( "(" );
+
 	if( node->param != nullptr )
 	{
-		output.append( "(" );
 		Node *param = node->param;
 		usize parameterCount = 0;
 		while( param != nullptr )
@@ -644,7 +648,12 @@ void Generator::generate_function_call_parameters( NodeFunctionCall *node )
 				Variable &variable = parser.variables[nodeVariable->variableID];
 				Type &type = parser.types[variable.typeID];
 
-				if( type.tokenType == TokenType_CBuffer ) { skip = true; }
+				if( type.tokenType == TokenType_UniformBuffer ||
+					type.tokenType == TokenType_ConstantBuffer ||
+					type.tokenType == TokenType_MutableBuffer )
+				{
+					skip = true;
+				}
 			}
 
 			if( !skip )
@@ -656,12 +665,10 @@ void Generator::generate_function_call_parameters( NodeFunctionCall *node )
 
 			param = paramNode->next;
 		}
-		output.append( parameterCount > 0 ? " )" : ")" );
+		output.append( parameterCount > 0 ? " " : "" );
 	}
-	else
-	{
-		output.append( "()" );
-	}
+
+	output.append( ")" );
 }
 
 
@@ -724,17 +731,9 @@ void Generator::generate_variable_declaration( NodeVariableDeclaration *node )
 	// <type> <variable>
 	output.append( typeName ).append( " " ).append( variableName );
 
-	// Array X
-	if( variable.arrayLengthX != 0 )
-	{
-		output.append( "[" ).append( variable.arrayLengthX ).append( "]" );
-	}
-
-	// Array Y
-	if( variable.arrayLengthY != 0 )
-	{
-		output.append( "[" ).append( variable.arrayLengthY ).append( "]" );
-	}
+	// Array X/Y
+	if( variable.arrayLengthX != 0 ) { output.append( "[" ).append( variable.arrayLengthX ).append( "]" ); }
+	if( variable.arrayLengthY != 0 ) { output.append( "[" ).append( variable.arrayLengthY ).append( "]" ); }
 
 	// Assignment
 	if( node->assignment != nullptr )
@@ -755,6 +754,12 @@ void Generator::generate_variable( NodeVariable *node )
 void Generator::generate_swizzle( NodeSwizzle *node )
 {
 	output.append( SwizzleTypeNames[node->swizzleID] );
+}
+
+
+void Generator::generate_sv_semantic( NodeSVSemantic *node )
+{
+	output.append( SVSemantics[node->svSemanticType] );
 }
 
 
@@ -814,7 +819,10 @@ void Generator::generate_structure( NodeStruct *node )
 	static const char *structNames[] =
 	{
 		"struct",          // StructType_Struct
-		"cbuffer",         // StructType_CBuffer
+		"shared_struct",   // StructType_SharedStruct
+		"uniform_buffer",  // StructType_UniformBuffer
+		"constant_buffer", // StructType_ConstantBuffer
+		"mutable_buffer",  // StructType_MutableBuffer
 		"vertex_input",    // StructType_VertexInput
 		"vertex_output",   // StructType_VertexOutput
 		"fragment_input",  // StructType_FragmentInput
@@ -824,8 +832,12 @@ void Generator::generate_structure( NodeStruct *node )
 	};
 	static_assert( ARRAY_LENGTH( structNames ) == STRUCTTYPE_COUNT, "Missing TextureType" );
 
-	const bool expectSlot =  ( node->structType == StructType_CBuffer );
-	const bool expectMeta = !( node->structType == StructType_CBuffer || node->structType == StructType_Struct );
+	const bool expectSlot =  ( node->structType == StructType_UniformBuffer ||
+		node->structType == StructType_ConstantBuffer || node->structType == StructType_MutableBuffer );
+
+	const bool expectMeta = !( node->structType == StructType_UniformBuffer ||
+		node->structType == StructType_ConstantBuffer || node->structType == StructType_MutableBuffer ||
+		node->structType == StructType_Struct || node->structType == StructType_SharedStruct );
 
 	// <name>(<slot>) <type>
 	output.append( structNames[node->structType] );
@@ -848,9 +860,11 @@ void Generator::generate_structure( NodeStruct *node )
 		output.append( memberTypeName ).append( " " );
 
 		// <name>
-		if( node->structType == StructType_CBuffer )
+		if( node->structType == StructType_UniformBuffer ||
+			node->structType == StructType_ConstantBuffer ||
+			node->structType == StructType_MutableBuffer )
 		{
-			// cbuffer members are in global namespace, so we prefix them with the structure name
+			// buffer members are in global namespace, so we prefix them with the structure name
 			output.append( typeName ).append( "_" );
 		}
 		output.append( memberVariableName );
@@ -875,29 +889,33 @@ void Generator::generate_structure( NodeStruct *node )
 			{
 				case SemanticType_POSITION: semantic = "POSITION"; break;
 				case SemanticType_TEXCOORD: semantic = "TEXCOORD"; break;
-				case SemanticType_NORMAL:   semantic = "NORMAL"; break;
-				case SemanticType_DEPTH:    semantic = "DEPTH"; break;
-				case SemanticType_COLOR:    semantic = "COLOR"; break;
+				case SemanticType_NORMAL: semantic = "NORMAL"; break;
+				case SemanticType_DEPTH: semantic = "DEPTH"; break;
+				case SemanticType_COLOR: semantic = "COLOR"; break;
+				case SemanticType_BINORMAL: semantic = "BINORMAL"; break;
+				case SemanticType_TANGENT: semantic = "TANGENT"; break;
+				default: Error( "Unexpected semantic type: %u", memberVariable.semantic ); return;
 			};
 			output.append( " " ).append( "semantic( " ).append( semantic ).append( " )" );
 
 			const char *format = "";
 			switch( memberVariable.format )
 			{
-				case InputFormat_UNORM8:  format = "UNORM8";  break;
+				case InputFormat_UNORM8: format = "UNORM8"; break;
 				case InputFormat_UNORM16: format = "UNORM16"; break;
 				case InputFormat_UNORM32: format = "UNORM32"; break;
-				case InputFormat_SNORM8:  format = "SNORM8";  break;
+				case InputFormat_SNORM8: format = "SNORM8"; break;
 				case InputFormat_SNORM16: format = "SNORM16"; break;
 				case InputFormat_SNORM32: format = "SNORM32"; break;
-				case InputFormat_UINT8:   format = "UINT8";   break;
-				case InputFormat_UINT16:  format = "UINT16";  break;
-				case InputFormat_UINT32:  format = "UINT32";  break;
-				case InputFormat_SINT8:   format = "SINT8";   break;
-				case InputFormat_SINT16:  format = "SINT16";  break;
-				case InputFormat_SINT32:  format = "SINT32";  break;
+				case InputFormat_UINT8: format = "UINT8"; break;
+				case InputFormat_UINT16: format = "UINT16"; break;
+				case InputFormat_UINT32: format = "UINT32"; break;
+				case InputFormat_SINT8: format = "SINT8"; break;
+				case InputFormat_SINT16: format = "SINT16"; break;
+				case InputFormat_SINT32: format = "SINT32"; break;
 				case InputFormat_FLOAT16: format = "FLOAT16"; break;
 				case InputFormat_FLOAT32: format = "FLOAT32"; break;
+				default: Error( "Unexpected input format: %u", memberVariable.format ); return;
 			};
 			output.append( " " ).append( "format( " ).append( format ).append( " )" );
 		}
@@ -913,14 +931,185 @@ void Generator::generate_structure_gfx( NodeStruct *node )
 {
 	switch( node->structType )
 	{
+		case StructType_SharedStruct:
+			generate_structure_gfx_shared_struct( node );
+		break;
+
+		case StructType_UniformBuffer:
+			generate_structure_gfx_uniform_buffer( node );
+		break;
+
+		case StructType_ConstantBuffer:
+			generate_structure_gfx_uniform_buffer( node ); // TODO: Implement this
+		break;
+
+		case StructType_MutableBuffer:
+			generate_structure_gfx_uniform_buffer( node ); // TODO: Implement this
+		break;
+
 		case StructType_VertexInput:
 			generate_structure_gfx_vertex( node );
 		break;
-
-		case StructType_CBuffer:
-			generate_structure_gfx_cbuffer( node );
-		break;
 	}
+}
+
+
+bool Generator::generate_structure_gfx_shared_struct( NodeStruct *node )
+{
+	Struct &structure = parser.structs[node->structID];
+	Type &type = parser.types[structure.typeID];
+	const VariableID first = type.memberFirst;
+	const VariableID last = type.memberFirst + type.memberCount;
+
+	// Layout Identifier
+	String layout;
+	for( VariableID i = first; i < last; i++ )
+	{
+		Type &memberType = parser.types[parser.variables[i].typeID];
+		layout.append( memberType.name );
+	};
+
+	// SharedStruct Cache
+	const u32 checksumKey = checksum_xcrc32( type.name.data, type.name.length, 0 );
+	const u32 checksumBuffer = checksum_xcrc32( layout.data, layout.length_bytes(), 0 );
+
+	// SharedStruct with this name already exists
+	if( Gfx::sharedStructCache.contains( checksumKey ) )
+	{
+		SharedStruct &sharedStruct = Gfx::sharedStructs[Gfx::sharedStructCache.get( checksumKey )];
+		shader.uniformBufferIDs[stage].add( sharedStruct.id ); // Add this SharedStruct to the shader
+		shader.uniformBufferSlots[stage].add( structure.slot );
+		if( sharedStruct.checksum == checksumBuffer ) { return false; }
+		Error( "SharedStruct with name '%.*s' already declared with a different layout",
+			type.name.length, type.name.data );
+		return false;
+	}
+
+	// Register SharedStruct & Generate C++ Struct
+	SharedStruct &sharedStruct = Gfx::sharedStructs.add( { } );
+	sharedStruct.name.append( type.name );
+	sharedStruct.id = static_cast<u32>( Gfx::sharedStructs.size() - 1 );
+	sharedStruct.checksum = checksumBuffer;
+
+	Gfx::sharedStructCache.add( checksumKey, sharedStruct.id );
+	shader.uniformBufferIDs[stage].add( sharedStruct.id ); // Add this SharedStruct to the shader
+	shader.uniformBufferSlots[stage].add( structure.slot );
+
+	// Tight Struct
+	String &headerTight = sharedStruct.headerTight;
+	if( sharedStruct.id != 0 ) { headerTight.append( "\n" ); }
+	headerTight.append( "\tstruct " );
+	headerTight.append( type.name ).append( "\n" );
+	headerTight.append( "\t{\n" );
+	for( VariableID i = first; i < last; i++ )
+	{
+		Variable &memberVariable = parser.variables[i];
+		Type &memberType = parser.types[memberVariable.typeID];
+		append_structure_member_packed( headerTight, "\t\t",
+			memberType, memberVariable, type.sizeBytesPacked );
+	}
+	headerTight.append( "\t};\n" );
+
+	// Aligned Struct
+	String &headerAlign = sharedStruct.headerAlign;
+	if( sharedStruct.id != 0 ) { headerAlign.append( "\n" ); }
+	headerAlign.append( "\tstruct " );
+	headerAlign.append( type.name ).append( "\n" );
+	headerAlign.append( "\t{\n" );
+	for( VariableID i = first; i < last; i++ )
+	{
+		Variable &memberVariable = parser.variables[i];
+		Type &memberType = parser.types[memberVariable.typeID];
+		append_structure_member_padded( headerAlign, "\t\t", memberType,
+			memberVariable, type.sizeBytesPadded );
+	}
+	headerAlign.append( "\t};\n" );
+
+	return true;
+}
+
+
+bool Generator::generate_structure_gfx_uniform_buffer( NodeStruct *node )
+{
+	Struct &structure = parser.structs[node->structID];
+	Type &type = parser.types[structure.typeID];
+	const VariableID first = type.memberFirst;
+	const VariableID last = type.memberFirst + type.memberCount;
+	int structureByteOffset = 0;
+
+	// Layout Identifier
+	String layout;
+	for( VariableID i = first; i < last; i++ )
+	{
+		Type &memberType = parser.types[parser.variables[i].typeID];
+		layout.append( memberType.name );
+	};
+
+	// UniformBuffer Cache
+	const u32 checksumKey = checksum_xcrc32( type.name.data, type.name.length, 0 );
+	const u32 checksumBuffer = checksum_xcrc32( layout.data, layout.length_bytes(), 0 );
+
+	// UniformBuffer with this name already exists
+	if( Gfx::uniformBufferCache.contains( checksumKey ) )
+	{
+		UniformBuffer &uniformBuffer = Gfx::uniformBuffers[Gfx::uniformBufferCache.get( checksumKey )];
+		shader.uniformBufferIDs[stage].add( uniformBuffer.id ); // Add this UniformBuffer to the shader
+		shader.uniformBufferSlots[stage].add( structure.slot );
+		if( uniformBuffer.checksum == checksumBuffer ) { return false; }
+		Error( "UniformBuffer with name '%.*s' already declared with a different layout",
+			type.name.length, type.name.data );
+		return false;
+	}
+
+	// Register UniformBuffer & Generate C++ Struct
+	UniformBuffer &uniformBuffer = Gfx::uniformBuffers.add( { } );
+	String &header = uniformBuffer.header;
+	String &source = uniformBuffer.source;
+	uniformBuffer.name.append( type.name );
+	uniformBuffer.id = static_cast<u32>( Gfx::uniformBuffers.size() - 1 );
+	uniformBuffer.checksum = checksumBuffer;
+
+	Gfx::uniformBufferCache.add( checksumKey, uniformBuffer.id );
+	shader.uniformBufferIDs[stage].add( uniformBuffer.id ); // Add this UniformBuffer to the shader
+	shader.uniformBufferSlots[stage].add( structure.slot );
+
+	if( uniformBuffer.id != 0 ) { header.append( "\n" ); }
+	header.append( "\tstruct alignas( 16 ) " ).append( type.name ).append( "_t\n" );
+	header.append( "\t{\n" );
+	for( VariableID i = first; i < last; i++ )
+	{
+		Variable &memberVariable = parser.variables[i];
+		Type &memberType = parser.types[memberVariable.typeID];
+		append_structure_member_padded( header, "\t\t", memberType, memberVariable, structureByteOffset );
+	}
+	header.append( "\n" );
+	header.append( "\t\tvoid zero();\n" );
+	header.append( "\t\tvoid upload() const;\n" );
+	header.append( "\t\tbool operator==( const " ).append( type.name ).append( "_t &other ) " );
+	header.append( "{ return ( memory_compare( this, &other, sizeof( " );
+	header.append( type.name ).append( "_t ) ) == 0 ); }\n" );
+	header.append( "\t\tbool operator!=( const " ).append( type.name ).append( "_t &other ) " );
+	header.append( "{ return ( memory_compare( this, &other, sizeof( " );
+	header.append( type.name ).append( "_t ) ) != 0 ); }\n" );
+	header.append( "\t};\n" );
+
+	if( uniformBuffer.id != 0 ) { source.append( "\n" ); }
+	source.append( "\tvoid ").append( uniformBuffer.name ).append( "_t::zero()\n\t{\n" );
+	source.append( "\t#if GRAPHICS_ENABLED\n" );
+	source.append( "\t\tmemory_set( this, 0, sizeof( " ).append( uniformBuffer.name ).append( "_t ) );\n" );
+	source.append( "\t#endif\n" );
+	source.append( "\t}\n" );
+
+	source.append( "\n\tvoid ").append( uniformBuffer.name ).append( "_t::upload() const\n\t{\n" );
+	source.append( "\t#if GRAPHICS_ENABLED\n" );
+	source.append( "\t\tauto *&resource = GfxCore::gfxUniformBufferResources[" );
+	source.append( static_cast<int>( uniformBuffer.id ) ).append( "];\n" );
+	source.append( "\t\tGfxCore::rb_constant_buffered_write_begin( resource );\n" );
+	source.append( "\t\tGfxCore::rb_constant_buffered_write( resource, this );\n" );
+	source.append( "\t\tGfxCore::rb_constant_buffered_write_end( resource );\n" );
+	source.append( "\t#endif\n" );
+	source.append( "\t}\n" );
+	return true;
 }
 
 
@@ -1060,146 +1249,13 @@ bool Generator::generate_structure_gfx_vertex( NodeStruct *node )
 
 		header.append( "\t\t" );
 		header.append( memberTypeName );
-		if( dimensions > 1 ) { header.append( "v" ).append( dimensions ); }
+		if( dimensions > 1 ) { header.append( "_v" ).append( dimensions ); }
 		header.append( " " );
 		header.append( memberVariable.name );
 		header.append( ";\n" );
 	}
 
 	header.append( "\t};\n" );
-	return true;
-}
-
-
-bool Generator::generate_structure_gfx_cbuffer( NodeStruct *node )
-{
-	Struct &structure = parser.structs[node->structID];
-	Type &type = parser.types[structure.typeID];
-	const VariableID first = type.memberFirst;
-	const VariableID last = type.memberFirst + type.memberCount;
-
-	// Layout Identifier
-	String layout;
-	for( VariableID i = first; i < last; i++ )
-	{
-		Type &memberType = parser.types[parser.variables[i].typeID];
-		layout.append( memberType.name );
-	};
-
-	// CBuffer Cache
-	const u32 checksumKey = checksum_xcrc32( type.name.data, type.name.length, 0 );
-	const u32 checksumBuffer = checksum_xcrc32( layout.data, layout.length_bytes(), 0 );
-
-	// CBuffer with this name already exists
-	if( Gfx::constantBufferCache.contains( checksumKey ) )
-	{
-		ConstantBuffer &cbuffer = Gfx::constantBuffers[Gfx::constantBufferCache.get( checksumKey )];
-		shader.constantBufferIDs[stage].add( cbuffer.id ); // Add this CBuffer to the shader
-		shader.constantBufferSlots[stage].add( structure.slot );
-		if( cbuffer.checksum == checksumBuffer ) { return false; }
-		Error( "CBuffer with name '%.*s' already declared with a different layout",
-			type.name.length, type.name.data );
-		return false;
-	}
-
-	// Register CBuffer & Generate C++ Struct
-	ConstantBuffer &cbuffer = Gfx::constantBuffers.add( { } );
-	String &header = cbuffer.header;
-	String &source = cbuffer.source;
-	cbuffer.name.append( type.name );
-	cbuffer.id = static_cast<u32>( Gfx::constantBuffers.size() - 1 );
-	cbuffer.checksum = checksumBuffer;
-
-	Gfx::constantBufferCache.add( checksumKey, cbuffer.id );
-	shader.constantBufferIDs[stage].add( cbuffer.id ); // Add this CBuffer to the shader
-	shader.constantBufferSlots[stage].add( structure.slot );
-
-	if( cbuffer.id != 0 ) { header.append( "\n" ); }
-	header.append( "\tstruct alignas( 16 ) " ).append( type.name ).append( "_t\n" );
-	header.append( "\t{\n" );
-	for( VariableID i = first; i < last; i++ )
-	{
-		Variable &memberVariable = parser.variables[i];
-		Type &memberType = parser.types[memberVariable.typeID];
-		header.append( "\t\t" );
-
-		// Type
-		StringView typeNameCPU;
-		switch( memberVariable.typeID )
-		{
-			case Primitive_Void:      typeNameCPU = StringView( "void" );     break;
-			case Primitive_Bool:      typeNameCPU = StringView( "bool" );     break;
-			case Primitive_Bool2:     typeNameCPU = StringView( "boolv2" );   break;
-			case Primitive_Bool3:     typeNameCPU = StringView( "boolv3" );   break;
-			case Primitive_Bool4:     typeNameCPU = StringView( "boolv4" );   break;
-			case Primitive_Int:       typeNameCPU = StringView( "i32" );      break;
-			case Primitive_Int2:      typeNameCPU = StringView( "intv2" );    break;
-			case Primitive_Int3:      typeNameCPU = StringView( "intv3" );    break;
-			case Primitive_Int4:      typeNameCPU = StringView( "intv4" );    break;
-			case Primitive_UInt:      typeNameCPU = StringView( "u32" );      break;
-			case Primitive_UInt2:     typeNameCPU = StringView( "u32v2" );    break;
-			case Primitive_UInt3:     typeNameCPU = StringView( "u32v3" );    break;
-			case Primitive_UInt4:     typeNameCPU = StringView( "u32v4" );    break;
-			case Primitive_Float:     typeNameCPU = StringView( "float" );    break;
-			case Primitive_Float2:    typeNameCPU = StringView( "floatv2" );  break;
-			case Primitive_Float3:    typeNameCPU = StringView( "floatv3" );  break;
-			case Primitive_Float4:    typeNameCPU = StringView( "floatv4" );  break;
-			case Primitive_Float2x2:  typeNameCPU = StringView( "Matrix" );   break;
-			case Primitive_Float3x3:  typeNameCPU = StringView( "Matrix" );   break;
-			case Primitive_Float4x4:  typeNameCPU = StringView( "Matrix" );   break;
-			case Primitive_Double:    typeNameCPU = StringView( "double" );   break;
-			case Primitive_Double2:   typeNameCPU = StringView( "doublev2" ); break;
-			case Primitive_Double3:   typeNameCPU = StringView( "doublev3" ); break;
-			case Primitive_Double4:   typeNameCPU = StringView( "doublev4" ); break;
-			case Primitive_Double2x2: typeNameCPU = StringView( "Matrix" );   break;
-			case Primitive_Double3x3: typeNameCPU = StringView( "Matrix" );   break;
-			case Primitive_Double4x4: typeNameCPU = StringView( "Matrix" );   break;
-			default: typeNameCPU.data = nullptr; break;
-		};
-		header.append( typeNameCPU.data == nullptr ? memberType.name : typeNameCPU );
-
-		// Variable
-		header.append( " " ).append( memberVariable.name );
-
-		if( memberVariable.arrayLengthX > 0 )
-		{
-			header.append( "[" ).append( memberVariable.arrayLengthX ).append( "]" );
-		}
-
-		if( memberVariable.arrayLengthY > 0 )
-		{
-			header.append( "[" ).append( memberVariable.arrayLengthY ).append( "]" );
-		}
-
-		header.append( ";\n" );
-	}
-	header.append( "\n" );
-	header.append( "\t\tvoid zero();\n" );
-	header.append( "\t\tvoid upload() const;\n" );
-	header.append( "\t\tbool operator==( const " ).append( type.name ).append( "_t &other ) " );
-	header.append( "{ return ( memory_compare( this, &other, sizeof( " );
-	header.append( type.name ).append( "_t ) ) == 0 ); }\n" );
-	header.append( "\t\tbool operator!=( const " ).append( type.name ).append( "_t &other ) " );
-	header.append( "{ return ( memory_compare( this, &other, sizeof( " );
-	header.append( type.name ).append( "_t ) ) != 0 ); }\n" );
-	header.append( "\t};\n" );
-
-	if( cbuffer.id != 0 ) { source.append( "\n" ); }
-	source.append( "\tvoid ").append( cbuffer.name ).append( "_t::zero()\n\t{\n" );
-	source.append( "\t#if GRAPHICS_ENABLED\n" );
-	source.append( "\t\tmemory_set( this, 0, sizeof( " ).append( cbuffer.name ).append( "_t ) );\n" );
-	source.append( "\t#endif\n" );
-	source.append( "\t}\n" );
-
-	source.append( "\n\tvoid ").append( cbuffer.name ).append( "_t::upload() const\n\t{\n" );
-	source.append( "\t#if GRAPHICS_ENABLED\n" );
-	source.append( "\t\tauto *&resource = GfxCore::gfxCBufferResources[" );
-	source.append( static_cast<int>( cbuffer.id ) ).append( "];\n" );
-	source.append( "\t\tGfxCore::rb_constant_buffered_write_begin( resource );\n" );
-	source.append( "\t\tGfxCore::rb_constant_buffered_write( resource, this );\n" );
-	source.append( "\t\tGfxCore::rb_constant_buffered_write_end( resource );\n" );
-	source.append( "\t#endif\n" );
-	source.append( "\t}\n" );
 	return true;
 }
 
@@ -1347,6 +1403,203 @@ void Generator::indent_sub()
 {
 	if( indentLevel > 0 ) { indentLevel--; }
 	indent[indentLevel] = '\0';
+}
+
+
+int Generator::append_structure_padding( String &output, const char *indent,
+	int alignment, int current )
+{
+	int padding = ( alignment - ( current % alignment ) ) % alignment;
+
+	if( padding > 0 )
+	{
+		output.append( indent );
+		output.append( "char __pad").append( current );
+		output.append( "[" ).append( padding ).append( "];\n" );
+	}
+
+	return padding;
+}
+
+
+void Generator::append_structure_member_padded( String &output, const char *indent,
+	Type &type, Variable &variable, int &structureByteOffset )
+{
+	char typeNameBuffer[512];
+	int typeSizeBytes = 0;
+
+	StringView typeNameCPU;
+	int size, align;
+	switch( variable.typeID )
+	{
+		case Primitive_Bool: typeNameCPU = StringView( "u32" ); size = 4; align = 4; break;
+		case Primitive_Bool2: typeNameCPU = StringView( "u32_v2" ); size = 8; align = 4; break;
+		case Primitive_Bool3: typeNameCPU = StringView( "u32_v3" ); size = 12; align = 16; break;
+		case Primitive_Bool4: typeNameCPU = StringView( "u32_v4" ); size = 16; align = 16; break;
+
+		case Primitive_Int: typeNameCPU = StringView( "i32" ); size = 4; align = 4; break;
+		case Primitive_Int2: typeNameCPU = StringView( "int_v2" ); size = 8; align = 4; break;
+		case Primitive_Int3: typeNameCPU = StringView( "int_v3" ); size = 12; align = 16; break;
+		case Primitive_Int4: typeNameCPU = StringView( "int_v4" ); size = 16; align = 16; break;
+
+		case Primitive_UInt: typeNameCPU = StringView( "u32" ); size = 4; align = 4; break;
+		case Primitive_UInt2: typeNameCPU = StringView( "u32_v2" ); size = 8; align = 4; break;
+		case Primitive_UInt3: typeNameCPU = StringView( "u32_v3" ); size = 12; align = 16; break;
+		case Primitive_UInt4: typeNameCPU = StringView( "u32_v4" ); size = 16; align = 16; break;
+
+		case Primitive_Float: typeNameCPU = StringView( "float" ); size = 4; align = 4; break;
+		case Primitive_Float2: typeNameCPU = StringView( "float_v2" ); size = 8; align = 4; break;
+		case Primitive_Float3: typeNameCPU = StringView( "float_v3" ); size = 12; align = 16; break;
+		case Primitive_Float4: typeNameCPU = StringView( "float_v4" ); size = 16; align = 16; break;
+
+		case Primitive_Float2x2: typeNameCPU = StringView( "float_m44" ); size = 64; align = 16; break;
+		case Primitive_Float3x3: typeNameCPU = StringView( "float_m44" ); size = 64; align = 16; break;
+		case Primitive_Float4x4: typeNameCPU = StringView( "float_m44" ); size = 64; align = 16; break;
+
+		case Primitive_Double: typeNameCPU = StringView( "double" ); size = 8; align = 8; break;
+		case Primitive_Double2: typeNameCPU = StringView( "double_v2" ); size = 16; align = 8; break;
+		case Primitive_Double3: typeNameCPU = StringView( "double_v3" ); size = 24; align = 16; break;
+		case Primitive_Double4: typeNameCPU = StringView( "double_v4" ); size = 32; align = 16; break;
+
+		case Primitive_Double2x2: typeNameCPU = StringView( "double_m44" ); size = 64; align = 16; break;
+		case Primitive_Double3x3: typeNameCPU = StringView( "double_m44" ); size = 64; align = 16; break;
+		case Primitive_Double4x4: typeNameCPU = StringView( "double_m44" ); size = 64; align = 16; break;
+
+		default: typeNameCPU.data = nullptr; size = 0; align = 16; break;
+	};
+
+	// Struct Size
+	if( type.tokenType == TokenType_SharedStruct ) { size = type.sizeBytesPadded; align = 16; }
+
+	// Calculate required padding & increment byte offset
+	structureByteOffset += Generator::append_structure_padding( output, indent, align, structureByteOffset );
+	auto round_up16 = []( int size ) { return ( size + 15 ) & ~15; };
+
+	// Type
+	if( variable.arrayLengthX > 0 && variable.arrayLengthY > 0 )
+	{
+		snprintf( typeNameBuffer, sizeof( typeNameBuffer ), "std140_array_2d<%s%.*s, %d, %d>",
+			type.tokenType == TokenType_SharedStruct ? "GfxStructPadded::" : "",
+			static_cast<int>( typeNameCPU.data == nullptr ? type.name.length : typeNameCPU.length ),
+			typeNameCPU.data == nullptr ? type.name.data : typeNameCPU.data,
+			variable.arrayLengthX, variable.arrayLengthY );
+
+		typeSizeBytes = round_up16( size ) * ( variable.arrayLengthX * variable.arrayLengthY );
+
+#if GFX_OUTPUT_STRUCTURE_SIZES
+		output.append( indent ).append( "static_assert( sizeof( " ).append( typeNameBuffer );
+		output.append( " ) == " ).append( typeSizeBytes ).append( ", \"size missmatch!\" );\n" );;
+#endif
+
+		// 2D Array
+		output.append( indent ).append( typeNameBuffer );
+	}
+	else if( variable.arrayLengthX > 0 )
+	{
+		snprintf( typeNameBuffer, sizeof( typeNameBuffer ), "std140_array_1d<%s%.*s, %d>",
+			type.tokenType == TokenType_SharedStruct ? "GfxStructPadded::" : "",
+			static_cast<int>( typeNameCPU.data == nullptr ? type.name.length : typeNameCPU.length ),
+			typeNameCPU.data == nullptr ? type.name.data : typeNameCPU.data,
+			variable.arrayLengthX );
+
+		typeSizeBytes = round_up16( size ) * ( variable.arrayLengthX );
+
+#if GFX_OUTPUT_STRUCTURE_SIZES
+		output.append( indent ).append( "static_assert( sizeof( " ).append( typeNameBuffer );
+		output.append( " ) == " ).append( typeSizeBytes ).append( ", \"size missmatch!\" );\n" );
+#endif
+
+		// 2D Array
+		output.append( indent ).append( typeNameBuffer );
+	}
+	else
+	{
+		snprintf( typeNameBuffer, sizeof( typeNameBuffer ), "%s%.*s",
+			type.tokenType == TokenType_SharedStruct ? "GfxStructPadded::" : "",
+			static_cast<int>( typeNameCPU.data == nullptr ? type.name.length : typeNameCPU.length ),
+			typeNameCPU.data == nullptr ? type.name.data : typeNameCPU.data );
+
+		typeSizeBytes = size;
+
+#if GFX_OUTPUT_STRUCTURE_SIZES
+		output.append( indent ).append( "static_assert( sizeof( " ).append( typeNameBuffer );
+		output.append( " ) == " ).append( typeSizeBytes ).append( ", \"size missmatch!\" );\n" );
+#endif
+
+		// 2D Array
+		output.append( indent ).append( typeNameBuffer );
+	}
+
+	// Variable
+	output.append( " " ).append( variable.name ).append( ";" );
+#if GFX_OUTPUT_STRUCTURE_SIZES
+	output.append( " // Offset: " ).append( structureByteOffset );
+#endif
+	output.append( "\n" );
+
+	// Increment structureByteOffset
+	structureByteOffset += typeSizeBytes;
+}
+
+
+void Generator::append_structure_member_packed( String &output, const char *indent,
+	Type &type, Variable &variable, int &structureByteOffset )
+{
+	output.append( indent );
+
+	StringView typeNameCPU;
+	int align;
+	switch( variable.typeID )
+	{
+		case Primitive_Bool: typeNameCPU = StringView( "u32" ); break;
+		case Primitive_Bool2: typeNameCPU = StringView( "u32_v2" ); break;
+		case Primitive_Bool3: typeNameCPU = StringView( "u32_v3" ); break;
+		case Primitive_Bool4: typeNameCPU = StringView( "u32_v4" ); break;
+
+		case Primitive_Int: typeNameCPU = StringView( "i32" ); break;
+		case Primitive_Int2: typeNameCPU = StringView( "int_v2" ); break;
+		case Primitive_Int3: typeNameCPU = StringView( "int_v3" ); break;
+		case Primitive_Int4: typeNameCPU = StringView( "int_v4" ); break;
+
+		case Primitive_UInt: typeNameCPU = StringView( "u32" ); break;
+		case Primitive_UInt2: typeNameCPU = StringView( "u32_v2" ); break;
+		case Primitive_UInt3: typeNameCPU = StringView( "u32_v3" ); break;
+		case Primitive_UInt4: typeNameCPU = StringView( "u32_v4" ); break;
+
+		case Primitive_Float: typeNameCPU = StringView( "float" ); break;
+		case Primitive_Float2: typeNameCPU = StringView( "float_v2" ); break;
+		case Primitive_Float3: typeNameCPU = StringView( "float_v3" ); break;
+		case Primitive_Float4: typeNameCPU = StringView( "float_v4" ); break;
+
+		case Primitive_Float2x2: typeNameCPU = StringView( "float_m44" ); break;
+		case Primitive_Float3x3: typeNameCPU = StringView( "float_m44" ); break;
+		case Primitive_Float4x4: typeNameCPU = StringView( "float_m44" ); break;
+
+		case Primitive_Double: typeNameCPU = StringView( "double" ); break;
+		case Primitive_Double2: typeNameCPU = StringView( "double_v2" ); break;
+		case Primitive_Double3: typeNameCPU = StringView( "double_v3" ); break;
+		case Primitive_Double4: typeNameCPU = StringView( "double_v4" ); break;
+
+		case Primitive_Double2x2: typeNameCPU = StringView( "double_m44" ); break;
+		case Primitive_Double3x3: typeNameCPU = StringView( "double_m44" ); break;
+		case Primitive_Double4x4: typeNameCPU = StringView( "double_m44" ); break;
+
+		case Primitive_Void: typeNameCPU = StringView( "void" ); break;
+		default: typeNameCPU.data = nullptr; break;
+	};
+
+	// Type
+	if( type.tokenType == TokenType_SharedStruct ) { output.append( "GfxStructPacked::" ); }
+	output.append( typeNameCPU.data == nullptr ? type.name : typeNameCPU );
+
+	// Variable
+	output.append( " " ).append( variable.name );
+
+	// Array X/Y
+	if( variable.arrayLengthX > 0 ) { output.append( "[" ).append( variable.arrayLengthX ).append( "]" ); }
+	if( variable.arrayLengthY > 0 ) { output.append( "[" ).append( variable.arrayLengthY ).append( "]" ); }
+
+	output.append( ";\n" );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

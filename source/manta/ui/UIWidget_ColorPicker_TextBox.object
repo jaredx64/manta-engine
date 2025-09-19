@@ -230,23 +230,23 @@ PROTECTED void update( const Delta delta )
 }
 
 
-PROTECTED void render( const Delta delta )
+PROTECTED void render( const Delta delta, const Alpha alpha )
 {
-	const intv2 p1 = intv2( x, y ).multiply( context->matrix_get() );
-	const intv2 p2 = intv2( x + width, y + height ).multiply( context->matrix_get() );
+	const int_v2 p1 = int_v2( x, y ).multiply( context->matrix_get() );
+	const int_v2 p2 = int_v2( x + width, y + height ).multiply( context->matrix_get() );
 
 	// Draw Labels
 	if( showRGB )
 	{
 		const int tY = p1.y;
-		const intv2 dimensions = text_dimensions( fnt_iosevka.bold(), 14, "RGB:" );
+		const int_v2 dimensions = text_dimensions( fnt_iosevka.bold(), 14, "RGB:" );
 		draw_text( fnt_iosevka.bold(), 14, p1.x, tY + ( 28 - dimensions.y ) / 2 + 2, c_white, "RGB:" );
 	}
 
 	if( showHSV )
 	{
 		const int tY = p1.y + ( 28 + 8  ) * showRGB;
-		const intv2 dimensions = text_dimensions( fnt_iosevka.bold(), 14, "HSV:" );
+		const int_v2 dimensions = text_dimensions( fnt_iosevka.bold(), 14, "HSV:" );
 		draw_text( fnt_iosevka.bold(), 14, p1.x, tY + ( 28 - dimensions.y ) / 2 + 2, c_white, "HSV:" );
 	}
 }
@@ -255,7 +255,7 @@ PROTECTED void render( const Delta delta )
 // PROTECTED void apply_matrix() { INHERIT::apply_matrix(); }
 
 
-PROTECTED bool contains_point( const floatv2 point ) { return false; }
+PROTECTED bool contains_point( const float_v2 point ) { return false; }
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -300,7 +300,7 @@ PUBLIC void set_hsva_floats( const float h, const float s, const float v, const 
 }
 
 
-PUBLIC void set_hsva_floats( const floatv4 &vHSVA )
+PUBLIC void set_hsva_floats( const float_v4 &vHSVA )
 {
 	set_hsva_floats( vHSVA.x, vHSVA.y, vHSVA.z, vHSVA.w );
 }
@@ -345,7 +345,7 @@ PUBLIC void set_rgba_floats( const float r, const float g, const float b, const 
 }
 
 
-PUBLIC void set_rgba_floats( const floatv4 &vRGBA )
+PUBLIC void set_rgba_floats( const float_v4 &vRGBA )
 {
 	set_rgba_floats( vRGBA.x, vRGBA.y, vRGBA.z, vRGBA.w );
 }
@@ -357,9 +357,9 @@ PUBLIC Color get_rgba()
 }
 
 
-PUBLIC floatv4 get_rgba_floats()
+PUBLIC float_v4 get_rgba_floats()
 {
-	return floatv4 { rgba.r / 255.0f, rgba.g / 255.0f, rgba.b / 255.0f, rgba.a / 255.0f };
+	return float_v4 { rgba.r / 255.0f, rgba.g / 255.0f, rgba.b / 255.0f, rgba.a / 255.0f };
 }
 
 
@@ -369,9 +369,9 @@ PUBLIC Color get_hsva()
 }
 
 
-PUBLIC floatv4 get_hsva_floats()
+PUBLIC float_v4 get_hsva_floats()
 {
-	return floatv4 { hsva.h / 255.0f, hsva.s / 255.0f, hsva.v / 255.0f, hsva.a / 255.0f };
+	return float_v4 { hsva.h / 255.0f, hsva.s / 255.0f, hsva.v / 255.0f, hsva.a / 255.0f };
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

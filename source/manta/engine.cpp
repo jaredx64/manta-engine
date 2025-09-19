@@ -44,6 +44,9 @@ namespace Engine
 		// Graphics
 		ErrorReturnIf( !SysGfx::init(), false, "Engine: failed to initialize graphics system" );
 
+		// Console
+		ErrorReturnIf( !SysConsole::init(), false, "Engine: failed to initialize console system" );
+
 		// Audio
 		ErrorReturnIf( !SysAudio::init(), false, "Engine: failed to initialize audio system" );
 
@@ -56,18 +59,12 @@ namespace Engine
 		// UI
 		ErrorReturnIf( !SysUI::init(), false, "Engine: failed to initialize UI system" );
 
-		// Console
-		ErrorReturnIf( !SysConsole::init(), false, "Engine: failed to initialize console system" );
-
 		// Success
 		return true;
 	}
 
 	static bool free()
 	{
-		// Console
-		ErrorReturnIf( !SysConsole::free(), false, "Engine: failed to free console system" );
-
 		// UI
 		ErrorReturnIf( !SysUI::free(), false, "Engine: failed to free UI system" );
 
@@ -76,6 +73,9 @@ namespace Engine
 
 		// Objects
 		ErrorReturnIf( !SysObjects::free(), false, "Engine: failed to free object system" );
+
+		// Console
+		ErrorReturnIf( !SysConsole::free(), false, "Engine: failed to free console system" );
 
 		// Graphics
 		ErrorReturnIf( !SysGfx::free(), false, "Engine: failed to free graphics system" );

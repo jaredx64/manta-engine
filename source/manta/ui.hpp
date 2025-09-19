@@ -21,7 +21,7 @@ namespace SysUI
 	extern Keyboard keyboard;
 	extern Mouse mouse;
 
-	extern Matrix matrix; // Matrix for widget-relative coordinate -> screen coordinate
+	extern float_m44 matrix; // Matrix for widget-relative coordinate -> screen coordinate
 
 	extern bool init();
 	extern bool free();
@@ -96,6 +96,9 @@ public:
 	Object create_widget_window( u16 type, int x, int y, int width, int height,
 		bool resizable = true, Object parent = { } );
 
+	Object create_widget_scrollable_region( u16 type, int x, int y, int width, int height,
+		const bool hasVerticalScrollbar, const bool hasHorizontalScrollbar, Object parent = { } );
+
 	Object create_widget_button( u16 type, int x, int y, int width, int height,
 		Object parent = { } );
 
@@ -121,13 +124,13 @@ public:
 	template <int N> ObjectHandle<N> handle( const Object &widget ) const
 	{
 		Assert( N == UIWidget || object_is_child_of( N, UIWidget ) );
-		AssertMsg( N == widget.type || object_is_child_of( widget.type, N ), "h: %u w: %u", N, widget.type );
+		if( !( N == widget.type || object_is_child_of( widget.type, N ) ) ) { return ObjectHandle<N>{ nullptr }; }
 		return ObjectHandle<N>{ objects.get_object_pointer( widget ) };
 	}
 
-	Matrix matrix_get() { return matrix; }
-	void matrix_set( const Matrix &matrix );
-	void matrix_multiply( const Matrix &matrix );
+	float_m44 matrix_get() { return matrix; }
+	void matrix_set( const float_m44 &matrix );
+	void float_m44_multiply( const float_m44 &matrix );
 
 	UIScissor scissor_get() { return scissor; }
 	void scissor_set( const UIScissor &scissor );
@@ -135,24 +138,24 @@ public:
 	void scissor_set_nested( const UIScissor &scissor );
 	void scissor_set_nested( int x1, int y1, int x2, int y2 ) { scissor_set_nested( UIScissor { x1, y1, x2, y2 } ); }
 
-	floatv2 position_floatv2( const float x, const float y );
-	intv2 position_i32( const int x, const int y );
+	float_v2 position_float_v2( const float x, const float y );
+	int_v2 position_i32( const int x, const int y );
 
 	void widget_send_top( Object widget );
 	Object get_widget_hover();
 	Object get_widget_top();
 
 	void update_widgets( const Delta delta );
-	void render_widgets( const Delta delta );
+	void render_widgets( const Delta delta, const Alpha alpha = { } );
 
 	void update_widget( const Object &widget, const Delta delta );
-	void render_widget( const Object &widget, const Delta delta );
+	void render_widget( const Object &widget, const Delta delta, const Alpha alpha );
 
 private:
 	Object instantiate_widget( u16 type, Object parent );
 
 	void update_widget( ObjectHandle<UIWidget> &widgetHandle, const Delta delta );
-	void render_widget( ObjectHandle<UIWidget> &widgetHandle, const Delta delta );
+	void render_widget( ObjectHandle<UIWidget> &widgetHandle, const Delta delta, const Alpha alpha );
 
 	bool test_widget( ObjectHandle<UIWidget> &widgetHandle );
 	void register_widget( const Object &widget );
@@ -164,7 +167,7 @@ private:
 	Object hoverWidget;
 	bool clearing = false;
 
-	Matrix matrix;
+	float_m44 matrix;
 	UIScissor scissor;
 	Keyboard keyboard;
 	Mouse mouse;

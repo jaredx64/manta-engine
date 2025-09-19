@@ -63,6 +63,7 @@
 
 	// GDI32.dll
 	extern "C" DLL_IMPORT int STD_CALL ChoosePixelFormat(HDC, const PIXELFORMATDESCRIPTOR *);
+	extern "C" DLL_IMPORT int STD_CALL DescribePixelFormat(HDC, int, UINT, PIXELFORMATDESCRIPTOR *);
 	extern "C" DLL_IMPORT BOOL STD_CALL SetPixelFormat(HDC, int, const PIXELFORMATDESCRIPTOR *);
 	extern "C" DLL_IMPORT BOOL STD_CALL SwapBuffers(HDC);
 #endif

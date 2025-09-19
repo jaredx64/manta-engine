@@ -77,7 +77,6 @@ void Materials::load( const char *path )
 	// Register Material
 	Material material;
 	material.name = name;
-
 	material.textureIDColor = Assets::textures.make_new( name ); // TODO: Generate unique name
 	Texture &colorTextureAsset = Assets::textures[material.textureIDColor];
 	colorTextureAsset.atlasTexture = false;
@@ -107,10 +106,7 @@ void Materials::write()
 		assets_group( header );
 
 		// Struct
-		assets_struct( header,
-			"DiskMaterial",
-			"u16 textureColor;",
-			"u16 textureNormal;" );
+		header.append( "struct BinMaterial;\n\n" );
 
 		// Enums
 		header.append( "enum\n{\n" );
@@ -124,7 +120,7 @@ void Materials::write()
 		header.append( "namespace Assets\n{\n" );
 		header.append( "\tconstexpr u32 materialsCount = " );
 		header.append( static_cast<int>( materials.size() ) ).append( ";\n" );
-		header.append( "\textern const DiskMaterial materials[];\n" );
+		header.append( "\textern const BinMaterial materials[];\n" );
 		header.append( "}\n\n" );
 	}
 
@@ -136,7 +132,7 @@ void Materials::write()
 
 		// Table
 		char buffer[PATH_SIZE];
-		source.append( "\tconst DiskMaterial materials[materialsCount] =\n\t{\n" );
+		source.append( "\tconst BinMaterial materials[materialsCount] =\n\t{\n" );
 		for( Material &material : materials )
 		{
 			snprintf( buffer, PATH_SIZE,

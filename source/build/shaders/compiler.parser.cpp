@@ -51,104 +51,111 @@ static_assert( ARRAY_LENGTH( Primitives ) == PRIMITIVE_COUNT, "Missing Primitive
 const char *Intrinsics[] =
 {
 	// Trigonometric Functions
-	"cos",                     // Intrinsic_Cos
-	"sin",                     // Intrinsic_Sin
-	"tan",                     // Intrinsic_Tan
-	"sinh",                    // Intrinsic_Sinh
-	"cosh",                    // Intrinsic_Cosh
-	"tanh",                    // Intrinsic_Tanh
-	"asin",                    // Intrinsic_ASin
-	"acos",                    // Intrinsic_ACos
-	"atan",                    // Intrinsic_ATan
-	"atan2",                   // Intrinsic_ATan2
+	"cos",                       // Intrinsic_Cos
+	"sin",                       // Intrinsic_Sin
+	"tan",                       // Intrinsic_Tan
+	"sinh",                      // Intrinsic_Sinh
+	"cosh",                      // Intrinsic_Cosh
+	"tanh",                      // Intrinsic_Tanh
+	"asin",                      // Intrinsic_ASin
+	"acos",                      // Intrinsic_ACos
+	"atan",                      // Intrinsic_ATan
+	"atan2",                     // Intrinsic_ATan2
 
 	// Exponential and Logarithmic Functions
-	"exp",                     // Intrinsic_Exp
-	"exp2",                    // Intrinsic_Exp2
-	"log",                     // Intrinsic_Log
-	"log2",                    // Intrinsic_Log2
+	"exp",                       // Intrinsic_Exp
+	"exp2",                      // Intrinsic_Exp2
+	"log",                       // Intrinsic_Log
+	"log2",                      // Intrinsic_Log2
 
 	// Conversion Functions
-	"degrees",                 // Intrinsic_Degrees
-	"radians",                 // Intrinsic_Radians
-	"round",                   // Intrinsic_Round
-	"trunc",                   // Intrinsic_Trunc
-	"ceil",                    // Intrinsic_Ceil
-	"floor",                   // Intrinsic_Floor
+	"degrees",                   // Intrinsic_Degrees
+	"radians",                   // Intrinsic_Radians
+	"round",                     // Intrinsic_Round
+	"trunc",                     // Intrinsic_Trunc
+	"ceil",                      // Intrinsic_Ceil
+	"floor",                     // Intrinsic_Floor
 
 	// Arithmetic Functions
-	"abs",                     // Intrinsic_Abs
-	"pow",                     // Intrinsic_Pow
-	"sqrt",                    // Intrinsic_Sqrt
-	"rsqrt",                   // Intrinsic_RSqrt
-	"clamp",                   // Intrinsic_Clamp
-	"max",                     // Intrinsic_Max
-	"min",                     // Intrinsic_Min
-	"mod",                     // Intrinsic_Mod
-	"frac",                    // Intrinsic_Frac
-	"ldexp",                   // Intrinsic_Ldexp
-	"fma",                     // Intrinsic_Fma
-	"sign",                    // Intrinsic_Sign
-	"saturate",                // Intrinsic_Saturate
-	"ddx",                     // Intrinsic_DDx
-	"ddy",                     // Intrinsic_DDy
-	"ddx_coarse",              // Intrinsic_DDxCoarse
-	"ddx_fine",                // Intrinsic_DDxFine
-	"ddy_coarse",              // Intrinsic_DDyCoarse
-	"ddy_fine",                // Intrinsic_DDyFine
+	"abs",                       // Intrinsic_Abs
+	"pow",                       // Intrinsic_Pow
+	"sqrt",                      // Intrinsic_Sqrt
+	"rsqrt",                     // Intrinsic_RSqrt
+	"clamp",                     // Intrinsic_Clamp
+	"max",                       // Intrinsic_Max
+	"min",                       // Intrinsic_Min
+	"mod",                       // Intrinsic_Mod
+	"frac",                      // Intrinsic_Frac
+	"ldexp",                     // Intrinsic_Ldexp
+	"fma",                       // Intrinsic_Fma
+	"sign",                      // Intrinsic_Sign
+	"saturate",                  // Intrinsic_Saturate
+	"ddx",                       // Intrinsic_DDx
+	"ddy",                       // Intrinsic_DDy
+	"ddx_coarse",                // Intrinsic_DDxCoarse
+	"ddx_fine",                  // Intrinsic_DDxFine
+	"ddy_coarse",                // Intrinsic_DDyCoarse
+	"ddy_fine",                  // Intrinsic_DDyFine
 
 	// Vector and Matrix Functions
-	"mul",                     // Intrinsic_Mul
-	"length",                  // Intrinsic_Length
-	"distance",                // Intrinsic_Distance
-	"dot",                     // Intrinsic_Dot
-	"cross",                   // Intrinsic_Cross
-	"normalize",               // Intrinsic_Normalize
-	"reflect",                 // Intrinsic_Reflect
-	"refract",                 // Intrinsic_Refract
-	"faceforward",             // Intrinsic_Faceforward
-	"transpose",               // Intrinsic_Transpose
-	"determinant",             // Intrinsic_Determinant
-	"lerp",                    // Intrinsic_Lerp
-	"step",                    // Intrinsic_Step
-	"smoothstep",              // Intrinsic_Smoothstep
+	"mul",                       // Intrinsic_Mul
+	"length",                    // Intrinsic_Length
+	"distance",                  // Intrinsic_Distance
+	"dot",                       // Intrinsic_Dot
+	"cross",                     // Intrinsic_Cross
+	"normalize",                 // Intrinsic_Normalize
+	"reflect",                   // Intrinsic_Reflect
+	"refract",                   // Intrinsic_Refract
+	"faceforward",               // Intrinsic_Faceforward
+	"transpose",                 // Intrinsic_Transpose
+	"determinant",               // Intrinsic_Determinant
+	"lerp",                      // Intrinsic_Lerp
+	"step",                      // Intrinsic_Step
+	"smoothstep",                // Intrinsic_Smoothstep
 
 	// Bitwise Operations
-	"bit_count",               // Intrinsic_BitCount
-	"bit_firsthigh",           // Intrinsic_BitFirstHigh
-	"bit_firstlow",            // Intrinsic_BitFirstLow
-	"bit_reverse",             // Intrinsic_BitReverse
-	"atomic_add",              // Intrinsic_AtomicAdd
-	"atomic_compare_exchange", // Intrinsic_AtomicCompareExchange
-	"atomic_exchange",         // Intrinsic_AtomicExchange
-	"atomic_max",              // Intrinsic_AtomicMax
-	"atomic_min",              // Intrinsic_AtomicMin
-	"atomic_and",              // Intrinsic_AtomicAnd
-	"atomic_or",               // Intrinsic_AtomicOr
-	"atomic_xor",              // Intrinsic_AtomicXor
+	"bit_count",                 // Intrinsic_BitCount
+	"bit_firsthigh",             // Intrinsic_BitFirstHigh
+	"bit_firstlow",              // Intrinsic_BitFirstLow
+	"bit_reverse",               // Intrinsic_BitReverse
+	"atomic_add",                // Intrinsic_AtomicAdd
+	"atomic_compare_exchange",   // Intrinsic_AtomicCompareExchange
+	"atomic_exchange",           // Intrinsic_AtomicExchange
+	"atomic_max",                // Intrinsic_AtomicMax
+	"atomic_min",                // Intrinsic_AtomicMin
+	"atomic_and",                // Intrinsic_AtomicAnd
+	"atomic_or",                 // Intrinsic_AtomicOr
+	"atomic_xor",                // Intrinsic_AtomicXor
 
 	// Type Bit Conversions
-	"float_to_int_bits",       // Intrinsic_FloatToIntBits
-	"float_to_uint_bits",      // Intrinsic_FloatToUIntBits
-	"int_to_float_bits",       // Intrinsic_IntToFloatBits
-	"uint_to_float_bits",      // Intrinsic_UIntToFloatBits
+	"float_to_int_bits",         // Intrinsic_FloatToIntBits
+	"float_to_uint_bits",        // Intrinsic_FloatToUIntBits
+	"int_to_float_bits",         // Intrinsic_IntToFloatBits
+	"uint_to_float_bits",        // Intrinsic_UIntToFloatBits
 
 	// Texture Sampling Functions
-	"texture_sample_1d",         // Intrinsic_SampleTexture1D
-	"texture_sample_1d_array",   // Intrinsic_SampleTexture1DArray
-	"texture_sample_2d",         // Intrinsic_SampleTexture2D
-	"texture_sample_2d_array",   // Intrinsic_SampleTexture2DArray
-	"texture_sample_2d_level",   // Intrinsic_SampleTexture2DLevel
-	"texture_sample_3d",         // Intrinsic_SampleTexture3D
-	"texture_sample_cube",       // Intrinsic_SampleTextureCube
-	"texture_sample_cube_array", // Intrinsic_SampleTextureCubeArray
-	"texture_index_2d",          // Intrinsic_LoadTexture2D
+	"texture_sample_1d",         // Intrinsic_TextureSample1D
+	"texture_sample_1d_array",   // Intrinsic_TextureSample1DArray
+	"texture_sample_1d_level",   // Intrinsic_TextureSample1DLevel
+	"texture_sample_2d",         // Intrinsic_TextureSample2D
+	"texture_sample_2d_array",   // Intrinsic_TextureSample2DArray
+	"texture_sample_2d_level",   // Intrinsic_TextureSample2DLevel
+	"texture_sample_3d",         // Intrinsic_TextureSample3D
+	"texture_sample_3d_array",   // Intrinsic_TextureSample3DArray
+	"texture_sample_3d_level",   // Intrinsic_TextureSample3DLevel
+	"texture_sample_cube",       // Intrinsic_TextureSampleCube
+	"texture_sample_cube_array", // Intrinsic_TextureSampleCubeArray
+	"texture_sample_cube_level", // Intrinsic_TextureSampleCubeLevel
+	"texture_index_1d",          // Intrinsic_TextureLoad1D
+	"texture_index_2d",          // Intrinsic_TextureLoad2D
+	"texture_index_3d",          // Intrinsic_TextureLoad3D
+	"texture_index_cube",        // Intrinsic_TextureLoadCube
 
 	// Depth
-	"depth_normalize",         // Intrinsic_DepthNormalize
-	"depth_linearize",         // Intrinsic_DepthLinearize
-	"depth_unproject",         // Intrinsic_DepthUnproject
-	"depth_unproject_zw",      // Intrinsic_DepthUnprojectZW
+	"depth_normalize",           // Intrinsic_DepthNormalize
+	"depth_linearize",           // Intrinsic_DepthLinearize
+	"depth_unproject",           // Intrinsic_DepthUnproject
+	"depth_unproject_zw",        // Intrinsic_DepthUnprojectZW
 };
 static_assert( ARRAY_LENGTH( Intrinsics ) == INTRINSIC_COUNT, "Missing Intrinsic!" );
 
@@ -156,7 +163,10 @@ static_assert( ARRAY_LENGTH( Intrinsics ) == INTRINSIC_COUNT, "Missing Intrinsic
 const char *StructTypeNames[] =
 {
 	"struct",
-	"cbuffer",
+	"shared_struct",
+	"uniform_buffer",
+	"constant_buffer",
+	"mutable_buffer",
 	"vertex_input",
 	"vertex_output",
 	"fragment_input",
@@ -165,6 +175,34 @@ const char *StructTypeNames[] =
 	"compute_output",
 };
 static_assert( ARRAY_LENGTH( StructTypeNames ) == STRUCTTYPE_COUNT, "Missing StructType!" );
+
+
+const char *Semantics[] =
+{
+	"POSITION",
+	"TEXCOORD",
+	"NORMAL",
+	"DEPTH",
+	"COLOR",
+	"BINORMAL",
+	"TANGENT",
+};
+static_assert( ARRAY_LENGTH( Semantics ) == SEMANTICTYPE_COUNT, "Missing SemanticType!" );
+
+
+const char *SVSemantics[] =
+{
+	"SV_DispatchThreadID",
+	"SV_GroupID",
+	"SV_GroupThreadID",
+	"SV_GroupIndex",
+	"SV_VertexID",
+	"SV_InstanceID",
+	"SV_PrimitiveID",
+	"SV_IsFrontFace",
+	"SV_SampleIndex",
+};
+static_assert( ARRAY_LENGTH( SVSemantics ) == SVSEMANTICTYPE_COUNT, "Missing SVSemantic!" );
 
 
 const char *TextureTypeNames[] =
@@ -182,60 +220,65 @@ static_assert( ARRAY_LENGTH( TextureTypeNames ) == TEXTURETYPE_COUNT, "Missing T
 
 const Keyword KeywordNames[] =
 {
-	{ "in",               TokenType_In },
-	{ "out",              TokenType_Out },
-	{ "inout",            TokenType_InOut },
-	{ "true",             TokenType_True },
-	{ "false",            TokenType_False },
-	{ "const",            TokenType_Const },
-	{ "return",           TokenType_Return },
-	{ "break",            TokenType_Break },
-	{ "switch",           TokenType_Switch },
-	{ "case",             TokenType_Case },
-	{ "default",          TokenType_Default },
-	{ "discard",          TokenType_Discard },
-	{ "if",               TokenType_If },
-	{ "else",             TokenType_Else },
-	{ "while",            TokenType_While },
-	{ "do",               TokenType_Do },
-	{ "for",              TokenType_For },
-	{ "struct",           TokenType_Struct },
-	{ "cbuffer",          TokenType_CBuffer },
-	{ "vertex_input",     TokenType_VertexInput },
-	{ "vertex_output",    TokenType_VertexOutput },
-	{ "fragment_input",   TokenType_FragmentInput },
-	{ "fragment_output",  TokenType_FragmentOutput },
-	{ "compute_input",    TokenType_ComputeInput },
-	{ "compute_output",   TokenType_ComputeOutput },
-	{ "texture1D",        TokenType_Texture1D },
-	{ "texture1DArray",   TokenType_Texture1DArray },
-	{ "texture2D",        TokenType_Texture2D },
-	{ "texture2DArray",   TokenType_Texture2DArray },
-	{ "texture3D",        TokenType_Texture3D },
-	{ "textureCube",      TokenType_TextureCube },
-	{ "textureCubeArray", TokenType_TextureCubeArray },
-	{ "target",           TokenType_Target },
-	{ "semantic",         TokenType_Semantic },
-	{ "POSITION",         TokenType_POSITION },
-	{ "TEXCOORD",         TokenType_TEXCOORD },
-	{ "NORMAL",           TokenType_NORMAL },
-	{ "DEPTH",            TokenType_DEPTH },
-	{ "COLOR",            TokenType_COLOR },
-	{ "format",           TokenType_InputFormat },
-	{ "UNORM8",           TokenType_UNORM8 },
-	{ "UNORM16",          TokenType_UNORM16 },
-	{ "UNORM32",          TokenType_UNORM32 },
-	{ "SNORM8",           TokenType_SNORM8 },
-	{ "SNORM16",          TokenType_SNORM16 },
-	{ "SNORM32",          TokenType_SNORM32 },
-	{ "UINT8",            TokenType_UINT8 },
-	{ "UINT16",           TokenType_UINT16 },
-	{ "UINT32",           TokenType_UINT32 },
-	{ "SINT8",            TokenType_SINT8 },
-	{ "SINT16",           TokenType_SINT16 },
-	{ "SINT32",           TokenType_SINT32 },
-	{ "FLOAT16",          TokenType_FLOAT16 },
-	{ "FLOAT32",          TokenType_FLOAT32 },
+	{ "in",                     TokenType_In },
+	{ "out",                    TokenType_Out },
+	{ "inout",                  TokenType_InOut },
+	{ "true",                   TokenType_True },
+	{ "false",                  TokenType_False },
+	{ "const",                  TokenType_Const },
+	{ "return",                 TokenType_Return },
+	{ "break",                  TokenType_Break },
+	{ "switch",                 TokenType_Switch },
+	{ "case",                   TokenType_Case },
+	{ "default",                TokenType_Default },
+	{ "discard",                TokenType_Discard },
+	{ "if",                     TokenType_If },
+	{ "else",                   TokenType_Else },
+	{ "while",                  TokenType_While },
+	{ "do",                     TokenType_Do },
+	{ "for",                    TokenType_For },
+	{ "struct",                 TokenType_Struct },
+	{ "shared_struct",          TokenType_SharedStruct },
+	{ "uniform_buffer",         TokenType_UniformBuffer },
+	{ "constant_buffer",        TokenType_ConstantBuffer },
+	{ "mutable_buffer",         TokenType_MutableBuffer },
+	{ "vertex_input",           TokenType_VertexInput },
+	{ "vertex_output",          TokenType_VertexOutput },
+	{ "fragment_input",         TokenType_FragmentInput },
+	{ "fragment_output",        TokenType_FragmentOutput },
+	{ "compute_input",          TokenType_ComputeInput },
+	{ "compute_output",         TokenType_ComputeOutput },
+	{ "texture1D",              TokenType_Texture1D },
+	{ "texture1DArray",         TokenType_Texture1DArray },
+	{ "texture2D",              TokenType_Texture2D },
+	{ "texture2DArray",         TokenType_Texture2DArray },
+	{ "texture3D",              TokenType_Texture3D },
+	{ "textureCube",            TokenType_TextureCube },
+	{ "textureCubeArray",       TokenType_TextureCubeArray },
+	{ "target",                 TokenType_Target },
+	{ "semantic",               TokenType_Semantic },
+	{ "POSITION",               TokenType_POSITION },
+	{ "TEXCOORD",               TokenType_TEXCOORD },
+	{ "NORMAL",                 TokenType_NORMAL },
+	{ "DEPTH",                  TokenType_DEPTH },
+	{ "COLOR",                  TokenType_COLOR },
+	{ "BINORMAL",               TokenType_BINORMAL },
+	{ "TANGENT",                TokenType_TANGENT },
+	{ "format",                 TokenType_InputFormat },
+	{ "UNORM8",                 TokenType_UNORM8 },
+	{ "UNORM16",                TokenType_UNORM16 },
+	{ "UNORM32",                TokenType_UNORM32 },
+	{ "SNORM8",                 TokenType_SNORM8 },
+	{ "SNORM16",                TokenType_SNORM16 },
+	{ "SNORM32",                TokenType_SNORM32 },
+	{ "UINT8",                  TokenType_UINT8 },
+	{ "UINT16",                 TokenType_UINT16 },
+	{ "UINT32",                 TokenType_UINT32 },
+	{ "SINT8",                  TokenType_SINT8 },
+	{ "SINT16",                 TokenType_SINT16 },
+	{ "SINT32",                 TokenType_SINT32 },
+	{ "FLOAT16",                TokenType_FLOAT16 },
+	{ "FLOAT32",                TokenType_FLOAT32 },
 };
 static_assert( ARRAY_LENGTH( KeywordNames ) == TOKENTYPE_KEYWORD_COUNT, "Missing Keyword TokenType!" );
 
@@ -455,7 +498,7 @@ Token Scanner::next()
 			if( is_letter( c ) || c == '_' )
 			{
 				while( ( buffer[position] != '\0' ) &&
-				       ( is_digit( buffer[position] ) || is_letter( buffer[position] ) || buffer[position] == '_' ) )
+					   ( is_digit( buffer[position] ) || is_letter( buffer[position] ) || buffer[position] == '_' ) )
 				{
 					position++;
 				}
@@ -611,6 +654,15 @@ void Parser::register_swizzles()
 		name.data = SwizzleTypeNames[i];
 		name.length = strlen( name.data );
 		swizzleMap.add( name, i );
+	}
+}
+
+
+void Parser::register_svsemantics()
+{
+	for( u32 i = 0; i < SVSEMANTICTYPE_COUNT; i++ )
+	{
+		svSemanticMap.add( StringView { SVSemantics[i], strlen( SVSemantics[i] ) }, i );
 	}
 }
 
@@ -845,6 +897,9 @@ void Parser::init()
 	// Built-in Swizzles
 	register_swizzles();
 
+	// Built-in SVSemantics
+	register_svsemantics();
+
 	// Built-in Functions
 	for( u32 i = 0; i < INTRINSIC_COUNT; i++ )
 	{
@@ -879,7 +934,10 @@ bool Parser::parse( const char *string )
 		switch( token.type )
 		{
 			case TokenType_Struct:
-			case TokenType_CBuffer:
+			case TokenType_SharedStruct:
+			case TokenType_UniformBuffer:
+			case TokenType_ConstantBuffer:
+			case TokenType_MutableBuffer:
 			case TokenType_VertexInput:
 			case TokenType_VertexOutput:
 			case TokenType_FragmentInput:
@@ -917,8 +975,8 @@ bool Parser::parse( const char *string )
 
 	// Main
 	const bool hasMain = mainVertex   != USIZE_MAX ||
-	                     mainFragment != USIZE_MAX ||
-	                     mainCompute  != USIZE_MAX;
+						 mainFragment != USIZE_MAX ||
+						 mainCompute  != USIZE_MAX;
 
 	if( !hasMain )
 	{
@@ -965,8 +1023,12 @@ static bool vertex_input_type_allowed( const TypeID typeID )
 }
 
 
-static bool cbuffer_type_allowed( const TypeID typeID )
+static bool buffer_type_allowed( const TokenType typeToken, const TypeID typeID )
 {
+	// Shared Structs
+	if( typeToken == TokenType_SharedStruct ) { return true; }
+
+	// Primitives
 	switch( typeID )
 	{
 		case Primitive_Void:
@@ -1018,6 +1080,7 @@ Node *Parser::parse_structure()
 	// Classify
 	StructType structType = StructType_Struct;
 	bool expectSlot = false;
+	bool expectSize = false;
 	bool expectTags = false;
 	switch( token.type )
 	{
@@ -1027,9 +1090,31 @@ Node *Parser::parse_structure()
 			type.pipelineIntermediate = false;
 		break;
 
-		case TokenType_CBuffer:
-			structType = StructType_CBuffer;
+		case TokenType_SharedStruct:
+			structType = StructType_SharedStruct;
+			type.global = false;
+			type.pipelineIntermediate = false;
+		break;
+
+		case TokenType_UniformBuffer:
+			structType = StructType_UniformBuffer;
 			expectSlot = true;
+			type.global = true;
+			type.pipelineIntermediate = false;
+		break;
+
+		case TokenType_ConstantBuffer:
+			structType = StructType_ConstantBuffer;
+			expectSlot = true;
+			expectSize = true;
+			type.global = true;
+			type.pipelineIntermediate = false;
+		break;
+
+		case TokenType_MutableBuffer:
+			structType = StructType_MutableBuffer;
+			expectSlot = true;
+			expectSize = true;
 			type.global = true;
 			type.pipelineIntermediate = false;
 		break;
@@ -1085,7 +1170,7 @@ Node *Parser::parse_structure()
 	{
 		// '('
 		token = scanner.next();
-		ErrorIf( token.type != TokenType_LParen, "%s: expected '(' before slot id", structName );
+		ErrorIf( token.type != TokenType_LParen, "%s: expected '(' before slot", structName );
 
 		// Integer
 		token = scanner.next();
@@ -1098,9 +1183,34 @@ Node *Parser::parse_structure()
 			"%s: slot id '%d' is already bound!", structName, structure.slot );
 		bufferSlots[structure.slot] = true;
 
-		// ')'
+		// ')' or ','
 		token = scanner.next();
-		ErrorIf( token.type != TokenType_RParen, "%s: expected ')' after slot id", structName );
+		if( expectSize )
+		{
+			ErrorIf( token.type != TokenType_Comma, "%s: expected ',' before size", structName );
+		}
+		else
+		{
+			ErrorIf( token.type != TokenType_RParen, "%s: expected ')' after slot", structName );
+		}
+	}
+
+	// Size
+	if( expectSize )
+	{
+		// Integer
+		token = scanner.next();
+		ErrorIf( token.type != TokenType_Integer,
+			"%s: size must be a positive, non-zero integer", structName );
+		ErrorIf( token.integer > U32_MAX,
+			"%s: size exceeded maximum: %u", structName, U32_MAX );
+		ErrorIf( token.integer == 0,
+			"%s: size must be at least 1", structName );
+		structure.size = static_cast<int>( token.integer );
+
+		// ')' or ','
+		token = scanner.next();
+		ErrorIf( token.type != TokenType_RParen, "%s: expected ')' after size", structName );
 	}
 
 	// Name
@@ -1147,22 +1257,24 @@ Node *Parser::parse_structure()
 			Error( "%s: member variables cannot be declared with 'in', 'out', or 'inout'", structName );
 		}
 
-		if( structType == StructType_VertexInput )
+		if( structType == StructType_SharedStruct ||
+			structType == StructType_UniformBuffer ||
+			structType == StructType_ConstantBuffer ||
+			structType == StructType_MutableBuffer )
+		{
+			const bool allowedType = buffer_type_allowed( variableType.tokenType, variable.typeID );
+			ErrorIf( !allowedType, "Type not allowed in this structure! Must be a primitive or shared_struct" );
+		}
+		else if( structType == StructType_VertexInput )
 		{
 			const bool allowedType = vertex_input_type_allowed( variable.typeID );
 			ErrorIf( !allowedType, "Type not allowed in vertex_input! Must be a primitive, non-matrix type" );
 		}
 
-		if( structType == StructType_CBuffer )
-		{
-			const bool allowedType = cbuffer_type_allowed( variable.typeID );
-			ErrorIf( !allowedType, "Type not allowed in cbuffer! Must be a primitive type" );
-		}
-
 		// Parse Tags
 		if( expectTags )
 		{
-			// Semantic
+			// SemanticType
 			variable.semantic = SemanticType_TEXCOORD;
 			if( token.type == TokenType_Semantic )
 			{
@@ -1170,7 +1282,7 @@ Node *Parser::parse_structure()
 				ErrorIf( token.type != TokenType_LParen, "%s: expected '(' before semantic type", structName );
 
 				token = scanner.next();
-				ErrorIf( token.type < TokenType_POSITION || token.type > TokenType_COLOR,
+				ErrorIf( token.type < TokenType_POSITION || token.type > TokenType_TANGENT,
 					"%s: unknown semantic", structName );
 				variable.semantic = ( token.type - TokenType_POSITION ); // TODO: Wrapper for this?
 
@@ -1211,7 +1323,7 @@ Node *Parser::parse_structure()
 			{
 				// Restrictions
 				const bool validSemantic = ( variable.semantic == SemanticType_COLOR ||
-				                             variable.semantic == SemanticType_DEPTH );
+											 variable.semantic == SemanticType_DEPTH );
 				if( !validSemantic )
 				{
 					scanner.back();
@@ -1321,18 +1433,9 @@ Node *Parser::parse_texture()
 	}
 	const char *textureName = TextureTypeNames[textureType];
 
-	// Type
-	token = scanner.next();
-	ErrorIf( token.type != TokenType_LParen, "%s: expected '(' before type", textureName );
-	token = scanner.next();
-	ErrorIf( token.type != TokenType_Identifier, "%s: expected a texture type", textureName );
-	ErrorIf( !typeMap.contains( token.name ),
-		"%s: unknown type '%.*s'", textureName, token.name.length, token.name.data );
-	variable.typeID = typeMap.get( token.name );
-	token = scanner.next();
-	ErrorIf( token.type != TokenType_Comma, "%s: expected ',' before slot", textureName );
-
 	// Slot
+	token = scanner.next();
+	ErrorIf( token.type != TokenType_LParen, "%s: expected '(' before slot", textureName );
 	token = scanner.next();
 	ErrorIf( token.type != TokenType_Integer, "%s: slot must be a positive, constant integer", textureName );
 	texture.slot = static_cast<int>( token.integer );
@@ -1341,13 +1444,22 @@ Node *Parser::parse_texture()
 	ErrorIf( textureSlots[texture.slot],
 		"%s: slot '%d' is already bound!", textureName, texture.slot );
 	textureSlots[texture.slot] = true;
+
+	// Type
 	token = scanner.next();
-	ErrorIf( token.type != TokenType_RParen, "%s: expected ')' after slot", textureName );
+	ErrorIf( token.type != TokenType_Comma, "%s: expected ',' before type", textureName );
+	token = scanner.next();
+	ErrorIf( token.type != TokenType_Identifier, "%s: expected a texture type", textureName );
+	ErrorIf( !typeMap.contains( token.name ),
+		"%s: unknown type '%.*s'", textureName, token.name.length, token.name.data );
+	variable.typeID = typeMap.get( token.name );
+	token = scanner.next();
+	ErrorIf( token.type != TokenType_RParen, "%s: expected ')' after type", textureName );
 
 	// Name
 	token = scanner.next();
 	ErrorIf( token.type != TokenType_Identifier,
-		"%s: expected name after %s(slot) keyword", textureName, textureName );
+		"%s: expected name after %s(slot, type) keyword", textureName, textureName );
 	check_namespace_conflicts( token.name );
 	variable.name = token.name;
 	variable.slot = texture.slot;
@@ -1955,7 +2067,7 @@ Node *Parser::parse_statement_case()
 		scanner.next();
 	}
 	else if( token.type == TokenType_Case    || token.type == TokenType_Break ||
-	         token.type == TokenType_Default || token.type == TokenType_Return )
+			 token.type == TokenType_Default || token.type == TokenType_Return )
 	{
 		block = nullptr;
 	}
@@ -1992,7 +2104,7 @@ Node *Parser::parse_statement_default()
 		scanner.next();
 	}
 	else if( token.type == TokenType_Case    || token.type == TokenType_Break ||
-	         token.type == TokenType_Default || token.type == TokenType_Return )
+			 token.type == TokenType_Default || token.type == TokenType_Return )
 	{
 		block = nullptr;
 	}
@@ -2080,8 +2192,8 @@ Node *Parser::parse_variable_declaration()
 
 	// Is the variable a constant structure type?
 	if( token.type == TokenType_VertexInput ||
-	    token.type == TokenType_FragmentInput ||
-	    token.type == TokenType_ComputeInput )
+		token.type == TokenType_FragmentInput ||
+		token.type == TokenType_ComputeInput )
 	{
 		ErrorIf( variable.out, "const variable cannot be tagged 'out' or 'inout'" );
 		variable.constant = true;
@@ -2169,25 +2281,25 @@ Node *Parser::parse_function_declaration()
 
 	// Check for vertex_main, fragment_main, or compute_main()
 	if( token.name.length == strlen( "vertex_main" ) &&
-	    strncmp( "vertex_main", token.name.data, token.name.length ) == 0 )
+		strncmp( "vertex_main", token.name.data, token.name.length ) == 0 )
 	{
 		scanner.back();
 		return parse_function_declaration_main( FunctionType_MainVertex, "vertex_main",
-		                                        TokenType_VertexInput, TokenType_VertexOutput );
+												TokenType_VertexInput, TokenType_VertexOutput );
 	}
 	else if( token.name.length == strlen( "fragment_main" ) &&
-	         strncmp( "fragment_main", token.name.data, token.name.length ) == 0 )
+			 strncmp( "fragment_main", token.name.data, token.name.length ) == 0 )
 	{
 		scanner.back();
 		return parse_function_declaration_main( FunctionType_MainFragment, "fragment_main",
-		                                        TokenType_FragmentInput, TokenType_FragmentOutput );
+												TokenType_FragmentInput, TokenType_FragmentOutput );
 	}
 	else if( token.name.length == strlen( "compute_main" ) &&
-	          strncmp( "compute_main", token.name.data, token.name.length ) == 0 )
+			  strncmp( "compute_main", token.name.data, token.name.length ) == 0 )
 	{
 		scanner.back();
 		return parse_function_declaration_main( FunctionType_MainCompute, "compute_main",
-		                                        TokenType_ComputeInput, TokenType_ComputeOutput );
+												TokenType_ComputeInput, TokenType_ComputeOutput );
 	}
 
 	// Function Parameters
@@ -2206,11 +2318,14 @@ Node *Parser::parse_function_declaration()
 		// In/Out Keywords
 		Type &paramType = types[variables[nodeDecl->variableID].typeID];
 		if( !( paramType.tokenType == TokenType_Struct ||
-		       paramType.tokenType == TokenType_CBuffer ||
-		       paramType.builtin ) )
+			   paramType.tokenType == TokenType_SharedStruct ||
+			   paramType.tokenType == TokenType_UniformBuffer ||
+			   paramType.tokenType == TokenType_ConstantBuffer ||
+			   paramType.tokenType == TokenType_MutableBuffer ||
+			   paramType.builtin ) )
 		{
 			scanner.back();
-			Error( "function parameter types can only be primitives, 'struct', or 'cbuffer''" );
+			Error( "function parameter types can only be primitives, struct, or *_buffer" );
 		}
 
 		// Comma or ')'
@@ -2230,7 +2345,7 @@ Node *Parser::parse_function_declaration()
 
 
 Node *Parser::parse_function_declaration_main( FunctionType functionType, const char *functionName,
-                                               TokenType inToken, TokenType outToken )
+											   TokenType inToken, TokenType outToken )
 {
 	Function function;
 	Token token = scanner.current();
@@ -2297,17 +2412,16 @@ Node *Parser::parse_function_declaration_main( FunctionType functionType, const 
 			}
 			hasOut = true;
 		} else
-		// CBuffer Parameters Only
+		// Buffer Parameters Only
 		{
-			if( parameterID > 1 && paramType.tokenType != TokenType_CBuffer )
+			if( parameterID > 1 && !( paramType.tokenType == TokenType_UniformBuffer ||
+				paramType.tokenType == TokenType_ConstantBuffer || paramType.tokenType == TokenType_MutableBuffer ) )
 			{
 				scanner.back();
 				scanner.back();
-				Error( "%s() can only take additional parameters of type 'cbuffer'", functionName );
+				Error( "%s() can only take additional parameters of type *_buffer", functionName );
 			}
 		}
-
-		// cbuffer params only
 
 		// Comma or ')'
 		if( token.type == TokenType_RParen ) { break; }
@@ -2739,15 +2853,17 @@ Node *Parser::parse_dot_operator()
 {
 	Node *node = parse_subscript_operator();
 
-	switch( scanner.current().type )
+	for (;;)
 	{
-		case TokenType_Dot:
+		if( scanner.current().type == TokenType_Dot )
 		{
-			// Find LHS type (if possible)
+			// Consume '.'
 			Token token = scanner.next();
-			ErrorIf( token.type != TokenType_Identifier, "RHS for '.' operator must be an identifier" );
-			TypeID typeID = node_type( node );
+			ErrorIf( token.type != TokenType_Identifier,
+				"RHS for '.' operator must be an identifier");
 
+			// Find LHS type (if possible)
+			TypeID typeID = node_type( node );
 			if( typeID != USIZE_MAX )
 			{
 				Type &type = types[typeID];
@@ -2755,8 +2871,10 @@ Node *Parser::parse_dot_operator()
 				// Custom Type: check if RHS token matches a LHS structure member variable
 				if( typeID >= PRIMITIVE_COUNT )
 				{
+					// Struct/UDT member
 					VariableID first = type.memberFirst;
 					VariableID last = first + type.memberCount;
+					bool found = false;
 
 					for( VariableID i = first; i < last; i++ )
 					{
@@ -2767,39 +2885,49 @@ Node *Parser::parse_dot_operator()
 							strncmp( variable.name.data, token.name.data, token.name.length ) == 0 )
 						{
 							scope.add( i );
-							Node *expr = parse_expression();
+							Node *expr = parse_dot_operator();
 							scope.remove( scope.size() - 1 );
-							return ast.add( NodeExpressionBinary( ExpressionBinaryType_Dot, node, expr ) );
+							node = ast.add( NodeExpressionBinary( ExpressionBinaryType_Dot, node, expr ) );
+							found = true;
+							break;
 						}
 					}
 
 					// If reached, this is an error
-					Error( "'%.*s' is not a member of LHS type '%.*s'", token.name.length, token.name.data,
-					       type.name.length, type.name.data );
+					if( !found )
+					{
+						Error( "'%.*s' is not a member of LHS type '%.*s'",
+							token.name.length, token.name.data, type.name.length, type.name.data);
+					}
 				}
 				else
-				// Built-in Type: Check if RHS token matches a swizzle
 				{
+					// Built-in type: check swizzle
 					if( swizzleMap.contains( token.name ) )
 					{
 						swizzling = true;
 						Node *expr = parse_fundamental();
 						swizzling = false;
-						return ast.add( NodeExpressionBinary( ExpressionBinaryType_Dot, node, expr ) );
+						node = ast.add( NodeExpressionBinary( ExpressionBinaryType_Dot, node, expr ) );
 					}
-
-					// If reached, this is an error
-					Error( "invalid swizzle on built-in type '%.*s'", type.name.length, type.name.data );
+					else
+					{
+						Error( "invalid swizzle on built-in type '%.*s'", type.name.length, type.name.data );
+					}
 				}
 			}
+			else
+			{
+				scanner.back();
+				Error( "invalid LHS for '.' operator" );
+			}
 
-			// Unexpected identifier
-			scanner.back();
-			Error( "invalid LHS for '.' operator" );
+			continue;
 		}
+
+		break; // No more dots
 	}
 
-	// No access operators
 	return node;
 }
 
@@ -2842,6 +2970,11 @@ Node *Parser::parse_fundamental()
 			{
 				scanner.next();
 				return ast.add( NodeSwizzle( swizzleMap.get( token.name ) ) );
+			}
+			else if( svSemanticMap.contains( token.name ) )
+			{
+				scanner.next();
+				return ast.add( NodeSVSemantic( svSemanticMap.get( token.name ) ) );
 			}
 			// Variable
 			else if( variableID != USIZE_MAX )

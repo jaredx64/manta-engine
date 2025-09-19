@@ -123,6 +123,8 @@
 
 	#define CS_OWNDC 0x20
 
+	#define CW_USEDEFAULT ((int)0x80000000)
+
 	#define MK_LBUTTON 0x01
 	#define MK_RBUTTON 0x02
 	#define MK_MBUTTON 0x10
@@ -575,6 +577,9 @@
 	extern "C" DLL_IMPORT HANDLE STD_CALL SetClipboardData(UINT, HANDLE);
 	extern "C" DLL_IMPORT BOOL STD_CALL SystemParametersInfoA(UINT, UINT, PVOID, UINT);
 	extern "C" DLL_IMPORT BOOL STD_CALL SystemParametersInfoW(UINT, UINT, PVOID, UINT);
+	extern "C" DLL_IMPORT int STD_CALL ReleaseDC(HWND, HDC);
+	extern "C" DLL_IMPORT BOOL STD_CALL DestroyWindow(HWND);
+	extern "C" DLL_IMPORT BOOL STD_CALL UnregisterClassW(LPCWSTR, HINSTANCE);
 
 	// WinBase.h
 	extern "C" DLL_IMPORT LPVOID STD_CALL GlobalLock(HGLOBAL);

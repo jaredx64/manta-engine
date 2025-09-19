@@ -36,8 +36,8 @@ PRIVATE enum_type( WindowState, u8 )
 	WindowState_Resize_Bottom,
 };
 
-PRIVATE intv2 anchorCorner;
-PRIVATE intv2 anchorMouse;
+PRIVATE int_v2 anchorCorner;
+PRIVATE int_v2 anchorMouse;
 PRIVATE WindowState state;
 
 PROTECTED int widthMin = 128;
@@ -80,11 +80,11 @@ PROTECTED void update( const Delta delta )
 	const bool isHovering = isInteractable && is_hovering();
 
 	// Coordinates
-	const intv2 b1 = intv2( x - border, y - border ).multiply( context->matrix_get() );
-	const intv2 b2 = intv2( x + width + border, y + height + border ).multiply( context->matrix_get() );
-	const intv2 c1 = intv2( x, y ).multiply( context->matrix_get() );
-	const intv2 c2 = intv2( x + width, y + height ).multiply( context->matrix_get() );
-	const intv2 m = { mouse_x, mouse_y };
+	const int_v2 b1 = int_v2( x - border, y - border ).multiply( context->matrix_get() );
+	const int_v2 b2 = int_v2( x + width + border, y + height + border ).multiply( context->matrix_get() );
+	const int_v2 c1 = int_v2( x, y ).multiply( context->matrix_get() );
+	const int_v2 c2 = int_v2( x + width, y + height ).multiply( context->matrix_get() );
+	const int_v2 m = { mouse_x, mouse_y };
 
 	// Apply State
 	if( isHovering )
@@ -124,54 +124,54 @@ PROTECTED void update( const Delta delta )
 			if( state != WindowState_Resize_None )
 			{
 				// Mouse Anchor
-				anchorMouse = intv2 { m.x, m.y };
+				anchorMouse = int_v2 { m.x, m.y };
 
 				// Corner Anchor
 				switch( state )
 				{
 					case WindowState_Move:
 						anchorCorner = { x, y };
-						anchorMouse = anchorMouse - intv2 { x, y };
+						anchorMouse = anchorMouse - int_v2 { x, y };
 					break;
 
 					case WindowState_Resize_TopLeft:
 						anchorCorner = { x + width, y + height };
-						anchorMouse = anchorMouse - intv2 { x, y };
+						anchorMouse = anchorMouse - int_v2 { x, y };
 					break;
 
 					case WindowState_Resize_TopRight:
 						anchorCorner = { x, y + height };
-						anchorMouse = anchorMouse - intv2 { x + width, y };
+						anchorMouse = anchorMouse - int_v2 { x + width, y };
 					break;
 
 					case WindowState_Resize_BottomLeft:
 						anchorCorner = { x + width, y };
-						anchorMouse = anchorMouse - intv2 { x, y + height };
+						anchorMouse = anchorMouse - int_v2 { x, y + height };
 					break;
 
 					case WindowState_Resize_BottomRight:
 						anchorCorner = { x, y };
-						anchorMouse = anchorMouse - intv2 { x + width, y + height };
+						anchorMouse = anchorMouse - int_v2 { x + width, y + height };
 					break;
 
 					case WindowState_Resize_Left:
 						anchorCorner = { x + width, y };
-						anchorMouse = anchorMouse - intv2 { x, y };
+						anchorMouse = anchorMouse - int_v2 { x, y };
 					break;
 
 					case WindowState_Resize_Right:
 						anchorCorner = { x, y };
-						anchorMouse = anchorMouse - intv2 { x + width, y };
+						anchorMouse = anchorMouse - int_v2 { x + width, y };
 					break;
 
 					case WindowState_Resize_Top:
 						anchorCorner = { x, y + height };
-						anchorMouse = anchorMouse - intv2 { x, y };
+						anchorMouse = anchorMouse - int_v2 { x, y };
 					break;
 
 					case WindowState_Resize_Bottom:
 						anchorCorner = { x, y };
-						anchorMouse = anchorMouse - intv2 { x, y + height };
+						anchorMouse = anchorMouse - int_v2 { x, y + height };
 					break;
 				}
 			}
@@ -187,7 +187,7 @@ PROTECTED void update( const Delta delta )
 	// Process State
 	if( state != WindowState_Resize_None )
 	{
-		const intv2 dimensions = m - anchorCorner - anchorMouse;
+		const int_v2 dimensions = m - anchorCorner - anchorMouse;
 
 		switch( state )
 		{
@@ -253,47 +253,48 @@ PROTECTED void update( const Delta delta )
 }
 
 
-PROTECTED void render( const Delta delta )
+PROTECTED void render( const Delta delta, const Alpha alpha )
 {
 	// Interaction State
 	const bool isInteractable = is_interactable();
 	const bool isHovering = isInteractable && is_hovering();
 
 	// Coordinates
-	const intv2 b1 = intv2( x - border, y - border ).multiply( context->matrix_get() );
-	const intv2 b2 = intv2( x + width + border, y + height + border ).multiply( context->matrix_get() );
-	const intv2 c1 = intv2( x, y ).multiply( context->matrix_get() );
-	const intv2 c2 = intv2( x + width, y + height ).multiply( context->matrix_get() );
+	const int_v2 b1 = int_v2( x - border, y - border ).multiply( context->matrix_get() );
+	const int_v2 b2 = int_v2( x + width + border, y + height + border ).multiply( context->matrix_get() );
+	const int_v2 c1 = int_v2( x, y ).multiply( context->matrix_get() );
+	const int_v2 c2 = int_v2( x + width, y + height ).multiply( context->matrix_get() );
 
 	// Contents
-	draw_rectangle( c1.x, c1.y, c2.x, c2.y, color );
-	draw_rectangle( c1.x - 1, c1.y - 1, c2.x + 1, c2.y + 1, ( isHovering || state ) ? c_white : c_black, true );
+	draw_rectangle( c1.x, c1.y, c2.x, c2.y, color * alpha );
+	draw_rectangle( c1.x - 1, c1.y - 1, c2.x + 1, c2.y + 1,
+		( ( isHovering || state ) ? c_white : c_black ) * alpha, true );
 
 	// Scissor
 	context->scissor_set_nested( c1.x, c1.y, c2.x, c2.y );
 
 	// Caption
-	if( caption[0] != '\0' ) { draw_text( fnt_iosevka, 14, c1.x + 4, c1.y + 6, c_white, caption ); }
+	if( caption[0] != '\0' ) { draw_text( fnt_iosevka, 14, c1.x + 4, c1.y + 6, c_white * alpha, caption ); }
 }
 
 
 // PROTECTED void apply_matrix() { INHERIT::apply_matrix(); }
 
 
-PROTECTED bool contains_point( const floatv2 point )
+PROTECTED bool contains_point( const float_v2 point )
 {
 	if( resizable && is_interactable() )
 	{
 		// Include Resize Border
-		const floatv2 b1 = floatv2( x - border, y - border ).multiply( context->matrix_get() );
-		const floatv2 b2 = floatv2( x + width + border, y + height + border ).multiply( context->matrix_get() );
+		const float_v2 b1 = float_v2( x - border, y - border ).multiply( context->matrix_get() );
+		const float_v2 b2 = float_v2( x + width + border, y + height + border ).multiply( context->matrix_get() );
 		return point_in_rect( point.x, point.y, b1.x, b1.y, b2.x, b2.y );
 	}
 	else
 	{
 		// Only x/y/width/height
-		const floatv2 b1 = floatv2( x, y ).multiply( context->matrix_get() );
-		const floatv2 b2 = floatv2( x + width, y + height ).multiply( context->matrix_get() );
+		const float_v2 b1 = float_v2( x, y ).multiply( context->matrix_get() );
+		const float_v2 b2 = float_v2( x + width, y + height ).multiply( context->matrix_get() );
 		return point_in_rect( point.x, point.y, b1.x, b1.y, b2.x, b2.y );
 	}
 }

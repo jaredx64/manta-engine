@@ -57,11 +57,11 @@ PROTECTED void update( const Delta delta )
 }
 
 
-PROTECTED void render( const Delta delta )
+PROTECTED void render( const Delta delta, const Alpha alpha )
 {
 	// Positions
-	const intv2 b1 = intv2( x, y ).multiply( context->matrix_get() );
-	const intv2 b2 = intv2( x + width, y + height ).multiply( context->matrix_get() );
+	const int_v2 b1 = int_v2( x, y ).multiply( context->matrix_get() );
+	const int_v2 b2 = int_v2( x + width, y + height ).multiply( context->matrix_get() );
 
 	// Colors
 	const Color colorMain = color_mix( color_mix( color, c_white, tweenHover * 0.25f ), c_lime, tweenClick );
@@ -72,38 +72,38 @@ PROTECTED void render( const Delta delta )
 	const int clickOffset = tweenClick * clickDepth;
 
 	// Side
-	draw_rectangle( b1.x, b1.y + clickOffset, b2.x, b2.y, colorSide );
-	draw_rectangle( b1.x, b1.y + clickOffset, b2.x, b2.y, c_black, true );
+	draw_rectangle( b1.x, b1.y + clickOffset, b2.x, b2.y, colorSide * alpha );
+	draw_rectangle( b1.x, b1.y + clickOffset, b2.x, b2.y, c_black * alpha, true );
 
 	// Main
-	draw_rectangle( b1.x, b1.y + clickOffset, b2.x, b2.y - clickDepth + clickOffset, colorMain );
-	draw_rectangle( b1.x, b1.y + clickOffset, b2.x, b2.y - clickDepth + clickOffset, c_black, true );
+	draw_rectangle( b1.x, b1.y + clickOffset, b2.x, b2.y - clickDepth + clickOffset, colorMain * alpha );
+	draw_rectangle( b1.x, b1.y + clickOffset, b2.x, b2.y - clickDepth + clickOffset, c_black * alpha, true );
 
 	// State
 	const int border = 5;
 	draw_rectangle( b1.x + border, b1.y + clickOffset + border,
 		b2.x - border, b2.y - clickDepth + clickOffset - border,
-		enabled ? c_white : c_black );
+		( enabled ? c_white : c_black ) * alpha );
 	draw_rectangle( b1.x + border, b1.y + clickOffset + border,
-		b2.x - border, b2.y - clickDepth + clickOffset - border, c_black, true );
+		b2.x - border, b2.y - clickDepth + clickOffset - border, c_black * alpha, true );
 
 	if( !enabled )
 	{
 		draw_rectangle( b1.x + border, b1.y + clickOffset + border,
-			b2.x - border, b1.y + border + clickDepth + 1, colorSide );
+			b2.x - border, b1.y + border + clickDepth + 1, colorSide * alpha );
 		draw_rectangle( b1.x + border, b1.y + clickOffset + border,
-			b2.x - border, b1.y + border + clickDepth + 1, c_black, true );
+			b2.x - border, b1.y + border + clickDepth + 1, c_black * alpha, true );
 	}
 
 	// Locked Overlay
-	if( locked ) { draw_rectangle( b1.x, b1.y + clickOffset, b2.x, b2.y, Color { 0, 0, 0, 150 } ); }
+	if( locked ) { draw_rectangle( b1.x, b1.y + clickOffset, b2.x, b2.y, Color { 0, 0, 0, 150 } * alpha ); }
 }
 
 
 // PROTECTED void apply_matrix() { INHERIT::apply_matrix(); }
 
 
-// PROTECTED bool contains_point( const floatv2 point ) { }
+// PROTECTED bool contains_point( const float_v2 point ) { }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // PUBLIC API

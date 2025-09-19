@@ -46,21 +46,39 @@
 
 		using _locale_t = void *;
 
-		#define _CRT_INTERNAL_LOCAL_PRINTF_OPTIONS                    (*__local_stdio_printf_options())
-		#define _CRT_INTERNAL_PRINTF_LEGACY_VSPRINTF_NULL_TERMINATION (1ULL << 0)
-		#define stdin ( __acrt_iob_func( 0 ) )
-		#define stdout ( __acrt_iob_func( 1 ) )
-		#define stderr ( __acrt_iob_func( 2 ) )
-
+		#define _CRT_INTERNAL_LOCAL_PRINTF_OPTIONS (*__local_stdio_printf_options())
 		inline unsigned long long *__local_stdio_printf_options()
 		{
 			static unsigned long long _OptionsStorage;
 			return &_OptionsStorage;
 		}
 
-		extern "C" int   __stdio_common_vsprintf(unsigned long long, char *, size_t, char const *, _locale_t, va_list);
-		extern "C" int   __stdio_common_vfprintf(unsigned long long, FILE *,         const char *, _locale_t, va_list);
+		#define _CRT_INTERNAL_LOCAL_SCANF_OPTIONS (*__local_stdio_scanf_options())
+		inline unsigned long long *__local_stdio_scanf_options()
+		{
+			static unsigned long long _OptionsStorage;
+			return &_OptionsStorage;
+		}
+
+		#define _CRT_INTERNAL_PRINTF_LEGACY_VSPRINTF_NULL_TERMINATION (1ULL << 0)
+		#define stdin ( __acrt_iob_func( 0 ) )
+		#define stdout ( __acrt_iob_func( 1 ) )
+		#define stderr ( __acrt_iob_func( 2 ) )
+
+		extern "C" int __stdio_common_vsscanf(unsigned long long, char const *, size_t, char const *, _locale_t, va_list);
+		extern "C" int __stdio_common_vsprintf(unsigned long long, char *, size_t, char const *, _locale_t, va_list);
+		extern "C" int __stdio_common_vfprintf(unsigned long long, FILE *, const char *, _locale_t, va_list);
 		extern "C" FILE *__acrt_iob_func(unsigned);
+
+		inline int sscanf(char const *const buffer, char const *const format, ...)
+		{
+			int result;
+			va_list args;
+			va_start(args, format);
+			result = __stdio_common_vsscanf(_CRT_INTERNAL_LOCAL_SCANF_OPTIONS, buffer, (size_t)-1, format, nullptr, args);
+			va_end(args);
+			return result;
+		}
 
 		inline int printf(const char *format, ...)
 		{
@@ -141,6 +159,7 @@
 			return result < 0 ? -1 : result;
 		}
 	#else
+		extern "C" int sscanf(const char *, const char *, ...);
 		extern "C" int printf(const char *, ... );
 		extern "C" int sprintf(char *, const char *, ... );
 		extern "C" int snprintf(char *, size_t, const char *, ... );

@@ -115,7 +115,7 @@ build()
 
 strap()
 {
-	"./projects/$project/output/boot/boot" "-verbose=0" $args
+	"./projects/$project/output/boot/boot" "-package=1 -verbose=0" $args
 }
 
 # Ensure the working directory matches this script's location

@@ -25,7 +25,7 @@ BUCKET_SIZE( 64 )
 PROTECTED float valueTo = 0.0f;
 PROTECTED float value = 0.0f;
 
-PROTECTED intv2 anchorMouse;
+PROTECTED int_v2 anchorMouse;
 PROTECTED float tweenSlider = 0.0f;
 PROTECTED bool sliding = false;
 
@@ -68,12 +68,12 @@ PROTECTED void update( const Delta delta )
 	tween( tweenClick, 0.0f, 0.1f, delta, 0.01f );
 
 	// Positions
-	const intv2 sliderDim = slider_dimensions();
-	const intv2 sliderPos = slider_position( sliderDim );
-	const floatv2 b1 = floatv2( x, y ).multiply( context->matrix_get() );
-	const floatv2 s1 = floatv2( x + sliderPos.x,
+	const int_v2 sliderDim = slider_dimensions();
+	const int_v2 sliderPos = slider_position( sliderDim );
+	const float_v2 b1 = float_v2( x, y ).multiply( context->matrix_get() );
+	const float_v2 s1 = float_v2( x + sliderPos.x,
 	                            y + sliderPos.y ).multiply( context->matrix_get() );
-	const floatv2 s2 = floatv2( x + sliderPos.x + sliderDim.x,
+	const float_v2 s2 = float_v2( x + sliderPos.x + sliderDim.x,
 								y + sliderPos.y + sliderDim.y ).multiply( context->matrix_get() );
 
 	// Mouse Interaction
@@ -95,7 +95,7 @@ PROTECTED void update( const Delta delta )
 		{
 			sliding = true;
 			tweenClick = 1.0f;
-			if( isHoveringSlider ) { anchorMouse = intv2 { mouse_x - ( s1.x + s2.x ) / 2,
+			if( isHoveringSlider ) { anchorMouse = int_v2 { mouse_x - ( s1.x + s2.x ) / 2,
 			                                               mouse_y - ( s1.y + s2.y ) / 2 }; }
 		}
 	}
@@ -110,7 +110,7 @@ PROTECTED void update( const Delta delta )
 	if( Mouse::check_released( mb_left ) || !isInteractable )
 	{
 		sliding = false;
-		anchorMouse = intv2 { 0, 0 };
+		anchorMouse = int_v2 { 0, 0 };
 	}
 	else if( isInteractable && sliding && Mouse::check( mb_left ) )
 	{
@@ -134,19 +134,19 @@ PROTECTED void update( const Delta delta )
 }
 
 
-PROTECTED void render( const Delta delta )
+PROTECTED void render( const Delta delta, const Alpha alpha )
 {
 	// Background Positions
-	const intv2 b1 = intv2( x, y ).multiply( context->matrix_get() );
-	const intv2 b2 = intv2( x + width, y + height ).multiply( context->matrix_get() );
+	const int_v2 b1 = int_v2( x, y ).multiply( context->matrix_get() );
+	const int_v2 b2 = int_v2( x + width, y + height ).multiply( context->matrix_get() );
 
 	// Slider Positions
-	const intv2 sliderDimensions = slider_dimensions();
-	const intv2 sliderPosition = slider_position( sliderDimensions );
+	const int_v2 sliderDimensions = slider_dimensions();
+	const int_v2 sliderPosition = slider_position( sliderDimensions );
 
-	const intv2 s1 = intv2( x + sliderPosition.x,
+	const int_v2 s1 = int_v2( x + sliderPosition.x,
 	                        y + sliderPosition.y ).multiply( context->matrix_get() );
-	const intv2 s2 = intv2( x + sliderPosition.x + sliderDimensions.x,
+	const int_v2 s2 = int_v2( x + sliderPosition.x + sliderDimensions.x,
 	                        y + sliderPosition.y + sliderDimensions.y ).multiply( context->matrix_get() );
 
 	// Colors
@@ -154,8 +154,8 @@ PROTECTED void render( const Delta delta )
 	const Color colorBackground = color_mix( color_mix( color, c_white, tweenHover * 0.25f ), c_black, 0.5f );
 
 	// Draw Background
-	draw_rectangle( b1.x, b1.y, b2.x, b2.y, color_mix( colorBackground, c_black, locked ? 0.25 : 0.0f ) );
-	draw_rectangle( b1.x, b1.y, b2.x, b2.y, c_black, true );
+	draw_rectangle( b1.x, b1.y, b2.x, b2.y, color_mix( colorBackground, c_black, locked ? 0.25 : 0.0f ) * alpha );
+	draw_rectangle( b1.x, b1.y, b2.x, b2.y, c_black * alpha, true );
 
 	// Draw Steps (TODO: Remove?)
 	const int start = vertical ? sliderDimensions.y / 2 : sliderDimensions.x / 2;
@@ -167,27 +167,27 @@ PROTECTED void render( const Delta delta )
 
 		if( vertical )
 		{
-			draw_line( b1.x, position, b2.x, position, Color { 0, 0, 0, 80 }, 4 );
+			draw_line( b1.x, position, b2.x, position, Color { 0, 0, 0, 80 } * alpha, 4 );
 		}
 		else
 		{
-			draw_line( position, b1.y, position, b2.y, Color { 0, 0, 0, 80 }, 4 );
+			draw_line( position, b1.y, position, b2.y, Color { 0, 0, 0, 80 } * alpha, 4 );
 		}
 	}
 
 	// Draw Slider
-	draw_rectangle( s1.x, s1.y, s2.x, s2.y, color_mix( colorMain, c_black, locked ? 0.25 : 0.0f ) );
-	draw_rectangle( s1.x, s1.y, s2.x, s2.y, c_black, true );
+	draw_rectangle( s1.x, s1.y, s2.x, s2.y, color_mix( colorMain, c_black, locked ? 0.25 : 0.0f ) * alpha );
+	draw_rectangle( s1.x, s1.y, s2.x, s2.y, c_black * alpha, true );
 
 	// Locked Overlay
-	if( locked ) { draw_rectangle( b1.x, b1.y, b2.x, b2.y, Color { 0, 0, 0, 150 } ); }
+	if( locked ) { draw_rectangle( b1.x, b1.y, b2.x, b2.y, Color { 0, 0, 0, 150 } * alpha ); }
 }
 
 
 // PROTECTED void apply_matrix() { INHERIT::apply_matrix(); }
 
 
-// PROTECTED bool contains_point( const floatv2 point ) { }
+// PROTECTED bool contains_point( const float_v2 point ) { }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // PUBLIC API
@@ -250,17 +250,17 @@ PUBLIC float get_value_step_immediate()
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // PRIVATE HELPERS
 
-PRIVATE intv2 slider_dimensions()
+PRIVATE int_v2 slider_dimensions()
 {
 	const int w = vertical ? width : size;
 	const int h = vertical ? size : height;
-	return intv2 { clamp( w, size, width ), clamp( h, size, height ) };
+	return int_v2 { clamp( w, size, width ), clamp( h, size, height ) };
 }
 
 
-PRIVATE intv2 slider_position( const intv2 &dimensions )
+PRIVATE int_v2 slider_position( const int_v2 &dimensions )
 {
-	return intv2 { vertical ? 0 : ( width - dimensions.x ) * value,
+	return int_v2 { vertical ? 0 : ( width - dimensions.x ) * value,
 	               vertical ? ( height - dimensions.y ) * value : 0 };
 }
 

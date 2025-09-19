@@ -118,6 +118,12 @@ void Optimizer::optimize_node( Node *node )
 		}
 		break;
 
+		case NodeType_SVSemantic:
+		{
+			// Do nothing
+		}
+		break;
+
 		case NodeType_Group:
 		{
 			optimize_group( reinterpret_cast<NodeGroup *>( node ) );

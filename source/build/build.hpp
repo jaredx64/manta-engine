@@ -8,7 +8,6 @@
 #include <vendor/stdarg.hpp>
 
 #include <build/assets/textures.hpp>
-#include <build/assets/sounds.hpp>
 #include <build/assets/fonts.hpp>
 #include <build/assets/sprites.hpp>
 

@@ -131,6 +131,9 @@ public:
 	HashMap<StringView, SwizzleID> swizzleMap;
 	void register_swizzles();
 
+	HashMap<StringView, SVSemanticType> svSemanticMap;
+	void register_svsemantics();
+
 	TypeID node_type( Node *node );
 	bool node_is_constexpr( Node *node );
 

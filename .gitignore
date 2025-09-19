@@ -4,6 +4,7 @@
 node_modules/
 
 # Manta Engine
+projects/
 boot-vcvars64.txt
 .cache
 

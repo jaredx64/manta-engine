@@ -5,9 +5,7 @@
 
 #include <manta/audio.tuning.hpp>
 
-#if COMPILE_DEBUG
 #include <manta/vector.hpp>
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -17,19 +15,20 @@
 	#define AUDIO_ENABLED ( false )
 #endif
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#define AUDIO_STREAM_BUFFERS ( 2 )
 
-struct DiskSound;
-struct DiskSong;
+#define AUDIO_STREAM_BLOCK ( 8192 )
+#define AUDIO_STREAM_BLOCK_EXPN ( 13 )
+static_assert( ( 1 << AUDIO_STREAM_BLOCK_EXPN ) == AUDIO_STREAM_BLOCK,
+	"Mismatched AUDIO_STREAM_BLOCK_EXPN!" );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 namespace SysAudio
 {
-	extern struct Voice voices[AUDIO_VOICE_COUNT];
-	extern struct Bus buses[AUDIO_BUS_COUNT];
-
-	extern i16 *g_AUDIO_SAMPLES; // TODO: refactor
+	extern class Voice voices[AUDIO_VOICE_COUNT];
+	extern class Stream streams[AUDIO_STREAM_COUNT];
+	extern class Bus buses[AUDIO_BUS_COUNT];
 
 	extern bool init();
 	extern bool free();
@@ -37,12 +36,12 @@ namespace SysAudio
 	extern bool free_backend();
 	extern void audio_mixer( i16 *output, u32 frames );
 
-#if COMPILE_DEBUG
-	extern intv2 draw( const Delta delta, const float x, const float y );
-	extern bool draw_bus( const Delta delta, const int voice, float &x, float &y );
-	extern bool draw_voice( const Delta delta, const int voice, float &x, float &y );
-	extern bool draw_effect( const Delta delta, struct Effect &effect, float &x, float &y );
-#endif
+	extern int_v2 draw_debug( const Delta delta, const float x, const float y );
+	extern bool draw_bus( const Delta delta, const int id, float &x, float &y );
+	extern bool draw_voice( const Delta delta, const int id, float &x, float &y );
+	extern bool draw_stream( const Delta delta, const int id, float &x, float &y );
+	extern bool draw_effect( const Delta delta, class Effect &effect, const int type,
+		float &x, float &y );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -59,6 +58,17 @@ namespace SysAudio
 		EFFECTPARAM_CORE_COUNT,
 	};
 	static_assert( EFFECTPARAM_CORE_COUNT <= EFFECTPARAM_COUNT_MAX );
+
+	// Spatial
+	enum_type( EffectParam, int )
+	{
+		EffectParam_Spatial_X,
+		EffectParam_Spatial_Y,
+		EffectParam_Spatial_Z,
+		EffectParam_Spatial_Attenuation,
+		EFFECTPARAM_SPATIAL_COUNT,
+	};
+	static_assert( EFFECTPARAM_SPATIAL_COUNT <= EFFECTPARAM_COUNT_MAX );
 
 	// Lowpass
 	enum_type( EffectParam, int )
@@ -84,6 +94,7 @@ namespace SysAudio
 	enum_type( EffectType, int )
 	{
 		EffectType_Core,
+		EffectType_Spatial,
 		EffectType_Lowpass,
 		EffectType_Reverb,
 		EFFECTTYPE_COUNT,
@@ -94,10 +105,25 @@ namespace SysAudio
 
 namespace SysAudio
 {
-	struct EffectParameter
+	class Effect
 	{
-		float valueFrom, valueTo;
-		float sampleCurrent, sampleToInv;
+	public:
+		float get_parameter( const EffectParam param, const bool incrementTime = false );
+		void set_parameter_default( const EffectParam param, const float value );
+		void set_parameter( const EffectParam param, const float value );
+		void set_parameter( const EffectParam param, const float value, const usize timeMS );
+		void set_parameter( const EffectParam param, const float valueFrom, const float valueTo, const usize timeMS );
+
+	public:
+		struct Parameter
+		{
+			float valueFrom, valueTo;
+			float sampleCurrent, sampleToInv;
+		};
+
+		bool active;
+		bool bypass;
+		Parameter parameters[EFFECTPARAM_COUNT_MAX];
 	};
 
 
@@ -107,12 +133,21 @@ namespace SysAudio
 	};
 
 
+	struct EffectStateSpatial
+	{
+		float x, y, z;
+		float attenuation;
+		float gainLeft;
+		float gainRight;
+	};
+
+
 	struct EffectStateLowpass
 	{
-		float x[LPF_ORDER + 1]; // Raw values
-		float y[LPF_ORDER + 1]; // Filtered values
-		float a[LPF_ORDER];
-		float b[LPF_ORDER + 1];
+		float x[2][LPF_ORDER + 1]; // Raw values
+		float y[2][LPF_ORDER + 1]; // Filtered values
+		float a[2][LPF_ORDER];
+		float b[2][LPF_ORDER + 1];
 		float omega0;
 		float dt;
 	};
@@ -186,24 +221,15 @@ namespace SysAudio
 		float bufallpassR4[SysAudioTuning::allpassTuningR4];
 	};
 
-
-	struct Effect
+	struct EffectState
 	{
-		int type = -1;
-		bool bypass = false;
-		EffectParameter parameters[EFFECTPARAM_COUNT_MAX];
-
 		union
 		{
 			EffectStateCore stateGain;
+			EffectStateSpatial stateSpatial;
 			EffectStateLowpass stateLowpass;
 			EffectStateReverb stateReverb;
 		};
-
-		float get_parameter( const EffectParam param, const bool incrementTime = false );
-		void set_parameter( const EffectParam param, const float value );
-		void set_parameter( const EffectParam param, const float value, const usize timeMS );
-		void set_parameter( const EffectParam param, const float valueFrom, const float valueTo, const usize timeMS );
 	};
 }
 
@@ -221,30 +247,25 @@ namespace SysAudio
 #define __AUDIO_EFFECT_PARAM_GET_SET_IMPL(effectType,name,effectParam) \
 	void AudioEffects::set_##name( const float value, const usize timeMS ) \
 	{ \
-		SysAudio::Effect &effect = find_effect( effectType ); \
-		effect.set_parameter( effectParam, value, timeMS ); \
+		effects[effectType].set_parameter( effectParam, value, timeMS ); \
 	} \
 	void AudioEffects::set_##name( const float valueFrom, const float valueTo, const usize timeMS ) \
 	{ \
-		SysAudio::Effect &effect = find_effect( effectType ); \
-		effect.set_parameter( effectParam, valueFrom, valueTo, timeMS ); \
+		effects[effectType].set_parameter( effectParam, valueFrom, valueTo, timeMS ); \
 	} \
 	float AudioEffects::get_##name() \
 	{ \
-		SysAudio::Effect &effect = find_effect( effectType ); \
-		return effect.get_parameter( effectParam, false ); \
+		return effects[effectType].get_parameter( effectParam, false ); \
 	}
 
 #define __AUDIO_EFFECT_PARAM_GET_SET_NOAUTOMATION_IMPL(effectType,name,effectParam) \
 	void AudioEffects::set_##name( const float value ) \
 	{ \
-		SysAudio::Effect &effect = find_effect( effectType ); \
-		effect.set_parameter( effectParam, value, 0.0f ); \
+		effects[effectType].set_parameter( effectParam, value, 0.0f ); \
 	} \
 	float AudioEffects::get_##name() \
 	{ \
-		SysAudio::Effect &effect = find_effect( effectType ); \
-		return effect.get_parameter( effectParam, false ); \
+		return effects[effectType].get_parameter( effectParam, false ); \
 	}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -261,6 +282,12 @@ public:
 	__AUDIO_EFFECT_PARAM_GET_SET_DECL( gain )
 	__AUDIO_EFFECT_PARAM_GET_SET_NOAUTOMATION_DECL( pitch )
 
+	// EffectType_Spatial
+	__AUDIO_EFFECT_PARAM_GET_SET_DECL( spatial_x )
+	__AUDIO_EFFECT_PARAM_GET_SET_DECL( spatial_y )
+	__AUDIO_EFFECT_PARAM_GET_SET_DECL( spatial_z )
+	__AUDIO_EFFECT_PARAM_GET_SET_DECL( spatial_attenuation )
+
 	// EffectType_Lowpass
 	__AUDIO_EFFECT_PARAM_GET_SET_DECL( lowpass_cutoff )
 
@@ -273,17 +300,26 @@ public:
 
 private:
 	void init();
-	SysAudio::Effect &find_effect( SysAudio::EffectType effect );
 	SysAudio::Effect effects[SysAudio::EFFECTTYPE_COUNT];
+};
+
+
+struct AudioDescription
+{
+	bool loop = false;
+	bool startTimeRandomize = false;
+	usize startTimeMS = 0;
 };
 
 
 class SoundHandle
 {
 public:
-	SoundHandle() : voice{ -1 }, id{ -1 } { };
-	SoundHandle( const int voice, const int id ) : voice{ voice }, id{ id } { };
-	SoundHandle( const SoundHandle &other ) : voice{ other.voice }, id{ other.id } { };
+	SoundHandle() : idVoice{ U16_MAX }, idStream{ U16_MAX }, generation { U32_MAX } { };
+	SoundHandle( const u16 idVoice, const u16 idStream, const u32 generation ) :
+		idVoice{ idVoice }, idStream{ idStream }, generation{ generation } { };
+	SoundHandle( const SoundHandle &other ) :
+		idVoice{ other.idVoice }, idStream { other.idStream }, generation { other.generation } { };
 
 	bool is_playing() const;
 	bool is_paused() const;
@@ -293,15 +329,16 @@ public:
 	AudioEffects *operator->() const;
 
 public:
-	int voice = -1;
-	int id = -1;
+	u16 idVoice = U16_MAX;
+	u16 idStream = U16_MAX;
+	u32 generation = U32_MAX;
 };
 
 
 class AudioContext
 {
 public:
-	AudioContext() : bus{ -1 } { };
+	AudioContext() : idBus{ -1 } { };
 
 	void init( const AudioEffects &effects = { }, const char *name = "" );
 	void free();
@@ -309,140 +346,94 @@ public:
 	bool is_paused() const;
 	bool pause( const bool pause ) const;
 
+	void set_listener( const float lookX, const float lookY, const float lookZ,
+		const float upX, const float upY, const float upZ );
+
 	AudioEffects *operator->() const;
 
-	SoundHandle play_sound( const u32 sound, const AudioEffects &effects = { } );
-
+	SoundHandle play_sound( const u32 sound, const AudioEffects &effects = { },
+		const AudioDescription &description = { } );
 public:
 	const char *name;
 private:
-	int bus = -1;
+	int idBus = -1; // Bus
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 namespace SysAudio
 {
-	struct Voice
+	class Voice
 	{
-		int bus = -1;
-		int id = 0;
-		bool bypass = false;
-		const char *name = "";
+	public:
+		void init();
 
-		float position = 0.0f;
-		int channels = 1;
-		const i16 *samples = nullptr;
-		u32 samplesCount = 0;
+	public:
+		int idBus;
+		u32 generation;
+		bool bypass;
+		const char *name;
+
+		int channels;
+		float samplePosition;
+		const i16 *samples;
+		u32 samplesCount;
+
+		AudioDescription description;
 		AudioEffects effects;
+		EffectState states[SysAudio::EFFECTTYPE_COUNT];
 	};
 
-	struct Bus
+
+	class Stream
 	{
-		bool available = true;
-		bool bypass = false;
-		const char *name = "";
+	public:
+		void init();
 
-		AudioEffects effects;
-	};
+	public:
+		int idBus;
+		u32 generation;
+		bool bypass;
+		const char *name;
 
-	extern SoundHandle play_sound( const int bus, const i16 *const samples, const u32 samplesCount,
-		const int channels, const AudioEffects &effects, const char *name );
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#if 0
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// TODO: Move
-#define ENGINE_SOUND_VOICE_LIMIT ( 16 )
-#define ENGINE_SOUND_STREAM_LIMIT ( 8 )
-#define ENGINE_SOUND_STREAM_BUFFERS ( 2 )
-#define ENGINE_SOUND_STREAM_BLOCK ( 4096 )
-#define ENGINE_SOUND_FREQUENCY ( 44100 )
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-struct DiskSound;
-struct DiskSong;
-
-namespace SysAudio
-{
-	struct Voice
-	{
-		float position;
-		float pitch;
-		float gain;
-		const DiskSound *sound;
-	};
-
-	struct AudioStream
-	{
-		usize position;
+		u32 assetID;
 		usize streamPosition;
+		float bufferPosition;
 		u32 ready;
-		const DiskSong *song;
+
+		int channels;
+		float samplePosition;
+		u32 samplesCount;
+
+		AudioDescription description;
+		AudioEffects effects;
+		EffectState states[SysAudio::EFFECTTYPE_COUNT];
 	};
+
+
+	class Bus
+	{
+	public:
+		void init();
+
+	public:
+		bool available;
+		bool bypass;
+		const char *name;
+
+		float lookX, lookY, lookZ;
+		float upX, upY, upZ;
+
+		AudioEffects effects;
+		EffectState states[SysAudio::EFFECTTYPE_COUNT];
+	};
+
+
+	extern SoundHandle play_voice( const int idBus, const i16 *const samples, const u32 samplesCount,
+		const int channels, const AudioEffects &effects, const AudioDescription &description, const char *name );
+
+	extern SoundHandle play_stream( const int idBus, const u32 assetID,
+		const AudioEffects &effects, const AudioDescription &description, const char *name );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-namespace SysAudio
-{
-	extern Voice g_AUDIO_VOICES[];
-	extern AudioStream g_AUDIO_STREAMS[];
-	extern i16 g_AUDIO_BUFFERS[ENGINE_SOUND_STREAM_LIMIT][ENGINE_SOUND_STREAM_BUFFERS][ENGINE_SOUND_STREAM_BLOCK * 2];
-	extern i16 *g_AUDIO_SAMPLES;
-
-	extern bool init_backend();
-	extern bool free_backend();
-	extern bool init_samples();
-	extern bool free_samples();
-
-	//extern bool audio_stream_init();
-	extern void audio_mixer( i16 *output, u32 frames );
-	extern void draw( const Delta delta, const int x, const int y );
-
-	extern void play_sound( const i16 *const samples, const usize samplesCount );
-}
-
-
-namespace Audio
-{
-	extern void play_sound( const u32 sound );
-	extern void play_stream( const u32 stream );
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#endif

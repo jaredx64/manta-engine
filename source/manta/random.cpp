@@ -3,15 +3,19 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-namespace SysRandom
+Random::Random()
 {
-	// thread_local ensures calls to Random:: do not conflict states between threads
-	thread_local RandomContext context { Time::seed() };
+	this->seed( Time::seed() );
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void RandomContext::seed( const u64 seed )
+Random::Random( const u64 seed )
+{
+	this->seed( seed );
+}
+
+
+void Random::seed( const u64 seed )
 {
 	state = 0;
 	where = ( seed << 1 ) | 1;
@@ -21,7 +25,7 @@ void RandomContext::seed( const u64 seed )
 }
 
 
-u32 RandomContext::base()
+u32 Random::base()
 {
     // Advance State
 	u64 oldstate = state;
@@ -35,11 +39,7 @@ u32 RandomContext::base()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Note: engine only supports random for types int, float, and double
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-template <> int RandomContext::random<int>( const int min, const int max )
+int Random::next_int( const int min, const int max )
 {
 	u32 x = base();
 	u64 m = static_cast<u64>( x ) * static_cast<u64>( max - min + 1 );
@@ -47,16 +47,30 @@ template <> int RandomContext::random<int>( const int min, const int max )
 }
 
 
-template <> int RandomContext::random<int>( const int max )
+int Random::next_int( const int max )
 {
 	u32 x = base();
 	u64 m = static_cast<u64>( x ) * static_cast<u64>( max + 1 );
 	return ( m >> 32 );
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+u64 Random::next_u64( const u64 min, const u64 max )
+{
+	u32 x = base();
+	u64 m = static_cast<u64>( x ) * static_cast<u64>( max - min + 1 );
+	return m + min;
+}
 
-template <> u32 RandomContext::random<u32>( const u32 min, const u32 max )
+
+u64 Random::next_u64( const u64 max )
+{
+	u32 x = base();
+	u64 m = static_cast<u64>( x ) * static_cast<u64>( max + 1 );
+	return m;
+}
+
+
+u32 Random::next_u32( const u32 min, const u32 max )
 {
 	u32 x = base();
 	u64 m = static_cast<u64>( x ) * static_cast<u64>( max - min + 1 );
@@ -64,35 +78,65 @@ template <> u32 RandomContext::random<u32>( const u32 min, const u32 max )
 }
 
 
-template <> u32 RandomContext::random<u32>( const u32 max )
+u32 Random::next_u32( const u32 max )
 {
 	u32 x = base();
 	u64 m = static_cast<u64>( x ) * static_cast<u64>( max + 1 );
 	return ( m >> 32 );
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template <> float RandomContext::random<float>( float min, float max )
+u16 Random::next_u16( const u16 min, const u16 max )
+{
+	u32 x = base();
+	u64 m = static_cast<u64>( x ) * static_cast<u64>( max - min + 1 );
+	return static_cast<u16>( ( m >> 32 ) + min );
+}
+
+
+u16 Random::next_u16( const u16 max )
+{
+	u32 x = base();
+	u64 m = static_cast<u64>( x ) * static_cast<u64>( max + 1 );
+	return static_cast<u16>( m >> 32 );
+}
+
+
+u8 Random::next_u8( const u8 min, const u8 max )
+{
+	u32 x = base();
+	u64 m = static_cast<u64>( x ) * static_cast<u64>( max - min + 1 );
+	return static_cast<u8>( ( m >> 32 ) + min );
+}
+
+
+u8 Random::next_u8( const u8 max )
+{
+	u32 x = base();
+	u64 m = static_cast<u64>( x ) * static_cast<u64>( max + 1 );
+	return static_cast<u8>( m >> 32 );
+}
+
+
+float Random::next_float( const float min, const float max )
 {
 	return base() * 0x1.0p-32f * ( max - min ) + min;
 }
 
 
-template <> float RandomContext::random<float>( const float max )
+float Random::next_float( const float max )
 {
 	return base() * 0x1.0p-32f * max;
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template <> double RandomContext::random<double>( const double min, const double max )
+double Random::next_double( const double min, const double max )
 {
 	return base() * 0x1.0p-32 * ( max - min ) + min;
 }
 
 
-template <> double RandomContext::random<double>( const double max )
+double Random::next_double( const double max )
 {
 	return base() * 0x1.0p-32 * max;
 }

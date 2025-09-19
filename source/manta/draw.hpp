@@ -165,7 +165,7 @@ extern void draw_text( const Font font, const u16 size, const float x, const flo
 extern void draw_text_f( const Font font, const u16 size, const float x, const float y,
 	Color color, const char *format, ... );
 
-extern intv2 text_dimensions( const Font font, const u16 size, const char *string );
-extern intv2 text_dimensions_f( const Font font, const u16 size, const char *format, ... );
+extern int_v2 text_dimensions( const Font font, const u16 size, const char *string );
+extern int_v2 text_dimensions_f( const Font font, const u16 size, const char *format, ... );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

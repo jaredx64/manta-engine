@@ -135,17 +135,7 @@ void Sprites::write()
 		assets_group( header );
 
 		// Struct
-		assets_struct( header,
-			"DiskSprite",
-			//"TextureID texture;",
-			//"GlyphID glyph;",
-			"u32 glyph;",
-			"u16 texture;",
-			"u16 count;",
-			"u16 width;",
-			"u16 height;",
-			"i16 xorigin;",
-			"i16 yorigin;" );
+		header.append( "struct BinSprite;\n\n" );
 
 		// Enums
 		header.append( "enum\n{\n" );
@@ -159,7 +149,7 @@ void Sprites::write()
 		header.append( "namespace Assets\n{\n" );
 		header.append( "\tconstexpr u32 spritesCount = " );
 		header.append( static_cast<int>( sprites.size() ) ).append( ";\n" );
-		header.append( "\textern const DiskSprite sprites[];\n" );
+		header.append( "\textern const BinSprite sprites[];\n" );
 		header.append( "}\n\n" );
 	}
 
@@ -171,7 +161,7 @@ void Sprites::write()
 
 		// Table
 		char buffer[PATH_SIZE];
-		source.append( "\tconst DiskSprite sprites[spritesCount] =\n\t{\n" );
+		source.append( "\tconst BinSprite sprites[spritesCount] =\n\t{\n" );
 		for( Sprite &sprite : sprites )
 		{
 			snprintf( buffer, PATH_SIZE,

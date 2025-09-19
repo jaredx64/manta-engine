@@ -77,15 +77,13 @@ void Skeleton2Ds::write()
 		assets_group( header );
 
 		// Struct
-		assets_struct( header,
-			"DiskSkeleton2D",
-			"const char *name;" );
+		header.append( "struct BinSkeleton2D;\n\n" );
 
 		// Table
 		header.append( "namespace Assets\n{\n" );
 		header.append( "\tconstexpr u32 skeleton2DCount = " );
 		header.append( static_cast<int>( skeletons.size() ) ).append( ";\n" );
-		header.append( "\textern const DiskSkeleton2D skeleton2Ds[];\n" );
+		header.append( "\textern const BinSkeleton2D skeleton2Ds[];\n" );
 		header.append( "}\n\n" );
 	}
 
@@ -98,7 +96,7 @@ void Skeleton2Ds::write()
 		// Table
 		char buffer[PATH_SIZE];
 		char name[PATH_SIZE];
-		source.append( "\tconst DiskSkeleton2D skeleton2Ds[skeleton2DCount] =\n\t{\n" );
+		source.append( "\tconst BinSkeleton2D skeleton2Ds[skeleton2DCount] =\n\t{\n" );
 		for( Skeleton &skeleton : skeletons )
 		{
 			path_get_filename( name, sizeof( name ), skeleton.name.cstr() );
