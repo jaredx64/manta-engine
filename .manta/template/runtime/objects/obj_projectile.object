@@ -49,7 +49,7 @@ EVENT_UPDATE
 
 EVENT_RENDER
 {
-	draw_sprite_angle( spr_fire_beam, 0, x, y, direction, 1.0f, 1.0f, c_white, 0.0f );
+	draw_sprite_angle( Sprite::spr_fire_beam, 0, x, y, direction, 1.0f, 1.0f, c_white, 0.0f );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

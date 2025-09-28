@@ -24,6 +24,7 @@ void GeneratorVulkan::generate_structure( NodeStruct *node )
 		"uniform_buffer",  // StructType_UniformBuffer
 		"constant_buffer", // StructType_ConstantBuffer
 		"mutable_buffer",  // StructType_MutableBuffer
+		"struct",          // StructType_InstanceInput
 		"struct",          // StructType_VertexInput
 		"struct",          // StructType_VertexOutput
 		"struct",          // StructType_FragmentInput
@@ -97,6 +98,7 @@ void GeneratorVulkan::generate_structure( NodeStruct *node )
 				case SemanticType_COLOR: semantic = "COLOR"; break;
 				case SemanticType_BINORMAL: semantic = "BINORMAL"; break;
 				case SemanticType_TANGENT: semantic = "TANGENT"; break;
+				case SemanticType_INSTANCE: semantic = "INSTANCE"; break;
 				default: Error( "Unexpected semantic type: %u", memberVariable.semantic ); break;
 			};
 			output.append( " : " ).append( semantic );

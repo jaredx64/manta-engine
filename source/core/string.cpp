@@ -17,7 +17,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void SysText::macro_strjoin( const usize size, char *buffer, ... )
+void CoreText::macro_strjoin( const usize size, char *buffer, ... )
 {
 	if( buffer == nullptr || size == 0 ) { return; }
 
@@ -45,7 +45,7 @@ void SysText::macro_strjoin( const usize size, char *buffer, ... )
 }
 
 
-void SysText::macro_strjoin_path( const usize size, char *buffer, ... )
+void CoreText::macro_strjoin_path( const usize size, char *buffer, ... )
 {
 	if( buffer == nullptr || size == 0 ) { return; }
 	const usize slashLength = strlen( SLASH );
@@ -80,7 +80,7 @@ void SysText::macro_strjoin_path( const usize size, char *buffer, ... )
 }
 
 
-void SysText::macro_strappend( const usize size, char *buffer, const char *string )
+void CoreText::macro_strappend( const usize size, char *buffer, const char *string )
 {
 	if( buffer == nullptr || string == nullptr || size == 0 ) { return; }
 	const usize bufferLength = strlen( buffer );

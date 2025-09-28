@@ -30,34 +30,34 @@ namespace Engine
 	static bool init( int argc, char **argv )
 	{
 		// Assets
-		ErrorReturnIf( !SysAssets::init(), false, "Engine: failed to initialize assets" );
+		ErrorReturnIf( !CoreAssets::init(), false, "Engine: failed to initialize assets" );
 
 		// Time
-		ErrorReturnIf( !SysTime::init(), false, "Engine: failed to initialize timer" );
+		ErrorReturnIf( !CoreTime::init(), false, "Engine: failed to initialize timer" );
 
 		// Thread
-		ErrorReturnIf( !SysThread::init(), false, "Engine: failed to initialize thread" );
+		ErrorReturnIf( !CoreThread::init(), false, "Engine: failed to initialize thread" );
 
 		// Window
-		ErrorReturnIf( !SysWindow::init(), false, "Engine: failed to initialize window" );
+		ErrorReturnIf( !CoreWindow::init(), false, "Engine: failed to initialize window" );
 
 		// Graphics
-		ErrorReturnIf( !SysGfx::init(), false, "Engine: failed to initialize graphics system" );
+		ErrorReturnIf( !CoreGfx::init(), false, "Engine: failed to initialize graphics system" );
 
 		// Console
-		ErrorReturnIf( !SysConsole::init(), false, "Engine: failed to initialize console system" );
+		ErrorReturnIf( !CoreConsole::init(), false, "Engine: failed to initialize console system" );
 
 		// Audio
-		ErrorReturnIf( !SysAudio::init(), false, "Engine: failed to initialize audio system" );
+		ErrorReturnIf( !CoreAudio::init(), false, "Engine: failed to initialize audio system" );
 
 		// Objects
-		ErrorReturnIf( !SysObjects::init(), false, "Engine: failed to initialize object system" );
+		ErrorReturnIf( !CoreObjects::init(), false, "Engine: failed to initialize object system" );
 
 		// Fonts
-		ErrorReturnIf( !SysFonts::init(), false, "Engine: failed to initialize font system" );
+		ErrorReturnIf( !CoreFonts::init(), false, "Engine: failed to initialize font system" );
 
 		// UI
-		ErrorReturnIf( !SysUI::init(), false, "Engine: failed to initialize UI system" );
+		ErrorReturnIf( !CoreUI::init(), false, "Engine: failed to initialize UI system" );
 
 		// Success
 		return true;
@@ -66,34 +66,34 @@ namespace Engine
 	static bool free()
 	{
 		// UI
-		ErrorReturnIf( !SysUI::free(), false, "Engine: failed to free UI system" );
+		ErrorReturnIf( !CoreUI::free(), false, "Engine: failed to free UI system" );
 
 		// Fonts
-		ErrorReturnIf( !SysFonts::free(), false, "Engine: failed to free font system" );
+		ErrorReturnIf( !CoreFonts::free(), false, "Engine: failed to free font system" );
 
 		// Objects
-		ErrorReturnIf( !SysObjects::free(), false, "Engine: failed to free object system" );
+		ErrorReturnIf( !CoreObjects::free(), false, "Engine: failed to free object system" );
 
 		// Console
-		ErrorReturnIf( !SysConsole::free(), false, "Engine: failed to free console system" );
+		ErrorReturnIf( !CoreConsole::free(), false, "Engine: failed to free console system" );
 
 		// Graphics
-		ErrorReturnIf( !SysGfx::free(), false, "Engine: failed to free graphics system" );
+		ErrorReturnIf( !CoreGfx::free(), false, "Engine: failed to free graphics system" );
 
 		// Audio
-		ErrorReturnIf( !SysAudio::free(), false, "Engine: failed to free audio system" );
+		ErrorReturnIf( !CoreAudio::free(), false, "Engine: failed to free audio system" );
 
 		// Window
-		ErrorReturnIf( !SysWindow::free(), false, "Engine: failed to free window" );
+		ErrorReturnIf( !CoreWindow::free(), false, "Engine: failed to free window" );
 
 		// Thread
-		ErrorReturnIf( !SysThread::free(), false, "Engine: failed to free thread" );
+		ErrorReturnIf( !CoreThread::free(), false, "Engine: failed to free thread" );
 
 		// Time
-		ErrorReturnIf( !SysTime::free(), false, "Engine: failed to free timer" );
+		ErrorReturnIf( !CoreTime::free(), false, "Engine: failed to free timer" );
 
 		// Assets
-		ErrorReturnIf( !SysAssets::free(), false, "Engine: failed to free assets" );
+		ErrorReturnIf( !CoreAssets::free(), false, "Engine: failed to free assets" );
 
 		// Success
 		return true;
@@ -159,7 +159,7 @@ namespace Engine
 					}
 
 					// Show the window after at least 1 frame has been rendered
-					if( !painted ) { SysWindow::show(); painted = true; }
+					if( !painted ) { CoreWindow::show(); painted = true; }
 				}
 				Frame::end();
 			}

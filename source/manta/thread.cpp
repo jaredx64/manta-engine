@@ -6,14 +6,14 @@ ThreadID THREAD_ID_MAIN;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool SysThread::init()
+bool CoreThread::init()
 {
 	THREAD_ID_MAIN = Thread::id();
 	return true;
 }
 
 
-bool SysThread::free()
+bool CoreThread::free()
 {
 	return true;
 }

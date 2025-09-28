@@ -9,27 +9,28 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct Font
+class Font
 {
+public:
 	constexpr Font( const u16 id, const u16 ttf ) : id{ id }, ttf{ ttf } { };
 	constexpr operator u8() const { return static_cast<u8>( id ); }
 
-	constexpr Font regular() const { return Font { id, Assets::fonts[id].ttfs[0] }; }
-	constexpr Font italics() const { return Font { id, Assets::fonts[id].ttfs[1] }; }
-	constexpr Font bold() const { return Font { id, Assets::fonts[id].ttfs[2] }; }
-	constexpr Font bold_italics() const { return Font { id, Assets::fonts[id].ttfs[3] }; }
+	constexpr Font regular() const { return Font { id, CoreAssets::fonts[id].ttfs[0] }; }
+	constexpr Font italics() const { return Font { id, CoreAssets::fonts[id].ttfs[1] }; }
+	constexpr Font bold() const { return Font { id, CoreAssets::fonts[id].ttfs[2] }; }
+	constexpr Font bold_italics() const { return Font { id, CoreAssets::fonts[id].ttfs[3] }; }
 
 	const u16 id, ttf;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-namespace SysFonts
+namespace CoreFonts
 {
 	constexpr u32 FONTS_GROUP_SIZE = 4;
 	constexpr u32 FONTS_TABLE_DEPTH = 8;
 	constexpr u32 FONTS_TABLE_SIZE = 4096;
-	constexpr u32 FONTS_TEXTURE_SIZE = 2048; //1024;
+	constexpr u32 FONTS_TEXTURE_SIZE = 1024;
 	constexpr u32 FONTS_GLYPH_PADDING = 1;
 	constexpr u32 FONTS_GLYPH_SIZE_MAX = 256; // FontGlyphInfo width/height is u8
 
@@ -66,15 +67,15 @@ namespace SysFonts
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-namespace SysFonts
+namespace CoreFonts
 {
 	extern bool init();
 	extern bool free();
 	extern void flush();
 	extern void update();
 
-	extern SysFonts::FontGlyphInfo &get( SysFonts::FontGlyphKey key );
-	extern bool pack( SysFonts::FontGlyphInfo &glyphInfo );
+	extern CoreFonts::FontGlyphInfo &get( CoreFonts::FontGlyphKey key );
+	extern bool pack( CoreFonts::FontGlyphInfo &glyphInfo );
 
 	extern void cache( const u16 ttf, const u16 size, const u32 start, const u32 end );
 	extern void cache( const u16 ttf, const u16 size, const char *buffer );

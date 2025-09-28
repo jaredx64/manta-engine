@@ -595,6 +595,7 @@ void Textures::write()
 	Buffer &binary = Assets::binary;
 	String &header = Assets::header;
 	String &source = Assets::source;
+	const u32 count = static_cast<u32>( textures.size() );
 
 	Timer timer;
 	usize sizeBytes = 0;
@@ -679,14 +680,22 @@ void Textures::write()
 		// Group
 		assets_group( header );
 
+#if 1
+		// Enums
+		header.append( "enum_class_type\n(\n\tTexture, u32,\n\n" );
+		for( Texture &texture : textures ) { header.append( "\t" ).append( texture.name ).append( ",\n" ); }
+		header.append( "\n\tNull = 0,\n" );
+		header.append( ");\n\n" );
+#endif
+
 		// Struct
-		header.append( "struct BinTexture;\n\n" );
+		header.append( "namespace Assets { struct TextureEntry; }\n\n" );
 
 		// Table
-		header.append( "namespace Assets\n{\n" );
-		header.append( "\tconstexpr u32 texturesCount = " );
-		header.append( static_cast<int>( textures.size() ) ).append( ";\n" );
-		header.append( "\textern const BinTexture textures[];\n" );
+		header.append( "namespace CoreAssets\n{\n" );
+		header.append( "\tconstexpr u32 textureCount = " ).append( count ).append( ";\n" );
+		header.append( count > 0 ? "\textern const Assets::TextureEntry textures[];\n" :
+			"\textern const Assets::TextureEntry *textures;\n" );
 		header.append( "}\n\n" );
 	}
 
@@ -694,22 +703,31 @@ void Textures::write()
 	{
 		// Group
 		assets_group( source );
-		source.append( "namespace Assets\n{\n" );
+		source.append( "namespace CoreAssets\n{\n" );
 
 		// Table
-		source.append( "\tconst BinTexture textures[texturesCount] =\n\t{\n" );
-		char buffer[PATH_SIZE];
-		for( Texture &texture : textures )
+		if( count > 0 )
 		{
-			snprintf( buffer, PATH_SIZE, "\t\t{ %lluULL, %u, %u, %u },\n",
-				texture.offset,
-				texture.width,
-				texture.height,
-				texture.levels );
+			source.append( "\tconst Assets::TextureEntry textures[textureCount] =\n\t{\n" );
+			char buffer[PATH_SIZE];
+			for( Texture &texture : textures )
+			{
+				snprintf( buffer, PATH_SIZE, "\t\t{ %lluULL, %u, %u, %u }, // %s\n",
+					texture.offset,
+					texture.width,
+					texture.height,
+					texture.levels,
+					texture.name.cstr() );
 
-			source.append( buffer );
+				source.append( buffer );
+			}
+			source.append( "\t};\n" );
 		}
-		source.append( "\t};\n" );
+		else
+		{
+			source.append( "\tconst Assets::TextureEntry *textures = nullptr;\n" );
+		}
+
 		source.append( "}\n\n" );
 	}
 

@@ -50,6 +50,10 @@ using u64 = unsigned long long;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+using UUID = u64;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 #define FLOAT_MAX ( 3.402823466e+38f )
 #define FLOAT_MIN ( 1.175494351e-38f )
 
@@ -90,7 +94,19 @@ template <typename T> struct remove_reference<T &&> { using type = T; };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define enum_type( name, type ) using name = type; enum : type
+#define enum_type(name, type) using name = type; enum : type
+
+#define enum_class_type(name, type, ...) \
+	class name \
+	{ \
+	private: \
+		type value; \
+	public: \
+		enum : type { __VA_ARGS__ }; \
+		constexpr name() : value { } { } \
+		constexpr name( type v ) : value { v } { } \
+		constexpr operator type() const { return value; } \
+	};
 
 #define enum_namespace( name, type, ... ) \
 	namespace name                        \
@@ -195,47 +211,57 @@ template<typename T> struct pad16
     bool operator>=( const T& rhs ) const { return value >= rhs; }
 };
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template<typename T, int P> struct type_padded
+{
+    T value;
+    char pad[P];
+};
+
+
+template<typename T> struct type_padded<T, 0>
+{
+    T value;
+};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // std140_array_1d
 
 // HLSL
-template <typename Type, usize Count> class std140_array_1d_hlsl
+template <typename T, usize Count> class std140_array_1d_hlsl
 {
 private:
-	enum : int { padding = ( 16 - ( sizeof( Type ) % 16 ) ) % 16 };
-	template <int P> struct TypePadded { Type value; char pad[P]; };
-	template <> struct TypePadded<0> { Type value; };
-
-	TypePadded<padding> elements[Count - 1];
-	Type last;
+	enum : int { padding = ( 16 - ( sizeof( T ) % 16 ) ) % 16 };
+	type_padded<T, padding> elements[Count - 1];
+	T last;
 
 public:
-	Type &operator[]( usize index ) { return index == Count - 1 ? last : elements[index].value; }
-	const Type &operator[]( usize index ) const { return index == Count - 1 ? last : elements[index].value; }
+	T &operator[]( usize index ) { return index == Count - 1 ? last : elements[index].value; }
+	const T &operator[]( usize index ) const { return index == Count - 1 ? last : elements[index].value; }
 };
 
 // HLSL (Count == 1 specialization):
-template <typename Type> class std140_array_1d_hlsl<Type, 1>
+template <typename T> class std140_array_1d_hlsl<T, 1>
 {
 private:
-	Type element;
+	T element;
 
 public:
-	Type &operator[]( usize index ) { return element; }
-	const Type &operator[]( usize index ) const { return element; }
+	T &operator[]( usize index ) { return element; }
+	const T &operator[]( usize index ) const { return element; }
 };
 
 // STD140 (GLSL)
-template <typename Type, usize Count> class std140_array_1d
+template <typename T, usize Count> class std140_array_1d
 {
 private:
-	struct alignas( 16 ) TypePadded { Type value; };
-	TypePadded elements[Count];
+	struct alignas( 16 ) T_Padded { T value; };
+	T_Padded elements[Count];
 
 public:
-	Type &operator[]( usize index ) { return elements[index].value; }
-	const Type &operator[]( usize index ) const { return elements[index].value; }
+	T &operator[]( usize index ) { return elements[index].value; }
+	const T &operator[]( usize index ) const { return elements[index].value; }
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

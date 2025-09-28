@@ -4,7 +4,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-namespace SysWindow
+namespace CoreWindow
 {
 	// Implementations: manta/backend/window/...
 }
@@ -37,7 +37,7 @@ void Window::update( const Delta delta )
 {
 #if WINDOW_ENABLED
 	Window::resized = false;
-	SysWindow::poll();
+	CoreWindow::poll();
 #endif
 }
 

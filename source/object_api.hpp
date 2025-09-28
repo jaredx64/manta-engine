@@ -33,7 +33,7 @@
 // Object Properties:
 
 	// Type
-	#define OBJECT( name ) using namespace SysObjects::ObjectIntelliSense_##name;
+	#define OBJECT( name ) using namespace CoreObjects::ObjectIntelliSense_##name;
 
 	// Parent
 	#define PARENT( parent ) constexpr bool PARENT_OBJECT = true;

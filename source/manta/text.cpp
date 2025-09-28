@@ -114,14 +114,14 @@ bool TextChar::is_newline() const
 
 u16 TextChar::get_ttf() const
 {
-	return Assets::fonts[format.font].ttfs[( format.bold << 1 ) | ( format.italic << 0 )];
+	return Assets::font( format.font ).ttfs[( format.bold << 1 ) | ( format.italic << 0 )];
 }
 
 
-SysFonts::FontGlyphInfo &TextChar::get_glyph() const
+CoreFonts::FontGlyphInfo &TextChar::get_glyph() const
 {
 	const u16 ttf = get_ttf();
-	return SysFonts::get( SysFonts::FontGlyphKey { codepoint, ttf, format.size } );
+	return CoreFonts::get( CoreFonts::FontGlyphKey { codepoint, ttf, format.size } );
 }
 
 
@@ -134,7 +134,7 @@ u16_v2 TextChar::get_glyph_dimensions( const usize index ) const
 	if( UNLIKELY( codepoint == '\t' ) )
 	{
 		const u16 ttf = get_ttf();
-		const SysFonts::FontGlyphInfo &glyph = SysFonts::get( SysFonts::FontGlyphKey { ' ', ttf, format.size } );
+		const CoreFonts::FontGlyphInfo &glyph = CoreFonts::get( CoreFonts::FontGlyphKey { ' ', ttf, format.size } );
 		const u16 tabSize = 4 - ( indexInLine % 4 );
 		indexInLine += tabSize;
 		return u16_v2 { static_cast<u16>( tabSize * glyph.advance ) , static_cast<u16>( glyph.height ) };
@@ -144,14 +144,14 @@ u16_v2 TextChar::get_glyph_dimensions( const usize index ) const
 	{
 		indexInLine++;
 		const u16 ttf = get_ttf();
-		const SysFonts::FontGlyphInfo &glyph = SysFonts::get( SysFonts::FontGlyphKey { ' ', ttf, format.size } );
+		const CoreFonts::FontGlyphInfo &glyph = CoreFonts::get( CoreFonts::FontGlyphKey { ' ', ttf, format.size } );
 		return u16_v2 { static_cast<u16>( format.size / 2 ), static_cast<u16>( glyph.height ) };
 	}
 	// Normal character
 	else
 	{
 		indexInLine++;
-		const SysFonts::FontGlyphInfo &glyph = get_glyph();
+		const CoreFonts::FontGlyphInfo &glyph = get_glyph();
 		return u16_v2 { static_cast<u16>( glyph.advance ), static_cast<u16>( glyph.height ) };
 	}
 }
@@ -159,7 +159,7 @@ u16_v2 TextChar::get_glyph_dimensions( const usize index ) const
 
 u16_v2 TextChar::get_glyph_dimensions_raw() const
 {
-	const SysFonts::FontGlyphInfo &glyph = get_glyph();
+	const CoreFonts::FontGlyphInfo &glyph = get_glyph();
 	return u16_v2 { static_cast<u16>( glyph.advance ), static_cast<u16>( glyph.height ) };
 }
 
@@ -500,14 +500,14 @@ void Text::cstr( char *buffer, const usize size )
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 static void draw_glyph( const float x, const float y, const float xOffset, const float yOffset,
-	const SysFonts::FontGlyphInfo &glyph, const Color color )
+	const CoreFonts::FontGlyphInfo &glyph, const Color color )
 {
 	const float glyphX1 = x + xOffset + glyph.xshift;
 	const float glyphY1 = y + yOffset + glyph.yshift;
 	const float glyphX2 = x + xOffset + glyph.xshift + glyph.width;
 	const float glyphY2 = y + yOffset + glyph.yshift + glyph.height;
 
-	constexpr u16 uvScale = ( 1 << 16 ) / SysFonts::FONTS_TEXTURE_SIZE;
+	constexpr u16 uvScale = ( 1 << 16 ) / CoreFonts::FONTS_TEXTURE_SIZE;
 	const u16 u1 = ( glyph.u ) * uvScale;
 	const u16 v1 = ( glyph.v ) * uvScale;
 	const u16 u2 = ( glyph.u + glyph.width ) * uvScale;
@@ -515,12 +515,12 @@ static void draw_glyph( const float x, const float y, const float xOffset, const
 
 	// TODO: Implement this properly...
 	if( UNLIKELY( Gfx::quad_batch_can_break() ) ||
-		UNLIKELY( Gfx::state().textureResource[0] != SysFonts::texture2D.resource ) )
+		UNLIKELY( Gfx::state().textureResource[0] != CoreFonts::texture2D.resource ) )
 	{
-		SysFonts::update();
+		CoreFonts::update();
 	}
 
-	Gfx::quad_batch_write( glyphX1, glyphY1, glyphX2, glyphY2, u1, v1, u2, v2, color, &SysFonts::texture2D, 0.0f );
+	Gfx::quad_batch_write( glyphX1, glyphY1, glyphX2, glyphY2, u1, v1, u2, v2, color, &CoreFonts::texture2D, 0.0f );
 }
 
 
@@ -785,8 +785,8 @@ void Text::draw_selection( const float x, const float y, const usize begin, cons
 			// Calculate Quad Bounds
 			if( i >= begin )
 			{
-				const SysFonts::FontGlyphKey caretKey { CARET_CODEPOINT, c.get_ttf(), c.format.size };
-				const SysFonts::FontGlyphInfo &caretGlyph = SysFonts::get( caretKey );
+				const CoreFonts::FontGlyphKey caretKey { CARET_CODEPOINT, c.get_ttf(), c.format.size };
+				const CoreFonts::FontGlyphInfo &caretGlyph = CoreFonts::get( caretKey );
 
 				const int caretHeight = caretGlyph.height >= c.format.size ? caretGlyph.height : c.format.size;
 				const int caretHeightPadding = static_cast<int>( caretHeight * CARET_PADDING ) - caretHeight;
@@ -852,8 +852,8 @@ void Text::draw_caret( const float x, const float y, const usize index, float_v4
 
 			// Draw Caret
 			const TextChar c { CARET_CODEPOINT, get_format( index ) };
-			const SysFonts::FontGlyphKey caretKey { CARET_CODEPOINT, c.get_ttf(), c.format.size };
-			const SysFonts::FontGlyphInfo &caretGlyph = SysFonts::get( caretKey );
+			const CoreFonts::FontGlyphKey caretKey { CARET_CODEPOINT, c.get_ttf(), c.format.size };
+			const CoreFonts::FontGlyphInfo &caretGlyph = CoreFonts::get( caretKey );
 
 			const int caretHeight = caretGlyph.height >= c.format.size ? caretGlyph.height : c.format.size;
 			const int caretHeightPadding = static_cast<int>( caretHeight * CARET_PADDING ) - caretHeight;
@@ -900,7 +900,7 @@ int_v2 Text::draw( const float x, const float y, const Alpha alpha )
 		{
 			// Retrieve glyph
 			const TextChar &c = data[i];
-			const SysFonts::FontGlyphInfo &glyph = c.get_glyph();
+			const CoreFonts::FontGlyphInfo &glyph = c.get_glyph();
 			const u16_v2 glyphDimensions = c.get_glyph_dimensions( i - line.begin );
 
 			// Skipped characters
@@ -909,8 +909,8 @@ int_v2 Text::draw( const float x, const float y, const Alpha alpha )
 			// Draw glyph
 			if( !skipped && glyph.width != 0 && glyph.height != 0 )
 			{
-				const SysFonts::FontGlyphKey glyphKeySizeChar { CARET_CODEPOINT, c.get_ttf(), c.format.size };
-				const float lineHeightOffset = line.height - SysFonts::get( glyphKeySizeChar ).height;
+				const CoreFonts::FontGlyphKey glyphKeySizeChar { CARET_CODEPOINT, c.get_ttf(), c.format.size };
+				const float lineHeightOffset = line.height - CoreFonts::get( glyphKeySizeChar ).height;
 				draw_glyph( x + xOffset, y + yOffset, 0, lineHeightOffset, glyph, c.format.color * alpha );
 			}
 
@@ -1091,7 +1091,7 @@ error:
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-namespace SysText
+namespace CoreText
 {
 	TextEditor *ACTIVE_TEXT_EDITOR = nullptr;
 }
@@ -1099,7 +1099,7 @@ namespace SysText
 TextEditor::~TextEditor()
 {
 	if( !Debug::memoryLeakDetection ) { return; }
-	AssertMsg( SysText::ACTIVE_TEXT_EDITOR != this, "Actively bound TextEditor is being destructed!" );
+	AssertMsg( CoreText::ACTIVE_TEXT_EDITOR != this, "Actively bound TextEditor is being destructed!" );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1127,24 +1127,24 @@ static bool codepoint_is_tab( const u32 codepoint )
 
 void TextEditor::listen()
 {
-	if( SysText::ACTIVE_TEXT_EDITOR == nullptr ) { return; }
-	SysText::ACTIVE_TEXT_EDITOR->poll();
+	if( CoreText::ACTIVE_TEXT_EDITOR == nullptr ) { return; }
+	CoreText::ACTIVE_TEXT_EDITOR->poll();
 }
 
 
 void TextEditor::activate()
 {
-	if( SysText::ACTIVE_TEXT_EDITOR == this ) { return; }
+	if( CoreText::ACTIVE_TEXT_EDITOR == this ) { return; }
 	CLICK_TIMER.stop();
-	SysText::ACTIVE_TEXT_EDITOR = this;
+	CoreText::ACTIVE_TEXT_EDITOR = this;
 }
 
 
 void TextEditor::deactivate()
 {
-	if( SysText::ACTIVE_TEXT_EDITOR != this ) { return; }
+	if( CoreText::ACTIVE_TEXT_EDITOR != this ) { return; }
 	CLICK_TIMER.stop();
-	SysText::ACTIVE_TEXT_EDITOR = nullptr;
+	CoreText::ACTIVE_TEXT_EDITOR = nullptr;
 }
 
 
@@ -1773,7 +1773,7 @@ int_v2 TextEditor::draw( const Delta delta, const float x, const float y, const 
 	if( highlighting() ) { text.draw_selection( x, y, caretStart, caretEnd, alpha ); }
 
 	// Active Caret
-	if( SysText::ACTIVE_TEXT_EDITOR == this )
+	if( CoreText::ACTIVE_TEXT_EDITOR == this )
 	{
 		// Color & Alert Timer
 		Color color = caretColor;
@@ -1988,8 +1988,8 @@ void TextEditor::validate_selection()
 
 void TextEditor::text_callback_error( Text &text, const TextErr error )
 {
-	if( SysText::ACTIVE_TEXT_EDITOR == nullptr ) { return; }
-	TextEditor &textEditor = *SysText::ACTIVE_TEXT_EDITOR;
+	if( CoreText::ACTIVE_TEXT_EDITOR == nullptr ) { return; }
+	TextEditor &textEditor = *CoreText::ACTIVE_TEXT_EDITOR;
 
 	// Update Cursor Alert
 	textEditor.caret_alert( c_red );
@@ -2000,8 +2000,8 @@ void TextEditor::text_callback_error( Text &text, const TextErr error )
 
 void TextEditor::text_callback_update( Text &text )
 {
-	if( SysText::ACTIVE_TEXT_EDITOR == nullptr ) { return; }
-	TextEditor &textEditor = *SysText::ACTIVE_TEXT_EDITOR;
+	if( CoreText::ACTIVE_TEXT_EDITOR == nullptr ) { return; }
+	TextEditor &textEditor = *CoreText::ACTIVE_TEXT_EDITOR;
 
 	// Validate Caret Ranges
 	const usize length = text.length();

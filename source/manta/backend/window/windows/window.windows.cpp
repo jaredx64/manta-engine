@@ -20,7 +20,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-namespace SysWindow
+namespace CoreWindow
 {
 	HWND handle;
 
@@ -57,7 +57,7 @@ namespace SysWindow
 			// Resize
 			case WM_SIZE:
 			{
-				BringWindowToTop( SysWindow::handle );
+				BringWindowToTop( CoreWindow::handle );
 				int width = LOWORD( lp );
 				int height = HIWORD( lp );
 				if( width != 0 && height != 0 )
@@ -150,7 +150,7 @@ namespace SysWindow
 				// Update Capture
 				if( wp & ( MK_LBUTTON | MK_RBUTTON | MK_MBUTTON ) )
 				{
-					SetCapture( SysWindow::handle );
+					SetCapture( CoreWindow::handle );
 				}
 				else
 				{
@@ -298,7 +298,7 @@ namespace SysWindow
 	void show()
 	{
 	#if WINDOW_ENABLED
-		ShowWindow( SysWindow::handle, SW_NORMAL );
+		ShowWindow( CoreWindow::handle, SW_NORMAL );
 	#endif
 	}
 
@@ -333,7 +333,7 @@ namespace SysWindow
 		POINT p;
 		p.x = x;
 		p.y = y;
-		ClientToScreen( SysWindow::handle, &p );
+		ClientToScreen( CoreWindow::handle, &p );
 		SetCursorPos( p.x, p.y );
 	#endif
 	}
@@ -367,7 +367,7 @@ namespace Window
 
 		const int x = ( screenRect.right - width ) / 2;
 		const int y = ( screenRect.bottom - height ) / 2;
-		SetWindowPos( SysWindow::handle, NULL, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE );
+		SetWindowPos( CoreWindow::handle, NULL, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE );
 	#endif
 	}
 
@@ -384,7 +384,7 @@ namespace Window
 		monitor.cbSize = sizeof( MONITORINFO );
 
 		// Get Nearest Monitor
-		GetMonitorInfoW( MonitorFromWindow( SysWindow::handle, MONITOR_DEFAULTTONEAREST ), &monitor );
+		GetMonitorInfoW( MonitorFromWindow( CoreWindow::handle, MONITOR_DEFAULTTONEAREST ), &monitor );
 
 		// Get Monitor Dimensions
 		mw = monitor.rcMonitor.right  - monitor.rcMonitor.left;
@@ -396,11 +396,11 @@ namespace Window
 			Window::fullscreen = true;
 
 			// Update Window Style
-			SetWindowLongPtrW( SysWindow::handle, GWL_STYLE, WINDOW_STYLE & ~( WS_CAPTION | WS_THICKFRAME ) );
+			SetWindowLongPtrW( CoreWindow::handle, GWL_STYLE, WINDOW_STYLE & ~( WS_CAPTION | WS_THICKFRAME ) );
 
 			// Update Window Size
 			SetWindowPos(
-				SysWindow::handle,
+				CoreWindow::handle,
 				nullptr,
 				monitor.rcMonitor.left,
 				monitor.rcMonitor.top,
@@ -427,11 +427,11 @@ namespace Window
 			ch = area.bottom - area.top;
 
 			// Update Window Style
-			SetWindowLongPtrW( SysWindow::handle, GWL_STYLE, WINDOW_STYLE );
+			SetWindowLongPtrW( CoreWindow::handle, GWL_STYLE, WINDOW_STYLE );
 
 			// Update Window Size
 			SetWindowPos(
-				SysWindow::handle,
+				CoreWindow::handle,
 				nullptr,
 				monitor.rcMonitor.left + ( ( mw - cw ) >> 1 ),
 				monitor.rcMonitor.top  + ( ( mh - ch ) >> 1 ),
@@ -457,7 +457,7 @@ namespace Window
 			MultiByteToWideChar( CP_UTF8, 0, caption, length, wstr, size );
 			wstr[size] = L'\0';
 
-			SetWindowTextW( SysWindow::handle, wstr );
+			SetWindowTextW( CoreWindow::handle, wstr );
 		}
 	#endif
 	}

@@ -329,7 +329,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-namespace SysWindow
+namespace CoreWindow
 {
 	NSView *view;
 	NSWindow *window;
@@ -357,7 +357,7 @@ namespace SysWindow
 		Window::scale = [screen backingScaleFactor];
 
 		// Create Window
-		SysWindow::window = [[GameWindow alloc]
+		CoreWindow::window = [[GameWindow alloc]
 			initWithContentRect:NSMakeRect(
 				static_cast<int>( area.size.width - defaultWidth ) >> 1,
 				static_cast<int>( area.size.height - defaultHeight ) >> 1,
@@ -367,22 +367,22 @@ namespace SysWindow
 			defer:NO];
 
 		// Check Window
-		if( SysWindow::window == nil )
+		if( CoreWindow::window == nil )
 		{
 			ErrorReturnMsg( false, "COCOA: Failed to create cocoa window" );
 		}
 
 		// Create Window View
-		SysWindow::view = [GameView new];
+		CoreWindow::view = [GameView new];
 
 		// Setup Window Properties
-		[SysWindow::window setContentView:SysWindow::view];
-		[SysWindow::window makeFirstResponder:SysWindow::view];
-		[SysWindow::window setDelegate:(id)[GameWindowDelegate new]];
-		[SysWindow::window setAcceptsMouseMovedEvents:YES];
-		[SysWindow::window setTitle:@WINDOW_TITLE];
-		[SysWindow::window setRestorable:NO];
-		[SysWindow::window setContentMinSize:NSMakeSize( WINDOW_WIDTH_MIN, WINDOW_WIDTH_MAX )];
+		[CoreWindow::window setContentView:CoreWindow::view];
+		[CoreWindow::window makeFirstResponder:CoreWindow::view];
+		[CoreWindow::window setDelegate:(id)[GameWindowDelegate new]];
+		[CoreWindow::window setAcceptsMouseMovedEvents:YES];
+		[CoreWindow::window setTitle:@WINDOW_TITLE];
+		[CoreWindow::window setRestorable:NO];
+		[CoreWindow::window setContentMinSize:NSMakeSize( WINDOW_WIDTH_MIN, WINDOW_WIDTH_MAX )];
 
 		// Setup Apple Menu
 		{
@@ -443,7 +443,7 @@ namespace SysWindow
 		[NSApp activateIgnoringOtherApps:YES];
 
 		// Bring the Window into focus
-		[SysWindow::window makeKeyAndOrderFront:nil];
+		[CoreWindow::window makeKeyAndOrderFront:nil];
 	#endif
 	}
 
@@ -481,7 +481,7 @@ namespace SysWindow
 	{
 	#if WINDOW_ENABLED
 		// TODO
-		//[SysWindow::window setTitle:@caption ];
+		//[CoreWindow::window setTitle:@caption ];
 	#endif
 	}
 
@@ -489,8 +489,8 @@ namespace SysWindow
 	void mouse_get_position( double &x, double &y )
 	{
 	#if WINDOW_ENABLED
-		NSRect frame = [SysWindow::view frame];
-		NSPoint point = [SysWindow::window mouseLocationOutsideOfEventStream];
+		NSRect frame = [CoreWindow::view frame];
+		NSPoint point = [CoreWindow::window mouseLocationOutsideOfEventStream];
 		x = point.x;
 		y = frame.size.height - point.y;
 	#endif
@@ -500,7 +500,7 @@ namespace SysWindow
 	void mouse_set_position( const int x, const int y )
 	{
 	#if WINDOW_ENABLED
-		NSRect rect = [SysWindow::window frame];
+		NSRect rect = [CoreWindow::window frame];
 		CGWarpMouseCursorPosition( CGPointMake( rect.origin.x + x, rect.origin.y + y ) );
 
 		// HACK
@@ -544,14 +544,14 @@ namespace Window
 	#if WINDOW_ENABLED
 		// Resize Window
 		NSRect contentRect = { { 0, 0 }, { static_cast<CGFloat>( width ), static_cast<CGFloat>( height ) } };
-		NSRect frame = [SysWindow::window frameRectForContentRect:contentRect];
+		NSRect frame = [CoreWindow::window frameRectForContentRect:contentRect];
 
 		// Receneter window
 		NSRect screenRect = [[NSScreen mainScreen] frame];
 		frame.origin.x = ( screenRect.size.width - frame.size.width ) / 2;
 		frame.origin.y = ( screenRect.size.height - frame.size.height ) / 2;
 
-		[SysWindow::window setFrame:frame display:YES animate:YES];
+		[CoreWindow::window setFrame:frame display:YES animate:YES];
 	#endif
 	}
 
@@ -561,7 +561,7 @@ namespace Window
 	#if WINDOW_ENABLED
 		if( enabled != Window::fullscreen )
 		{
-			[SysWindow::window toggleFullScreen:nil];
+			[CoreWindow::window toggleFullScreen:nil];
 
 			// HACK
 			for( int i = 0; i < 255; i++ )

@@ -36,7 +36,7 @@ static void output_callback( void *data, AudioQueueRef queue, AudioQueueBufferRe
     buffer->mAudioDataByteSize = bytes;
 
 	// Finally, we can mix the audio!
-	SysAudio::audio_mixer( reinterpret_cast<i16 *>( buffer->mAudioData ), static_cast<u32>( frames ) );
+	CoreAudio::audio_mixer( reinterpret_cast<i16 *>( buffer->mAudioData ), static_cast<u32>( frames ) );
 
 	// Re-enqueue this buffer.
 	AudioQueueEnqueueBuffer( queue, buffer, 0, nullptr );
@@ -44,7 +44,7 @@ static void output_callback( void *data, AudioQueueRef queue, AudioQueueBufferRe
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool SysAudio::init_backend()
+bool CoreAudio::init_backend()
 {
 #if AUDIO_ENABLED
 	AudioStreamBasicDescription desc;
@@ -92,7 +92,7 @@ bool SysAudio::init_backend()
 }
 
 
-bool SysAudio::free_backend()
+bool CoreAudio::free_backend()
 {
 #if AUDIO_ENABLED
 	// ...

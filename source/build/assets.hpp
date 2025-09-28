@@ -5,6 +5,7 @@
 
 #include <build/filesystem.hpp>
 
+#include <build/assets/data.hpp>
 #include <build/assets/textures.hpp>
 #include <build/assets/glyphs.hpp>
 #include <build/assets/sprites.hpp>
@@ -32,6 +33,7 @@ namespace Assets
 	extern FileTime timeCache;
 
 	// Asset Types
+	extern DataAssets dataAssets;
 	extern Textures textures;
 	extern Glyphs glyphs;
 	extern Sprites sprites;

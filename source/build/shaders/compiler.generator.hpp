@@ -43,7 +43,8 @@ public:
 	virtual void trailing_newline();
 
 	virtual int append_structure_padding( String &output, const char *indent,
-		int alignment, int current );
+		int sizeType, int alignmentType, int current );
+
 	virtual void append_structure_member_padded( String &output, const char *indent,
 		Type &type, Variable &variable, int &structureByteOffset );
 	virtual void append_structure_member_packed( String &output, const char *indent,
@@ -95,6 +96,7 @@ public:
 	virtual bool generate_structure_gfx_shared_struct( NodeStruct *node );
 	virtual bool generate_structure_gfx_uniform_buffer( NodeStruct *node );
 	virtual bool generate_structure_gfx_vertex( NodeStruct *node );
+	virtual bool generate_structure_gfx_instance( NodeStruct *node );
 
 	virtual void generate_texture( NodeTexture *node );
 };
@@ -125,6 +127,7 @@ public:
 
 	virtual void generate_structure( NodeStruct *node );
 	virtual bool generate_structure_gfx_vertex( NodeStruct *node );
+	virtual bool generate_structure_gfx_instance( NodeStruct *node );
 
 	virtual void generate_texture( NodeTexture *node );
 
@@ -159,6 +162,7 @@ public:
 
 	virtual void generate_structure( NodeStruct *node );
 	virtual bool generate_structure_gfx_vertex( NodeStruct *node );
+	virtual bool generate_structure_gfx_instance( NodeStruct *node );
 
 	virtual void generate_texture( NodeTexture *node );
 };

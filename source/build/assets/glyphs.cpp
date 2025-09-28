@@ -35,6 +35,7 @@ void Glyphs::write()
 	Buffer &binary = Assets::binary;
 	String &header = Assets::header;
 	String &source = Assets::source;
+	const u32 count = static_cast<u32>( glyphs.size() );
 
 	Timer timer;
 
@@ -47,13 +48,13 @@ void Glyphs::write()
 		assets_group( header );
 
 		// Struct
-		header.append( "struct BinGlyph;\n\n" );
+		header.append( "namespace Assets { struct GlyphEntry; }\n\n" );
 
 		// Table
-		header.append( "namespace Assets\n{\n" );
-		header.append( "\tconstexpr u32 glyphsCount = " );
-		header.append( static_cast<int>( glyphs.size() ) ).append( ";\n" );
-		header.append( "\textern const BinGlyph glyphs[];\n" );
+		header.append( "namespace CoreAssets\n{\n" );
+		header.append( "\tconstexpr u32 glyphCount = " ).append( count ).append( ";\n" );
+		header.append( count > 0 ? "\textern const Assets::GlyphEntry glyphs[glyphCount];\n" :
+			"\textern const Assets::GlyphEntry *glyphs;\n" );
 		header.append( "}\n\n" );
 	}
 
@@ -61,21 +62,28 @@ void Glyphs::write()
 	{
 		// Group
 		assets_group( source );
-		source.append( "namespace Assets\n{\n" );
+		source.append( "namespace CoreAssets\n{\n" );
 
 		// Table
-		char buffer[PATH_SIZE];
-		source.append( "\tconst BinGlyph glyphs[glyphsCount] =\n\t{\n" );
-		for( Glyph &glyph : glyphs )
+		if( count > 0 )
 		{
-			snprintf( buffer, PATH_SIZE,
-				"\t\t{ %d, %d, %d, %d },\n",
-				glyph.u1, glyph.v1,
-				glyph.u2, glyph.v2 );
+			char buffer[PATH_SIZE];
+			source.append( "\tconst Assets::GlyphEntry glyphs[glyphCount] =\n\t{\n" );
+			for( Glyph &glyph : glyphs )
+			{
+				snprintf( buffer, PATH_SIZE,
+					"\t\t{ %d, %d, %d, %d },\n",
+					glyph.u1, glyph.v1,
+					glyph.u2, glyph.v2 );
 
-			source.append( buffer );
+				source.append( buffer );
+			}
+			source.append( "\t};\n" );
 		}
-		source.append( "\t};\n" );
+		else
+		{
+			source.append( "\tconst Assets::GlyphEntry *glyphs = nullptr;" );
+		}
 		source.append( "}\n\n" );
 	}
 

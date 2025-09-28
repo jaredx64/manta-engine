@@ -20,7 +20,7 @@ namespace Scene
 static void create_asteroid()
 {
 	static Random random;
-	Scene::objects.create<obj_asteroid>( random.next_float( 4.0f, 8.0f ) );
+	Scene::objects.create<ObjectType::obj_asteroid>( random.next_float( 4.0f, 8.0f ) );
 }
 
 
@@ -30,7 +30,7 @@ void scene_init()
 	Scene::objects.init();
 
 	// Create Player
-	Scene::objects.create( obj_rocket );
+	Scene::objects.create( ObjectType::obj_rocket );
 
 	// Create Astroids
 	for( int i = 0; i < 5; i++ ) { create_asteroid(); }
@@ -53,7 +53,7 @@ void scene_update( const Delta delta )
 	Scene::objects.event_update( delta );
 
 	// Game State
-	Scene::dead = Scene::objects.count( obj_rocket ) == 0;
+	Scene::dead = Scene::objects.count( ObjectType::obj_rocket ) == 0;
 
 	if( Scene::dead )
 	{
@@ -61,11 +61,11 @@ void scene_update( const Delta delta )
 		if( Keyboard::check_pressed( vk_space ) )
 		{
 			// Reset Astroids
-			Scene::objects.destroy_all_type( obj_asteroid );
+			Scene::objects.destroy_all_type( ObjectType::obj_asteroid );
 			for( int i = 0; i < 5; i++ ) { create_asteroid(); }
 
 			// Create Player
-			Scene::objects.create( obj_rocket );
+			Scene::objects.create( ObjectType::obj_rocket );
 
 			// Reset Score
 			Scene::score = 0;

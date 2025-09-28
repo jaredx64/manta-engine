@@ -45,13 +45,13 @@ void Mutex::free()
 
 void Mutex::lock()
 {
-	pthread_mutex_lock( &mutex );
+	//pthread_mutex_lock( &mutex );
 }
 
 
 void Mutex::unlock()
 {
-	pthread_mutex_unlock( &mutex );
+	//pthread_mutex_unlock( &mutex );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

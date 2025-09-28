@@ -93,7 +93,7 @@ static THREAD_FUNCTION( audio_mixer_thread )
 		}
 
 		// Mix Audio
-		SysAudio::audio_mixer( output, static_cast<u32>( frames ) );
+		CoreAudio::audio_mixer( output, static_cast<u32>( frames ) );
 
 		// Unmap Buffer
 		if( FAILED( renderClient->ReleaseBuffer( frames, 0 ) ) )
@@ -110,7 +110,7 @@ error:
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool SysAudio::init_backend()
+bool CoreAudio::init_backend()
 {
 #if AUDIO_ENABLED
 	IMMDeviceEnumerator *enumerator;
@@ -197,7 +197,7 @@ bool SysAudio::init_backend()
 }
 
 
-bool SysAudio::free_backend()
+bool CoreAudio::free_backend()
 {
 #if AUDIO_ENABLED
 	// ...

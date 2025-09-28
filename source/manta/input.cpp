@@ -273,13 +273,13 @@ bool Mouse::mouse_moved()
 
 void Mouse::mouse_get_position_precise( double &x, double &y )
 {
-	SysWindow::mouse_get_position( x, y );
+	CoreWindow::mouse_get_position( x, y );
 }
 
 
 void Mouse::mouse_set_position( const int x, const int y )
 {
-	SysWindow::mouse_set_position( x, y );
+	CoreWindow::mouse_set_position( x, y );
 }
 
 

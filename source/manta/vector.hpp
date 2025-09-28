@@ -92,7 +92,7 @@ struct Vector2D
 		return *this;
     }
 
-    VectorType &multiply( const doublem44 &matrix )
+    VectorType &multiply( const double_m44 &matrix )
 	{
 		const double h[4] =
 		{
@@ -334,7 +334,7 @@ struct Vector3D
 		return *this;
 	}
 
-	VectorType &multiply( const doublem44 &matrix )
+	VectorType &multiply( const double_m44 &matrix )
 	{
 		const double h[4] =
 		{
@@ -611,7 +611,7 @@ struct Vector4D
 		return *this;
 	}
 
-	VectorType &multiply( const doublem44 &matrix )
+	VectorType &multiply( const double_m44 &matrix )
 	{
 		const double h[4] =
 		{
@@ -863,6 +863,8 @@ struct double_r2
 
 struct float_r3
 {
+	float_r3() :
+		origin { float_v3 { 0.0f, 0.0f, 0.0f } }, vector { float_v3 { 1.0f, 0.0f, 0.0f } } { }
 	float_r3( const float_v3 &origin, const float_v3 &vector ) :
 		origin { origin }, vector { vector } { };
 	float_r3( float oX, float oY, float oZ, float vX, float vY, float vZ ) :
@@ -870,31 +872,22 @@ struct float_r3
 
 	struct hit
 	{
-		float distance = 0.0f; // negative if no hit
-		float_v3 normal = float_v3 { 0.0f, 0.0f, 0.0f };
-		usize triangleID = 0;
+		float distance = 0.0f;
+		float baryU = 0.0f;
+		float baryV = 0.0f;
+		usize triangleID = USIZE_MAX;
 	};
 
-	float_v3 origin;
-	float_v3 vector;
+	float_v3 origin = float_v3 { 0.0f, 0.0f, 0.0f };
+	float_v3 vector = float_v3 { 1.0f, 0.0f, 0.0f };
 };
-
-extern float_r3::hit float_r3_intersect_triangle( const float_r3 &ray,
-	const float_v3 &v0, const float_v3 &v1, const float_v3 &v2 );
-
-extern float_r3::hit float_r3_intersect_triangle( const float_r3 &ray,
-	const double_v3 &v0, const double_v3 &v1, const double_v3 &v2 );
-
-extern float_r3::hit float_r3_intersect_triangle_list( const float_r3 &ray,
-	const float_v3 *verts, const usize count );
-
-extern float_r3::hit float_r3_intersect_triangle_list( const float_r3 &ray,
-	const double_v3 *verts, const usize count );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 struct double_r3
 {
+	double_r3() :
+		origin { double_v3 { 0.0, 0.0, 0.0 } }, vector { double_v3 { 1.0, 0.0, 0.0 } } { }
 	double_r3( const double_v3 &origin, const double_v3 &vector ) :
 		origin { origin }, vector { vector } { };
 	double_r3( double oX, double oY, double oZ, double vX, double vY, double vZ ) :
@@ -902,25 +895,14 @@ struct double_r3
 
 	struct hit
 	{
-		double distance = 0.0; // negative if no hit
-		double_v3 normal = double_v3 { 0.0, 0.0, 0.0 };
+		double distance = 0.0;
+		double baryU = 0.0;
+		double baryV = 0.0;
 		usize triangleID = 0;
 	};
 
 	double_v3 origin;
 	double_v3 vector;
 };
-
-extern double_r3::hit double_r3_intersect_triangle( const double_r3 &ray,
-	const float_v3 &v0, const float_v3 &v1, const float_v3 &v2 );
-
-extern double_r3::hit double_r3_intersect_triangle( const double_r3 &ray,
-	const double_v3 &v0, const double_v3 &v1, const double_v3 &v2 );
-
-extern double_r3::hit double_r3_intersect_triangle_list( const double_r3 &ray,
-	const float_v3 *verts, const usize count );
-
-extern double_r3::hit double_r3_intersect_triangle_list( const double_r3 &ray,
-	const double_v3 *verts, const usize count );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

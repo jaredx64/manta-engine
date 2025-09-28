@@ -24,7 +24,7 @@ static_assert( ( 1 << AUDIO_STREAM_BLOCK_EXPN ) == AUDIO_STREAM_BLOCK,
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-namespace SysAudio
+namespace CoreAudio
 {
 	extern class Voice voices[AUDIO_VOICE_COUNT];
 	extern class Stream streams[AUDIO_STREAM_COUNT];
@@ -46,7 +46,7 @@ namespace SysAudio
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-namespace SysAudio
+namespace CoreAudio
 {
 	constexpr usize EFFECTPARAM_COUNT_MAX = 8;
 
@@ -103,7 +103,7 @@ namespace SysAudio
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-namespace SysAudio
+namespace CoreAudio
 {
 	class Effect
 	{
@@ -185,40 +185,40 @@ namespace SysAudio
 		float mode;
 
 		// EffectStateReverbComb Filter
-		EffectStateReverbComb combL[SysAudioTuning::numCombs];
-		EffectStateReverbComb combR[SysAudioTuning::numCombs];
+		EffectStateReverbComb combL[CoreAudioTuning::numCombs];
+		EffectStateReverbComb combR[CoreAudioTuning::numCombs];
 
 		// Allpass Filter
-		EffectStateReverbAllPass allpassL[SysAudioTuning::numAllpasses];
-		EffectStateReverbAllPass allpassR[SysAudioTuning::numAllpasses];
+		EffectStateReverbAllPass allpassL[CoreAudioTuning::numAllpasses];
+		EffectStateReverbAllPass allpassR[CoreAudioTuning::numAllpasses];
 
 		// Buffers for the combs
-		float bufcombL1[SysAudioTuning::combTuningL1];
-		float bufcombR1[SysAudioTuning::combTuningR1];
-		float bufcombL2[SysAudioTuning::combTuningL2];
-		float bufcombR2[SysAudioTuning::combTuningR2];
-		float bufcombL3[SysAudioTuning::combTuningL3];
-		float bufcombR3[SysAudioTuning::combTuningR3];
-		float bufcombL4[SysAudioTuning::combTuningL4];
-		float bufcombR4[SysAudioTuning::combTuningR4];
-		float bufcombL5[SysAudioTuning::combTuningL5];
-		float bufcombR5[SysAudioTuning::combTuningR5];
-		float bufcombL6[SysAudioTuning::combTuningL6];
-		float bufcombR6[SysAudioTuning::combTuningR6];
-		float bufcombL7[SysAudioTuning::combTuningL7];
-		float bufcombR7[SysAudioTuning::combTuningR7];
-		float bufcombL8[SysAudioTuning::combTuningL8];
-		float bufcombR8[SysAudioTuning::combTuningR8];
+		float bufcombL1[CoreAudioTuning::combTuningL1];
+		float bufcombR1[CoreAudioTuning::combTuningR1];
+		float bufcombL2[CoreAudioTuning::combTuningL2];
+		float bufcombR2[CoreAudioTuning::combTuningR2];
+		float bufcombL3[CoreAudioTuning::combTuningL3];
+		float bufcombR3[CoreAudioTuning::combTuningR3];
+		float bufcombL4[CoreAudioTuning::combTuningL4];
+		float bufcombR4[CoreAudioTuning::combTuningR4];
+		float bufcombL5[CoreAudioTuning::combTuningL5];
+		float bufcombR5[CoreAudioTuning::combTuningR5];
+		float bufcombL6[CoreAudioTuning::combTuningL6];
+		float bufcombR6[CoreAudioTuning::combTuningR6];
+		float bufcombL7[CoreAudioTuning::combTuningL7];
+		float bufcombR7[CoreAudioTuning::combTuningR7];
+		float bufcombL8[CoreAudioTuning::combTuningL8];
+		float bufcombR8[CoreAudioTuning::combTuningR8];
 
 		// Buffers for the allpasses
-		float bufallpassL1[SysAudioTuning::allpassTuningL1];
-		float bufallpassR1[SysAudioTuning::allpassTuningR1];
-		float bufallpassL2[SysAudioTuning::allpassTuningL2];
-		float bufallpassR2[SysAudioTuning::allpassTuningR2];
-		float bufallpassL3[SysAudioTuning::allpassTuningL3];
-		float bufallpassR3[SysAudioTuning::allpassTuningR3];
-		float bufallpassL4[SysAudioTuning::allpassTuningL4];
-		float bufallpassR4[SysAudioTuning::allpassTuningR4];
+		float bufallpassL1[CoreAudioTuning::allpassTuningL1];
+		float bufallpassR1[CoreAudioTuning::allpassTuningR1];
+		float bufallpassL2[CoreAudioTuning::allpassTuningL2];
+		float bufallpassR2[CoreAudioTuning::allpassTuningR2];
+		float bufallpassL3[CoreAudioTuning::allpassTuningL3];
+		float bufallpassR3[CoreAudioTuning::allpassTuningR3];
+		float bufallpassL4[CoreAudioTuning::allpassTuningL4];
+		float bufallpassR4[CoreAudioTuning::allpassTuningR4];
 	};
 
 	struct EffectState
@@ -274,8 +274,8 @@ class AudioEffects
 {
 public:
 	AudioEffects() { init(); }
-    SysAudio::Effect &operator[]( const usize index ) { return effects[index]; }
-	const SysAudio::Effect &operator[]( const usize index ) const { return effects[index]; }
+    CoreAudio::Effect &operator[]( const usize index ) { return effects[index]; }
+	const CoreAudio::Effect &operator[]( const usize index ) const { return effects[index]; }
 
 public:
 	// EffectType_Core
@@ -300,7 +300,7 @@ public:
 
 private:
 	void init();
-	SysAudio::Effect effects[SysAudio::EFFECTTYPE_COUNT];
+	CoreAudio::Effect effects[CoreAudio::EFFECTTYPE_COUNT];
 };
 
 
@@ -361,7 +361,7 @@ private:
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-namespace SysAudio
+namespace CoreAudio
 {
 	class Voice
 	{
@@ -381,7 +381,7 @@ namespace SysAudio
 
 		AudioDescription description;
 		AudioEffects effects;
-		EffectState states[SysAudio::EFFECTTYPE_COUNT];
+		EffectState states[CoreAudio::EFFECTTYPE_COUNT];
 	};
 
 
@@ -407,7 +407,7 @@ namespace SysAudio
 
 		AudioDescription description;
 		AudioEffects effects;
-		EffectState states[SysAudio::EFFECTTYPE_COUNT];
+		EffectState states[CoreAudio::EFFECTTYPE_COUNT];
 	};
 
 
@@ -425,7 +425,7 @@ namespace SysAudio
 		float upX, upY, upZ;
 
 		AudioEffects effects;
-		EffectState states[SysAudio::EFFECTTYPE_COUNT];
+		EffectState states[CoreAudio::EFFECTTYPE_COUNT];
 	};
 
 

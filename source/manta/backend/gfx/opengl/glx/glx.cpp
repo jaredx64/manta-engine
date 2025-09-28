@@ -71,14 +71,14 @@ bool opengl_init()
     #include "glx.procedures.hpp"
 
     // Create Context
-    if( ( context = glXCreateContextAttribsARB( SysWindow::display, config, nullptr, true, attributes ) ) == nullptr )
+    if( ( context = glXCreateContextAttribsARB( CoreWindow::display, config, nullptr, true, attributes ) ) == nullptr )
         { ErrorReturnMsg( false, "OpenGL: Failed to create OpenGL context" ); }
 
     // ???
-    XSync( SysWindow::display, false );
+    XSync( CoreWindow::display, false );
 
     // Bind Context
-    if( !glXMakeCurrent( SysWindow::display, SysWindow::handle, context ) )
+    if( !glXMakeCurrent( CoreWindow::display, CoreWindow::handle, context ) )
         { ErrorReturnMsg( false, "OpenGL: Failed to bind OpenGL context" ); }
 
     // Load OpenGL Procedures
@@ -86,7 +86,7 @@ bool opengl_init()
         { ErrorReturnMsg( false, "OpenGL: Failed to load OpenGL procedures" ); }
 
     // Disable VSync (TODO)
-    glXSwapIntervalEXT( SysWindow::display, SysWindow::handle, 0 );
+    glXSwapIntervalEXT( CoreWindow::display, CoreWindow::handle, 0 );
 
 	// Success
 	return true;
@@ -96,7 +96,7 @@ bool opengl_init()
 bool opengl_swap()
 {
     // Swap Buffers
-    glXSwapBuffers( SysWindow::display, SysWindow::handle );
+    glXSwapBuffers( CoreWindow::display, CoreWindow::handle );
 
     // Success
 	return true;
@@ -121,11 +121,11 @@ XVisualInfo *x11_create_visual()
     GLXFBConfig *configs;
 
     // Check that GLX is at least version 1.3
-    if( !glXQueryVersion( SysWindow::display, &major, &minor ) || ( major <= 1 && minor < 3 ) )
+    if( !glXQueryVersion( CoreWindow::display, &major, &minor ) || ( major <= 1 && minor < 3 ) )
         return nullptr;
 
     // Get a list of matching configurations
-    configs = glXChooseFBConfig( SysWindow::display, DefaultScreen( SysWindow::display ), pfd, &count );
+    configs = glXChooseFBConfig( CoreWindow::display, DefaultScreen( CoreWindow::display ), pfd, &count );
 
     // Use the first configuration (TODO?)
     config = configs[0];
@@ -134,11 +134,11 @@ XVisualInfo *x11_create_visual()
     XFree( configs );
 
     // Return Visual
-    return glXGetVisualFromFBConfig( SysWindow::display, config );
+    return glXGetVisualFromFBConfig( CoreWindow::display, config );
 }
 
 
-XVisualInfo * SysWindow::x11_create_visual()
+XVisualInfo * CoreWindow::x11_create_visual()
 {
     int major;
     int minor;
@@ -146,7 +146,7 @@ XVisualInfo * SysWindow::x11_create_visual()
     GLXFBConfig *configs;
 
     // Check that GLX is at least version 1.3
-    if( !glXQueryVersion( SysWindow::display, &major, &minor ) || ( major <= 1 && minor < 3 ) )
+    if( !glXQueryVersion( CoreWindow::display, &major, &minor ) || ( major <= 1 && minor < 3 ) )
     {
         return nullptr;
     }
@@ -154,7 +154,7 @@ XVisualInfo * SysWindow::x11_create_visual()
     Print( "%d, %d", bitsDepth, bitsStencil );
 
     // Get a list of matching configurations
-    configs = glXChooseFBConfig( SysWindow::display, DefaultScreen( SysWindow::display ), pfd, &count );
+    configs = glXChooseFBConfig( CoreWindow::display, DefaultScreen( CoreWindow::display ), pfd, &count );
 
     // Use the first configuration (TODO?)
     config = configs[0];
@@ -163,7 +163,7 @@ XVisualInfo * SysWindow::x11_create_visual()
     XFree( configs );
 
     // Return Visual
-    return glXGetVisualFromFBConfig( SysWindow::display, config );
+    return glXGetVisualFromFBConfig( CoreWindow::display, config );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

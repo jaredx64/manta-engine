@@ -50,6 +50,12 @@ void Meshes::load( const char *path )
 		Build::cacheDirtyAssets |= file_time_newer( time, Assets::timeCache );
 	}
 
+	// Asset Name (extracted from <name>.asset)
+	char assetName[PATH_SIZE];
+	path_get_filename( assetName, sizeof( assetName ), path );
+	path_remove_extension( assetName );
+	mesh.name = assetName;
+
 	// Read Mesh File
 	ErrorIf( !mesh.meshFile.load( path ), "Failed to load mesh '%s'", path );
 }
@@ -60,6 +66,7 @@ void Meshes::write()
 	Buffer &binary = Assets::binary;
 	String &header = Assets::header;
 	String &source = Assets::source;
+	const u32 count = static_cast<u32>( meshes.size() );
 
 	Timer timer;
 
@@ -81,14 +88,20 @@ void Meshes::write()
 		// Group
 		assets_group( header );
 
+		// Enums
+		header.append( "enum_class_type\n(\n\tMesh, u32,\n\n" );
+		for( Mesh &mesh : meshes ) { header.append( "\t" ).append( mesh.name ).append( ",\n" ); }
+		header.append( "\n\tNull = 0,\n" );
+		header.append( ");\n\n" );
+
 		// Struct
-		header.append( "struct BinMesh;\n\n" );
+		header.append( "namespace Assets { struct MeshEntry; }\n\n" );
 
 		// Table
-		header.append( "namespace Assets\n{\n" );
-		header.append( "\tconstexpr u32 meshCount = " );
-		header.append( static_cast<int>( meshes.size() ) ).append( ";\n" );
-		header.append( "\textern const BinMesh meshes[];\n" );
+		header.append( "namespace CoreAssets\n{\n" );
+		header.append( "\tconstexpr u32 meshCount = " ).append( count ).append( ";\n" );
+		header.append( count > 0 ? "\textern const Assets::MeshEntry meshes[meshCount];\n" :
+			"\textern const Assets::MeshEntry *meshes;\n" );
 		header.append( "}\n\n" );
 	}
 
@@ -96,31 +109,39 @@ void Meshes::write()
 	{
 		// Group
 		assets_group( source );
-		source.append( "namespace Assets\n{\n" );
+		source.append( "namespace CoreAssets\n{\n" );
 
 		// Table
-		char buffer[PATH_SIZE];
-		source.append( "\tconst BinMesh meshes[meshCount] =\n\t{\n" );
-		for( Mesh &mesh : meshes )
+		if( count > 0 )
 		{
-			snprintf( buffer, PATH_SIZE,
-				"\t\t{ %lluULL, %lluULL, %lluULL, %lluULL, %lluULL, %lluULL, %f, %f, %f, %f, %f, %f },\n",
-				mesh.vertexBufferOffset,
-				mesh.meshFile.vertexBufferSize,
-				mesh.meshFile.vertexCount,
-				mesh.indexBufferOffset,
-				mesh.meshFile.indexBufferSize,
-				mesh.meshFile.indexCount,
-				mesh.minX,
-				mesh.minY,
-				mesh.minZ,
-				mesh.maxX,
-				mesh.maxY,
-				mesh.maxZ );
+			char buffer[PATH_SIZE];
+			source.append( "\tconst Assets::MeshEntry meshes[meshCount] =\n\t{\n" );
+			for( Mesh &mesh : meshes )
+			{
+				snprintf( buffer, PATH_SIZE,
+					"\t\t{ %lluULL, %lluULL, %lluULL, %lluULL, %lluULL, %lluULL, %f, %f, %f, %f, %f, %f },\n",
+					mesh.vertexBufferOffset,
+					mesh.meshFile.vertexBufferSize,
+					mesh.meshFile.vertexCount,
+					mesh.indexBufferOffset,
+					mesh.meshFile.indexBufferSize,
+					mesh.meshFile.indexCount,
+					mesh.minX,
+					mesh.minY,
+					mesh.minZ,
+					mesh.maxX,
+					mesh.maxY,
+					mesh.maxZ );
 
-			source.append( buffer );
+				source.append( buffer );
+			}
+			source.append( "\t};\n" );
 		}
-		source.append( "\t};\n" );
+		else
+		{
+			source.append( "\tconst Assets::MeshEntry *meshes = nullptr;\n" );
+		}
+
 		source.append( "}\n\n" );
 	}
 

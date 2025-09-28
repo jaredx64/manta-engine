@@ -14,7 +14,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-namespace SysWindow
+namespace CoreWindow
 {
 	extern bool init( const int width = WINDOW_WIDTH_DEFAULT, const int height = WINDOW_HEIGHT_DEFAULT );
 	extern bool free();

@@ -2,13 +2,13 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool SysAudio::init_backend()
+bool CoreAudio::init_backend()
 {
 	return true;
 }
 
 
-bool SysAudio::free_backend()
+bool CoreAudio::free_backend()
 {
 	return true;
 }

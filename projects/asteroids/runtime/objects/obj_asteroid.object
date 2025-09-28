@@ -114,7 +114,7 @@ EVENT_UPDATE
 
 	// Bullets
 	const float radiusSqr = ( radius * size ) * ( radius * size );
-	for( auto projectile : Scene::objects.iterator_all<obj_projectile>() )
+	for( auto projectile : Scene::objects.iterator_all<ObjectType::obj_projectile>() )
 	{
 		if( float_v2_distance_sqr( { x, y }, { projectile->x, projectile->y } ) < radiusSqr )
 		{
@@ -129,10 +129,10 @@ EVENT_UPDATE
 		// Create Children
 		if( size >= 2.0f )
 		{
-			Scene::objects.create<obj_asteroid>( x, y, direction - 45, speed, size * 0.5f );
-			Scene::objects.create<obj_asteroid>( x, y, direction + 45, speed, size * 0.5f );
-			Scene::objects.create<obj_asteroid>( x, y, direction - 135, speed, size * 0.5f );
-			Scene::objects.create<obj_asteroid>( x, y, direction + 135, speed, size * 0.5f );
+			Scene::objects.create<ObjectType::obj_asteroid>( x, y, direction - 45, speed, size * 0.5f );
+			Scene::objects.create<ObjectType::obj_asteroid>( x, y, direction + 45, speed, size * 0.5f );
+			Scene::objects.create<ObjectType::obj_asteroid>( x, y, direction - 135, speed, size * 0.5f );
+			Scene::objects.create<ObjectType::obj_asteroid>( x, y, direction + 135, speed, size * 0.5f );
 		}
 
 		// Destroy Self
@@ -145,7 +145,7 @@ EVENT_UPDATE
 EVENT_RENDER
 {
 	const float r = radius * size;
-	draw_sprite_angle( spr_asteroid, 0, x, y, rotation, size, size, c_white, 0.0f );
+	draw_sprite_angle( Sprite::spr_asteroid, 0, x, y, rotation, size, size, c_white, 0.0f );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

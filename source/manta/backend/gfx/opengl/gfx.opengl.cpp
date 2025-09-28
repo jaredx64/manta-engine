@@ -108,6 +108,17 @@ static const OpenGLDepthStencilFormat OpenGLDepthStencilFormats[] =
 static_assert( ARRAY_LENGTH( OpenGLDepthStencilFormats ) == GFXDEPTHFORMAT_COUNT, "Missing GfxDepthFormat!" );
 
 
+static const GLenum OpenGLPrimitiveTypes[] =
+{
+	GL_TRIANGLES,      // GfxPrimitiveType_TriangleList
+	GL_TRIANGLE_STRIP, // GfxPrimitiveType_TriangleStrip
+	GL_LINES,          // GfxPrimitiveType_LineList
+	GL_LINE_STRIP,     // GfxPrimitiveType_LineStrip
+	GL_POINTS,         // GfxPrimitiveType_PointList
+};
+static_assert( ARRAY_LENGTH( OpenGLPrimitiveTypes ) == GFXPRIMITIVETYPE_COUNT, "Missing GfxPrimitiveType!" );
+
+
 static const GLenum OpenGLFillModes[] =
 {
 	GL_FILL, // GfxFillMode_SOLID
@@ -225,6 +236,21 @@ struct GfxVertexBufferResource : public GfxResource
 };
 
 
+struct GfxInstanceBufferResource : public GfxResource
+{
+	static void release( GfxInstanceBufferResource *&resource );
+	GLuint vbo = GL_NULL;
+	GfxCPUAccessMode accessMode;
+	bool mapped = false;
+	byte *data = nullptr;
+	u32 stride = 0; // instance size
+	u32 offset = 0;
+	u32 current = 0;
+	u32 instanceFormat = 0;
+	usize size = 0;
+};
+
+
 struct GfxIndexBufferResource : public GfxResource
 {
 	static void release( GfxIndexBufferResource *&resource );
@@ -296,6 +322,7 @@ struct GfxShaderResource : public GfxResource
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 static GfxResourceFactory<GfxVertexBufferResource, GFX_RESOURCE_COUNT_VERTEX_BUFFER> vertexBufferResources;
+static GfxResourceFactory<GfxInstanceBufferResource, GFX_RESOURCE_COUNT_INSTANCE_BUFFER> instanceBufferResources;
 static GfxResourceFactory<GfxIndexBufferResource, GFX_RESOURCE_COUNT_INDEX_BUFFER> indexBufferResources;
 static GfxResourceFactory<GfxUniformBufferResource, GFX_RESOURCE_COUNT_CONSTANT_BUFFER> uniformBufferResources;
 static GfxResourceFactory<GfxShaderResource, GFX_RESOURCE_COUNT_SHADER> shaderResources;
@@ -306,6 +333,7 @@ static GfxResourceFactory<GfxRenderTarget2DResource, GFX_RESOURCE_COUNT_RENDER_T
 static bool resources_init()
 {
 	vertexBufferResources.init();
+	instanceBufferResources.init();
 	indexBufferResources.init();
 	uniformBufferResources.init();
 	texture2DResources.init();
@@ -320,34 +348,101 @@ static bool resources_init()
 static bool resources_free()
 {
 	vertexBufferResources.free();
+	instanceBufferResources.free();
 	indexBufferResources.free();
 	uniformBufferResources.free();
 	texture2DResources.free();
 	renderTarget2DResources.free();
 	shaderResources.free();
 
-	// Success
 	return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static void opengl_draw( const GLsizei vertexCount, const GLuint startVertexLocation )
+static void opengl_input_layout_init( const GLuint program, const u32 vertexFormat, const u32 instanceFormat )
 {
-	SysGfx::state_apply();
-	glDrawArrays( GL_TRIANGLES, startVertexLocation, vertexCount );
+	GLuint location = 0;
+
+	if( vertexFormat != U32_MAX )
+	{
+		// opengl_input_layout_vertex_init[] - generated table in: gfx.api.generated.hpp
+		Assert( CoreGfx::opengl_input_layout_vertex_init[vertexFormat] != nullptr );
+		location += CoreGfx::opengl_input_layout_vertex_init[vertexFormat]( program, location );
+	}
+
+	if( instanceFormat != U32_MAX )
+	{
+		// opengl_input_layout_instance_init[] - generated table in: gfx.api.generated.hpp
+		Assert( CoreGfx::opengl_input_layout_instance_init[instanceFormat] != nullptr );
+		location += CoreGfx::opengl_input_layout_instance_init[instanceFormat]( program, location );
+	}
+}
+
+
+static GLuint opengl_input_layout_bind_vertex( const u32 vertexFormat, const GLuint location )
+{
+	if( vertexFormat == U32_MAX ) { return 0; }
+	// opengl_input_layout_vertex_bind[] - generated table in: gfx.api.generated.hpp
+	Assert( CoreGfx::opengl_input_layout_vertex_bind[vertexFormat] != nullptr );
+	return CoreGfx::opengl_input_layout_vertex_bind[vertexFormat]( location );
+}
+
+
+static GLuint opengl_input_layout_bind_instance( const u32 instanceFormat, const GLuint location )
+{
+	if( instanceFormat == U32_MAX ) { return 0; }
+	// opengl_input_layout_instance_bind[] - generated table in: gfx.api.generated.hpp
+	Assert( CoreGfx::opengl_input_layout_instance_bind[instanceFormat] != nullptr );
+	return CoreGfx::opengl_input_layout_instance_bind[instanceFormat]( location );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+static void opengl_draw( const GLsizei vertexCount, const GLuint startVertexLocation,
+	const GfxPrimitiveType type )
+{
+	CoreGfx::state_apply();
+	Assert( type < GFXPRIMITIVETYPE_COUNT );
+	glDrawArrays( OpenGLPrimitiveTypes[type], startVertexLocation, vertexCount );
 	PROFILE_GFX( Gfx::stats.frame.drawCalls++ );
 	PROFILE_GFX( Gfx::stats.frame.vertexCount += vertexCount );
 }
 
 
-static void opengl_draw_indexed( const GLsizei vertexCount, const GLuint startVertexLocation,
-	const GLuint baseVertexLocation, GfxIndexBufferFormat format )
+static void opengl_draw_instanced( const GLsizei vertexCount, const GLuint startVertexLocation,
+	const GLsizei instanceCount, const GfxPrimitiveType type )
 {
-	SysGfx::state_apply();
-	glDrawElements( GL_TRIANGLES, vertexCount, OpenGLIndexBufferFormats[format], 0 ); // Draw Call
+	CoreGfx::state_apply();
+	Assert( type < GFXPRIMITIVETYPE_COUNT );
+	nglDrawArraysInstanced( OpenGLPrimitiveTypes[type], startVertexLocation, vertexCount, instanceCount );
+	PROFILE_GFX( Gfx::stats.frame.drawCalls++ );
+	PROFILE_GFX( Gfx::stats.frame.vertexCount += vertexCount * instanceCount );
+}
+
+
+static void opengl_draw_indexed( const GLsizei vertexCount, const GLuint startVertexLocation,
+	const GLuint baseVertexLocation, const GfxIndexBufferFormat format, const GfxPrimitiveType type )
+{
+	CoreGfx::state_apply();
+	Assert( type < GFXPRIMITIVETYPE_COUNT );
+	glDrawElements( OpenGLPrimitiveTypes[type], vertexCount,
+		OpenGLIndexBufferFormats[format], 0 );
 	PROFILE_GFX( Gfx::stats.frame.drawCalls++ );
 	PROFILE_GFX( Gfx::stats.frame.vertexCount += vertexCount );
+}
+
+
+static void opengl_draw_instanced_indexed( const GLsizei vertexCount, const GLuint startVertexLocation,
+	const GLsizei instanceCount, const GLuint baseVertexLocation,
+	const GfxIndexBufferFormat format, const GfxPrimitiveType type )
+{
+	CoreGfx::state_apply();
+	Assert( type < GFXPRIMITIVETYPE_COUNT );
+	nglDrawElementsInstanced( OpenGLPrimitiveTypes[type], vertexCount,
+		OpenGLIndexBufferFormats[format], 0, instanceCount );
+	PROFILE_GFX( Gfx::stats.frame.drawCalls++ );
+	PROFILE_GFX( Gfx::stats.frame.vertexCount += vertexCount * instanceCount );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -464,7 +559,7 @@ static bool opengl_update_fbo()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool GfxCore::rb_init()
+bool CoreGfx::rb_init()
 {
 	// Initialize OpenGL Context
 	if( !opengl_init() )
@@ -489,12 +584,11 @@ bool GfxCore::rb_init()
 	for( int i = 0; i < GFX_RENDER_TARGET_SLOT_COUNT; i++ ) { RT_TEXTURE_COLOR[i] = 0; }
 	RT_TEXTURE_DEPTH = 0;
 
-	// Success
 	return true;
 }
 
 
-bool GfxCore::rb_free()
+bool CoreGfx::rb_free()
 {
 	// Resources
 	resources_free();
@@ -503,18 +597,17 @@ bool GfxCore::rb_free()
 	uniformBufferUniformBlockIndices.free();
 	texture2DUniformLocations.free();
 
-	// Success
 	return true;
 }
 
 
-void GfxCore::rb_frame_begin()
+void CoreGfx::rb_frame_begin()
 {
 	// OpenGL does nothing
 }
 
 
-void GfxCore::rb_frame_end()
+void CoreGfx::rb_frame_end()
 {
 #if COMPILE_DEBUG
 	// Check OpenGL errors
@@ -532,7 +625,7 @@ void GfxCore::rb_frame_end()
 }
 
 
-void GfxCore::rb_clear_color( const Color color )
+void CoreGfx::rb_clear_color( const Color color )
 {
 	// Compiler likely does this regardless, but mul instruction is faster than div
 	static constexpr float INV_255 = 1.0f / 255.0f;
@@ -541,7 +634,7 @@ void GfxCore::rb_clear_color( const Color color )
 }
 
 
-void GfxCore::rb_clear_depth( const float depth )
+void CoreGfx::rb_clear_depth( const float depth )
 {
 	glDepthMask( true );
 	glClear( GL_DEPTH_BUFFER_BIT );
@@ -549,7 +642,7 @@ void GfxCore::rb_clear_depth( const float depth )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool GfxCore::rb_swapchain_init( const u16 width, const u16 height, const bool fullscreen )
+bool CoreGfx::rb_swapchain_init( const u16 width, const u16 height, const bool fullscreen )
 {
 	PROFILE_GFX( Gfx::stats.gpuMemorySwapchain =
 		GFX_SIZE_IMAGE_COLOR_BYTES( width, height, 1, GfxColorFormat_R8G8B8A8_FLOAT ) * 2 );
@@ -563,13 +656,13 @@ bool GfxCore::rb_swapchain_init( const u16 width, const u16 height, const bool f
 }
 
 
-bool GfxCore::rb_swapchain_free()
+bool CoreGfx::rb_swapchain_free()
 {
 	return true;
 }
 
 
-bool GfxCore::rb_swapchain_resize( u16 width, u16 height, bool fullscreen )
+bool CoreGfx::rb_swapchain_resize( u16 width, u16 height, bool fullscreen )
 {
 	PROFILE_GFX( Gfx::stats.gpuMemorySwapchain =
 		GFX_SIZE_IMAGE_COLOR_BYTES( width, height, 1, GfxColorFormat_R8G8B8A8_FLOAT ) * 2 );
@@ -585,9 +678,9 @@ bool GfxCore::rb_swapchain_resize( u16 width, u16 height, bool fullscreen )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool GfxCore::rb_viewport_init( const u16 width, const u16 height, const bool fullscreen )
+bool CoreGfx::rb_viewport_init( const u16 width, const u16 height, const bool fullscreen )
 {
-	GfxViewport &viewport = GfxCore::viewport;
+	GfxViewport &viewport = CoreGfx::viewport;
 	viewport.width = width;
 	viewport.height = height;
 	viewport.fullscreen = fullscreen;
@@ -597,14 +690,14 @@ bool GfxCore::rb_viewport_init( const u16 width, const u16 height, const bool fu
 }
 
 
-bool GfxCore::rb_viewport_free()
+bool CoreGfx::rb_viewport_free()
 {
 	// OpenGL does nothing
 	return true;
 }
 
 
-bool GfxCore::rb_viewport_resize( const u16 width, const u16 height, const bool fullscreen )
+bool CoreGfx::rb_viewport_resize( const u16 width, const u16 height, const bool fullscreen )
 {
 	// Pass through to rb_viewport_init (TODO: Do something else?)
 	return rb_viewport_init( width, height, fullscreen );
@@ -612,7 +705,7 @@ bool GfxCore::rb_viewport_resize( const u16 width, const u16 height, const bool 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool GfxCore::rb_set_raster_state( const GfxRasterState &state )
+bool CoreGfx::rb_set_raster_state( const GfxRasterState &state )
 {
 	// Set Cull Mode
 	glFrontFace( GL_CW );
@@ -639,12 +732,11 @@ bool GfxCore::rb_set_raster_state( const GfxRasterState &state )
 		glDisable( GL_SCISSOR_TEST );
 	}
 
-	// Success
 	return true;
 }
 
 
-bool GfxCore::rb_set_sampler_state( const GfxSamplerState &state )
+bool CoreGfx::rb_set_sampler_state( const GfxSamplerState &state )
 {
 	// Filter Mode
 	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,
@@ -658,12 +750,11 @@ bool GfxCore::rb_set_sampler_state( const GfxSamplerState &state )
 	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,
 		OpenGLUVWrapModes[state.wrapMode] );
 
-	// Success
 	return true;
 }
 
 
-bool GfxCore::rb_set_blend_state( const GfxBlendState &state )
+bool CoreGfx::rb_set_blend_state( const GfxBlendState &state )
 {
 	// Set Blend Enable
 	if( state.blendEnable )
@@ -684,18 +775,17 @@ bool GfxCore::rb_set_blend_state( const GfxBlendState &state )
 
 	// Blend Functions
 	nglBlendFuncSeparate( OpenGLBlendFactors[state.srcFactorColor], OpenGLBlendFactors[state.dstFactorColor],
-	                      OpenGLBlendFactors[state.srcFactorAlpha], OpenGLBlendFactors[state.dstFactorAlpha] );
+		OpenGLBlendFactors[state.srcFactorAlpha], OpenGLBlendFactors[state.dstFactorAlpha] );
 
 	// Blend Operations
 	nglBlendEquationSeparate( OpenGLBlendOperations[state.blendOperationColor],
-	                          OpenGLBlendOperations[state.blendOperationAlpha] );
+		OpenGLBlendOperations[state.blendOperationAlpha] );
 
-	// Success
 	return true;
 }
 
 
-bool GfxCore::rb_set_depth_state( const GfxDepthState &state )
+bool CoreGfx::rb_set_depth_state( const GfxDepthState &state )
 {
 	// Set Depth Test Enable
 	if( state.depthTestMode != GfxDepthTestMode_NONE )
@@ -713,7 +803,6 @@ bool GfxCore::rb_set_depth_state( const GfxDepthState &state )
 	// Set Depth Write Mask
 	glDepthMask( OpenGLDepthWriteMasks[state.depthWriteMask] );
 
-	// Success
 	return true;
 }
 
@@ -731,7 +820,7 @@ void GfxIndexBufferResource::release( GfxIndexBufferResource *&resource )
 }
 
 
-bool GfxCore::rb_index_buffer_init( GfxIndexBufferResource *&resource, void *data, const u32 size,
+bool CoreGfx::rb_index_buffer_init( GfxIndexBufferResource *&resource, void *data, const u32 size,
 	const double indToVertRatio,
 	const GfxIndexBufferFormat format, const GfxCPUAccessMode accessMode )
 {
@@ -767,7 +856,7 @@ bool GfxCore::rb_index_buffer_init( GfxIndexBufferResource *&resource, void *dat
 }
 
 
-bool GfxCore::rb_index_buffer_free( GfxIndexBufferResource *&resource )
+bool CoreGfx::rb_index_buffer_free( GfxIndexBufferResource *&resource )
 {
 	Assert( resource != nullptr );
 
@@ -793,7 +882,7 @@ void GfxVertexBufferResource::release( GfxVertexBufferResource *&resource )
 }
 
 
-bool GfxCore::rb_vertex_buffer_init_dynamic( GfxVertexBufferResource *&resource, const u32 vertexFormatID,
+bool CoreGfx::rb_vertex_buffer_init_dynamic( GfxVertexBufferResource *&resource, const u32 vertexFormatID,
 	const GfxCPUAccessMode accessMode, const u32 size, const u32 stride )
 {
 	Assert( accessMode == GfxCPUAccessMode_WRITE_DISCARD || accessMode == GfxCPUAccessMode_WRITE_NO_OVERWRITE );
@@ -809,7 +898,7 @@ bool GfxCore::rb_vertex_buffer_init_dynamic( GfxVertexBufferResource *&resource,
 	// Generate Buffer VAO
 	nglGenVertexArrays( 1, &resource->vao );
 
-	// Generate Buffer VAO
+	// Generate Buffer VBO
 	nglGenBuffers( 1, &resource->vbo );
 
 	// Setup Vertex Buffer
@@ -829,7 +918,7 @@ bool GfxCore::rb_vertex_buffer_init_dynamic( GfxVertexBufferResource *&resource,
 }
 
 
-bool GfxCore::rb_vertex_buffer_init_static( GfxVertexBufferResource *&resource, const u32 vertexFormatID,
+bool CoreGfx::rb_vertex_buffer_init_static( GfxVertexBufferResource *&resource, const u32 vertexFormatID,
 	const GfxCPUAccessMode accessMode, const void *const data,
 	const u32 size, const u32 stride )
 {
@@ -840,7 +929,7 @@ bool GfxCore::rb_vertex_buffer_init_static( GfxVertexBufferResource *&resource, 
 }
 
 
-bool GfxCore::rb_vertex_buffer_free( GfxVertexBufferResource *&resource )
+bool CoreGfx::rb_vertex_buffer_free( GfxVertexBufferResource *&resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
@@ -852,61 +941,218 @@ bool GfxCore::rb_vertex_buffer_free( GfxVertexBufferResource *&resource )
 }
 
 
-bool GfxCore::rb_vertex_buffer_draw( GfxVertexBufferResource *&resource )
+bool CoreGfx::rb_vertex_buffer_draw( GfxVertexBufferResource *&resourceVertex,
+	const GfxPrimitiveType type )
 {
-	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
+	Assert( resourceVertex != nullptr && resourceVertex->id != GFX_RESOURCE_ID_NULL );
 
-	// Bind Buffer
-	nglBindVertexArray( resource->vao );
-	nglBindBuffer( GL_ARRAY_BUFFER, resource->vbo );
-	CHECK_ERROR( "Failed to bind vertex buffer for draw (resource: %u)", resource->id )
+	AssertMsg( CoreGfx::shaderEntries[Gfx::state().shader.shaderID].vertexFormat == resourceVertex->vertexFormat,
+		"Attempting to draw a vertex buffer with a shader of a different vertex format!" );
+	AssertMsg( CoreGfx::shaderEntries[Gfx::state().shader.shaderID].instanceFormat == U32_MAX,
+		"Attempting to draw a vertex buffer with a shader that requires an instance format!" );
 
-	// Input Layout
-	opengl_vertex_input_layout_bind[resource->vertexFormat]();
+	ErrorIf( resourceVertex->mapped,
+		"Attempting to draw vertex buffer that is mapped! (resource: %u)", resourceVertex->id );
 
-	// Submit Draw
-	ErrorIf( resource->mapped, "Attempting to draw vertex buffer that is mapped! (resource: %u)", resource->id );
-	const GLsizei count = static_cast<GLsizei>( resource->current / resource->stride );
-	opengl_draw( count, 0 );
-
-	return true;
-}
-
-
-bool GfxCore::rb_vertex_buffer_draw_indexed( GfxVertexBufferResource *&resource,
-	GfxIndexBufferResource *&resourceIndexBuffer )
-{
-	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
-	Assert( resourceIndexBuffer != nullptr && resourceIndexBuffer->id != GFX_RESOURCE_ID_NULL );
+	// Bind VAO
+	nglBindVertexArray( resourceVertex->vao );
 
 	// Bind Vertex Buffer
-	nglBindVertexArray( resource->vao );
-	nglBindBuffer( GL_ARRAY_BUFFER, resource->vbo );
-	CHECK_ERROR( "Failed to bind vertex buffer for indexed draw (resource: %u)", resource->id )
-
-	// Bind Index Buffer
-	nglBindBuffer( GL_ELEMENT_ARRAY_BUFFER, resourceIndexBuffer->ebo );
-	CHECK_ERROR( "Failed to bind index buffer for indexed draw (resource: %u)", resource->id )
-
-	// Input Layout
-	opengl_vertex_input_layout_bind[resource->vertexFormat]();
+	nglBindBuffer( GL_ARRAY_BUFFER, resourceVertex->vbo );
+	CHECK_ERROR( "Failed to bind vertex buffer for draw (resource: %u)", resourceVertex->id )
+	opengl_input_layout_bind_vertex( resourceVertex->vertexFormat, 0 );
 
 	// Submit Draw
-	ErrorIf( resource->mapped, "Attempting to draw vertex buffer that is mapped! (resource: %u)", resource->id );
-	const GLsizei count = static_cast<GLsizei>( resource->current / resource->stride *
-		resourceIndexBuffer->indToVertRatio );
-	opengl_draw_indexed( count, 0, 0, resourceIndexBuffer->format );
-
+	const GLsizei count = static_cast<GLsizei>( resourceVertex->current / resourceVertex->stride );
+	opengl_draw( count, 0, type );
 	return true;
 }
 
 
-void GfxCore::rb_vertex_buffered_write_begin( GfxVertexBufferResource *&resource )
+bool CoreGfx::rb_vertex_buffer_draw_instanced( GfxVertexBufferResource *&resourceVertex,
+	GfxInstanceBufferResource *&resourceInstance, const GfxPrimitiveType type )
+{
+	Assert( resourceVertex != nullptr && resourceVertex->id != GFX_RESOURCE_ID_NULL );
+	Assert( resourceInstance != nullptr && resourceInstance->id != GFX_RESOURCE_ID_NULL );
+
+	AssertMsg( CoreGfx::shaderEntries[Gfx::state().shader.shaderID].vertexFormat == resourceVertex->vertexFormat,
+		"Attempting to draw a vertex buffer with a shader of a different vertex format!" );
+	AssertMsg( CoreGfx::shaderEntries[Gfx::state().shader.shaderID].instanceFormat == resourceInstance->instanceFormat,
+		"Attempting to draw a vertex buffer with a shader of a different instance format!" );
+
+	ErrorIf( resourceVertex->mapped,
+		"Attempting to draw vertex buffer that is mapped! (resource: %u)", resourceVertex->id );
+	ErrorIf( resourceVertex->mapped,
+		"Attempting to draw instance buffer that is mapped! (resource: %u)", resourceInstance->id );
+
+	// Bind VAO
+	nglBindVertexArray( resourceVertex->vao );
+
+	// Bind Vertex Buffer
+	nglBindBuffer( GL_ARRAY_BUFFER, resourceVertex->vbo );
+	CHECK_ERROR( "Failed to bind vertex buffer for draw (resource: %u)", resourceVertex->id )
+	const GLuint location = opengl_input_layout_bind_vertex( resourceVertex->vertexFormat, 0 );
+
+	// Bind Instance Buffer
+	nglBindBuffer( GL_ARRAY_BUFFER, resourceInstance->vbo );
+	CHECK_ERROR( "Failed to bind instance buffer for draw (resource: %u)", resourceInstance->id )
+	opengl_input_layout_bind_instance( resourceInstance->instanceFormat, location );
+
+	// Submit Draw
+	const GLsizei vertexCount = static_cast<GLsizei>( resourceVertex->current / resourceVertex->stride );
+	const GLsizei instanceCount = static_cast<GLsizei>( resourceInstance->current / resourceInstance->stride );
+	opengl_draw_instanced( vertexCount, 0, instanceCount, type );
+	return true;
+}
+
+
+bool CoreGfx::rb_vertex_buffer_draw_instanced( GfxVertexBufferResource *&resourceVertex,
+	const u32 instanceCount, const GfxPrimitiveType type )
+{
+	Assert( resourceVertex != nullptr && resourceVertex->id != GFX_RESOURCE_ID_NULL );
+
+	AssertMsg( CoreGfx::shaderEntries[Gfx::state().shader.shaderID].vertexFormat == resourceVertex->vertexFormat,
+		"Attempting to draw a vertex buffer with a shader of a different vertex format!" );
+	AssertMsg( CoreGfx::shaderEntries[Gfx::state().shader.shaderID].instanceFormat == U32_MAX,
+		"Attempting to draw a vertex buffer with a shader of a different instance format!" );
+
+	ErrorIf( resourceVertex->mapped,
+		"Attempting to draw vertex buffer that is mapped! (resource: %u)", resourceVertex->id );
+
+	// Bind VAO
+	nglBindVertexArray( resourceVertex->vao );
+
+	// Bind Vertex Buffer
+	nglBindBuffer( GL_ARRAY_BUFFER, resourceVertex->vbo );
+	CHECK_ERROR( "Failed to bind vertex buffer for draw (resource: %u)", resourceVertex->id )
+	const GLuint location = opengl_input_layout_bind_vertex( resourceVertex->vertexFormat, 0 );
+
+	// Submit Draw
+	const GLsizei vertexCount = static_cast<GLsizei>( resourceVertex->current / resourceVertex->stride );
+	opengl_draw_instanced( vertexCount, 0, static_cast<GLsizei>( instanceCount ), type );
+	return true;
+}
+
+
+bool CoreGfx::rb_vertex_buffer_draw_indexed( GfxVertexBufferResource *&resourceVertex,
+	GfxIndexBufferResource *&resourceIndex, const GfxPrimitiveType type )
+{
+	Assert( resourceVertex != nullptr && resourceVertex->id != GFX_RESOURCE_ID_NULL );
+	Assert( resourceIndex != nullptr && resourceIndex->id != GFX_RESOURCE_ID_NULL );
+
+	AssertMsg( CoreGfx::shaderEntries[Gfx::state().shader.shaderID].vertexFormat == resourceVertex->vertexFormat,
+		"Attempting to draw a vertex buffer with a shader of a different vertex format!" );
+	AssertMsg( CoreGfx::shaderEntries[Gfx::state().shader.shaderID].instanceFormat == U32_MAX,
+		"Attempting to draw a vertex buffer with a shader that requires an instance format!" );
+
+	ErrorIf( resourceVertex->mapped,
+		"Attempting to draw vertex buffer that is mapped! (resource: %u)", resourceVertex->id );
+
+	// Bind VAO
+	nglBindVertexArray( resourceVertex->vao );
+
+	// Bind Vertex Buffer
+	nglBindBuffer( GL_ARRAY_BUFFER, resourceVertex->vbo );
+	CHECK_ERROR( "Failed to bind vertex buffer for draw (resource: %u)", resourceVertex->id )
+	opengl_input_layout_bind_vertex( resourceVertex->vertexFormat, 0 );
+
+	// Bind Index Buffer
+	nglBindBuffer( GL_ELEMENT_ARRAY_BUFFER, resourceIndex->ebo );
+	CHECK_ERROR( "Failed to bind index buffer for indexed draw (resource: %u)", resourceVertex->id )
+
+	// Submit Draw
+	const GLsizei count = static_cast<GLsizei>( resourceVertex->current / resourceVertex->stride *
+		resourceIndex->indToVertRatio );
+	opengl_draw_indexed( count, 0, 0, resourceIndex->format, type );
+	return true;
+}
+
+
+bool CoreGfx::rb_vertex_buffer_draw_instanced_indexed( GfxVertexBufferResource *&resourceVertex,
+	GfxInstanceBufferResource *&resourceInstance, GfxIndexBufferResource *&resourceIndex,
+	const GfxPrimitiveType type )
+{
+	Assert( resourceVertex != nullptr && resourceVertex->id != GFX_RESOURCE_ID_NULL );
+	Assert( resourceInstance != nullptr && resourceInstance->id != GFX_RESOURCE_ID_NULL );
+	Assert( resourceIndex != nullptr && resourceIndex->id != GFX_RESOURCE_ID_NULL );
+
+	AssertMsg( CoreGfx::shaderEntries[Gfx::state().shader.shaderID].vertexFormat == resourceVertex->vertexFormat,
+		"Attempting to draw a vertex buffer with a shader of a different vertex format!" );
+	AssertMsg( CoreGfx::shaderEntries[Gfx::state().shader.shaderID].instanceFormat == resourceInstance->instanceFormat,
+		"Attempting to draw a vertex buffer with a shader of a different instance format!" );
+
+	ErrorIf( resourceVertex->mapped,
+		"Attempting to draw vertex buffer that is mapped! (resource: %u)", resourceVertex->id );
+	ErrorIf( resourceInstance->mapped,
+		"Attempting to draw instance buffer that is mapped! (resource: %u)", resourceInstance->id );
+
+	// Bind VAO
+	nglBindVertexArray( resourceVertex->vao );
+
+	// Bind Vertex Buffer
+	nglBindBuffer( GL_ARRAY_BUFFER, resourceVertex->vbo );
+	CHECK_ERROR( "Failed to bind vertex buffer for draw (resource: %u)", resourceVertex->id )
+	const GLuint location = opengl_input_layout_bind_vertex( resourceVertex->vertexFormat, 0 );
+
+	// Bind Instance Buffer
+	nglBindBuffer( GL_ARRAY_BUFFER, resourceInstance->vbo );
+	CHECK_ERROR( "Failed to bind instance buffer for draw (resource: %u)", resourceInstance->id )
+	opengl_input_layout_bind_instance( resourceInstance->instanceFormat, location );
+
+	// Bind Index Buffer
+	nglBindBuffer( GL_ELEMENT_ARRAY_BUFFER, resourceIndex->ebo );
+	CHECK_ERROR( "Failed to bind index buffer for indexed draw (resource: %u)", resourceVertex->id )
+
+	// Submit Draw
+	const GLsizei vertexCount = static_cast<GLsizei>( resourceVertex->current / resourceVertex->stride *
+		resourceIndex->indToVertRatio );
+	const GLsizei instanceCount = static_cast<GLsizei>( resourceInstance->current / resourceInstance->stride );
+	opengl_draw_instanced_indexed( vertexCount, 0, instanceCount, 0, resourceIndex->format, type );
+	return true;
+}
+
+
+bool CoreGfx::rb_vertex_buffer_draw_instanced_indexed( GfxVertexBufferResource *&resourceVertex,
+	const u32 instanceCount, GfxIndexBufferResource *&resourceIndex,
+	const GfxPrimitiveType type )
+{
+	Assert( resourceVertex != nullptr && resourceVertex->id != GFX_RESOURCE_ID_NULL );
+	Assert( resourceIndex != nullptr && resourceIndex->id != GFX_RESOURCE_ID_NULL );
+
+	AssertMsg( CoreGfx::shaderEntries[Gfx::state().shader.shaderID].vertexFormat == resourceVertex->vertexFormat,
+		"Attempting to draw a vertex buffer with a shader of a different vertex format!" );
+	AssertMsg( CoreGfx::shaderEntries[Gfx::state().shader.shaderID].instanceFormat == U32_MAX,
+		"Attempting to draw a vertex buffer with a shader of a different instance format!" );
+
+	ErrorIf( resourceVertex->mapped,
+		"Attempting to draw vertex buffer that is mapped! (resource: %u)", resourceVertex->id );
+
+	// Bind VAO
+	nglBindVertexArray( resourceVertex->vao );
+
+	// Bind Vertex Buffer
+	nglBindBuffer( GL_ARRAY_BUFFER, resourceVertex->vbo );
+	CHECK_ERROR( "Failed to bind vertex buffer for draw (resource: %u)", resourceVertex->id )
+	const GLuint location = opengl_input_layout_bind_vertex( resourceVertex->vertexFormat, 0 );
+
+	// Bind Index Buffer
+	nglBindBuffer( GL_ELEMENT_ARRAY_BUFFER, resourceIndex->ebo );
+	CHECK_ERROR( "Failed to bind index buffer for indexed draw (resource: %u)", resourceVertex->id )
+
+	// Submit Draw
+	const GLsizei vertexCount = static_cast<GLsizei>( resourceVertex->current / resourceVertex->stride *
+		resourceIndex->indToVertRatio );
+	opengl_draw_instanced_indexed( vertexCount, 0, static_cast<GLsizei>( instanceCount ),
+		0, resourceIndex->format, type );
+	return true;
+}
+
+
+void CoreGfx::rb_vertex_buffer_write_begin( GfxVertexBufferResource *&resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	if( resource->mapped == true ) { return; }
 
-	nglBindVertexArray( resource->vao );
 	nglBindBuffer( GL_ARRAY_BUFFER, resource->vbo );
 	CHECK_ERROR( "Failed to bind vertex buffer for write begin (resource: %u)", resource->id )
 
@@ -937,12 +1183,11 @@ void GfxCore::rb_vertex_buffered_write_begin( GfxVertexBufferResource *&resource
 }
 
 
-void GfxCore::rb_vertex_buffered_write_end( GfxVertexBufferResource *&resource )
+void CoreGfx::rb_vertex_buffer_write_end( GfxVertexBufferResource *&resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	if( resource->mapped == false ) { return; }
 
-	nglBindVertexArray( resource->vao );
 	nglBindBuffer( GL_ARRAY_BUFFER, resource->vbo );
 	CHECK_ERROR( "Failed to bind vertex buffer for write end (resource: %u)", resource->id )
 
@@ -953,7 +1198,7 @@ void GfxCore::rb_vertex_buffered_write_end( GfxVertexBufferResource *&resource )
 }
 
 
-bool GfxCore::rb_vertex_buffered_write( GfxVertexBufferResource *&resource, const void *const data, const u32 size )
+bool CoreGfx::rb_vertex_buffer_write( GfxVertexBufferResource *&resource, const void *const data, const u32 size )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	Assert( data != nullptr );
@@ -966,7 +1211,145 @@ bool GfxCore::rb_vertex_buffered_write( GfxVertexBufferResource *&resource, cons
 }
 
 
-u32 GfxCore::rb_vertex_buffer_current( GfxVertexBufferResource *&resource )
+u32 CoreGfx::rb_vertex_buffer_current( GfxVertexBufferResource *&resource )
+{
+	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
+	return resource->current;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void GfxInstanceBufferResource::release( GfxInstanceBufferResource *&resource )
+{
+	if( resource == nullptr ) { return; }
+	if( resource->id == GFX_RESOURCE_ID_NULL ) { return; }
+
+	if( resource->vbo != GL_NULL ) { nglDeleteBuffers( 1, &resource->vbo ); }
+
+	instanceBufferResources.remove( resource->id );
+	resource = nullptr;
+}
+
+
+bool CoreGfx::rb_instance_buffer_init_dynamic( GfxInstanceBufferResource *&resource, const u32 instanceFormatID,
+	const GfxCPUAccessMode accessMode, const u32 size, const u32 stride )
+{
+	Assert( accessMode == GfxCPUAccessMode_WRITE_DISCARD || accessMode == GfxCPUAccessMode_WRITE_NO_OVERWRITE );
+
+	// Register VertexBuffer
+	Assert( resource == nullptr );
+	resource = instanceBufferResources.make_new();
+	resource->stride = stride;
+	resource->accessMode = accessMode;
+	resource->instanceFormat = instanceFormatID;
+	resource->size = size;
+
+	// Generate Buffer VBO
+	nglGenBuffers( 1, &resource->vbo );
+
+	// Setup Instance Buffer
+	nglBindBuffer( GL_ARRAY_BUFFER, resource->vbo );
+	nglBufferData( GL_ARRAY_BUFFER, size, nullptr, GL_STATIC_DRAW ); // TODO: GL_DYNAMIC_DRAW
+
+	// Error Checking
+	if( GL_ERROR() )
+	{
+		GfxInstanceBufferResource::release( resource );
+		ErrorReturnMsg( false, "%s: failed to init instance buffer (%u)", __FUNCTION__, glGetError() );
+	}
+
+	PROFILE_GFX( Gfx::stats.gpuMemoryInstanceBuffers += resource->size );
+	return true;
+}
+
+
+bool CoreGfx::rb_instance_buffer_init_static( GfxInstanceBufferResource *&resource, const u32 instanceFormatID,
+	const GfxCPUAccessMode accessMode, const void *const data,
+	const u32 size, const u32 stride )
+{
+	// TODO
+	// ...
+
+	return true;
+}
+
+
+bool CoreGfx::rb_instance_buffer_free( GfxInstanceBufferResource *&resource )
+{
+	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
+
+	PROFILE_GFX( Gfx::stats.gpuMemoryInstanceBuffers -= resource->size );
+
+	GfxInstanceBufferResource::release( resource );
+
+	return true;
+}
+
+
+void CoreGfx::rb_instance_buffer_write_begin( GfxInstanceBufferResource *&resource )
+{
+	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
+	if( resource->mapped == true ) { return; }
+
+	nglBindBuffer( GL_ARRAY_BUFFER, resource->vbo );
+	CHECK_ERROR( "Failed to bind instance buffer for write begin (resource: %u)", resource->id )
+
+	GLbitfield access = 0;
+	switch( resource->accessMode )
+	{
+		case GfxCPUAccessMode_WRITE:
+			access = GL_MAP_WRITE_BIT;
+		break;
+
+		case GfxCPUAccessMode_WRITE_DISCARD:
+			access = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT;
+		break;
+
+		default:
+		case GfxCPUAccessMode_WRITE_NO_OVERWRITE:
+			access = GL_MAP_WRITE_BIT;
+			//Error( "Not supported yet" ); // TODO: Support this
+		break;
+	}
+
+	resource->data = reinterpret_cast<byte *>( nglMapBufferRange( GL_ARRAY_BUFFER, 0, resource->size, access ) );
+	CHECK_ERROR( "Failed to map instance buffer for write begin (resource: %u)", resource->id )
+
+	resource->mapped = true;
+	resource->current = 0;
+	resource->offset = 0;
+}
+
+
+void CoreGfx::rb_instance_buffer_write_end( GfxInstanceBufferResource *&resource )
+{
+	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
+	if( resource->mapped == false ) { return; }
+
+	nglBindBuffer( GL_ARRAY_BUFFER, resource->vbo );
+	CHECK_ERROR( "Failed to bind instance buffer for write end (resource: %u)", resource->id )
+
+	nglUnmapBuffer( GL_ARRAY_BUFFER );
+	CHECK_ERROR( "Failed to unmap instance buffer for write end (resource: %u)", resource->id )
+
+	resource->mapped = false;
+}
+
+
+bool CoreGfx::rb_instance_buffer_write( GfxInstanceBufferResource *&resource, const void *const data, const u32 size )
+{
+	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
+	Assert( data != nullptr );
+
+	Assert( resource->mapped );
+	memory_copy( resource->data + resource->current, data, size );
+	resource->current += size;
+
+	return true;
+}
+
+
+u32 CoreGfx::rb_instance_buffer_current( GfxInstanceBufferResource *&resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	return resource->current;
@@ -987,7 +1370,7 @@ void GfxUniformBufferResource::release( GfxUniformBufferResource *&resource )
 
 
 
-bool GfxCore::rb_uniform_buffer_init( GfxUniformBufferResource *&resource, const char *name,
+bool CoreGfx::rb_uniform_buffer_init( GfxUniformBufferResource *&resource, const char *name,
 	const int index, const u32 size )
 {
 	// Register Constant Buffer
@@ -1015,7 +1398,7 @@ bool GfxCore::rb_uniform_buffer_init( GfxUniformBufferResource *&resource, const
 }
 
 
-bool GfxCore::rb_uniform_buffer_free( GfxUniformBufferResource *&resource )
+bool CoreGfx::rb_uniform_buffer_free( GfxUniformBufferResource *&resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
@@ -1027,7 +1410,7 @@ bool GfxCore::rb_uniform_buffer_free( GfxUniformBufferResource *&resource )
 }
 
 
-void GfxCore::rb_constant_buffered_write_begin( GfxUniformBufferResource *&resource )
+void CoreGfx::rb_constant_buffered_write_begin( GfxUniformBufferResource *&resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	if( resource->mapped == true ) { return; }
@@ -1035,7 +1418,7 @@ void GfxCore::rb_constant_buffered_write_begin( GfxUniformBufferResource *&resou
 }
 
 
-void GfxCore::rb_constant_buffered_write_end( GfxUniformBufferResource *&resource )
+void CoreGfx::rb_constant_buffered_write_end( GfxUniformBufferResource *&resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	if( resource->mapped == false ) { return; }
@@ -1043,7 +1426,7 @@ void GfxCore::rb_constant_buffered_write_end( GfxUniformBufferResource *&resourc
 }
 
 
-bool GfxCore::rb_constant_buffered_write( GfxUniformBufferResource *&resource, const void *data )
+bool CoreGfx::rb_constant_buffered_write( GfxUniformBufferResource *&resource, const void *data )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	Assert( data != nullptr );
@@ -1057,7 +1440,7 @@ bool GfxCore::rb_constant_buffered_write( GfxUniformBufferResource *&resource, c
 }
 
 
-bool GfxCore::rb_uniform_buffer_bind_vertex( GfxUniformBufferResource *&resource, const int slot )
+bool CoreGfx::rb_uniform_buffer_bind_vertex( GfxUniformBufferResource *&resource, const int slot )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	Assert( slot >= 0 );
@@ -1072,7 +1455,7 @@ bool GfxCore::rb_uniform_buffer_bind_vertex( GfxUniformBufferResource *&resource
 }
 
 
-bool GfxCore::rb_uniform_buffer_bind_fragment( GfxUniformBufferResource *&resource, const int slot )
+bool CoreGfx::rb_uniform_buffer_bind_fragment( GfxUniformBufferResource *&resource, const int slot )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	Assert( slot >= 0 );
@@ -1087,7 +1470,7 @@ bool GfxCore::rb_uniform_buffer_bind_fragment( GfxUniformBufferResource *&resour
 }
 
 
-bool GfxCore::rb_uniform_buffer_bind_compute( GfxUniformBufferResource *&resource, const int slot )
+bool CoreGfx::rb_uniform_buffer_bind_compute( GfxUniformBufferResource *&resource, const int slot )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	Assert( slot >= 0 );
@@ -1115,7 +1498,7 @@ void GfxTexture2DResource::release( GfxTexture2DResource *&resource )
 }
 
 
-bool GfxCore::rb_texture_2d_init( GfxTexture2DResource *&resource, void *pixels,
+bool CoreGfx::rb_texture_2d_init( GfxTexture2DResource *&resource, void *pixels,
 	const u16 width, const u16 height, const u16 levels, const GfxColorFormat &format )
 {
 	// Register Texture2D
@@ -1126,7 +1509,7 @@ bool GfxCore::rb_texture_2d_init( GfxTexture2DResource *&resource, void *pixels,
 	resource->height = height;
 	resource->levels = levels;
 
-	const usize pixelSizeBytes = GfxCore::colorFormatPixelSizeBytes[format];
+	const usize pixelSizeBytes = CoreGfx::colorFormatPixelSizeBytes[format];
 	const GLint glFormatInternal = OpenGLColorFormats[format].formatInternal;
 	const GLenum glFormat = OpenGLColorFormats[format].format;
 	const GLenum glFormatType = OpenGLColorFormats[format].formatType;
@@ -1172,7 +1555,7 @@ bool GfxCore::rb_texture_2d_init( GfxTexture2DResource *&resource, void *pixels,
 #if true
 			// Flip texture vertically
 			const usize stride = mipWidth * pixelSizeBytes;
-			u8* flipped = SysGfx::scratch_buffer( stride * mipHeight );
+			u8* flipped = CoreGfx::scratch_buffer( stride * mipHeight );
 			for (u16 y = 0; y < mipHeight; y++)
 			{
 				memory_copy( &flipped[y * stride], &source[ ( mipHeight - 1 - y ) * stride], stride );
@@ -1206,7 +1589,7 @@ bool GfxCore::rb_texture_2d_init( GfxTexture2DResource *&resource, void *pixels,
 }
 
 
-bool GfxCore::rb_texture_2d_free( GfxTexture2DResource *&resource )
+bool CoreGfx::rb_texture_2d_free( GfxTexture2DResource *&resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
@@ -1218,7 +1601,7 @@ bool GfxCore::rb_texture_2d_free( GfxTexture2DResource *&resource )
 }
 
 
-bool GfxCore::rb_texture_2d_bind( const GfxTexture2DResource *const &resource, const int slot )
+bool CoreGfx::rb_texture_2d_bind( const GfxTexture2DResource *const &resource, const int slot )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	Assert( slot >= 0 && slot < GFX_TEXTURE_SLOT_COUNT );
@@ -1231,7 +1614,7 @@ bool GfxCore::rb_texture_2d_bind( const GfxTexture2DResource *const &resource, c
 
 	// OpenGL requires us to explitily set the sampler state on textures binds (TODO: Refactor)
 	FILTER_MODE_MIPMAPPING = resource->levels > 1;
-	GfxCore::rb_set_sampler_state( Gfx::state().sampler );
+	CoreGfx::rb_set_sampler_state( Gfx::state().sampler );
 	FILTER_MODE_MIPMAPPING = false;
 
 	PROFILE_GFX( Gfx::stats.frame.textureBinds++ );
@@ -1239,7 +1622,7 @@ bool GfxCore::rb_texture_2d_bind( const GfxTexture2DResource *const &resource, c
 }
 
 
-bool GfxCore::rb_texture_2d_release( const GfxTexture2DResource *const &resource, const int slot )
+bool CoreGfx::rb_texture_2d_release( const GfxTexture2DResource *const &resource, const int slot )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	Assert( slot >= 0 && slot < GFX_TEXTURE_SLOT_COUNT );
@@ -1267,7 +1650,7 @@ void GfxRenderTarget2DResource::release( GfxRenderTarget2DResource *&resource )
 }
 
 
-bool GfxCore::rb_render_target_2d_init( GfxRenderTarget2DResource *&resource,
+bool CoreGfx::rb_render_target_2d_init( GfxRenderTarget2DResource *&resource,
 	GfxTexture2DResource *&resourceColor, GfxTexture2DResource *&resourceDepth,
 	const u16 width, const u16 height,
 	const GfxRenderTargetDescription &desc )
@@ -1545,7 +1928,7 @@ bool GfxCore::rb_render_target_2d_init( GfxRenderTarget2DResource *&resource,
 }
 
 
-bool GfxCore::rb_render_target_2d_free( GfxRenderTarget2DResource *&resource,
+bool CoreGfx::rb_render_target_2d_free( GfxRenderTarget2DResource *&resource,
 	GfxTexture2DResource *&resourceColor,GfxTexture2DResource *&resourceDepth )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
@@ -1573,7 +1956,7 @@ bool GfxCore::rb_render_target_2d_free( GfxRenderTarget2DResource *&resource,
 }
 
 
-bool GfxCore::rb_render_target_2d_copy(
+bool CoreGfx::rb_render_target_2d_copy(
 	GfxRenderTarget2DResource *&srcResource,
 	GfxTexture2DResource *&srcResourceColor, GfxTexture2DResource *&srcResourceDepth,
 	GfxRenderTarget2DResource *&dstResource,
@@ -1583,7 +1966,11 @@ bool GfxCore::rb_render_target_2d_copy(
 	if( srcResource == nullptr || dstResource == nullptr ) { return false; }
 
 	// Ensure equal dimensions
-	if( srcResource->width != dstResource->width || srcResource->height != dstResource->height ) { return false; }
+	if( srcResource->width != dstResource->width ||
+		srcResource->height != dstResource->height )
+	{
+		return false;
+	}
 
 	// Copy FBO
 	GLbitfield flags = 0;
@@ -1617,12 +2004,11 @@ bool GfxCore::rb_render_target_2d_copy(
 		nglBindFramebuffer( GL_FRAMEBUFFER, 0 );
 	}
 
-	// Success
 	return true;
 }
 
 
-bool GfxCore::rb_render_target_2d_copy_part(
+bool CoreGfx::rb_render_target_2d_copy_part(
 	GfxRenderTarget2DResource *&srcResource,
 	GfxTexture2DResource *&srcResourceColor, GfxTexture2DResource *&srcResourceDepth,
 	GfxRenderTarget2DResource *&dstResource,
@@ -1667,21 +2053,24 @@ bool GfxCore::rb_render_target_2d_copy_part(
 		nglBindFramebuffer( GL_FRAMEBUFFER, 0 );
 	}
 
-	// Success
 	return true;
 }
 
 
-bool GfxCore::rb_render_target_2d_buffer_read_color( GfxRenderTarget2DResource *&resource,
+bool CoreGfx::rb_render_target_2d_buffer_read_color( GfxRenderTarget2DResource *&resource,
 	GfxTexture2DResource *&resourceColor,
 	void *buffer, const u32 size )
 {
-	ErrorIf( !resource->desc.cpuAccess, "Trying to CPU access a render target that does not have CPU access flag!" );
+	ErrorIf( !resource->desc.cpuAccess,
+		"Trying to CPU access a render target that does not have CPU access flag!" );
+
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	Assert( resourceColor != nullptr && resourceColor->id != GFX_RESOURCE_ID_NULL );
 	Assert( resource->pboColor != 0 );
 
-	const u32 sizeSource = GFX_SIZE_IMAGE_COLOR_BYTES( resource->width, resource->height, 1, resource->desc.colorFormat );
+	const u32 sizeSource = GFX_SIZE_IMAGE_COLOR_BYTES(
+		resource->width, resource->height, 1, resource->desc.colorFormat );
+
 	Assert( sizeSource <= size );
 	Assert( buffer != nullptr );
 
@@ -1727,7 +2116,6 @@ bool GfxCore::rb_render_target_2d_buffer_read_color( GfxRenderTarget2DResource *
 	nglBindFramebuffer( GL_READ_FRAMEBUFFER, fboPrevious );
 	glReadBuffer( readBufferPrevious );
 
-	// Success
 	return true;
 }
 
@@ -1743,7 +2131,7 @@ bool rb_render_target_2d_buffer_read_depth( GfxRenderTarget2DResource *&resource
 }
 
 
-bool GfxCore::rb_render_target_2d_buffered_write_color( GfxRenderTarget2DResource *&resource,
+bool CoreGfx::rb_render_target_2d_buffered_write_color( GfxRenderTarget2DResource *&resource,
 	GfxTexture2DResource *&resourceColor,
 	const void *const buffer, const u32 size )
 {
@@ -1754,7 +2142,7 @@ bool GfxCore::rb_render_target_2d_buffered_write_color( GfxRenderTarget2DResourc
 }
 
 
-bool GfxCore::rb_render_target_2d_bind( const GfxRenderTarget2DResource *const &resource, int slot )
+bool CoreGfx::rb_render_target_2d_bind( const GfxRenderTarget2DResource *const &resource, int slot )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	Assert( slot >= 0 && slot < GFX_RENDER_TARGET_SLOT_COUNT );
@@ -1790,7 +2178,7 @@ bool GfxCore::rb_render_target_2d_bind( const GfxRenderTarget2DResource *const &
 }
 
 
-bool GfxCore::rb_render_target_2d_release( const GfxRenderTarget2DResource *const &resource, const int slot )
+bool CoreGfx::rb_render_target_2d_release( const GfxRenderTarget2DResource *const &resource, const int slot )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	Assert( slot >= 0 && slot < GFX_RENDER_TARGET_SLOT_COUNT );
@@ -1832,7 +2220,7 @@ void GfxShaderResource::release( GfxShaderResource *&resource )
 }
 
 
-bool GfxCore::rb_shader_init( GfxShaderResource *&resource, const u32 shaderID, const struct BinShader &binShader )
+bool CoreGfx::rb_shader_init( GfxShaderResource *&resource, const u32 shaderID, const struct ShaderEntry &shaderEntry )
 {
 	char info[1024];
 	int status;
@@ -1848,13 +2236,13 @@ bool GfxCore::rb_shader_init( GfxShaderResource *&resource, const u32 shaderID, 
 	GLuint shaderCompute; // TODO
 
 	// Source Shaders
-	const byte *codeVertex = Assets::binary.data + binShader.offsetVertex;
+	const byte *codeVertex = Assets::binary.data + shaderEntry.offsetVertex;
 	nglShaderSource( shaderVertex, 1, reinterpret_cast<const GLchar **>( &codeVertex ),
-		reinterpret_cast<const GLint *>( &binShader.sizeVertex ) );
+		reinterpret_cast<const GLint *>( &shaderEntry.sizeVertex ) );
 
-	const byte *codeFragment = Assets::binary.data + binShader.offsetFragment;
+	const byte *codeFragment = Assets::binary.data + shaderEntry.offsetFragment;
 	nglShaderSource( shaderFragment, 1, reinterpret_cast<const GLchar **>( &codeFragment ),
-		reinterpret_cast<const GLint *>( &binShader.sizeFragment ) );
+		reinterpret_cast<const GLint *>( &shaderEntry.sizeFragment ) );
 
 	// Compile Vertex Shader
 	nglCompileShader( shaderVertex );
@@ -1866,7 +2254,7 @@ bool GfxCore::rb_shader_init( GfxShaderResource *&resource, const u32 shaderID, 
 		nglGetShaderInfoLog( shaderVertex, sizeof( info ), nullptr, info );
 		GfxShaderResource::release( resource );
 		ErrorReturnMsg( false, "%s: failed to compile vertex shader! (%s)\n\n%s",
-			__FUNCTION__, binShader.name, info );
+			__FUNCTION__, shaderEntry.name, info );
 	#endif
 	}
 
@@ -1880,7 +2268,7 @@ bool GfxCore::rb_shader_init( GfxShaderResource *&resource, const u32 shaderID, 
 		nglGetShaderInfoLog( shaderFragment, sizeof( info ), nullptr, info );
 		GfxShaderResource::release( resource );
 		ErrorReturnMsg( false, "%s: Failed to compile fragment shader! (%s)\n\n%s",
-			__FUNCTION__, binShader.name, info );
+			__FUNCTION__, shaderEntry.name, info );
 	#endif
 	}
 
@@ -1890,8 +2278,9 @@ bool GfxCore::rb_shader_init( GfxShaderResource *&resource, const u32 shaderID, 
 	nglAttachShader( resource->program, shaderFragment );
 	// TODO: compute shaders (must upgrade to Opengl 4.5 & deprecate it on macOS)
 
-	// Input Layout
-	opengl_vertex_input_layout_init[Gfx::binShaders[shaderID].vertexFormat]( resource->program );
+	// Input Layouts
+	opengl_input_layout_init( resource->program,
+		CoreGfx::shaderEntries[shaderID].vertexFormat, CoreGfx::shaderEntries[shaderID].instanceFormat );
 
 	// Link Shader Program
 	nglLinkProgram( resource->program );
@@ -1903,7 +2292,7 @@ bool GfxCore::rb_shader_init( GfxShaderResource *&resource, const u32 shaderID, 
 		nglGetProgramInfoLog( resource->program, sizeof( info ), nullptr, info );
 		GfxShaderResource::release( resource );
 		ErrorReturnMsg( false, "%s: Failed to link shader program! (%s)\n\n%s",
-			__FUNCTION__, binShader.name, info );
+			__FUNCTION__, shaderEntry.name, info );
 	#endif
 	}
 
@@ -1911,8 +2300,8 @@ bool GfxCore::rb_shader_init( GfxShaderResource *&resource, const u32 shaderID, 
 	nglDeleteShader( shaderVertex );
 	nglDeleteShader( shaderFragment );
 
-	resource->sizeVS = binShader.sizeVertex;
-	resource->sizeVS = binShader.sizeFragment;
+	resource->sizeVS = shaderEntry.sizeVertex;
+	resource->sizeVS = shaderEntry.sizeFragment;
 	resource->sizeCS = 0;
 	PROFILE_GFX( Gfx::stats.gpuMemoryShaderPrograms += resource->sizeVS );
 	PROFILE_GFX( Gfx::stats.gpuMemoryShaderPrograms += resource->sizePS );
@@ -1922,7 +2311,7 @@ bool GfxCore::rb_shader_init( GfxShaderResource *&resource, const u32 shaderID, 
 }
 
 
-bool GfxCore::rb_shader_free( GfxShaderResource *&resource )
+bool CoreGfx::rb_shader_free( GfxShaderResource *&resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
@@ -1936,14 +2325,13 @@ bool GfxCore::rb_shader_free( GfxShaderResource *&resource )
 }
 
 
-bool GfxCore::rb_shader_bind( GfxShaderResource *&resource )
+bool CoreGfx::rb_shader_bind( GfxShaderResource *&resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
 	boundShaderResource = resource;
 	nglUseProgram( resource->program );
-
-	CHECK_ERROR( "opengl error post? %d", resource->program  );
+	CHECK_ERROR( "Failed to bind shader program: %u", resource->shaderID );
 
 	PROFILE_GFX( Gfx::stats.frame.shaderBinds++ );
 	return true;

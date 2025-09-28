@@ -92,6 +92,7 @@ void Materials::write()
 	Buffer &binary = Assets::binary;
 	String &header = Assets::header;
 	String &source = Assets::source;
+	const u32 count = static_cast<u32>( materials.size() );
 
 	Timer timer;
 
@@ -105,22 +106,20 @@ void Materials::write()
 		// Group
 		assets_group( header );
 
-		// Struct
-		header.append( "struct BinMaterial;\n\n" );
-
 		// Enums
-		header.append( "enum\n{\n" );
-		for( Material &material : materials )
-		{
-			header.append( "\t" ).append( material.name ).append( ",\n" );
-		}
-		header.append( "};\n\n" );
+		header.append( "enum_class_type\n(\n\tMaterial, u32,\n\n" );
+		for( Material &material : materials ) { header.append( "\t" ).append( material.name ).append( ",\n" ); }
+		header.append( "\n\tNull = 0,\n" );
+		header.append( ");\n\n" );
+
+		// Struct
+		header.append( "namespace Assets { struct MaterialEntry; }\n\n" );
 
 		// Table
-		header.append( "namespace Assets\n{\n" );
-		header.append( "\tconstexpr u32 materialsCount = " );
-		header.append( static_cast<int>( materials.size() ) ).append( ";\n" );
-		header.append( "\textern const BinMaterial materials[];\n" );
+		header.append( "namespace CoreAssets\n{\n" );
+		header.append( "\tconstexpr u32 materialCount = " ).append( count ).append( ";\n" );
+		header.append( count > 0 ? "\textern const Assets::MaterialEntry materials[materialCount];\n" :
+			"\textern const Assets::MaterialEntry *materials;\n" );
 		header.append( "}\n\n" );
 	}
 
@@ -128,23 +127,30 @@ void Materials::write()
 	{
 		// Group
 		assets_group( source );
-		source.append( "namespace Assets\n{\n" );
+		source.append( "namespace CoreAssets\n{\n" );
 
 		// Table
-		char buffer[PATH_SIZE];
-		source.append( "\tconst BinMaterial materials[materialsCount] =\n\t{\n" );
-		for( Material &material : materials )
+		if( count > 0 )
 		{
-			snprintf( buffer, PATH_SIZE,
-				"\t\t{ %d, %d }, // %s\n",
-				material.textureIDColor,
-				material.textureIDNormal,
+			char buffer[PATH_SIZE];
+			source.append( "\tconst Assets::MaterialEntry materials[materialCount] =\n\t{\n" );
+			for( Material &material : materials )
+			{
+				snprintf( buffer, PATH_SIZE,
+					"\t\t{ %d, %d }, // %s\n",
+					material.textureIDColor,
+					material.textureIDNormal,
 
-				material.name.cstr() );
+					material.name.cstr() );
 
-			source.append( buffer );
+				source.append( buffer );
+			}
+			source.append( "\t};\n" );
 		}
-		source.append( "\t};\n" );
+		else
+		{
+			source.append( "\tconst Assets::MaterialEntry *materials = nullptr;\n" );
+		}
 
 		source.append( "}\n\n" );
 	}

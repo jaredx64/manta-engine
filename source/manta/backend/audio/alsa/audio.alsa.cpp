@@ -173,7 +173,7 @@ static THREAD_FUNCTION ( audio_mixer_thread )
 		}
 
 		// Mix Audio
-        SysAudio::audio_mixer( buffer, static_cast<u32>( frames ) );
+        CoreAudio::audio_mixer( buffer, static_cast<u32>( frames ) );
 
         if( snd_pcm_writei( device, buffer, frames ) < 0 ) { break; }
     }
@@ -184,7 +184,7 @@ error:
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool SysAudio::init_backend()
+bool CoreAudio::init_backend()
 {
 #if AUDIO_ENABLED
 	// Start Mixer Thread
@@ -196,7 +196,7 @@ bool SysAudio::init_backend()
 }
 
 
-bool SysAudio::free_backend()
+bool CoreAudio::free_backend()
 {
 #if AUDIO_ENABLED
 	// ...

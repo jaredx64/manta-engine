@@ -56,10 +56,10 @@ bool opengl_init()
 	}
 
 	// Disable Retina Framebuffer
-	[SysWindow::view setWantsBestResolutionOpenGLSurface:YES];
+	[CoreWindow::view setWantsBestResolutionOpenGLSurface:YES];
 
 	// Bind Context
-	[context setView: SysWindow::view];
+	[context setView: CoreWindow::view];
 	[context makeCurrentContext];
 
 	// Disable Vsync (TODO)

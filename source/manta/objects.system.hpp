@@ -8,9 +8,14 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+using ObjectType_t = u16;
+using ObjectCategory_t = u16;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 class Object;
 class ObjectContext;
-template <int N> struct ObjectHandle;
+template <ObjectType_t T> struct ObjectHandle;
 
 class Serializer; // <core/serializer.hpp>
 class Deserializer; // <core/serializer.hpp>
@@ -35,35 +40,35 @@ class Deserializer; // <core/serializer.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define __INTERNAL_OBJECT_SYSTEM_BEGIN namespace SysObjects {
+#define __INTERNAL_OBJECT_SYSTEM_BEGIN namespace CoreObjects {
 #define __INTERNAL_OBJECT_SYSTEM_END /* namespace */ }
 
 #include <objects.system.generated.hpp>
 
-static_assert( OBJECT_TYPE_COUNT < ( ( 1 << 14 ) - 1 ), "Exceeded max supported object type count!" );
-static_assert( OBJECT_CATEGORY_COUNT < U16_MAX, "Exceeded max supported object category count!" );
+static_assert( ObjectType::OBJECT_TYPE_COUNT < ( ( 1 << 14 ) - 1 ), "Exceeded max supported object type count!" );
+static_assert( ObjectCategory::OBJECT_CATEGORY_COUNT < U16_MAX, "Exceeded max supported object category count!" );
 
 // Implementations: see objects.generated.cpp
-namespace SysObjects
+namespace CoreObjects
 {
-	extern const u16 CATEGORY_TYPE_BUCKET[OBJECT_CATEGORY_COUNT][OBJECT_TYPE_COUNT];
-	extern const u16 CATEGORY_TYPES[OBJECT_CATEGORY_COUNT][OBJECT_TYPE_COUNT];
-	extern const u16 CATEGORY_TYPE_COUNT[OBJECT_CATEGORY_COUNT];
-	DEBUG( extern const char *CATEGORY_NAME[OBJECT_CATEGORY_COUNT]; )
+	extern const u16 CATEGORY_TYPE_BUCKET[ObjectCategory::OBJECT_CATEGORY_COUNT][ObjectType::OBJECT_TYPE_COUNT];
+	extern const u16 CATEGORY_TYPES[ObjectCategory::OBJECT_CATEGORY_COUNT][ObjectType::OBJECT_TYPE_COUNT];
+	extern const u16 CATEGORY_TYPE_COUNT[ObjectCategory::OBJECT_CATEGORY_COUNT];
+	DEBUG( extern const char *CATEGORY_NAME[ObjectCategory::OBJECT_CATEGORY_COUNT]; )
 
-	extern const u16 TYPE_SIZE[OBJECT_TYPE_COUNT];
-	DEBUG( extern const char *TYPE_NAME[OBJECT_TYPE_COUNT]; )
-	extern const u16 TYPE_BUCKET_CAPACITY[OBJECT_TYPE_COUNT];
-	extern const u32 TYPE_MAX_COUNT[OBJECT_TYPE_COUNT];
-	extern const u16 TYPE_INHERITANCE_DEPTH[OBJECT_TYPE_COUNT];
-	extern const u32 TYPE_HASH[OBJECT_TYPE_COUNT];
-	extern const bool TYPE_SERIALIZED[OBJECT_TYPE_COUNT];
+	extern const u16 TYPE_SIZE[ObjectType::OBJECT_TYPE_COUNT];
+	DEBUG( extern const char *TYPE_NAME[ObjectType::OBJECT_TYPE_COUNT]; )
+	extern const u16 TYPE_BUCKET_CAPACITY[ObjectType::OBJECT_TYPE_COUNT];
+	extern const u32 TYPE_MAX_COUNT[ObjectType::OBJECT_TYPE_COUNT];
+	extern const u16 TYPE_INHERITANCE_DEPTH[ObjectType::OBJECT_TYPE_COUNT];
+	extern const u32 TYPE_HASH[ObjectType::OBJECT_TYPE_COUNT];
+	extern const bool TYPE_SERIALIZED[ObjectType::OBJECT_TYPE_COUNT];
 
-	template <int N, typename... Args> struct TYPE_CONSTRUCT_VARIADIC;
+	template <ObjectType_t T, typename... Args> struct TYPE_CONSTRUCT_VARIADIC;
 	// constexpr void ( *TYPE_CONSTRUCT[] )( void * ) = { ... } // IMP: objects.generated.hpp
 	// constexpr void ( *TYPE_DESTRUCT[] )( void * ) = { ... }  // IMP: objects.generated.hpp
 
-	template <int N> struct OBJECT_ENCODER;
+	template <ObjectType_t T> struct OBJECT_ENCODER;
 
 	extern bool init();
 	extern bool free();
@@ -74,8 +79,8 @@ namespace SysObjects
 	extern void deserialize( Deserializer &deserializer, ObjectContext &context );
 };
 
-extern bool object_is_parent_of( const u16 thisType, const u16 otherType );
-extern bool object_is_child_of( const u16 thisType, const u16 otherType );
+extern bool object_is_parent_of( const ObjectType thisType, const ObjectType otherType );
+extern bool object_is_child_of( const ObjectType thisType, const ObjectType otherType );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -83,7 +88,7 @@ class Object
 {
 public:
 	Object() : alive{ 0 }, deactivated{ 0 }, type{ 0 }, generation{ 0 }, bucketID{ 0 }, index{ 0 } { }
-	Object( const u16 type, const u16 generation, const u16 bucket, const u16 index ) :
+	Object( const ObjectType_t type, const u16 generation, const u16 bucket, const u16 index ) :
 		alive{ 0 }, deactivated{ 0 }, type{ type }, generation{ generation }, bucketID{ bucket }, index{ index } { }
 
 	u16 alive : 1;       // alive flag
@@ -93,7 +98,7 @@ public:
 	u16 bucketID;        // index into ObjectContext bucket array
 	u16 index;           // object's index within ObjectBucket
 
-	template <int N> ObjectHandle<N> handle( const ObjectContext &context ) const; // impl: objects.generated.cpp
+	template <ObjectType_t T> ObjectHandle<T> handle( const ObjectContext &context ) const; // impl: objects.generated.cpp
 	bool operator==( const Object &other ) const { return equals( other ); }
 	explicit operator bool() const { return alive; }
 
@@ -126,7 +131,7 @@ public:
 		static void free();
 		static void prepare( const ObjectContext &context );
 		static u32 instance_from_object( const Object &object );
-		static Object object_from_instance( const u16 type, const u32 instance );
+		static Object object_from_instance( const ObjectType type, const u32 instance );
 
 	private:
 		static InstanceTable instances[];
@@ -169,7 +174,7 @@ private:
 
 public:
 	ObjectContext() : category { 0 } { };
-	ObjectContext( const u16 category ) : category{ category } { };
+	ObjectContext( const ObjectCategory category ) : category{ category } { };
 
 	bool init();
 	bool free();
@@ -178,31 +183,31 @@ public:
 	byte *get_object_pointer( const Object &object ) const;
 	bool exists( const Object &object ) const { return get_object_pointer( object ) != nullptr; }
 
-	Object create( const u16 type ); // Default Constructor
+	Object create( const ObjectType type ); // Default Constructor
 
-	template <int N, typename... Args> Object create( Args... args ) // Custom Constructor
+	template <ObjectType_t T, typename... Args> Object create( Args... args ) // Custom Constructor
 	{
-		static_assert( N < OBJECT_TYPE_COUNT, "Invalid object type!" );
+		static_assert( T < ObjectType::OBJECT_TYPE_COUNT, "Invalid object type!" );
 
 		// Find Available Bucket
-		ObjectBucket *bucket = new_object( N );
+		ObjectBucket *bucket = new_object( T );
 		if( UNLIKELY( bucket == nullptr ) ) { return Object { }; }
 
 		// Create Object
-		void *const object = bucket->data + ( bucket->current * SysObjects::TYPE_SIZE[N] );
-		SysObjects::TYPE_CONSTRUCT_VARIADIC<N, Args...>::CONSTRUCT( object, args... );
+		void *const object = bucket->data + ( bucket->current * CoreObjects::TYPE_SIZE[T] );
+		CoreObjects::TYPE_CONSTRUCT_VARIADIC<T, Args...>::CONSTRUCT( object, args... );
 		return bucket->new_object( object );
 	}
 
 	bool destroy( Object &object );
 	void destroy_all();
-	void destroy_all_type( const u16 type );
+	void destroy_all_type( const ObjectType type );
 
 	bool activate( Object &object, const bool setActive );
 	void activate_all( const bool setActive );
-	void activate_all_type( const u16 type, const bool setActive );
+	void activate_all_type( const ObjectType type, const bool setActive );
 
-	u32 count( const u16 type ) const;
+	u32 count( const ObjectType type ) const;
 	u32 count_all() const;
 
 	// impl: objects.generated.cpp
@@ -245,10 +250,10 @@ private:
 
 		ObjectContext &context; // parent ObjectContext
 		byte *data = nullptr;   // data buffer pointer
+		ObjectType_t type = 0;  // object type
 		u16 bucketIDNext = 0;   // index of next ObjectBucket in ObjectContext
 		u16 bucketID = 0;       // index of this ObjectBucket in ObjectContext
 		u16 current = 0;        // current insertion index
-		u16 type = 0;           // object type
 		u16 bottom = 0;         // lowest 'alive' index
 		u16 top = 0;            // highest 'alive' index
 
@@ -260,7 +265,7 @@ private:
 		byte *get_object_pointer( const u16 index, const u16 generation ) const;
 		const Object &get_object_id( const u16 index ) const;
 
-		bool init( const u16 type );
+		bool init( const ObjectType_t type );
 		void free();
 		void clear();
 
@@ -272,10 +277,10 @@ private:
 	struct ObjectIterator
 	{
 		ObjectIterator( bool ( *find_object_ptr )( ObjectIterator &, const ObjectBucket *const, const u16 ),
-		                const ObjectContext &context, u16 type, bool polymorphic ) :
+			const ObjectContext &context, ObjectType_t type, bool polymorphic ) :
 			find_object_ptr{ find_object_ptr },
 			context{ context }, ptr{ nullptr }, type{ type }, polymorphic{ polymorphic }, index{ 0 },
-			bucketID{ SysObjects::CATEGORY_TYPE_BUCKET[context.category][type] } { find_first(); } // begin() & end()
+			bucketID{ CoreObjects::CATEGORY_TYPE_BUCKET[context.category][type] } { find_first(); } // begin() & end()
 
 		void find_object( const u32 startIndex );
 		void find_first() { find_object( 0 ); }
@@ -292,64 +297,64 @@ private:
 
 	struct ObjectIteratorActive : public ObjectIterator
 	{
-		ObjectIteratorActive( const ObjectContext &context, u16 type, bool poly ) :
+		ObjectIteratorActive( const ObjectContext &context, ObjectType_t type, bool poly ) :
 			ObjectIterator{ &find_object_ptr, context, type, poly } { }
 		static bool find_object_ptr( ObjectIterator &itr, const ObjectBucket *const bucket, const u16 start );
 	};
 
 	struct ObjectIteratorAll : public ObjectIterator
 	{
-		ObjectIteratorAll( const ObjectContext &context, u16 type, bool poly ) :
+		ObjectIteratorAll( const ObjectContext &context, ObjectType_t type, bool poly ) :
 			ObjectIterator{ &find_object_ptr, context, type, poly } { }
 		static bool find_object_ptr( ObjectIterator &itr, const ObjectBucket *const bucket, const u16 start );
 	};
 
 	bool grow();
 
-	u16 new_bucket( const u16 type );
-	ObjectBucket *new_object( const u16 type );
-	Object create_object( const u16 type );
+	u16 new_bucket( const ObjectType_t type );
+	ObjectBucket *new_object( const ObjectType_t type );
+	Object create_object( const ObjectType_t type );
 
 public:
-	template <int N> struct IteratorAll
+	template <ObjectType_t T> struct IteratorAll
 	{
 		IteratorAll() = delete;
-		IteratorAll( const ObjectContext &context, u16 type, bool poly ) : itr{ context, type, poly } { }
-		IteratorAll<N> begin() { return { itr.context, itr.type, static_cast<bool>( itr.polymorphic ) }; }
-		IteratorAll<N> end() { return { itr.context, 0, static_cast<bool>( itr.polymorphic ) }; }
-		bool operator!=( const IteratorAll<N> &other ) const { return itr.ptr != other.itr.ptr; }
-		IteratorAll<N> &operator++() { itr.find_next(); return *this; }
-		ObjectHandle<N> operator*() const { return ObjectHandle<N>{ itr.ptr }; }
+		IteratorAll( const ObjectContext &context, ObjectType_t type, bool poly ) : itr{ context, type, poly } { }
+		IteratorAll<T> begin() { return { itr.context, itr.type, static_cast<bool>( itr.polymorphic ) }; }
+		IteratorAll<T> end() { return { itr.context, 0, static_cast<bool>( itr.polymorphic ) }; }
+		bool operator!=( const IteratorAll<T> &other ) const { return itr.ptr != other.itr.ptr; }
+		IteratorAll<T> &operator++() { itr.find_next(); return *this; }
+		ObjectHandle<T> operator*() const { return ObjectHandle<T>{ itr.ptr }; }
 		ObjectIteratorAll itr;
 	};
 
-	template <int N> IteratorAll<N> iterator_all( const bool polymorphic = false ) const
+	template <ObjectType_t T> IteratorAll<T> iterator_all( const bool polymorphic = false ) const
 	{
 		Assert( buckets != nullptr );
-		return IteratorAll<N>{ *this, N, polymorphic };
+		return IteratorAll<T>{ *this, T, polymorphic };
 	}
 
-	template <int N> struct IteratorActive
+	template <ObjectType_t T> struct IteratorActive
 	{
 		IteratorActive() = delete;
-		IteratorActive( const ObjectContext &context, u16 type, bool poly ) : itr{ context, type, poly } { }
-		IteratorActive<N> begin() { return { itr.context, itr.type, static_cast<bool>( itr.polymorphic ) }; }
-		IteratorActive<N> end() { return { itr.context, 0, static_cast<bool>( itr.polymorphic ) }; }
-		bool operator!=( const IteratorActive<N> &other ) const { return itr.ptr != other.itr.ptr; }
-		IteratorActive<N> &operator++() { itr.find_next(); return *this; }
-		ObjectHandle<N> operator*() const { return ObjectHandle<N>{ itr.ptr }; }
+		IteratorActive( const ObjectContext &context, ObjectType_t type, bool poly ) : itr{ context, type, poly } { }
+		IteratorActive<T> begin() { return { itr.context, itr.type, static_cast<bool>( itr.polymorphic ) }; }
+		IteratorActive<T> end() { return { itr.context, 0, static_cast<bool>( itr.polymorphic ) }; }
+		bool operator!=( const IteratorActive<T> &other ) const { return itr.ptr != other.itr.ptr; }
+		IteratorActive<T> &operator++() { itr.find_next(); return *this; }
+		ObjectHandle<T> operator*() const { return ObjectHandle<T>{ itr.ptr }; }
 		ObjectIteratorActive itr;
 	};
 
-	template <int N> IteratorActive<N> iterator_active( const bool polymorphic = false ) const
+	template <ObjectType_t T> IteratorActive<T> iterator_active( const bool polymorphic = false ) const
 	{
 		Assert( buckets != nullptr );
-		return IteratorActive<N>{ *this, N, polymorphic };
+		return IteratorActive<T>{ *this, T, polymorphic };
 	}
 
-	template <int N> ObjectHandle<N> handle( const Object &object ) const
+	template <ObjectType_t T> ObjectHandle<T> handle( const Object &object ) const
 	{
-		return ObjectHandle<N>{ get_object_pointer( object ) };
+		return ObjectHandle<T>{ get_object_pointer( object ) };
 	}
 
 private:
@@ -360,43 +365,43 @@ private:
 	u16 current = 0;                 // Current ObjectBucket insertion index
 	u16 disableEvents : 1;
 	u16 __unused : 15;
-	const u16 category;
+	const ObjectCategory_t category;
 };
 static_assert( sizeof( ObjectContext ) == 32, "ObjectContext size changed!" );
 
 
-namespace SysObjects
+namespace CoreObjects
 {
-	template <int N> struct ObjectContextSerializer
+	template <ObjectType_t T> struct ObjectContextSerializer
 	{
 		ObjectContextSerializer( const ObjectContext &context ) : context{ context } { }
 		const ObjectContext &context;
 		static void serialize( Buffer &buffer, const ObjectContextSerializer &s )
 		{
-			buffer.write<u32>( s.context.count( N ) );
-			foreach_object_all( s.context, N, h ) { ObjectHandle<N>::serialize( buffer, h ); }
+			buffer.write<u32>( s.context.count( T ) );
+			foreach_object_all( s.context, T, h ) { ObjectHandle<T>::serialize( buffer, h ); }
 		}
 	};
 
-	template <int N> struct ObjectContextDeserializerA
+	template <ObjectType_t T> struct ObjectContextDeserializerA
 	{
 		ObjectContextDeserializerA( ObjectContext &context ) : context{ context } { }
 		ObjectContext &context;
 		static void deserialize( Buffer &buffer, ObjectContextDeserializerA &d )
 		{
 			const u32 count = buffer.read<u32>();
-			for( u32 i = 0; i < count; i++ ) { d.context.create( N ); }
+			for( u32 i = 0; i < count; i++ ) { d.context.create( T ); }
 		}
 	};
 
-	template <int N> struct ObjectContextDeserializerB
+	template <ObjectType_t T> struct ObjectContextDeserializerB
 	{
 		ObjectContextDeserializerB( ObjectContext &context ) : context{ context } { }
 		ObjectContext &context;
 		static void deserialize( Buffer &buffer, ObjectContextDeserializerB &d )
 		{
 			const u32 count = buffer.read<u32>();
-			foreach_object_all( d.context, N, h ) { ObjectHandle<N>::deserialize( buffer, h ); }
+			foreach_object_all( d.context, T, h ) { ObjectHandle<T>::deserialize( buffer, h ); }
 		}
 	};
 };

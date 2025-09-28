@@ -121,6 +121,8 @@ void Fonts::write()
 	Buffer &binary = Assets::binary;
 	String &header = Assets::header;
 	String &source = Assets::source;
+	const u32 countTTF = static_cast<u32>( ttfs.size() );
+	const u32 countFont = static_cast<u32>( fonts.size() );
 
 	Timer timer;
 
@@ -141,17 +143,18 @@ void Fonts::write()
 		assets_group( header );
 
 		// Struct
-		header.append( "struct BinTTF;\n" );
-		header.append( "struct BinFont;\n\n" );
+		header.append( "namespace Assets { struct TTFEntry; }\n" );
+		header.append( "namespace Assets { struct FontEntry; }\n\n" );
 
 		// Tables
-		header.append( "namespace Assets\n{\n" );
-		header.append( "\tconstexpr u32 ttfsCount = " );
-		header.append( static_cast<int>( ttfs.size() ) ).append( ";\n" );
-		header.append( "\textern const BinTTF ttfs[];\n" );
-		header.append( "\tconstexpr u32 fontsCount = " );
-		header.append( static_cast<int>( fonts.size() ) ).append( ";\n" );
-		header.append( "\textern const BinFont fonts[];\n" );
+		header.append( "namespace CoreAssets\n{\n" );
+		header.append( "\tconstexpr u32 ttfCount = " ).append( countTTF ).append( ";\n" );
+		header.append( countTTF > 0 ? "\textern const Assets::TTFEntry ttfs[ttfCount];\n" :
+			"\textern const Assets::TTFEntry *ttfs;\n" );
+
+		header.append( "\tconstexpr u32 fontCount = " ).append( countFont ).append( ";\n" );
+		header.append( countFont > 0 ? "\textern const Assets::FontEntry fonts[fontCount];\n" :
+			"\textern const Assets::FontEntry *fonts;\n" );
 		header.append( "}\n\n" );
 
 		// Font Macros
@@ -168,11 +171,13 @@ void Fonts::write()
 	{
 		// Group
 		assets_group( source );
-		source.append( "namespace Assets\n{\n" );
-		char buffer[PATH_SIZE];
+		source.append( "namespace CoreAssets\n{\n" );
+
+		if( countTTF > 0 )
 		{
-			// BinTTF Table
-			source.append( "\tconst BinTTF ttfs[ttfsCount] =\n\t{\n" );
+			// Assets::TTFEntry Table
+			char buffer[PATH_SIZE];
+			source.append( "\tconst Assets::TTFEntry ttfs[ttfCount] =\n\t{\n" );
 			for( TTF &ttf : ttfs )
 			{
 				snprintf( buffer, PATH_SIZE,
@@ -183,9 +188,17 @@ void Fonts::write()
 				source.append( buffer );
 			}
 			source.append( "\t};\n\n" );
+		}
+		else
+		{
+			source.append( "\tconst Assets::TTFEntry *ttfs = nullptr;\n" );
+		}
 
-			// BinFont Table
-			source.append( "\tconst BinFont fonts[fontsCount] =\n\t{\n" );
+		if( countFont > 0 )
+		{
+			// Assets::FontEntry Table
+			char buffer[PATH_SIZE];
+			source.append( "\tconst Assets::FontEntry fonts[fontCount] =\n\t{\n" );
 			for( Font &font : fonts )
 			{
 				snprintf( buffer, PATH_SIZE,
@@ -198,7 +211,11 @@ void Fonts::write()
 
 				source.append( buffer );
 			}
-			source.append( "\t};\n\n" );
+			source.append( "\t};\n" );
+		}
+		else
+		{
+			source.append( "\tconst Assets::FontEntry *fonts = nullptr;\n" );
 		}
 		source.append( "}\n\n" );
 	}

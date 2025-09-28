@@ -11,7 +11,7 @@ thread_local static double frequency;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool SysTime::init()
+bool CoreTime::init()
 {
 	LARGE_INTEGER result;
 
@@ -31,7 +31,7 @@ bool SysTime::init()
 }
 
 
-bool SysTime::free()
+bool CoreTime::free()
 {
 	return true;
 }

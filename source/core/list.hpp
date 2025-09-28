@@ -137,6 +137,24 @@ public:
 		current = 0;
 	}
 
+	void reserve( const usize reserve )
+	{
+		MemoryAssert( data != nullptr );
+		Assert( reserve > 0 );
+		if( reserve <= capacity ) { return; }
+
+		// Reallocate memory
+		capacity = reserve;
+		data = reinterpret_cast<T *>( memory_realloc( data, capacity * sizeof( T ) ) );
+		ErrorIf( data == nullptr, "Failed to reallocate memory for reserve List (%p: realloc %d bytes)",
+			data, capacity * sizeof( T ) );
+	}
+
+	bool initialized() const
+	{
+		return data != nullptr;
+	}
+
 	List<T> &copy( const List<T> &other )
 	{
 		MemoryAssert( other.data != nullptr );

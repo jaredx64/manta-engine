@@ -11,12 +11,12 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-namespace SysObjects { class UIWidget_t; } // fwd declaration for UIWidget.object
+namespace CoreObjects { class UIWidget_t; } // fwd declaration for UIWidget.object
 class UIContext;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-namespace SysUI
+namespace CoreUI
 {
 	extern Keyboard keyboard;
 	extern Mouse mouse;
@@ -82,7 +82,7 @@ struct UIButtonDescription : UIWidgetDescription
 class UIContext
 {
 public:
-	friend class SysObjects::UIWidget_t;
+	friend class CoreObjects::UIWidget_t;
 
 public:
 	void init();
@@ -121,11 +121,11 @@ public:
 		int width = 0, int height = 0, Object parent = { } );
 
 public:
-	template <int N> ObjectHandle<N> handle( const Object &widget ) const
+	template <u16 T> ObjectHandle<T> handle( const Object &widget ) const
 	{
-		Assert( N == UIWidget || object_is_child_of( N, UIWidget ) );
-		if( !( N == widget.type || object_is_child_of( widget.type, N ) ) ) { return ObjectHandle<N>{ nullptr }; }
-		return ObjectHandle<N>{ objects.get_object_pointer( widget ) };
+		Assert( T == ObjectType::UIWidget || object_is_child_of( T, ObjectType::UIWidget ) );
+		if( !( T == widget.type || object_is_child_of( widget.type, T ) ) ) { return ObjectHandle<T>{ nullptr }; }
+		return ObjectHandle<T>{ objects.get_object_pointer( widget ) };
 	}
 
 	float_m44 matrix_get() { return matrix; }
@@ -154,15 +154,15 @@ public:
 private:
 	Object instantiate_widget( u16 type, Object parent );
 
-	void update_widget( ObjectHandle<UIWidget> &widgetHandle, const Delta delta );
-	void render_widget( ObjectHandle<UIWidget> &widgetHandle, const Delta delta, const Alpha alpha );
+	void update_widget( ObjectHandle<ObjectType::UIWidget> &widgetHandle, const Delta delta );
+	void render_widget( ObjectHandle<ObjectType::UIWidget> &widgetHandle, const Delta delta, const Alpha alpha );
 
-	bool test_widget( ObjectHandle<UIWidget> &widgetHandle );
+	bool test_widget( ObjectHandle<ObjectType::UIWidget> &widgetHandle );
 	void register_widget( const Object &widget );
 	void release_widget( const Object &widget );
 
 private:
-	ObjectContext objects { CategoryUI };
+	ObjectContext objects { ObjectCategory::UI };
 	List<Object> widgets;
 	Object hoverWidget;
 	bool clearing = false;

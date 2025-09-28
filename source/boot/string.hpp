@@ -10,7 +10,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-namespace SysText
+namespace CoreText
 {
 	inline void macro_strjoin( const usize size, char *buffer, ... )
 	{
@@ -91,8 +91,8 @@ namespace SysText
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define strjoin( buffer, ... ) SysText::macro_strjoin( sizeof( buffer ), buffer, __VA_ARGS__, nullptr )
-#define strjoin_path( buffer, ... ) SysText::_filepath( sizeof( buffer ), buffer, __VA_ARGS__, nullptr );
-#define strappend( buffer, string ) SysText::macro_strappend( sizeof( buffer ), buffer, string )
+#define strjoin( buffer, ... ) CoreText::macro_strjoin( sizeof( buffer ), buffer, __VA_ARGS__, nullptr )
+#define strjoin_path( buffer, ... ) CoreText::_filepath( sizeof( buffer ), buffer, __VA_ARGS__, nullptr );
+#define strappend( buffer, string ) CoreText::macro_strappend( sizeof( buffer ), buffer, string )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -47,24 +47,55 @@ void compile_shader( Shader &shader, const char *path )
 	// Preprocessor
 	String file;
 	{
+		const bool useMSVC = strcmp( Build::args.toolchain, "msvc" ) == 0;
+		const bool useGNU = strcmp( Build::args.toolchain, "gnu" ) == 0;
+		const bool useLLVM = strcmp( Build::args.toolchain, "llvm" ) == 0;
+
 		char pathAPI[PATH_SIZE]; // Path to dummy "shader_api.hpp"
 		strjoin_path( pathAPI, "source", "build", "shaders", "preprocess" );
 
+		char pipelineDefines[PATH_SIZE]; pipelineDefines[0] = '\0';
+		const char *pipelineDefinePrefix = useMSVC ? "/D" : "-D";
+
+		switch( shader.type )
+		{
+			case ShaderType_HLSL:
+			{
+				strappend( pipelineDefines, pipelineDefinePrefix );
+				strappend( pipelineDefines, "SHADER_HLSL " );
+			}
+			break;
+
+			case ShaderType_GLSL:
+			{
+				strappend( pipelineDefines, pipelineDefinePrefix );
+				strappend( pipelineDefines, "SHADER_GLSL " );
+			}
+			break;
+
+			case ShaderType_METAL:
+			{
+				strappend( pipelineDefines, pipelineDefinePrefix );
+				strappend( pipelineDefines, "SHADER_METAL " );
+			}
+			break;
+		}
+
 		char commandPreprocessor[1024];
-		if( strcmp( Build::args.toolchain, "msvc" ) == 0 )
+		if( useMSVC )
 		{
 			// MSVC Preprocessor
-			strjoin( commandPreprocessor, "cl -nologo /EP /I\"", pathAPI ,"\" /TP ", pathInput, " > ", pathPreprocessed );
+			strjoin( commandPreprocessor, "cl -nologo /EP /I\"", pathAPI , "\" /TP ", pipelineDefines, " ", pathInput, " > ", pathPreprocessed );
 		}
-		else if( strcmp( Build::args.toolchain, "gnu" ) == 0 )
+		else if( useGNU )
 		{
 			// GCC Preprocessor
-			strjoin( commandPreprocessor, "gcc -E -P -I", pathAPI ," -x c ", pathInput, " > ", pathPreprocessed );
+			strjoin( commandPreprocessor, "gcc -E -P -I", pathAPI , " ", pipelineDefines, " -x c ", pathInput, " > ", pathPreprocessed );
 		}
-		else if( strcmp( Build::args.toolchain, "llvm" ) == 0 )
+		else if( useLLVM )
 		{
 			// Clang Preprocessor
-			strjoin( commandPreprocessor, "gcc -E -P -I", pathAPI ," -x c ", pathInput, " > ", pathPreprocessed );
+			strjoin( commandPreprocessor, "gcc -E -P -I", pathAPI , " ", pipelineDefines , " -x c ", pathInput, " > ", pathPreprocessed );
 		}
 
 		const int errorCode = system( commandPreprocessor );

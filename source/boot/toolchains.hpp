@@ -90,10 +90,10 @@ struct Toolchain
 
 static void linkerflags_add_library( char *buffer, const usize size, const Toolchain &tc, const char *library )
 {
-	SysText::macro_strappend( size, buffer, tc.linkerPrefixLibrary );
-	SysText::macro_strappend( size, buffer, library );
-	SysText::macro_strappend( size, buffer, tc.linkerExtensionLibrary );
-	SysText::macro_strappend( size, buffer, " " );
+	CoreText::macro_strappend( size, buffer, tc.linkerPrefixLibrary );
+	CoreText::macro_strappend( size, buffer, library );
+	CoreText::macro_strappend( size, buffer, tc.linkerExtensionLibrary );
+	CoreText::macro_strappend( size, buffer, " " );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -8,14 +8,14 @@ thread_local static timespec offset;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool SysTime::init()
+bool CoreTime::init()
 {
 	// Success
 	return clock_gettime( CLOCK_MONOTONIC, &offset ) == 0;
 }
 
 
-bool SysTime::free()
+bool CoreTime::free()
 {
 	return true;
 }

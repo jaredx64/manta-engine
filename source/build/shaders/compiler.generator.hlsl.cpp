@@ -14,6 +14,8 @@ static u32 SemanticCount[SEMANTICTYPE_COUNT];
 
 static bool generatedSampler = false;
 
+static String INSTANCE_INPUT_VARIABLE_SUBSTITUTION = "";
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 static void semantics_reset()
@@ -32,6 +34,16 @@ static void semantics_get_name( char *buffer, const usize size, StructType struc
 
 	switch( structType )
 	{
+		case StructType_InstanceInput:
+		{
+			switch( variable.semantic )
+			{
+				case SemanticType_INSTANCE: name = "INSTANCE";   break;
+				default: Error( "Unexpected semantic type: %u", variable.semantic ); return;
+			}
+		}
+		break;
+
 		case StructType_VertexInput:
 		{
 			switch( variable.semantic )
@@ -43,6 +55,7 @@ static void semantics_get_name( char *buffer, const usize size, StructType struc
 				case SemanticType_COLOR: name = "COLOR"; break;
 				case SemanticType_BINORMAL: name = "BINORMAL"; break;
 				case SemanticType_TANGENT: name = "TANGENT";   break;
+				case SemanticType_INSTANCE: name = "INSTANCE";   break;
 				default: Error( "Unexpected semantic type: %u", variable.semantic ); return;
 			}
 		}
@@ -59,6 +72,7 @@ static void semantics_get_name( char *buffer, const usize size, StructType struc
 				case SemanticType_COLOR: name = "COLOR"; break;
 				case SemanticType_BINORMAL: name = "BINORMAL"; break;
 				case SemanticType_TANGENT: name = "TANGENT";   break;
+				case SemanticType_INSTANCE: name = "INSTANCE";   break;
 				default: Error( "Unexpected semantic type: %u", variable.semantic ); return;
 			}
 		}
@@ -75,6 +89,7 @@ static void semantics_get_name( char *buffer, const usize size, StructType struc
 				case SemanticType_COLOR: name = "COLOR"; break;
 				case SemanticType_BINORMAL: name = "BINORMAL"; break;
 				case SemanticType_TANGENT: name = "TANGENT";   break;
+				case SemanticType_INSTANCE: name = "INSTANCE";   break;
 				default: Error( "Unexpected semantic type: %u", variable.semantic ); return;
 			}
 		}
@@ -91,6 +106,7 @@ static void semantics_get_name( char *buffer, const usize size, StructType struc
 				case SemanticType_COLOR: name = "SV_TARGET"; break;
 				case SemanticType_BINORMAL: Error( "HLSL: fragment_output: unsupported semantic BINORMAL" );
 				case SemanticType_TANGENT: Error( "HLSL: fragment_output: unsupported semantic TANGENT" );
+				case SemanticType_INSTANCE: Error( "HLSL: fragment_output: unsupported semantic INSTANCE" );
 				default: Error( "Unexpected semantic type: %u", variable.semantic ); return;
 			}
 		}
@@ -239,7 +255,7 @@ void GeneratorHLSL::append_structure_member_padded( String &output, const char *
 	if( type.tokenType == TokenType_SharedStruct ) { size = type.sizeBytesPadded; align = 16; }
 
 	// Calculate required padding & increment byte offset
-	structureByteOffset += Generator::append_structure_padding( output, indent, align, structureByteOffset );
+	structureByteOffset += Generator::append_structure_padding( output, indent, size, align, structureByteOffset );
 	auto round_up16 = []( int size ) { return ( size + 15 ) & ~15; };
 
 	// Type
@@ -357,7 +373,7 @@ void GeneratorHLSL::generate_function_declaration( NodeFunctionDeclaration *node
 			Variable &parameter = parser.variables[i];
 			Type &parameterType = parser.types[parameter.typeID];
 
-			// Skip buffers (global namespace)
+			// Skip buffers / instance inputs  (global namespace)
 			if( parameterType.tokenType == TokenType_UniformBuffer ||
 				parameterType.tokenType == TokenType_ConstantBuffer ||
 				parameterType.tokenType == TokenType_MutableBuffer )
@@ -404,6 +420,7 @@ void GeneratorHLSL::generate_function_declaration_main( NodeFunctionDeclaration 
 	VariableID inID = function.parameterFirst;
 	Type &inType = parser.types[parser.variables[inID].typeID];
 	const String &inTypeName = type_name( parser.variables[inID].typeID );
+	INSTANCE_INPUT_VARIABLE_SUBSTITUTION = variable_name( inID ); // instance_input -> vertex_input
 
 	VariableID outID = function.parameterFirst + 1;
 	Type &outType = parser.types[parser.variables[outID].typeID];
@@ -446,7 +463,6 @@ void GeneratorHLSL::generate_expression_binary_dot( NodeExpressionBinary *node )
 {
 	Assert( node->exprType == ExpressionBinaryType_Dot );
 
-	// buffer members are in the global namespace, so we prefix them by structure name
 	if( node->expr1->nodeType == NodeType_Variable )
 	{
 		NodeVariable *nodeVariable = reinterpret_cast<NodeVariable *>( node->expr1 );
@@ -457,14 +473,27 @@ void GeneratorHLSL::generate_expression_binary_dot( NodeExpressionBinary *node )
 			type.tokenType == TokenType_ConstantBuffer ||
 			type.tokenType == TokenType_MutableBuffer )
 		{
-			String &typeName = type_name( variable.typeID );
-			output.append( typeName ).append( "_" );
+			// In HLSL, buffer variables are in the global namespace
+			// Therefore, we prefix: <Buffer>_<Variable>
+			output.append( type_name( variable.typeID ) ).append( "_" );
+			generate_node( node->expr2 );
+			return;
+		}
+		else if( type.tokenType == TokenType_InstanceInput )
+		{
+			ErrorIf( stage != ShaderStage_Vertex,
+				"TokenType_InstanceInput encounted in wrong stage: %d", stage );
+
+			// In HLSL, instance data is part of the vertex format vertex format: <Buffer>_<Variable>
+			// Therefore, we rename & prefix: <Vertex>.<Instance>_<variable>
+			output.append( INSTANCE_INPUT_VARIABLE_SUBSTITUTION ); // vertex_format in (vs only)
+			output.append( "." );
+			output.append( type_name( variable.typeID ) ).append( "_" );
 			generate_node( node->expr2 );
 			return;
 		}
 	}
 
-	// Only reachable if LHS not uniform_buffer type
 	generate_node( node->expr1 );
 	output.append( "." );
 	generate_node( node->expr2 );
@@ -871,11 +900,98 @@ void GeneratorHLSL::generate_function_call_intrinsics( NodeFunctionCall *node )
 
 void GeneratorHLSL::generate_structure( NodeStruct *node )
 {
+	// Skip generating StructType_InstanceInput
+	if( node->structType == StructType_InstanceInput ) { return; }
+
+	// Append Member Variables Helper
+	auto append_structure_members = [&]( NodeStruct *node, const String &prefix ) -> void
+	{
+		const Struct &structure = parser.structs[node->structID];
+		const Type &type = parser.types[structure.typeID];
+		const String &typeName = type_name( structure.typeID );
+		const VariableID first = type.memberFirst;
+		const VariableID last = first + type.memberCount;
+
+		const bool expectMeta = !( node->structType == StructType_UniformBuffer ||
+			node->structType == StructType_ConstantBuffer ||
+			node->structType == StructType_MutableBuffer ||
+			node->structType == StructType_Struct ||
+			node->structType == StructType_SharedStruct );
+
+		for( usize i = first; i < last; i++ )
+		{
+			Variable &memberVariable = parser.variables[i];
+			const String &memberVariableName = variable_name( i );
+			const String &memberTypeName = type_name( memberVariable.typeID );
+
+			// Indent
+			output.append( indent );
+
+			// Flat
+			if( node->structType == StructType_VertexOutput ||
+				node->structType == StructType_FragmentInput )
+			{
+				switch( memberVariable.typeID )
+				{
+					case Primitive_Bool:
+					case Primitive_Bool2:
+					case Primitive_Bool3:
+					case Primitive_Bool4:
+					case Primitive_Int:
+					case Primitive_Int2:
+					case Primitive_Int3:
+					case Primitive_Int4:
+					case Primitive_UInt:
+					case Primitive_UInt2:
+					case Primitive_UInt3:
+					case Primitive_UInt4:
+						output.append( "nointerpolation " );
+					break;
+				}
+			}
+
+			// <type>
+			output.append( memberTypeName ).append( " " );
+
+			// <name>
+			if( node->structType == StructType_UniformBuffer ||
+				node->structType == StructType_ConstantBuffer ||
+				node->structType == StructType_MutableBuffer )
+			{
+				// buffer members are in global namespace, so we prefix them with the structure name
+				output.append( typeName ).append( "_" );
+			}
+
+			if( !prefix.is_empty() ) { output.append( prefix ).append( "_" ); }
+			output.append( memberVariableName );
+
+			// [arrayX]
+			if( memberVariable.arrayLengthX > 0 )
+			{
+				output.append( "[" ).append( memberVariable.arrayLengthX ).append( "]");
+			}
+
+			// [arrayY]
+			if( memberVariable.arrayLengthY > 0 )
+			{
+				output.append( "[" ).append( memberVariable.arrayLengthY ).append( "]");
+			}
+
+			// : <semantic>
+			if( expectMeta )
+			{
+				char buffer[128];
+				semantics_get_name( buffer, sizeof( buffer ), node->structType, memberVariable );
+				output.append( " : " ).append( buffer );
+			}
+
+			output.append( ";\n" );
+		}
+	};
+
 	const Struct &structure = parser.structs[node->structID];
 	const Type &type = parser.types[structure.typeID];
 	const String &typeName = type_name( structure.typeID );
-	const VariableID first = type.memberFirst;
-	const VariableID last = first + type.memberCount;
 
 	static const char *structNames[] =
 	{
@@ -884,6 +1000,7 @@ void GeneratorHLSL::generate_structure( NodeStruct *node )
 		"cbuffer", // StructType_UniformBuffer
 		"cbuffer", // StructType_Constantuffer
 		"cbuffer", // StructType_MutableBuffer
+		"struct",  // StructType_InstanceInput
 		"struct",  // StructType_VertexInput
 		"struct",  // StructType_VertexOutput
 		"struct",  // StructType_FragmentInput
@@ -896,10 +1013,6 @@ void GeneratorHLSL::generate_structure( NodeStruct *node )
 	const bool expectSlot =  ( node->structType == StructType_UniformBuffer ||
 		node->structType == StructType_ConstantBuffer || node->structType == StructType_MutableBuffer );
 
-	const bool expectMeta = !( node->structType == StructType_UniformBuffer ||
-		node->structType == StructType_ConstantBuffer || node->structType == StructType_MutableBuffer ||
-		node->structType == StructType_Struct || node->structType == StructType_SharedStruct );
-
 	// <name> <type>
 	output.append( structNames[node->structType] ).append( " " ).append( typeName );
 
@@ -909,79 +1022,28 @@ void GeneratorHLSL::generate_structure( NodeStruct *node )
 		output.append( " : register( b" ).append( structure.slot ).append( " )" );
 	}
 
-	// { <body> }
+	// {
 	output.append( "\n{\n" );
 	semantics_reset();
 	indent_add();
 
-	for( usize i = first; i < last; i++ )
+	// Members
+	append_structure_members( node, "" );
+
+	// In HLSL, instance_input members belong to the vertex format
+	if( node->structType == StructType_VertexInput && shader.instanceFormatID != U32_MAX )
 	{
-		Variable &memberVariable = parser.variables[i];
-		const String &memberVariableName = variable_name( i );
-		const String &memberTypeName = type_name( memberVariable.typeID );
-
-		// Indent
-		output.append( indent );
-
-		// Flat
-		if( node->structType == StructType_VertexOutput ||
-			node->structType == StructType_FragmentInput )
+		const InstanceFormat &instanceFormat = Gfx::instanceFormats[shader.instanceFormatID];
+		if( instanceFormat.node != nullptr )
 		{
-			switch( memberVariable.typeID )
-			{
-				case Primitive_Bool:
-				case Primitive_Bool2:
-				case Primitive_Bool3:
-				case Primitive_Bool4:
-				case Primitive_Int:
-				case Primitive_Int2:
-				case Primitive_Int3:
-				case Primitive_Int4:
-				case Primitive_UInt:
-				case Primitive_UInt2:
-				case Primitive_UInt3:
-				case Primitive_UInt4:
-					output.append( "nointerpolation " );
-				break;
-			}
+			NodeStruct *nodeInstanceInput = reinterpret_cast<NodeStruct *>( instanceFormat.node );
+			const String &instanceInputName = type_name( parser.structs[nodeInstanceInput->structID].typeID );
+			output.append( "\n" );
+			append_structure_members( nodeInstanceInput, instanceInputName );
 		}
-
-		// <type>
-		output.append( memberTypeName ).append( " " );
-
-		// <name>
-		if( node->structType == StructType_UniformBuffer ||
-			node->structType == StructType_ConstantBuffer ||
-			node->structType == StructType_MutableBuffer )
-		{
-			// buffer members are in global namespace, so we prefix them with the structure name
-			output.append( typeName ).append( "_" );
-		}
-		output.append( memberVariableName );
-
-		// [arrayX]
-		if( memberVariable.arrayLengthX > 0 )
-		{
-			output.append( "[" ).append( memberVariable.arrayLengthX ).append( "]");
-		}
-
-		// [arrayY]
-		if( memberVariable.arrayLengthY > 0 )
-		{
-			output.append( "[" ).append( memberVariable.arrayLengthY ).append( "]");
-		}
-
-		// : <semantic>
-		if( expectMeta )
-		{
-			char buffer[128];
-			semantics_get_name( buffer, sizeof( buffer ), node->structType, memberVariable );
-			output.append( " : " ).append( buffer );
-		}
-
-		output.append( ";\n" );
 	}
 
+	// }
 	indent_sub();
 	output.append( "};\n\n" );
 }
@@ -1006,6 +1068,439 @@ void GeneratorHLSL::generate_sv_semantic( NodeSVSemantic *node )
 }
 
 
+bool GeneratorHLSL::generate_structure_gfx_instance( NodeStruct *node )
+{
+	// Register this vertex format in the system
+	if( !Generator::generate_structure_gfx_instance( node ) )
+	{
+		return false; // Already registered -- no need to continue
+	}
+
+	// Generate D3D11/HLSL Vertex Format interfaces
+	const Struct &structure = parser.structs[node->structID];
+	const Type &type = parser.types[structure.typeID];
+	const VariableID first = type.memberFirst;
+	const VariableID last = first + type.memberCount;
+
+	int byteOffset = 0;
+	int semanticIndex[SEMANTICTYPE_COUNT];
+	for( u32 i = 0; i < SEMANTICTYPE_COUNT; i++ ) { semanticIndex[i] = 0; }
+
+	String desc;
+
+	const usize count = last - first;
+	if( count > 0 )
+	{
+		desc.append( "\t" "static D3D11_INPUT_ELEMENT_DESC inputDescription[] = \n" );
+		desc.append( "\t" "{\n" );
+		for( usize i = first; i < last; i++ )
+		{
+			Variable &memberVariable = parser.variables[i];
+			const String &memberVariableName = variable_name( i );
+			const String &memberTypeName = type_name( memberVariable.typeID );
+
+			// SemanticName
+			desc.append( "\t" "\t" "{ \"" );
+			switch( memberVariable.semantic )
+			{
+				case SemanticType_POSITION: desc.append( "POSITION" ); break;
+				case SemanticType_TEXCOORD: desc.append( "TEXCOORD" ); break;
+				case SemanticType_NORMAL: desc.append( "NORMAL" ); break;
+				case SemanticType_DEPTH: desc.append( "DEPTH" ); break;
+				case SemanticType_COLOR: desc.append( "COLOR" ); break;
+				case SemanticType_BINORMAL: desc.append( "BINORMAL" ); break;
+				case SemanticType_TANGENT: desc.append( "TANGENT" ); break;
+				case SemanticType_INSTANCE: desc.append( "INSTANCE" ); break;
+				default: Error( "Unexpected semantic type: %u", memberVariable.semantic ); break;
+			}
+			desc.append( "\", " );
+
+			// SemanticIndex
+			desc.append( semanticIndex[memberVariable.semantic] );
+			semanticIndex[memberVariable.semantic]++;
+			desc.append( ", " );
+
+			const char *format = "";
+			int formatSize = 0;
+
+			// Format
+			switch( memberVariable.typeID )
+			{
+				case Primitive_Bool:
+				case Primitive_Int:
+				case Primitive_UInt:
+				case Primitive_Float:
+				case Primitive_Double:
+				{
+					switch( memberVariable.format )
+					{
+						// 1 Byte
+						case InputFormat_UNORM8:
+							format = "DXGI_FORMAT_R8_UNORM";
+							formatSize = 1;
+						break;
+
+						case InputFormat_SNORM8:
+							format = "DXGI_FORMAT_R8_SNORM";
+							formatSize = 1;
+						break;
+
+						case InputFormat_UINT8:
+							format = "DXGI_FORMAT_R8_UINT";
+							formatSize = 1;
+						break;
+
+						case InputFormat_SINT8:
+							format = "DXGI_FORMAT_R8_SINT";
+							formatSize = 1;
+						break;
+
+						// 2 Bytes
+						case InputFormat_UNORM16:
+							format = "DXGI_FORMAT_R16_UNORM";
+							formatSize = 2;
+						break;
+
+						case InputFormat_SNORM16:
+							format = "DXGI_FORMAT_R16_SNORM";
+							formatSize = 2;
+						break;
+
+						case InputFormat_UINT16:
+							format = "DXGI_FORMAT_R16_UINT";
+							formatSize = 2;
+						break;
+
+						case InputFormat_SINT16:
+							format = "DXGI_FORMAT_R16_SINT";
+							formatSize = 2;
+						break;
+
+						case InputFormat_FLOAT16:
+							format = "DXGI_FORMAT_R16_FLOAT";
+							formatSize = 2;
+						break;
+
+						// 4 Bytes
+						case InputFormat_UNORM32:
+							format = "DXGI_FORMAT_R32_UNORM";
+							formatSize = 4;
+						break;
+
+						case InputFormat_SNORM32:
+							format = "DXGI_FORMAT_R32_SNORM";
+							formatSize = 4;
+						break;
+
+						case InputFormat_UINT32:
+							format = "DXGI_FORMAT_R32_UINT";
+							formatSize = 4;
+						break;
+
+						case InputFormat_SINT32:
+							format = "DXGI_FORMAT_R32_SINT";
+							formatSize = 4;
+						break;
+
+						case InputFormat_FLOAT32:
+							format = "DXGI_FORMAT_R32_FLOAT";
+							formatSize = 4;
+						break;
+					}
+				}
+				break;
+
+				case Primitive_Bool2:
+				case Primitive_Int2:
+				case Primitive_UInt2:
+				case Primitive_Float2:
+				case Primitive_Double2:
+				{
+					switch( memberVariable.format )
+					{
+						// 1 Byte
+						case InputFormat_UNORM8:
+							format = "DXGI_FORMAT_R8G8_UNORM";
+							formatSize = 2;
+						break;
+
+						case InputFormat_SNORM8:
+							format = "DXGI_FORMAT_R8G8_SNORM";
+							formatSize = 2;
+						break;
+
+						case InputFormat_UINT8:
+							format = "DXGI_FORMAT_R8G8_UINT";
+							formatSize = 2;
+						break;
+
+						case InputFormat_SINT8:
+							format = "DXGI_FORMAT_R8G8_SINT";
+							formatSize = 2;
+						break;
+
+						// 2 Bytes
+						case InputFormat_UNORM16:
+							format = "DXGI_FORMAT_R16G16_UNORM";
+							formatSize = 4;
+						break;
+
+						case InputFormat_SNORM16:
+							format = "DXGI_FORMAT_R16G16_SNORM";
+							formatSize = 4;
+						break;
+
+						case InputFormat_UINT16:
+							format = "DXGI_FORMAT_R16G16_UINT";
+							formatSize = 4;
+						break;
+
+						case InputFormat_SINT16:
+							format = "DXGI_FORMAT_R16G16_SINT";
+							formatSize = 4;
+						break;
+
+						case InputFormat_FLOAT16:
+							format = "DXGI_FORMAT_R16G16_FLOAT";
+							formatSize = 4;
+						break;
+
+						// 4 Bytes
+						case InputFormat_UNORM32:
+							format = "DXGI_FORMAT_R32G32_UNORM";
+							formatSize = 8;
+						break;
+
+						case InputFormat_SNORM32:
+							format = "DXGI_FORMAT_R32G32_SNORM";
+							formatSize = 8;
+						break;
+
+						case InputFormat_UINT32:
+							format = "DXGI_FORMAT_R32G32_UINT";
+							formatSize = 8;
+						break;
+
+						case InputFormat_SINT32:
+							format = "DXGI_FORMAT_R32G32_SINT";
+							formatSize = 8;
+						break;
+
+						case InputFormat_FLOAT32:
+							format = "DXGI_FORMAT_R32G32_FLOAT";
+							formatSize = 8;
+						break;
+					}
+				}
+				break;
+
+				case Primitive_Bool3:
+				case Primitive_Int3:
+				case Primitive_UInt3:
+				case Primitive_Float3:
+				case Primitive_Double3:
+				{
+					switch( memberVariable.format )
+					{
+						// 1 Byte
+						case InputFormat_UNORM8:
+							format = "DXGI_FORMAT_R8G8B8A8_UNORM";
+							formatSize = 4;
+						break;
+
+						case InputFormat_SNORM8:
+							format = "DXGI_FORMAT_R8G8B8A8_SNORM";
+							formatSize = 4;
+						break;
+
+						case InputFormat_UINT8:
+							format = "DXGI_FORMAT_R8G8B8A8_UINT";
+							formatSize = 4;
+						break;
+
+						case InputFormat_SINT8:
+							format = "DXGI_FORMAT_R8G8B8A8_SINT";
+							formatSize = 4;
+						break;
+
+						// 2 Bytes
+						case InputFormat_UNORM16:
+							format = "DXGI_FORMAT_R16G16B16A16_UNORM";
+							formatSize = 8;
+						break;
+
+						case InputFormat_SNORM16:
+							format = "DXGI_FORMAT_R16G16B16A16_SNORM";
+							formatSize = 8;
+						break;
+
+						case InputFormat_UINT16:
+							format = "DXGI_FORMAT_R16G16B16A16_UINT";
+							formatSize = 8;
+						break;
+
+						case InputFormat_SINT16:
+							format = "DXGI_FORMAT_R16G16B16A16_SINT";
+							formatSize = 8;
+						break;
+
+						case InputFormat_FLOAT16:
+							format = "DXGI_FORMAT_R16G16B16A16_FLOAT";
+							formatSize = 8;
+						break;
+
+						// 4 Bytes
+						case InputFormat_UNORM32:
+							format = "DXGI_FORMAT_R32G32B32_TYPELESS";
+							formatSize = 12;
+						break;
+
+						case InputFormat_SNORM32:
+							format = "DXGI_FORMAT_R32G32B32_TYPELESS";
+							formatSize = 12;
+						break;
+
+						case InputFormat_UINT32:
+							format = "DXGI_FORMAT_R32G32B32_UINT";
+							formatSize = 12;
+						break;
+
+						case InputFormat_SINT32:
+							format = "DXGI_FORMAT_R32G32B32_SINT";
+							formatSize = 12;
+						break;
+
+						case InputFormat_FLOAT32:
+							format = "DXGI_FORMAT_R32G32B32_FLOAT";
+							formatSize = 12;
+						break;
+					}
+				}
+				break;
+
+				case Primitive_Bool4:
+				case Primitive_Int4:
+				case Primitive_UInt4:
+				case Primitive_Float4:
+				case Primitive_Double4:
+				{
+					switch( memberVariable.format )
+					{
+						// 1 Byte
+						case InputFormat_UNORM8:
+							format = "DXGI_FORMAT_R8G8B8A8_UNORM";
+							formatSize = 4;
+						break;
+
+						case InputFormat_SNORM8:
+							format = "DXGI_FORMAT_R8G8B8A8_SNORM";
+							formatSize = 4;
+						break;
+
+						case InputFormat_UINT8:
+							format = "DXGI_FORMAT_R8G8B8A8_UINT";
+							formatSize = 4;
+						break;
+
+						case InputFormat_SINT8:
+							format = "DXGI_FORMAT_R8G8B8A8_SINT";
+							formatSize = 4;
+						break;
+
+						// 2 Bytes
+						case InputFormat_UNORM16:
+							format = "DXGI_FORMAT_R16G16B16A16_UNORM";
+							formatSize = 8;
+						break;
+
+						case InputFormat_SNORM16:
+							format = "DXGI_FORMAT_R16G16B16A16_SNORM";
+							formatSize = 8;
+						break;
+
+						case InputFormat_UINT16:
+							format = "DXGI_FORMAT_R16G16B16A16_UINT";
+							formatSize = 8;
+						break;
+
+						case InputFormat_SINT16:
+							format = "DXGI_FORMAT_R16G16B16A16_SINT";
+							formatSize = 8;
+						break;
+
+						case InputFormat_FLOAT16:
+							format = "DXGI_FORMAT_R16G16B16A16_FLOAT";
+							formatSize = 8;
+						break;
+
+						// 4 Bytes
+						case InputFormat_UNORM32:
+							format = "DXGI_FORMAT_R32G32B32A32_TYPELESS";
+							formatSize = 16;
+						break;
+
+						case InputFormat_SNORM32:
+							format = "DXGI_FORMAT_R32G32B32A32_TYPELESS";
+							formatSize = 16;
+						break;
+
+						case InputFormat_UINT32:
+							format = "DXGI_FORMAT_R32G32B32A32_UINT";
+							formatSize = 16;
+						break;
+
+						case InputFormat_SINT32:
+							format = "DXGI_FORMAT_R32G32B32A32_SINT";
+							formatSize = 16;
+						break;
+
+						case InputFormat_FLOAT32:
+							format = "DXGI_FORMAT_R32G32B32A32_FLOAT";
+							formatSize = 16;
+						break;
+					}
+				}
+				break;
+			}
+			desc.append( format );
+			desc.append( ", " );
+
+			// InputSlot
+			desc.append( "1" );
+			desc.append( ", " );
+
+			// AlignedByteOffset
+			desc.append( byteOffset );
+			byteOffset += formatSize;
+			desc.append( ", " );
+
+			// InputSlotClass
+			desc.append( "D3D11_INPUT_PER_INSTANCE_DATA" );
+			desc.append( ", " );
+
+			// InstanceDataStepRate
+			desc.append( "1" );
+			desc.append( " },\n" );
+		}
+		desc.append( "\t" "};\n" );
+	}
+	else
+	{
+		desc.append( "\t" "static D3D11_INPUT_ELEMENT_DESC *inputDescription = nullptr;\n" );
+	}
+
+	// Write To gfx.api.generated.cpp
+	shader.source.append( "static void d3d11_input_layout_desc_instance_" ).append( type.name );
+	shader.source.append( "( D3D11InputLayoutDescription &desc )\n{\n" );
+	shader.source.append( desc ).append( "\n" );
+	shader.source.append( "\t" "desc.desc = inputDescription;\n" );
+	shader.source.append( "\t" "desc.count = ").append( count ).append( ";\n" );
+	shader.source.append( "}\n\n" );
+
+	return true;
+}
+
+
 bool GeneratorHLSL::generate_structure_gfx_vertex( NodeStruct *node )
 {
 	// Register this vertex format in the system
@@ -1026,6 +1521,7 @@ bool GeneratorHLSL::generate_structure_gfx_vertex( NodeStruct *node )
 
 	String desc;
 
+	const usize count = last - first;
 	desc.append( "\t" "static D3D11_INPUT_ELEMENT_DESC inputDescription[] = \n" );
 	desc.append( "\t" "{\n" );
 	for( usize i = first; i < last; i++ )
@@ -1045,6 +1541,7 @@ bool GeneratorHLSL::generate_structure_gfx_vertex( NodeStruct *node )
 			case SemanticType_COLOR: desc.append( "COLOR" ); break;
 			case SemanticType_BINORMAL: desc.append( "BINORMAL" ); break;
 			case SemanticType_TANGENT: desc.append( "TANGENT" ); break;
+			case SemanticType_INSTANCE: desc.append( "INSTANCE" ); break;
 			default: Error( "Unexpected semantic type: %u", memberVariable.semantic ); break;
 		}
 		desc.append( "\", " );
@@ -1419,11 +1916,11 @@ bool GeneratorHLSL::generate_structure_gfx_vertex( NodeStruct *node )
 	desc.append( "\t" "};\n" );
 
 	// Write To gfx.api.generated.cpp
-	shader.source.append( "static void d3d11_vertex_input_layout_desc_" ).append( type.name );
-	shader.source.append( "( D3D11VertexInputLayoutDescription &desc )\n{\n" );
+	shader.source.append( "static void d3d11_input_layout_desc_vertex_" ).append( type.name );
+	shader.source.append( "( D3D11InputLayoutDescription &desc )\n{\n" );
 	shader.source.append( desc ).append( "\n" );
 	shader.source.append( "\t" "desc.desc = inputDescription;\n" );
-	shader.source.append( "\t" "desc.count = ").append( static_cast<int>( last - first ) ).append( ";\n" );
+	shader.source.append( "\t" "desc.count = ").append( count ).append( ";\n" );
 	shader.source.append( "}\n\n" );
 
 	return true;

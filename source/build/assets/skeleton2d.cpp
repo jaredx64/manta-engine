@@ -39,7 +39,6 @@ void Skeleton2Ds::load( const char *path )
 {
 	// Register Skeleton
 	Skeleton &skeleton = skeletons.add( { } );
-	skeleton.name = path;
 
 	// Build Cache
 	Assets::assetFileCount++;
@@ -49,6 +48,12 @@ void Skeleton2Ds::load( const char *path )
 		file_time( path, &time );
 		Build::cacheDirtyAssets |= file_time_newer( time, Assets::timeCache );
 	}
+
+	// Asset Name (extracted from <name>.asset)
+	char assetName[PATH_SIZE];
+	path_get_filename( assetName, sizeof( assetName ), path );
+	path_remove_extension( assetName );
+	skeleton.name = assetName;
 
 	// Read Skeleton File
 	//ErrorIf( !skeleton.skeletonFile.load( path ), "Failed to load skeleton '%s'", path );
@@ -60,6 +65,7 @@ void Skeleton2Ds::write()
 	Buffer &binary = Assets::binary;
 	String &header = Assets::header;
 	String &source = Assets::source;
+	const u32 count = static_cast<u32>( skeletons.size() );
 
 	Timer timer;
 
@@ -76,14 +82,20 @@ void Skeleton2Ds::write()
 		// Group
 		assets_group( header );
 
+		// Enums
+		header.append( "enum_class_type\n(\n\tSkeleton2D, u32,\n\n" );
+		for( Skeleton &sk : skeletons ) { header.append( "\t" ).append( sk.name ).append( ",\n" ); }
+		header.append( "\n\tNull = 0,\n" );
+		header.append( ");\n\n" );
+
 		// Struct
-		header.append( "struct BinSkeleton2D;\n\n" );
+		header.append( "namespace Assets { struct Skeleton2DEntry; }\n\n" );
 
 		// Table
-		header.append( "namespace Assets\n{\n" );
-		header.append( "\tconstexpr u32 skeleton2DCount = " );
-		header.append( static_cast<int>( skeletons.size() ) ).append( ";\n" );
-		header.append( "\textern const BinSkeleton2D skeleton2Ds[];\n" );
+		header.append( "namespace CoreAssets\n{\n" );
+		header.append( "\tconstexpr u32 skeleton2DCount = " ).append( count ).append( ";\n" );
+		header.append( count > 0 ? "\textern const Assets::Skeleton2DEntry skeleton2Ds[skeleton2DCount];\n" :
+			"\textern const Assets::Skeleton2DEntry *skeleton2Ds;\n" );
 		header.append( "}\n\n" );
 	}
 
@@ -91,23 +103,31 @@ void Skeleton2Ds::write()
 	{
 		// Group
 		assets_group( source );
-		source.append( "namespace Assets\n{\n" );
+		source.append( "namespace CoreAssets\n{\n" );
 
 		// Table
-		char buffer[PATH_SIZE];
-		char name[PATH_SIZE];
-		source.append( "\tconst BinSkeleton2D skeleton2Ds[skeleton2DCount] =\n\t{\n" );
-		for( Skeleton &skeleton : skeletons )
+		if( count > 0 )
 		{
-			path_get_filename( name, sizeof( name ), skeleton.name.cstr() );
+			char buffer[PATH_SIZE];
+			char name[PATH_SIZE];
+			source.append( "\tconst Assets::Skeleton2DEntry skeleton2Ds[skeleton2DCount] =\n\t{\n" );
+			for( Skeleton &skeleton : skeletons )
+			{
+				path_get_filename( name, sizeof( name ), skeleton.name.cstr() );
 
-			snprintf( buffer, PATH_SIZE,
-				"\t\t{ \"%s\" },\n",
-				name );
+				snprintf( buffer, PATH_SIZE,
+					"\t\t{ \"%s\" },\n",
+					name );
 
-			source.append( buffer );
+				source.append( buffer );
+			}
+			source.append( "\t};\n" );
 		}
-		source.append( "\t};\n" );
+		else
+		{
+			source.append( "\tconst Assets::Skeleton2DEntry *skeleton2Ds = nullptr;\n" );
+		}
+
 		source.append( "}\n\n" );
 	}
 

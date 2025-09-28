@@ -156,6 +156,9 @@ public:
 	List<Node *> program;
 	NodeBuffer ast;
 
+	String vertexFormatTypeName;
+	String instanceFormatTypeName;
+
 	FunctionID mainVertex = USIZE_MAX;
 	FunctionID mainFragment = USIZE_MAX;
 	FunctionID mainCompute = USIZE_MAX;

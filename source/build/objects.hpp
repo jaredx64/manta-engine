@@ -165,9 +165,9 @@ struct ObjectFile
 	String type;
 	String hash;
 	String hashHex;
-	String nameParent = "OBJECT_TYPE_DEFAULT";
-	String typeParent = "OBJECT_TYPE_DEFAULT_t";
-	String typeParentFull = "SysObjects::OBJECT_TYPE_DEFAULT_t";
+	String nameParent = "DEFAULT";
+	String typeParent = "DEFAULT_t";
+	String typeParentFull = "CoreObjects::DEFAULT_t";
 	usize countMax = U32_MAX;
 	usize bucketSize = 1024;
 	bool abstract = false;

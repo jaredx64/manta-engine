@@ -289,7 +289,7 @@ _PUBLIC:
 	virtual void EVENT_UPDATE( const Delta delta );
 	virtual void EVENT_RENDER( const Delta delta );
 _PRIVATE:
-	friend struct SysObjects::OBJECT_ENCODER<obj_rabbit>;
+	friend struct CoreObjects::OBJECT_ENCODER<ObjectType::obj_rabbit>;
 	enum RabbitState
 	{
 		RabbitState_Stand,
@@ -300,21 +300,21 @@ _PRIVATE:
 };
 __INTERNAL_OBJECT_SYSTEM_END
 
-template <typename... Args> struct SysObjects::ObjectConstructor<obj_rabbit, Args...>
+template <typename... Args> struct CoreObjects::ObjectConstructor<ObjectType::obj_rabbit, Args...>
 {
 	static void construct( Args... args )
 	{
-		new ( SysObjects::CONSTRUCTOR_BUFFER +
-		      SysObjects::CONSTRUCTOR_BUFFER_OFFSET[obj_rabbit] ) SysObjects::obj_rabbit_t( args... );
+		new ( CoreObjects::CONSTRUCTOR_BUFFER +
+		      CoreObjects::CONSTRUCTOR_BUFFER_OFFSET[ObjectType::obj_rabbit] ) CoreObjects::obj_rabbit_t( args... );
 	}
 };
 
-template <> struct ObjectHandle<obj_rabbit>
+template <> struct ObjectHandle<ObjectType::obj_rabbit>
 {
-	SysObjects::obj_rabbit_t *data = nullptr;
-	SysObjects::obj_rabbit_t *operator->() const { Assert( data != nullptr ); return data; }
+	CoreObjects::obj_rabbit_t *data = nullptr;
+	CoreObjects::obj_rabbit_t *operator->() const { Assert( data != nullptr ); return data; }
 	explicit operator bool() const { return data != nullptr; }
-	ObjectHandle( void *object ) { data = reinterpret_cast<SysObjects::obj_rabbit_t *>( object ); }
+	ObjectHandle( void *object ) { data = reinterpret_cast<CoreObjects::obj_rabbit_t *>( object ); }
 };
 
 // ... file continued
@@ -327,20 +327,20 @@ template <> struct ObjectHandle<obj_rabbit>
 ```c++
 // ...
 
-template <> struct SysObjects::OBJECT_ENCODER<obj_rabbit>
+template <> struct CoreObjects::OBJECT_ENCODER<ObjectType::obj_rabbit>
 {
 	OBJECT_ENCODER( void *data ) : object{ *reinterpret_cast<obj_rabbit_t *>( data ) } { } obj_rabbit_t &object;
 };
 
-SysObjects::obj_rabbit_t::obj_rabbit_t( float spawnX, float spawnY )
+CoreObjects::obj_rabbit_t::obj_rabbit_t( float spawnX, float spawnY )
 {
 	x = spawnX;
 	y = spawnY;
 }
 
-void SysObjects::obj_rabbit_t::EVENT_UPDATE( const Delta delta )
+void CoreObjects::obj_rabbit_t::EVENT_UPDATE( const Delta delta )
 {
-	SysObjects::obj_animal_t::EVENT_UPDATE( delta );
+	CoreObjects::obj_animal_t::EVENT_UPDATE( delta );
 	// State Machine
 	switch( state )
 	{
@@ -354,13 +354,13 @@ void SysObjects::obj_rabbit_t::EVENT_UPDATE( const Delta delta )
 	}
 }
 
-void SysObjects::obj_rabbit_t::EVENT_RENDER( const Delta delta )
+void CoreObjects::obj_rabbit_t::EVENT_RENDER( const Delta delta )
 {
-	SysObjects::obj_animal_t::EVENT_RENDER( delta );
+	CoreObjects::obj_animal_t::EVENT_RENDER( delta );
 	draw_sprite( spr_rabbit, x, y );
 }
 
-void SysObjects::obj_rabbit_t::process_death()
+void CoreObjects::obj_rabbit_t::process_death()
 {
 	// Destroy ourselves
 	sceneObjects.destroy( id ); // sceneObjects from scene.hpp
@@ -400,7 +400,7 @@ enum ObjectType
 
 This allows for game code like:
 ```c++
-const ObjectType type = spawnRabbit ? obj_rabbit : obj_chicken;
+const ObjectType type = spawnRabbit ? ObjectType::obj_rabbit : ObjectType::obj_chicken;
 context.create( type ); // Create an obj_rabbit or obj_chicken
 ```
 
@@ -413,12 +413,12 @@ ObjectContext context;
 context.init(); // There can be multiple contexts in a program (ui, scene, etc.)
 
 // Object Creation
-Object rabbit1 = context.create<obj_rabbit>( 64.0f, 64.0f ); // Create with constructor parameters
-Object rabbit2 = context.create( obj_rabbit ); // Create with default parameters
-Object animal1 = context.create( choose( obj_chicken, obj_rabbit ) ); // Creation of chicken OR rabbit (runtime randomness)
+Object rabbit1 = context.create<ObjectType::obj_rabbit>( 64.0f, 64.0f ); // Create with constructor parameters
+Object rabbit2 = context.create( ObjectType::obj_rabbit ); // Create with default parameters
+Object animal1 = context.create( choose( ObjectType::obj_chicken, ObjectType::obj_rabbit ) ); // Creation of chicken OR rabbit (runtime randomness)
 
 // ObjectHandle Retrieval
-ObjectHandle<obj_rabbit> rabbitHandle = rabbit1.handle<obj_rabbit>( context ); // or: auto rabbitHandle = ...
+ObjectHandle<ObjectType::obj_rabbit> rabbitHandle = rabbit1.handle<ObjectType::obj_rabbit>( context ); // or: auto rabbitHandle = ...
 
 // ObjectHandle Validation (handle can be null if the Object does not exist)
 if( rabbitHandle )
@@ -428,14 +428,14 @@ if( rabbitHandle )
 }
 
 // Looping over all obj_rabbit instances
-for( auto rabbitHandle : context.objects<obj_rabbit>() )
+for( auto rabbitHandle : context.objects<ObjectType::obj_rabbit>() )
 {
 	rabbitHandle->x = 0.0f;
 	rabbitHandle->y = 0.0f;
 }
 
 // Looping over all obj_animal instances (includes obj_rabbits & obj_chicken)
-for( auto animalHandle : context.objects<obj_animal>( true ) )
+for( auto animalHandle : context.objects<ObjectType::obj_animal>( true ) )
 {
 	animalHandle->x = 0.0f;
 	animalHandle->y = 0.0f;
@@ -781,7 +781,7 @@ cbuffer( 1 ) ExampleUniformBuffer
 Which is parsed and generated into a CPU accessible structure:
 ```c++
 // output/generated/gfx.generated.hpp
-namespace GfxCoreCBuffer
+namespace CoreGfxCBuffer
 {
 	// ...
 	struct alignas( 16 ) ExampleUniformBuffer_t
@@ -806,7 +806,7 @@ namespace GfxCoreCBuffer
 }
 
 // output/generated/gfx.generated.cpp
-namespace GfxCoreCBuffer
+namespace CoreGfxCBuffer
 {
 	// ...
 	void ExampleUniformBuffer_t::zero()
@@ -816,10 +816,10 @@ namespace GfxCoreCBuffer
 
 	void ExampleUniformBuffer_t::upload() const
 	{
-		auto *&resource = GfxCore::gfxCBufferResources[2];
-		GfxCore::rb_constant_buffer_write_begin( resource );
-		GfxCore::rb_constant_buffer_write( resource, this );
-		GfxCore::rb_constant_buffer_write_end( resource );
+		auto *&resource = CoreGfx::gfxCBufferResources[2];
+		CoreGfx::rb_constant_buffer_write_begin( resource );
+		CoreGfx::rb_constant_buffer_write( resource, this );
+		CoreGfx::rb_constant_buffer_write_end( resource );
 	}
 	// ...
 }
@@ -828,7 +828,7 @@ namespace GfxCoreCBuffer
 namespace GfxCBuffer
 {
 	// ...
-	GfxCoreCBuffer::ExampleUniformBuffer_t ExampleUniformBuffer; // Globaly accessible API
+	CoreGfxCBuffer::ExampleUniformBuffer_t ExampleUniformBuffer; // Globaly accessible API
 	// ...
 }
 ```

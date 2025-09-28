@@ -113,7 +113,7 @@ static bool resources_free()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool GfxCore::rb_init()
+bool CoreGfx::rb_init()
 {
 	// TODO: ...
 
@@ -122,7 +122,7 @@ bool GfxCore::rb_init()
 }
 
 
-bool GfxCore::rb_free()
+bool CoreGfx::rb_free()
 {
 	// TODO: ...
 
@@ -131,32 +131,32 @@ bool GfxCore::rb_free()
 }
 
 
-void GfxCore::rb_frame_begin()
+void CoreGfx::rb_frame_begin()
 {
 	// TODO: ...
 }
 
 
-void GfxCore::rb_frame_end()
+void CoreGfx::rb_frame_end()
 {
 	// TODO: ...
 }
 
 
-void GfxCore::rb_clear_color( const Color color )
+void CoreGfx::rb_clear_color( const Color color )
 {
 	// TODO: ...
 }
 
 
-void GfxCore::rb_clear_depth( const float depth )
+void CoreGfx::rb_clear_depth( const float depth )
 {
 	// TODO: ...
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool GfxCore::rb_swapchain_init( const u16 width, const u16 height, const bool fullscreen )
+bool CoreGfx::rb_swapchain_init( const u16 width, const u16 height, const bool fullscreen )
 {
 	// TODO: ...
 
@@ -165,7 +165,7 @@ bool GfxCore::rb_swapchain_init( const u16 width, const u16 height, const bool f
 }
 
 
-bool GfxCore::rb_swapchain_free()
+bool CoreGfx::rb_swapchain_free()
 {
 	// TODO: ...
 
@@ -173,7 +173,7 @@ bool GfxCore::rb_swapchain_free()
 }
 
 
-bool GfxCore::rb_swapchain_resize( u16 width, u16 height, bool fullscreen )
+bool CoreGfx::rb_swapchain_resize( u16 width, u16 height, bool fullscreen )
 {
 	// TODO: ...
 
@@ -183,7 +183,7 @@ bool GfxCore::rb_swapchain_resize( u16 width, u16 height, bool fullscreen )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool GfxCore::rb_viewport_init( const u16 width, const u16 height, const bool fullscreen )
+bool CoreGfx::rb_viewport_init( const u16 width, const u16 height, const bool fullscreen )
 {
 	// TODO: ...
 
@@ -191,14 +191,14 @@ bool GfxCore::rb_viewport_init( const u16 width, const u16 height, const bool fu
 }
 
 
-bool GfxCore::rb_viewport_free()
+bool CoreGfx::rb_viewport_free()
 {
 	// TODO
 	return true;
 }
 
 
-bool GfxCore::rb_viewport_resize( const u16 width, const u16 height, const bool fullscreen )
+bool CoreGfx::rb_viewport_resize( const u16 width, const u16 height, const bool fullscreen )
 {
 	// Pass through to rb_viewport_init (TODO: Do something else?)
 	return rb_viewport_init( width, height, fullscreen );
@@ -206,7 +206,7 @@ bool GfxCore::rb_viewport_resize( const u16 width, const u16 height, const bool 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool GfxCore::rb_set_raster_state( const GfxRasterState &state )
+bool CoreGfx::rb_set_raster_state( const GfxRasterState &state )
 {
 	// TODO: ...
 
@@ -215,7 +215,7 @@ bool GfxCore::rb_set_raster_state( const GfxRasterState &state )
 }
 
 
-bool GfxCore::rb_set_sampler_state( const GfxSamplerState &state )
+bool CoreGfx::rb_set_sampler_state( const GfxSamplerState &state )
 {
 	// TODO: ...
 
@@ -223,7 +223,7 @@ bool GfxCore::rb_set_sampler_state( const GfxSamplerState &state )
 }
 
 
-bool GfxCore::rb_set_blend_state( const GfxBlendState &state )
+bool CoreGfx::rb_set_blend_state( const GfxBlendState &state )
 {
 	// TODO: ...
 
@@ -231,7 +231,7 @@ bool GfxCore::rb_set_blend_state( const GfxBlendState &state )
 }
 
 
-bool GfxCore::rb_set_depth_state( const GfxDepthState &state )
+bool CoreGfx::rb_set_depth_state( const GfxDepthState &state )
 {
 	// TODO: ...
 
@@ -240,7 +240,7 @@ bool GfxCore::rb_set_depth_state( const GfxDepthState &state )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool GfxCore::rb_index_buffer_init( GfxIndexBufferResource *&resource,
+bool CoreGfx::rb_index_buffer_init( GfxIndexBufferResource *&resource,
 	void *data, const u32 size, const double indToVertRatio,
 	const GfxIndexBufferFormat format, const GfxCPUAccessMode accessMode )
 {
@@ -251,7 +251,7 @@ bool GfxCore::rb_index_buffer_init( GfxIndexBufferResource *&resource,
 }
 
 
-bool GfxCore::rb_index_buffer_free( GfxIndexBufferResource *&resource )
+bool CoreGfx::rb_index_buffer_free( GfxIndexBufferResource *&resource )
 {
 	// TODO: ...
 
@@ -261,7 +261,7 @@ bool GfxCore::rb_index_buffer_free( GfxIndexBufferResource *&resource )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool GfxCore::rb_vertex_buffer_init_dynamic( GfxVertexBufferResource *&resource, const u32 vertexFormatID,
+bool CoreGfx::rb_vertex_buffer_init_dynamic( GfxVertexBufferResource *&resource, const u32 vertexFormatID,
                                              const GfxCPUAccessMode accessMode, const u32 size, const u32 stride )
 {
 		// TODO: ...
@@ -271,7 +271,7 @@ bool GfxCore::rb_vertex_buffer_init_dynamic( GfxVertexBufferResource *&resource,
 }
 
 
-bool GfxCore::rb_vertex_buffer_init_static( GfxVertexBufferResource *&resource, const u32 vertexFormatID,
+bool CoreGfx::rb_vertex_buffer_init_static( GfxVertexBufferResource *&resource, const u32 vertexFormatID,
 	const GfxCPUAccessMode accessMode, const void *const data,
 	const u32 size, const u32 stride )
 {
@@ -282,7 +282,7 @@ bool GfxCore::rb_vertex_buffer_init_static( GfxVertexBufferResource *&resource, 
 }
 
 
-bool GfxCore::rb_vertex_buffer_free( GfxVertexBufferResource *&resource )
+bool CoreGfx::rb_vertex_buffer_free( GfxVertexBufferResource *&resource )
 {
 	// TODO: ...
 
@@ -291,7 +291,8 @@ bool GfxCore::rb_vertex_buffer_free( GfxVertexBufferResource *&resource )
 }
 
 
-bool GfxCore::rb_vertex_buffer_draw( GfxVertexBufferResource *&resource )
+bool CoreGfx::rb_vertex_buffer_draw( GfxVertexBufferResource *&resource,
+	const GfxPrimitiveType type )
 {
 	// TODO: ...
 
@@ -300,7 +301,8 @@ bool GfxCore::rb_vertex_buffer_draw( GfxVertexBufferResource *&resource )
 }
 
 
-bool GfxCore::rb_vertex_buffer_draw_indexed( GfxVertexBufferResource *&resource, GfxIndexBufferResource *&resourceIndexBuffer )
+bool CoreGfx::rb_vertex_buffer_draw_indexed( GfxVertexBufferResource *&resource,
+	GfxIndexBufferResource *&resourceIndexBuffer, const GfxPrimitiveType type )
 {
 	// TODO: ...
 
@@ -309,19 +311,19 @@ bool GfxCore::rb_vertex_buffer_draw_indexed( GfxVertexBufferResource *&resource,
 }
 
 
-void GfxCore::rb_vertex_buffered_write_begin( GfxVertexBufferResource *&resource )
+void CoreGfx::rb_vertex_buffer_write_begin( GfxVertexBufferResource *&resource )
 {
 	// TODO: ...
 }
 
 
-void GfxCore::rb_vertex_buffered_write_end( GfxVertexBufferResource *&resource )
+void CoreGfx::rb_vertex_buffer_write_end( GfxVertexBufferResource *&resource )
 {
 	// TODO: ...
 }
 
 
-bool GfxCore::rb_vertex_buffered_write( GfxVertexBufferResource *&resource, const void *const data, const u32 size )
+bool CoreGfx::rb_vertex_buffer_write( GfxVertexBufferResource *&resource, const void *const data, const u32 size )
 {
 	// TODO: ...
 
@@ -330,7 +332,7 @@ bool GfxCore::rb_vertex_buffered_write( GfxVertexBufferResource *&resource, cons
 }
 
 
-u32 GfxCore::rb_vertex_buffer_current( GfxVertexBufferResource *&resource )
+u32 CoreGfx::rb_vertex_buffer_current( GfxVertexBufferResource *&resource )
 {
 	// TODO: ...
 
@@ -339,7 +341,7 @@ u32 GfxCore::rb_vertex_buffer_current( GfxVertexBufferResource *&resource )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool GfxCore::rb_uniform_buffer_init( GfxUniformBufferResource *&resource, const char *name,
+bool CoreGfx::rb_uniform_buffer_init( GfxUniformBufferResource *&resource, const char *name,
 	const int index, const u32 size )
 {
 	// TODO: ...
@@ -349,7 +351,7 @@ bool GfxCore::rb_uniform_buffer_init( GfxUniformBufferResource *&resource, const
 }
 
 
-bool GfxCore::rb_uniform_buffer_free( GfxUniformBufferResource *&resource )
+bool CoreGfx::rb_uniform_buffer_free( GfxUniformBufferResource *&resource )
 {
 	// TODO: ...
 
@@ -358,28 +360,19 @@ bool GfxCore::rb_uniform_buffer_free( GfxUniformBufferResource *&resource )
 }
 
 
-void GfxCore::rb_constant_buffered_write_begin( GfxUniformBufferResource *&resource )
+void CoreGfx::rb_constant_buffered_write_begin( GfxUniformBufferResource *&resource )
 {
 	// TODO: ...
 }
 
 
-void GfxCore::rb_constant_buffered_write_end( GfxUniformBufferResource *&resource )
+void CoreGfx::rb_constant_buffered_write_end( GfxUniformBufferResource *&resource )
 {
 	// TODO: ...
 }
 
 
-bool GfxCore::rb_constant_buffered_write( GfxUniformBufferResource *&resource, const void *data )
-{
-	// TODO: ...
-
-	// Success
-	return true;
-}
-
-
-bool GfxCore::rb_uniform_buffer_bind_vertex( GfxUniformBufferResource *&resource, const int slot )
+bool CoreGfx::rb_constant_buffered_write( GfxUniformBufferResource *&resource, const void *data )
 {
 	// TODO: ...
 
@@ -388,7 +381,7 @@ bool GfxCore::rb_uniform_buffer_bind_vertex( GfxUniformBufferResource *&resource
 }
 
 
-bool GfxCore::rb_uniform_buffer_bind_fragment( GfxUniformBufferResource *&resource, const int slot )
+bool CoreGfx::rb_uniform_buffer_bind_vertex( GfxUniformBufferResource *&resource, const int slot )
 {
 	// TODO: ...
 
@@ -397,7 +390,16 @@ bool GfxCore::rb_uniform_buffer_bind_fragment( GfxUniformBufferResource *&resour
 }
 
 
-bool GfxCore::rb_uniform_buffer_bind_compute( GfxUniformBufferResource *&resource, const int slot )
+bool CoreGfx::rb_uniform_buffer_bind_fragment( GfxUniformBufferResource *&resource, const int slot )
+{
+	// TODO: ...
+
+	// Success
+	return true;
+}
+
+
+bool CoreGfx::rb_uniform_buffer_bind_compute( GfxUniformBufferResource *&resource, const int slot )
 {
 	// TODO: ...
 
@@ -407,7 +409,7 @@ bool GfxCore::rb_uniform_buffer_bind_compute( GfxUniformBufferResource *&resourc
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool GfxCore::rb_texture_2d_init( GfxTexture2DResource *&resource, void *pixels,
+bool CoreGfx::rb_texture_2d_init( GfxTexture2DResource *&resource, void *pixels,
                                   const u16 width, const u16 height, const u16 levels, const GfxColorFormat &format )
 {
 	// TODO: ...
@@ -417,7 +419,7 @@ bool GfxCore::rb_texture_2d_init( GfxTexture2DResource *&resource, void *pixels,
 }
 
 
-bool GfxCore::rb_texture_2d_free( GfxTexture2DResource *&resource )
+bool CoreGfx::rb_texture_2d_free( GfxTexture2DResource *&resource )
 {
 	// TODO: ...
 
@@ -426,7 +428,7 @@ bool GfxCore::rb_texture_2d_free( GfxTexture2DResource *&resource )
 }
 
 
-bool GfxCore::rb_texture_2d_bind( const GfxTexture2DResource *const &resource, const int slot )
+bool CoreGfx::rb_texture_2d_bind( const GfxTexture2DResource *const &resource, const int slot )
 {
 	// TODO: ...
 
@@ -435,7 +437,7 @@ bool GfxCore::rb_texture_2d_bind( const GfxTexture2DResource *const &resource, c
 }
 
 
-bool GfxCore::rb_texture_2d_release( const GfxTexture2DResource *const &resource, const int slot )
+bool CoreGfx::rb_texture_2d_release( const GfxTexture2DResource *const &resource, const int slot )
 {
 	// TODO: ...
 
@@ -444,7 +446,7 @@ bool GfxCore::rb_texture_2d_release( const GfxTexture2DResource *const &resource
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool GfxCore::rb_render_target_2d_init( GfxRenderTarget2DResource *&resource,
+bool CoreGfx::rb_render_target_2d_init( GfxRenderTarget2DResource *&resource,
 	GfxTexture2DResource *&resourceColor, GfxTexture2DResource *&resourceDepth,
 	const u16 width, const u16 height,
 	const GfxRenderTargetDescription &desc )
@@ -456,7 +458,7 @@ bool GfxCore::rb_render_target_2d_init( GfxRenderTarget2DResource *&resource,
 }
 
 
-bool GfxCore::rb_render_target_2d_free( GfxRenderTarget2DResource *&resource,
+bool CoreGfx::rb_render_target_2d_free( GfxRenderTarget2DResource *&resource,
 	GfxTexture2DResource *&resourceColor,
 	GfxTexture2DResource *&resourceDepth )
 {
@@ -467,7 +469,7 @@ bool GfxCore::rb_render_target_2d_free( GfxRenderTarget2DResource *&resource,
 }
 
 
-bool GfxCore::rb_render_target_2d_copy(
+bool CoreGfx::rb_render_target_2d_copy(
 	GfxRenderTarget2DResource *&srcResource,
 	GfxTexture2DResource *&srcResourceColor, GfxTexture2DResource *&srcResourceDepth,
 	GfxRenderTarget2DResource *&dstResource,
@@ -480,7 +482,7 @@ bool GfxCore::rb_render_target_2d_copy(
 }
 
 
-bool GfxCore::rb_render_target_2d_copy_part(
+bool CoreGfx::rb_render_target_2d_copy_part(
 	GfxRenderTarget2DResource *&srcResource,
 	GfxTexture2DResource *&srcResourceColor, GfxTexture2DResource *&srcResourceDepth,
 	GfxRenderTarget2DResource *&dstResource,
@@ -494,7 +496,7 @@ bool GfxCore::rb_render_target_2d_copy_part(
 }
 
 
-bool GfxCore::rb_render_target_2d_buffer_read_color( GfxRenderTarget2DResource *&resource,
+bool CoreGfx::rb_render_target_2d_buffer_read_color( GfxRenderTarget2DResource *&resource,
 		GfxTexture2DResource *&resourceColor,
 		void *buffer, const u32 size )
 {
@@ -516,7 +518,7 @@ bool rb_render_target_2d_buffer_read_depth( GfxRenderTarget2DResource *&resource
 }
 
 
-bool GfxCore::rb_render_target_2d_buffered_write_color( GfxRenderTarget2DResource *&resource,
+bool CoreGfx::rb_render_target_2d_buffered_write_color( GfxRenderTarget2DResource *&resource,
 	GfxTexture2DResource *&resourceColor,
 	const void *const buffer, const u32 size )
 {
@@ -527,7 +529,7 @@ bool GfxCore::rb_render_target_2d_buffered_write_color( GfxRenderTarget2DResourc
 }
 
 
-bool GfxCore::rb_render_target_2d_bind( const GfxRenderTarget2DResource *const &resource, int slot )
+bool CoreGfx::rb_render_target_2d_bind( const GfxRenderTarget2DResource *const &resource, int slot )
 {
 	// TODO: ...
 
@@ -536,7 +538,7 @@ bool GfxCore::rb_render_target_2d_bind( const GfxRenderTarget2DResource *const &
 }
 
 
-bool GfxCore::rb_render_target_2d_release( const GfxRenderTarget2DResource *const &resource, const int slot )
+bool CoreGfx::rb_render_target_2d_release( const GfxRenderTarget2DResource *const &resource, const int slot )
 {
 	// TODO: ...
 
@@ -546,7 +548,7 @@ bool GfxCore::rb_render_target_2d_release( const GfxRenderTarget2DResource *cons
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool GfxCore::rb_shader_init( GfxShaderResource *&resource, const u32 shaderID, const struct BinShader &binShader )
+bool CoreGfx::rb_shader_init( GfxShaderResource *&resource, const u32 shaderID, const struct ShaderEntry &shaderEntry )
 {
 	// TODO: ...
 
@@ -555,7 +557,7 @@ bool GfxCore::rb_shader_init( GfxShaderResource *&resource, const u32 shaderID, 
 }
 
 
-bool GfxCore::rb_shader_free( GfxShaderResource *&resource )
+bool CoreGfx::rb_shader_free( GfxShaderResource *&resource )
 {
 	// TODO: ...
 
@@ -564,7 +566,7 @@ bool GfxCore::rb_shader_free( GfxShaderResource *&resource )
 }
 
 
-bool GfxCore::rb_shader_bind( GfxShaderResource *&resource )
+bool CoreGfx::rb_shader_bind( GfxShaderResource *&resource )
 {
 	// TODO: ...
 

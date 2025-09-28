@@ -121,6 +121,7 @@ enum_type( TokenType, int )
 	TokenType_UniformBuffer,
 	TokenType_ConstantBuffer,
 	TokenType_MutableBuffer,
+	TokenType_InstanceInput,
 	TokenType_VertexInput,
 	TokenType_VertexOutput,
 	TokenType_FragmentInput,
@@ -143,6 +144,7 @@ enum_type( TokenType, int )
 	TokenType_COLOR,
 	TokenType_BINORMAL,
 	TokenType_TANGENT,
+	TokenType_INSTANCE,
 	TokenType_InputFormat,
 	TokenType_UNORM8,
 	TokenType_UNORM16,
@@ -327,6 +329,7 @@ enum_type( StructType, u32 )
 	StructType_UniformBuffer,
 	StructType_ConstantBuffer,
 	StructType_MutableBuffer,
+	StructType_InstanceInput,
 	StructType_VertexInput,
 	StructType_VertexOutput,
 	StructType_FragmentInput,
@@ -348,6 +351,7 @@ enum_type( SemanticType, u32 )
 	SemanticType_COLOR,    // TokenType_COLOR
 	SemanticType_BINORMAL, // TokenType_BINORMAL
 	SemanticType_TANGENT,  // TokenType_TANGENT
+	SemanticType_INSTANCE, // TokenType_INSTANCE
 	SEMANTICTYPE_COUNT,
 };
 

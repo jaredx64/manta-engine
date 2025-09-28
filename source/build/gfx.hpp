@@ -42,7 +42,8 @@ struct Shader
 	// C++ Code
 	List<u32> uniformBufferIDs[SHADERSTAGE_COUNT];
 	List<int> uniformBufferSlots[SHADERSTAGE_COUNT];
-	u32 vertexFormatID;
+	u32 vertexFormatID = U32_MAX;
+	u32 instanceFormatID = U32_MAX;
 	String header; // gfx.api.generated.hpp
 	String source; // gfx.api.generated.cpp
 
@@ -79,6 +80,17 @@ struct VertexFormat
 	u32 checksum = 0;
 	String header;
 	String source;
+	void *node = nullptr;
+};
+
+struct InstanceFormat
+{
+	String name;
+	u32 id = 0;
+	u32 checksum = 0;
+	String header;
+	String source;
+	void *node = nullptr;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -116,6 +128,10 @@ namespace Gfx
 	// Vertex Formats
 	extern List<VertexFormat> vertexFormats;
 	extern HashMap<u32, u32> vertexFormatCache;
+
+	// Instance Formats
+	extern List<InstanceFormat> instanceFormats;
+	extern HashMap<u32, u32> instanceFormatCache;
 
 	// Stages
 	extern void begin();

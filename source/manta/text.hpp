@@ -73,7 +73,7 @@ public:
 	bool is_newline() const;
 
 	u16 get_ttf() const;
-	SysFonts::FontGlyphInfo &get_glyph() const;
+	CoreFonts::FontGlyphInfo &get_glyph() const;
 	u16_v2 get_glyph_dimensions( const usize index ) const;
 	u16_v2 get_glyph_dimensions_raw() const;
 
@@ -214,7 +214,7 @@ public:
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-namespace SysText
+namespace CoreText
 {
 
 constexpr const char u8ToHex[][2] = {
@@ -292,49 +292,49 @@ template <usize... Ns> constexpr auto concatenate_strings( const char ( &...args
 
 // TEXT_FONT( u8 font ) -- Custom font ID (accepted values: 0 - 255)
 #define TEXT_FONT(font) \
-	"\x02", SysText::u8ToHex[static_cast<u8>( font )]
+	"\x02", CoreText::u8ToHex[static_cast<u8>( font )]
 
 // TEXT_SIZE( u8 size ) -- Font size (accepted values: 0 - 255)
 #define TEXT_SIZE(size) \
-	"\x03", SysText::u8ToHex[static_cast<u8>( size )]
+	"\x03", CoreText::u8ToHex[static_cast<u8>( size )]
 
 // TEXT_COLOR( Color color )
 #define TEXT_COLOR(color) \
-	"\x04", SysText::u8ToHex[color.r], SysText::u8ToHex[color.g], \
-            SysText::u8ToHex[color.b], SysText::u8ToHex[color.a]
+	"\x04", CoreText::u8ToHex[color.r], CoreText::u8ToHex[color.g], \
+            CoreText::u8ToHex[color.b], CoreText::u8ToHex[color.a]
 
 // TEXT_COLOR_RGBA( u8 r, u8 g, u8, b, u8 a )
 #define TEXT_COLOR_RGBA(r, g, b, a) \
-	"\x04", SysText::u8ToHex[static_cast<u8>( r )], SysText::u8ToHex[static_cast<u8>( g )], \
-	        SysText::u8ToHex[static_cast<u8>( b )], SysText::u8ToHex[static_cast<u8>( a )]
+	"\x04", CoreText::u8ToHex[static_cast<u8>( r )], CoreText::u8ToHex[static_cast<u8>( g )], \
+	        CoreText::u8ToHex[static_cast<u8>( b )], CoreText::u8ToHex[static_cast<u8>( a )]
 
 // TEXT_COLOR_RGB( u8 r, u8 g, u8, b )
 #define TEXT_COLOR_RGB(r, g, b, a) \
-	"\x04", SysText::u8ToHex[static_cast<u8>( r )], SysText::u8ToHex[static_cast<u8>( g )], \
-	        SysText::u8ToHex[static_cast<u8>( b )], SysText::u8ToHex[255]
+	"\x04", CoreText::u8ToHex[static_cast<u8>( r )], CoreText::u8ToHex[static_cast<u8>( g )], \
+	        CoreText::u8ToHex[static_cast<u8>( b )], CoreText::u8ToHex[255]
 
 // TEXT_BOLD( bool enable ) -- Enable/Disable bold (accepted values: true/false)
 #define TEXT_BOLD(enable) \
-	"\x05", "\x01", SysText::u8ToHex[static_cast<u8>( enable )]
+	"\x05", "\x01", CoreText::u8ToHex[static_cast<u8>( enable )]
 
 // TEXT_ITALICS( bool enable ) -- Enable/Disable italics (accepted values: true/false)
 #define TEXT_ITALICS(enable) \
-	"\x05", "\x02", SysText::u8ToHex[static_cast<u8>( enable )]
+	"\x05", "\x02", CoreText::u8ToHex[static_cast<u8>( enable )]
 
 // TEXT_UNDERLINE( bool enable ) -- Enable/Disable underline (accepted values: true/false)
 #define TEXT_UNDERLINE(enable) \
-	"\x05", "\x03", SysText::u8ToHex[static_cast<u8>( enable )]
+	"\x05", "\x03", CoreText::u8ToHex[static_cast<u8>( enable )]
 
 // TEXT_HIGHLIGHT( bool enable ) -- Enable/Disable highlight (accepted values: true/false)
 #define TEXT_HIGHLIGHT(enable) \
-	"\x05", "\x04", SysText::u8ToHex[static_cast<u8>( enable )]
+	"\x05", "\x04", CoreText::u8ToHex[static_cast<u8>( enable )]
 
 // TEXT_ALIGN( u8 alignment ) -- Text Alignment (accepted values: align_left, align_center, align_right)
 #define TEXT_ALIGN(alignment) \
-	"\x05", "\x05", SysText::u8ToHex[static_cast<u8>( alignment )]
+	"\x05", "\x05", CoreText::u8ToHex[static_cast<u8>( alignment )]
 
 // TEXT_ALIGN( name, ... ) -- Begin a text buffer definition; Usage: static constexpr auto text = TEXT_DEFINE( ... )
-#define TEXT_DEFINE(...) SysText::concatenate_strings( __VA_ARGS__ )
+#define TEXT_DEFINE(...) CoreText::concatenate_strings( __VA_ARGS__ )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -460,7 +460,7 @@ public:
 };
 
 
-namespace SysText
+namespace CoreText
 {
 	extern TextEditor *ACTIVE_TEXT_EDITOR;
 }

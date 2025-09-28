@@ -97,6 +97,8 @@ void Sounds::write()
 	Buffer &binary = Assets::binary;
 	String &header = Assets::header;
 	String &source = Assets::source;
+	const u32 count = static_cast<u32>( sounds.size() );
+
 	usize voiceSampleDataOffset;
 	usize voiceSampleDataSize;
 	usize streamSampleDataOffset;
@@ -137,22 +139,22 @@ void Sounds::write()
 		// Group
 		assets_group( header );
 
-		// Struct
-		header.append( "struct BinSound;\n\n" );
-
 		// Enums
-		header.append( "enum\n{\n" );
-		for( Sound &sound : sounds )
-		{
-			header.append( "\t" ).append( sound.name ).append( ",\n" );
-		}
-		header.append( "};\n\n" );
+		header.append( "enum_class_type\n(\n\tSound, u32,\n\n" );
+		for( Sound &sound : sounds ) { header.append( "\t" ).append( sound.name ).append( ",\n" ); }
+		header.append( "\n\tNull = 0,\n" );
+		header.append( ");\n\n" );
+
+		// Struct
+		header.append( "namespace Assets { struct SoundEntry; }\n\n" );
 
 		// Table
-		header.append( "namespace Assets\n{\n" );
-		header.append( "\tconstexpr u32 soundCount = " );
-		header.append( static_cast<int>( sounds.size() ) ).append( ";\n" );
-		header.append( "\textern const BinSound sounds[];\n" );
+		header.append( "namespace CoreAssets\n{\n" );
+		header.append( "\tconstexpr u32 soundCount = " ).append( count ).append( ";\n" );
+		header.append( count > 0 ? "\textern const Assets::SoundEntry sounds[soundCount];\n" :
+			"\textern const Assets::SoundEntry *sounds;\n" );
+
+		header.append( "\n" );
 		header.append( "\tconstexpr usize voiceSampleDataOffset = " ).append( voiceSampleDataOffset ).append( "ULL;\n" );
 		header.append( "\tconstexpr usize voiceSampleDataSize = " ).append( voiceSampleDataSize ).append( "ULL;\n" );
 		header.append( "\tconstexpr usize streamSampleDataOffset = " ).append( streamSampleDataOffset ).append( "ULL;\n" );
@@ -164,25 +166,33 @@ void Sounds::write()
 	{
 		// Group
 		assets_group( source );
-		source.append( "namespace Assets\n{\n" );
+		source.append( "namespace CoreAssets\n{\n" );
 
 		// Table
-		char buffer[PATH_SIZE];
-		source.append( "\tconst BinSound sounds[soundCount] =\n\t{\n" );
-		for( Sound &sound : sounds )
+		if( count > 0 )
 		{
-			snprintf( buffer, PATH_SIZE,
-				"\t\t{ %d, %d, %d, %lluULL, %lluULL, DEBUG( \"%s\" ) },\n",
-				sound.streamed,
-				sound.compressed,
-				sound.numChannels,
-				sound.sampleOffsetBytes / sizeof( i16 ),
-				sound.sampleCountBytes / sizeof( i16 ),
-				sound.name.cstr() );
+			char buffer[PATH_SIZE];
+			source.append( "\tconst Assets::SoundEntry sounds[soundCount] =\n\t{\n" );
+			for( Sound &sound : sounds )
+			{
+				snprintf( buffer, PATH_SIZE,
+					"\t\t{ %d, %d, %d, %lluULL, %lluULL, DEBUG( \"%s\" ) },\n",
+					sound.streamed,
+					sound.compressed,
+					sound.numChannels,
+					sound.sampleOffsetBytes / sizeof( i16 ),
+					sound.sampleCountBytes / sizeof( i16 ),
+					sound.name.cstr() );
 
-			source.append( buffer );
+				source.append( buffer );
+			}
+			source.append( "\t};\n" );
 		}
-		source.append( "\t};\n" );
+		else
+		{
+			source.append( "\tconst Assets::SoundEntry *sounds = nullptr;\n" );
+		}
+
 		source.append( "}\n\n" );
 	}
 

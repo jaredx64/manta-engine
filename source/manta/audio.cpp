@@ -26,7 +26,7 @@ static AudioEffects NULL_AUDIO_EFFECTS;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-namespace SysAudio
+namespace CoreAudio
 {
 	Voice voices[AUDIO_VOICE_COUNT];
 	Stream sounds[AUDIO_STREAM_COUNT];
@@ -51,7 +51,7 @@ static CONSOLE_COMMAND_FUNCTION( cmd_debug_enabled )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-float SysAudio::Effect::get_parameter( const EffectParam param, const bool incrementTime )
+float CoreAudio::Effect::get_parameter( const EffectParam param, const bool incrementTime )
 {
 	//Assert( active );
 	const float valueFrom = parameters[param].valueFrom;
@@ -63,7 +63,7 @@ float SysAudio::Effect::get_parameter( const EffectParam param, const bool incre
 }
 
 
-void SysAudio::Effect::set_parameter_default( const EffectParam param, const float value )
+void CoreAudio::Effect::set_parameter_default( const EffectParam param, const float value )
 {
 	parameters[param].valueFrom = value;
 	parameters[param].valueTo = value;
@@ -72,7 +72,7 @@ void SysAudio::Effect::set_parameter_default( const EffectParam param, const flo
 }
 
 
-void SysAudio::Effect::set_parameter( const EffectParam param, const float value )
+void CoreAudio::Effect::set_parameter( const EffectParam param, const float value )
 {
 	active = true;
 	parameters[param].valueFrom = value;
@@ -82,7 +82,7 @@ void SysAudio::Effect::set_parameter( const EffectParam param, const float value
 }
 
 
-void SysAudio::Effect::set_parameter( const EffectParam param, const float value, const usize timeMS )
+void CoreAudio::Effect::set_parameter( const EffectParam param, const float value, const usize timeMS )
 {
 	active = true;
 	parameters[param].valueFrom = get_parameter( param, false );
@@ -93,7 +93,7 @@ void SysAudio::Effect::set_parameter( const EffectParam param, const float value
 }
 
 
-void SysAudio::Effect::set_parameter( const EffectParam param, const float v0, const float v1, const usize timeMS )
+void CoreAudio::Effect::set_parameter( const EffectParam param, const float v0, const float v1, const usize timeMS )
 {
 	active = true;
 	parameters[param].valueFrom = v0;
@@ -106,46 +106,46 @@ void SysAudio::Effect::set_parameter( const EffectParam param, const float v0, c
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // EffectType_Core
 
-static void core_init( SysAudio::Effect &effect, SysAudio::EffectState &state )
+static void core_init( CoreAudio::Effect &effect, CoreAudio::EffectState &state )
 {
 }
 
 
-static void core_reset( SysAudio::Effect &effect, SysAudio::EffectState &state )
+static void core_reset( CoreAudio::Effect &effect, CoreAudio::EffectState &state )
 {
 }
 
 
-static void core_apply( SysAudio::Bus &bus, SysAudio::Effect &effect, SysAudio::EffectState &state,
+static void core_apply( CoreAudio::Bus &bus, CoreAudio::Effect &effect, CoreAudio::EffectState &state,
 	float *samples, u32 sampleCount )
 {
-	SysAudio::EffectStateCore &core = state.stateGain;
+	CoreAudio::EffectStateCore &core = state.stateGain;
 
 	for( u32 i = 0; i < sampleCount; i++ )
 	{
-		const float volume = effect.get_parameter( SysAudio::EffectParam_Core_Gain, true );
+		const float volume = effect.get_parameter( CoreAudio::EffectParam_Core_Gain, true );
 		samples[i * 2 + 0] *= volume;
 		samples[i * 2 + 1] *= volume;
 	}
 }
 
-__AUDIO_EFFECT_PARAM_GET_SET_IMPL( SysAudio::EffectType_Core, gain, SysAudio::EffectParam_Core_Gain )
-__AUDIO_EFFECT_PARAM_GET_SET_NOAUTOMATION_IMPL( SysAudio::EffectType_Core, pitch, SysAudio::EffectParam_Core_Pitch )
+__AUDIO_EFFECT_PARAM_GET_SET_IMPL( CoreAudio::EffectType_Core, gain, CoreAudio::EffectParam_Core_Gain )
+__AUDIO_EFFECT_PARAM_GET_SET_NOAUTOMATION_IMPL( CoreAudio::EffectType_Core, pitch, CoreAudio::EffectParam_Core_Pitch )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // EffectType_Gain
 
-static void spatial_update( SysAudio::Bus &bus, SysAudio::Effect &effect, SysAudio::EffectState &state )
+static void spatial_update( CoreAudio::Bus &bus, CoreAudio::Effect &effect, CoreAudio::EffectState &state )
 {
-	SysAudio::EffectStateSpatial &spatial = state.stateSpatial;
+	CoreAudio::EffectStateSpatial &spatial = state.stateSpatial;
 
 	// Get spatial parameters
 	const float params[] =
 	{
-		effect.get_parameter( SysAudio::EffectParam_Spatial_X, true ),
-		effect.get_parameter( SysAudio::EffectParam_Spatial_Y, true ),
-		effect.get_parameter( SysAudio::EffectParam_Spatial_Z, true ),
-		effect.get_parameter( SysAudio::EffectParam_Spatial_Attenuation, true ),
+		effect.get_parameter( CoreAudio::EffectParam_Spatial_X, true ),
+		effect.get_parameter( CoreAudio::EffectParam_Spatial_Y, true ),
+		effect.get_parameter( CoreAudio::EffectParam_Spatial_Z, true ),
+		effect.get_parameter( CoreAudio::EffectParam_Spatial_Attenuation, true ),
 	};
 
 	// Calculate distance
@@ -178,22 +178,22 @@ static void spatial_update( SysAudio::Bus &bus, SysAudio::Effect &effect, SysAud
 }
 
 
-static void spatial_init( SysAudio::Effect &effect, SysAudio::EffectState &state )
+static void spatial_init( CoreAudio::Effect &effect, CoreAudio::EffectState &state )
 {
-	SysAudio::EffectStateSpatial &spatial = state.stateSpatial;
+	CoreAudio::EffectStateSpatial &spatial = state.stateSpatial;
 }
 
 
-static void spatial_reset( SysAudio::Effect &effect, SysAudio::EffectState &state )
+static void spatial_reset( CoreAudio::Effect &effect, CoreAudio::EffectState &state )
 {
-	SysAudio::EffectStateSpatial &spatial = state.stateSpatial;
+	CoreAudio::EffectStateSpatial &spatial = state.stateSpatial;
 }
 
 
-static void spatial_apply( SysAudio::Bus &bus, SysAudio::Effect &effect, SysAudio::EffectState &state,
+static void spatial_apply( CoreAudio::Bus &bus, CoreAudio::Effect &effect, CoreAudio::EffectState &state,
 	float *samples, u32 sampleCount )
 {
-	SysAudio::EffectStateSpatial &spatial = state.stateSpatial;
+	CoreAudio::EffectStateSpatial &spatial = state.stateSpatial;
 
 	for( u32 i = 0; i < sampleCount; i++ )
 	{
@@ -206,21 +206,21 @@ static void spatial_apply( SysAudio::Bus &bus, SysAudio::Effect &effect, SysAudi
 }
 
 
-__AUDIO_EFFECT_PARAM_GET_SET_IMPL( SysAudio::EffectType_Spatial, spatial_x, SysAudio::EffectParam_Spatial_X )
-__AUDIO_EFFECT_PARAM_GET_SET_IMPL( SysAudio::EffectType_Spatial, spatial_y, SysAudio::EffectParam_Spatial_Y )
-__AUDIO_EFFECT_PARAM_GET_SET_IMPL( SysAudio::EffectType_Spatial, spatial_z, SysAudio::EffectParam_Spatial_Z )
-__AUDIO_EFFECT_PARAM_GET_SET_IMPL( SysAudio::EffectType_Spatial, spatial_attenuation,
-	SysAudio::EffectParam_Spatial_Attenuation )
+__AUDIO_EFFECT_PARAM_GET_SET_IMPL( CoreAudio::EffectType_Spatial, spatial_x, CoreAudio::EffectParam_Spatial_X )
+__AUDIO_EFFECT_PARAM_GET_SET_IMPL( CoreAudio::EffectType_Spatial, spatial_y, CoreAudio::EffectParam_Spatial_Y )
+__AUDIO_EFFECT_PARAM_GET_SET_IMPL( CoreAudio::EffectType_Spatial, spatial_z, CoreAudio::EffectParam_Spatial_Z )
+__AUDIO_EFFECT_PARAM_GET_SET_IMPL( CoreAudio::EffectType_Spatial, spatial_attenuation,
+	CoreAudio::EffectParam_Spatial_Attenuation )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // EffectType_Lowpass (https://github.com/sinshu/freeverb)
 
-static void lowpass_update( SysAudio::Effect &effect, SysAudio::EffectState &state )
+static void lowpass_update( CoreAudio::Effect &effect, CoreAudio::EffectState &state )
 {
-	SysAudio::EffectStateLowpass &lowpass = state.stateLowpass;
+	CoreAudio::EffectStateLowpass &lowpass = state.stateLowpass;
 
 	// Parameters
-	const float paramCutoff = effect.get_parameter( SysAudio::EffectParam_Lowpass_Cutoff, true );
+	const float paramCutoff = effect.get_parameter( CoreAudio::EffectParam_Lowpass_Cutoff, true );
 	lowpass.omega0 = 6.28318530718f * paramCutoff;
 
 	// Internal State
@@ -257,25 +257,25 @@ static void lowpass_update( SysAudio::Effect &effect, SysAudio::EffectState &sta
 }
 
 
-static void lowpass_init( SysAudio::Effect &effect, SysAudio::EffectState &state )
+static void lowpass_init( CoreAudio::Effect &effect, CoreAudio::EffectState &state )
 {
-	SysAudio::EffectStateLowpass &lowpass = state.stateLowpass;
+	CoreAudio::EffectStateLowpass &lowpass = state.stateLowpass;
 	static float sampleRate = 44100.0f;
 	lowpass.dt = 1.0f / sampleRate;
 	lowpass_update( effect, state );
 }
 
 
-static void lowpass_reset( SysAudio::Effect &effect, SysAudio::EffectState &state )
+static void lowpass_reset( CoreAudio::Effect &effect, CoreAudio::EffectState &state )
 {
-	effect.set_parameter_default( SysAudio::EffectParam_Lowpass_Cutoff, 20000.0f );
+	effect.set_parameter_default( CoreAudio::EffectParam_Lowpass_Cutoff, 20000.0f );
 }
 
 
-static void lowpass_apply( SysAudio::Bus &bus, SysAudio::Effect &effect, SysAudio::EffectState &state,
+static void lowpass_apply( CoreAudio::Bus &bus, CoreAudio::Effect &effect, CoreAudio::EffectState &state,
 	float *samples, u32 sampleCount )
 {
-	SysAudio::EffectStateLowpass &lowpass = state.stateLowpass;
+	CoreAudio::EffectStateLowpass &lowpass = state.stateLowpass;
 
 	for( u32 i = 0; i < sampleCount; i++ )
 	{
@@ -309,32 +309,32 @@ static void lowpass_apply( SysAudio::Bus &bus, SysAudio::Effect &effect, SysAudi
 }
 
 
-__AUDIO_EFFECT_PARAM_GET_SET_IMPL( SysAudio::EffectType_Lowpass, lowpass_cutoff, SysAudio::EffectParam_Lowpass_Cutoff )
+__AUDIO_EFFECT_PARAM_GET_SET_IMPL( CoreAudio::EffectType_Lowpass, lowpass_cutoff, CoreAudio::EffectParam_Lowpass_Cutoff )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // EffectType_Reverb (https://github.com/sinshu/freeverb)
 
-static void reverb_comb_mute( SysAudio::EffectStateReverbComb &comb )
+static void reverb_comb_mute( CoreAudio::EffectStateReverbComb &comb )
 {
 	for( int i = 0; i < comb.bufsize; i++ ) { comb.buffer[i] = 0.0f; }
 }
 
 
-static void reverb_comb_set_buffer( SysAudio::EffectStateReverbComb &comb, float *buffer, int size )
+static void reverb_comb_set_buffer( CoreAudio::EffectStateReverbComb &comb, float *buffer, int size )
 {
 	comb.buffer = buffer;
 	comb.bufsize = size;
 }
 
 
-static void reverb_comb_set_damp( SysAudio::EffectStateReverbComb &comb, float val )
+static void reverb_comb_set_damp( CoreAudio::EffectStateReverbComb &comb, float val )
 {
 	comb.damp1 = val;
 	comb.damp2 = 1.0f - val;
 }
 
 
-static float reverb_comb_process( SysAudio::EffectStateReverbComb &comb, float input )
+static float reverb_comb_process( CoreAudio::EffectStateReverbComb &comb, float input )
 {
 	float output;
 
@@ -352,20 +352,20 @@ static float reverb_comb_process( SysAudio::EffectStateReverbComb &comb, float i
 }
 
 
-static void reverb_allpass_set_buffer( SysAudio::EffectStateReverbAllPass &allpass, float *buffer, int size )
+static void reverb_allpass_set_buffer( CoreAudio::EffectStateReverbAllPass &allpass, float *buffer, int size )
 {
 	allpass.buffer = buffer;
 	allpass.bufsize = size;
 }
 
 
-static void reverb_allpass_mute( SysAudio::EffectStateReverbAllPass &allpass)
+static void reverb_allpass_mute( CoreAudio::EffectStateReverbAllPass &allpass)
 {
 	for( int i = 0; i < allpass.bufsize; i++ ) { allpass.buffer[i] = 0.0f; }
 }
 
 
-static inline float reverb_allpass_process( SysAudio::EffectStateReverbAllPass &allpass, float input )
+static inline float reverb_allpass_process( CoreAudio::EffectStateReverbAllPass &allpass, float input )
 {
 	float output;
 	float bufout;
@@ -382,19 +382,19 @@ static inline float reverb_allpass_process( SysAudio::EffectStateReverbAllPass &
 }
 
 
-static void reverb_mute( SysAudio::Effect &effect, SysAudio::EffectState &state )
+static void reverb_mute( CoreAudio::Effect &effect, CoreAudio::EffectState &state )
 {
-	SysAudio::EffectStateReverb &reverb = state.stateReverb;
+	CoreAudio::EffectStateReverb &reverb = state.stateReverb;
 
 	// Mute Combs
-	for( int i = 0; i < SysAudioTuning::numCombs; i++ )
+	for( int i = 0; i < CoreAudioTuning::numCombs; i++ )
 	{
 		reverb_comb_mute( reverb.combL[i] );
 		reverb_comb_mute( reverb.combR[i] );
 	}
 
 	// Mute All-passes
-	for( int i = 0; i < SysAudioTuning::numAllpasses; i++ )
+	for( int i = 0; i < CoreAudioTuning::numAllpasses; i++ )
 	{
 		reverb_allpass_mute( reverb.allpassL[i] );
 		reverb_allpass_mute( reverb.allpassR[i] );
@@ -402,32 +402,32 @@ static void reverb_mute( SysAudio::Effect &effect, SysAudio::EffectState &state 
 }
 
 
-static void reverb_update( SysAudio::Effect &effect, SysAudio::EffectState &state )
+static void reverb_update( CoreAudio::Effect &effect, CoreAudio::EffectState &state )
 {
-	SysAudio::EffectStateReverb &reverb = state.stateReverb;
+	CoreAudio::EffectStateReverb &reverb = state.stateReverb;
 
 	// Parameters
-	const float paramRoomsize = effect.get_parameter( SysAudio::EffectParam_Reverb_RoomSize, true );
-	const float paramWet = effect.get_parameter( SysAudio::EffectParam_Reverb_Wet, true );
-	const float paramDry = effect.get_parameter( SysAudio::EffectParam_Reverb_Dry, true );
-	const float paramDamp = effect.get_parameter( SysAudio::EffectParam_Reverb_Damp, true );
-	const float paramWidth = effect.get_parameter( SysAudio::EffectParam_Reverb_Width, true );
+	const float paramRoomsize = effect.get_parameter( CoreAudio::EffectParam_Reverb_RoomSize, true );
+	const float paramWet = effect.get_parameter( CoreAudio::EffectParam_Reverb_Wet, true );
+	const float paramDry = effect.get_parameter( CoreAudio::EffectParam_Reverb_Dry, true );
+	const float paramDamp = effect.get_parameter( CoreAudio::EffectParam_Reverb_Damp, true );
+	const float paramWidth = effect.get_parameter( CoreAudio::EffectParam_Reverb_Width, true );
 
 	// Recalculate internal values after parameter change (TODO: refactor?)
-	reverb.roomsize = paramRoomsize * SysAudioTuning::scaleRoom + SysAudioTuning::offsetRoom;
-	reverb.wet = paramWet * SysAudioTuning::scaleWet;
+	reverb.roomsize = paramRoomsize * CoreAudioTuning::scaleRoom + CoreAudioTuning::offsetRoom;
+	reverb.wet = paramWet * CoreAudioTuning::scaleWet;
 	reverb.wet1 = reverb.wet * ( reverb.width * 0.5f + 0.5f );
 	reverb.wet2 = reverb.wet * ( ( 1.0f - reverb.width ) * 0.5f );
-	reverb.dry = paramDry * SysAudioTuning::scaleDry;
-	reverb.damp = paramDry * SysAudioTuning::scaleDamp;
+	reverb.dry = paramDry * CoreAudioTuning::scaleDry;
+	reverb.damp = paramDry * CoreAudioTuning::scaleDamp;
 	reverb.width = paramWidth;
 	reverb.dry = paramDry;
 
 	reverb.roomsize1 = reverb.roomsize;
 	reverb.damp1 = reverb.damp;
-	reverb.gain = SysAudioTuning::fixedGain;
+	reverb.gain = CoreAudioTuning::fixedGain;
 
-	for( int i = 0; i < SysAudioTuning::numCombs; i++ )
+	for( int i = 0; i < CoreAudioTuning::numCombs; i++ )
 	{
 		reverb.combL[i].feedback = reverb.roomsize1;
 		reverb_comb_set_damp( reverb.combL[i], reverb.damp1 );
@@ -437,36 +437,36 @@ static void reverb_update( SysAudio::Effect &effect, SysAudio::EffectState &stat
 }
 
 
-static void reverb_init( SysAudio::Effect &effect, SysAudio::EffectState &state )
+static void reverb_init( CoreAudio::Effect &effect, CoreAudio::EffectState &state )
 {
-	SysAudio::EffectStateReverb &reverb = state.stateReverb;
+	CoreAudio::EffectStateReverb &reverb = state.stateReverb;
 	{
 		// Tie the components to their buffers
-		reverb_comb_set_buffer( reverb.combL[0], reverb.bufcombL1, SysAudioTuning::combTuningL1 );
-		reverb_comb_set_buffer( reverb.combR[0], reverb.bufcombR1, SysAudioTuning::combTuningR1 );
-		reverb_comb_set_buffer( reverb.combL[1], reverb.bufcombL2, SysAudioTuning::combTuningL2 );
-		reverb_comb_set_buffer( reverb.combR[1], reverb.bufcombR2, SysAudioTuning::combTuningR2 );
-		reverb_comb_set_buffer( reverb.combL[2], reverb.bufcombL3, SysAudioTuning::combTuningL3 );
-		reverb_comb_set_buffer( reverb.combR[2], reverb.bufcombR3, SysAudioTuning::combTuningR3 );
-		reverb_comb_set_buffer( reverb.combL[3], reverb.bufcombL4, SysAudioTuning::combTuningL4 );
-		reverb_comb_set_buffer( reverb.combR[3], reverb.bufcombR4, SysAudioTuning::combTuningR4 );
-		reverb_comb_set_buffer( reverb.combL[4], reverb.bufcombL5, SysAudioTuning::combTuningL5 );
-		reverb_comb_set_buffer( reverb.combR[4], reverb.bufcombR5, SysAudioTuning::combTuningR5 );
-		reverb_comb_set_buffer( reverb.combL[5], reverb.bufcombL6, SysAudioTuning::combTuningL6 );
-		reverb_comb_set_buffer( reverb.combR[5], reverb.bufcombR6, SysAudioTuning::combTuningR6 );
-		reverb_comb_set_buffer( reverb.combL[6], reverb.bufcombL7, SysAudioTuning::combTuningL7 );
-		reverb_comb_set_buffer( reverb.combR[6], reverb.bufcombR7, SysAudioTuning::combTuningR7 );
-		reverb_comb_set_buffer( reverb.combL[7], reverb.bufcombL8, SysAudioTuning::combTuningL8 );
-		reverb_comb_set_buffer( reverb.combR[7], reverb.bufcombR8, SysAudioTuning::combTuningR8 );
+		reverb_comb_set_buffer( reverb.combL[0], reverb.bufcombL1, CoreAudioTuning::combTuningL1 );
+		reverb_comb_set_buffer( reverb.combR[0], reverb.bufcombR1, CoreAudioTuning::combTuningR1 );
+		reverb_comb_set_buffer( reverb.combL[1], reverb.bufcombL2, CoreAudioTuning::combTuningL2 );
+		reverb_comb_set_buffer( reverb.combR[1], reverb.bufcombR2, CoreAudioTuning::combTuningR2 );
+		reverb_comb_set_buffer( reverb.combL[2], reverb.bufcombL3, CoreAudioTuning::combTuningL3 );
+		reverb_comb_set_buffer( reverb.combR[2], reverb.bufcombR3, CoreAudioTuning::combTuningR3 );
+		reverb_comb_set_buffer( reverb.combL[3], reverb.bufcombL4, CoreAudioTuning::combTuningL4 );
+		reverb_comb_set_buffer( reverb.combR[3], reverb.bufcombR4, CoreAudioTuning::combTuningR4 );
+		reverb_comb_set_buffer( reverb.combL[4], reverb.bufcombL5, CoreAudioTuning::combTuningL5 );
+		reverb_comb_set_buffer( reverb.combR[4], reverb.bufcombR5, CoreAudioTuning::combTuningR5 );
+		reverb_comb_set_buffer( reverb.combL[5], reverb.bufcombL6, CoreAudioTuning::combTuningL6 );
+		reverb_comb_set_buffer( reverb.combR[5], reverb.bufcombR6, CoreAudioTuning::combTuningR6 );
+		reverb_comb_set_buffer( reverb.combL[6], reverb.bufcombL7, CoreAudioTuning::combTuningL7 );
+		reverb_comb_set_buffer( reverb.combR[6], reverb.bufcombR7, CoreAudioTuning::combTuningR7 );
+		reverb_comb_set_buffer( reverb.combL[7], reverb.bufcombL8, CoreAudioTuning::combTuningL8 );
+		reverb_comb_set_buffer( reverb.combR[7], reverb.bufcombR8, CoreAudioTuning::combTuningR8 );
 
-		reverb_allpass_set_buffer( reverb.allpassL[0], reverb.bufallpassL1, SysAudioTuning::allpassTuningL1 );
-		reverb_allpass_set_buffer( reverb.allpassR[0], reverb.bufallpassR1, SysAudioTuning::allpassTuningR1 );
-		reverb_allpass_set_buffer( reverb.allpassL[1], reverb.bufallpassL2, SysAudioTuning::allpassTuningL2 );
-		reverb_allpass_set_buffer( reverb.allpassR[1], reverb.bufallpassR2, SysAudioTuning::allpassTuningR2 );
-		reverb_allpass_set_buffer( reverb.allpassL[2], reverb.bufallpassL3, SysAudioTuning::allpassTuningL3 );
-		reverb_allpass_set_buffer( reverb.allpassR[2], reverb.bufallpassR3, SysAudioTuning::allpassTuningR3 );
-		reverb_allpass_set_buffer( reverb.allpassL[3], reverb.bufallpassL4, SysAudioTuning::allpassTuningL4 );
-		reverb_allpass_set_buffer( reverb.allpassR[3], reverb.bufallpassR4, SysAudioTuning::allpassTuningR4 );
+		reverb_allpass_set_buffer( reverb.allpassL[0], reverb.bufallpassL1, CoreAudioTuning::allpassTuningL1 );
+		reverb_allpass_set_buffer( reverb.allpassR[0], reverb.bufallpassR1, CoreAudioTuning::allpassTuningR1 );
+		reverb_allpass_set_buffer( reverb.allpassL[1], reverb.bufallpassL2, CoreAudioTuning::allpassTuningL2 );
+		reverb_allpass_set_buffer( reverb.allpassR[1], reverb.bufallpassR2, CoreAudioTuning::allpassTuningR2 );
+		reverb_allpass_set_buffer( reverb.allpassL[2], reverb.bufallpassL3, CoreAudioTuning::allpassTuningL3 );
+		reverb_allpass_set_buffer( reverb.allpassR[2], reverb.bufallpassR3, CoreAudioTuning::allpassTuningR3 );
+		reverb_allpass_set_buffer( reverb.allpassL[3], reverb.bufallpassL4, CoreAudioTuning::allpassTuningL4 );
+		reverb_allpass_set_buffer( reverb.allpassR[3], reverb.bufallpassR4, CoreAudioTuning::allpassTuningR4 );
 
 		// Set default values
 		reverb.allpassL[0].feedback = 0.5f;
@@ -478,11 +478,11 @@ static void reverb_init( SysAudio::Effect &effect, SysAudio::EffectState &state 
 		reverb.allpassL[3].feedback = 0.5f;
 		reverb.allpassR[3].feedback = 0.5f;
 
-		effect.set_parameter_default( SysAudio::EffectParam_Reverb_Wet, SysAudioTuning::initialWet );
-		effect.set_parameter_default( SysAudio::EffectParam_Reverb_RoomSize, SysAudioTuning::initialRoom );
-		effect.set_parameter_default( SysAudio::EffectParam_Reverb_Dry, SysAudioTuning::initialDry );
-		effect.set_parameter_default( SysAudio::EffectParam_Reverb_Damp, SysAudioTuning::initialDamp );
-		effect.set_parameter_default( SysAudio::EffectParam_Reverb_Width, SysAudioTuning::initialWidth );
+		effect.set_parameter_default( CoreAudio::EffectParam_Reverb_Wet, CoreAudioTuning::initialWet );
+		effect.set_parameter_default( CoreAudio::EffectParam_Reverb_RoomSize, CoreAudioTuning::initialRoom );
+		effect.set_parameter_default( CoreAudio::EffectParam_Reverb_Dry, CoreAudioTuning::initialDry );
+		effect.set_parameter_default( CoreAudio::EffectParam_Reverb_Damp, CoreAudioTuning::initialDamp );
+		effect.set_parameter_default( CoreAudio::EffectParam_Reverb_Width, CoreAudioTuning::initialWidth );
 
 		// Buffer will be full of rubbish - so we MUST mute them
 		reverb_mute( effect, state );
@@ -490,20 +490,20 @@ static void reverb_init( SysAudio::Effect &effect, SysAudio::EffectState &state 
 }
 
 
-static void reverb_reset( SysAudio::Effect &effect, SysAudio::EffectState &state )
+static void reverb_reset( CoreAudio::Effect &effect, CoreAudio::EffectState &state )
 {
-	effect.set_parameter_default( SysAudio::EffectParam_Reverb_Wet, SysAudioTuning::initialWet );
-	effect.set_parameter_default( SysAudio::EffectParam_Reverb_RoomSize, SysAudioTuning::initialRoom );
-	effect.set_parameter_default( SysAudio::EffectParam_Reverb_Dry, SysAudioTuning::initialDry );
-	effect.set_parameter_default( SysAudio::EffectParam_Reverb_Damp, SysAudioTuning::initialDamp );
-	effect.set_parameter_default( SysAudio::EffectParam_Reverb_Width, SysAudioTuning::initialWidth );
+	effect.set_parameter_default( CoreAudio::EffectParam_Reverb_Wet, CoreAudioTuning::initialWet );
+	effect.set_parameter_default( CoreAudio::EffectParam_Reverb_RoomSize, CoreAudioTuning::initialRoom );
+	effect.set_parameter_default( CoreAudio::EffectParam_Reverb_Dry, CoreAudioTuning::initialDry );
+	effect.set_parameter_default( CoreAudio::EffectParam_Reverb_Damp, CoreAudioTuning::initialDamp );
+	effect.set_parameter_default( CoreAudio::EffectParam_Reverb_Width, CoreAudioTuning::initialWidth );
 }
 
 
-static void reverb_apply( SysAudio::Bus &bus, SysAudio::Effect &effect, SysAudio::EffectState &state,
+static void reverb_apply( CoreAudio::Bus &bus, CoreAudio::Effect &effect, CoreAudio::EffectState &state,
 	float *samples, u32 sampleCount )
 {
-	SysAudio::EffectStateReverb &reverb = state.stateReverb;
+	CoreAudio::EffectStateReverb &reverb = state.stateReverb;
 
 	for( u32 i = 0; i < sampleCount; i++ )
 	{
@@ -514,14 +514,14 @@ static void reverb_apply( SysAudio::Bus &bus, SysAudio::Effect &effect, SysAudio
 		float input = ( samples[i * 2 + 0] + samples[i * 2 + 1] ) * reverb.gain;
 
 		// Accumulate comb filters in parallel
-		for( int j = 0; j < SysAudioTuning::numCombs; j++ )
+		for( int j = 0; j < CoreAudioTuning::numCombs; j++ )
 		{
 			outL += reverb_comb_process( reverb.combL[j], input );
 			outR += reverb_comb_process( reverb.combR[j], input );
 		}
 
 		// Feed through allpasses in series
-		for( int j = 0; j < SysAudioTuning::numAllpasses; j++ )
+		for( int j = 0; j < CoreAudioTuning::numAllpasses; j++ )
 		{
 			outL = reverb_allpass_process( reverb.allpassL[j], outL );
 			outR = reverb_allpass_process( reverb.allpassR[j], outR );
@@ -533,18 +533,18 @@ static void reverb_apply( SysAudio::Bus &bus, SysAudio::Effect &effect, SysAudio
 }
 
 
-__AUDIO_EFFECT_PARAM_GET_SET_IMPL( SysAudio::EffectType_Reverb, reverb_size, SysAudio::EffectParam_Reverb_RoomSize )
-__AUDIO_EFFECT_PARAM_GET_SET_IMPL( SysAudio::EffectType_Reverb, reverb_wet, SysAudio::EffectParam_Reverb_Wet )
-__AUDIO_EFFECT_PARAM_GET_SET_IMPL( SysAudio::EffectType_Reverb, reverb_dry, SysAudio::EffectParam_Reverb_Dry )
-__AUDIO_EFFECT_PARAM_GET_SET_IMPL( SysAudio::EffectType_Reverb, reverb_width, SysAudio::EffectParam_Reverb_Width )
+__AUDIO_EFFECT_PARAM_GET_SET_IMPL( CoreAudio::EffectType_Reverb, reverb_size, CoreAudio::EffectParam_Reverb_RoomSize )
+__AUDIO_EFFECT_PARAM_GET_SET_IMPL( CoreAudio::EffectType_Reverb, reverb_wet, CoreAudio::EffectParam_Reverb_Wet )
+__AUDIO_EFFECT_PARAM_GET_SET_IMPL( CoreAudio::EffectType_Reverb, reverb_dry, CoreAudio::EffectParam_Reverb_Dry )
+__AUDIO_EFFECT_PARAM_GET_SET_IMPL( CoreAudio::EffectType_Reverb, reverb_width, CoreAudio::EffectParam_Reverb_Width )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 struct EffectFunctions
 {
-	void ( *init )( class SysAudio::Effect &effect, SysAudio::EffectState &state );
-	void ( *reset )( class SysAudio::Effect &effect, SysAudio::EffectState &state );
-	void ( *apply )( class SysAudio::Bus &bus, class SysAudio::Effect &effect, SysAudio::EffectState &state,
+	void ( *init )( class CoreAudio::Effect &effect, CoreAudio::EffectState &state );
+	void ( *reset )( class CoreAudio::Effect &effect, CoreAudio::EffectState &state );
+	void ( *apply )( class CoreAudio::Bus &bus, class CoreAudio::Effect &effect, CoreAudio::EffectState &state,
 		float *output, u32 frames );
 };
 
@@ -556,7 +556,7 @@ static EffectFunctions effectFunctions[] =
 	{ reverb_init, reverb_reset, reverb_apply },    // EffectType_Reverb
 };
 
-static_assert( ARRAY_LENGTH( effectFunctions ) == SysAudio::EFFECTTYPE_COUNT, "Missing audio effect type" );
+static_assert( ARRAY_LENGTH( effectFunctions ) == CoreAudio::EFFECTTYPE_COUNT, "Missing audio effect type" );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -565,7 +565,7 @@ static int find_bus()
 	// Find first available bus
 	for( int i = 0; i < AUDIO_BUS_COUNT; i++ )
 	{
-		if( SysAudio::buses[i].available ) { return i; }
+		if( CoreAudio::buses[i].available ) { return i; }
 	}
 
 	// Failure
@@ -578,7 +578,7 @@ static u16 find_voice()
 	// Find first available voice
 	for( u16 i = 0; i < AUDIO_VOICE_COUNT; i++ )
 	{
-		if( SysAudio::voices[i].idBus < 0 ) { return i; }
+		if( CoreAudio::voices[i].idBus < 0 ) { return i; }
 	}
 
 	// Failure
@@ -591,7 +591,7 @@ static u16 find_stream()
 	// Find first available voice
 	for( u16 i = 0; i < AUDIO_STREAM_COUNT; i++ )
 	{
-		if( SysAudio::sounds[i].idBus < 0 ) { return i; }
+		if( CoreAudio::sounds[i].idBus < 0 ) { return i; }
 	}
 
 	// Failure
@@ -607,11 +607,11 @@ static THREAD_FUNCTION( audio_stream )
 		// For each stream
 		for( int i = 0; i < AUDIO_STREAM_COUNT; i++ )
 		{
-			SysAudio::Stream &stream = SysAudio::sounds[i];
+			CoreAudio::Stream &stream = CoreAudio::sounds[i];
 			if( stream.idBus < 0 ) { continue; }
 
-			Assert( stream.assetID < Assets::soundCount );
-			BinSound const *binSound = &Assets::sounds[stream.assetID];
+			Assert( stream.assetID < CoreAssets::soundCount );
+			Assets::SoundEntry const *binSound = &Assets::sound( stream.assetID );
 			Assert( binSound->streamed );
 			Assert( stream.channels == binSound->channels );
 
@@ -626,8 +626,8 @@ static THREAD_FUNCTION( audio_stream )
 					binSound->sampleCount - stream.streamPosition );
 
 				// todo: Stream from file
-				void *dst = reinterpret_cast<void *>( &SysAudio::buffers[i][j] );
-				void *src = reinterpret_cast<void *>( Assets::binary.data + Assets::streamSampleDataOffset +
+				void *dst = reinterpret_cast<void *>( &CoreAudio::buffers[i][j] );
+				void *src = reinterpret_cast<void *>( Assets::binary.data + CoreAssets::streamSampleDataOffset +
 					( binSound->sampleOffset + stream.streamPosition ) * sizeof( i16 ) );
 				memory_copy( dst, src, frames * sizeof( i16 ) );
 
@@ -635,8 +635,8 @@ static THREAD_FUNCTION( audio_stream )
 				const usize extra = AUDIO_STREAM_BLOCK - frames;
 				if( extra != 0 )
 				{
-					void *dst = reinterpret_cast<void *>( &SysAudio::buffers[i][j][frames] );
-					void *src = reinterpret_cast<void *>( Assets::binary.data + Assets::streamSampleDataOffset +
+					void *dst = reinterpret_cast<void *>( &CoreAudio::buffers[i][j][frames] );
+					void *src = reinterpret_cast<void *>( Assets::binary.data + CoreAssets::streamSampleDataOffset +
 						binSound->sampleOffset * sizeof( i16 ) );
 					memory_copy( dst, src, extra * sizeof( i16 ) );
 
@@ -668,7 +668,7 @@ static THREAD_FUNCTION( audio_stream )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool SysAudio::init()
+bool CoreAudio::init()
 {
 #if AUDIO_ENABLED
 	// Initialize Audio Buses, Voices, & sounds
@@ -678,10 +678,10 @@ bool SysAudio::init()
 
 	// Initialize Samples Buffer
 	ErrorReturnIf( samples != nullptr, false, "Audio: samples buffer already initialized" );
-	if constexpr ( Assets::voiceSampleDataSize == 0 ) { return true; }
+	if constexpr ( CoreAssets::voiceSampleDataSize == 0 ) { return true; }
 
-	samples = reinterpret_cast<i16 *>( memory_alloc( Assets::voiceSampleDataSize ) );
-	memory_copy( samples, &Assets::binary.data[Assets::voiceSampleDataOffset], Assets::voiceSampleDataSize );
+	samples = reinterpret_cast<i16 *>( memory_alloc( CoreAssets::voiceSampleDataSize ) );
+	memory_copy( samples, &Assets::binary.data[CoreAssets::voiceSampleDataOffset], CoreAssets::voiceSampleDataSize );
 
 	// Initialize Backend
 	bool failure = !init_backend();
@@ -699,7 +699,7 @@ bool SysAudio::init()
 }
 
 
-bool SysAudio::free()
+bool CoreAudio::free()
 {
 #if AUDIO_ENABLED
 	// Console
@@ -733,7 +733,7 @@ bool SysAudio::free()
 }
 
 
-void SysAudio::audio_mixer( i16 *output, u32 frames )
+void CoreAudio::audio_mixer( i16 *output, u32 frames )
 {
 #if AUDIO_ENABLED
 	constexpr int CHANNELS = 2;
@@ -755,9 +755,9 @@ void SysAudio::audio_mixer( i16 *output, u32 frames )
 
 		memory_set( bufferBus, 0, framesBufferFloatSize );
 
-		Assert( bus.effects[SysAudio::EffectType_Core].active );
-		const float pitchBus = bus.effects[SysAudio::EffectType_Core].get_parameter(
-			SysAudio::EffectParam_Core_Pitch, false );
+		Assert( bus.effects[CoreAudio::EffectType_Core].active );
+		const float pitchBus = bus.effects[CoreAudio::EffectType_Core].get_parameter(
+			CoreAudio::EffectParam_Core_Pitch, false );
 
 		// Mix voices
 		for( int j = 0; j < AUDIO_VOICE_COUNT; j++ )
@@ -772,9 +772,9 @@ void SysAudio::audio_mixer( i16 *output, u32 frames )
 			const u32 framesToMix = voice.description.loop ? frames : min( frames, framesRemaining );
 			const u32 framesCount = voice.samplesCount / voice.channels;
 
-			Assert( voice.effects[SysAudio::EffectType_Core].active );
-			const float pitch = voice.effects[SysAudio::EffectType_Core].get_parameter(
-				SysAudio::EffectParam_Core_Pitch, false ) * pitchBus;
+			Assert( voice.effects[CoreAudio::EffectType_Core].active );
+			const float pitch = voice.effects[CoreAudio::EffectType_Core].get_parameter(
+				CoreAudio::EffectParam_Core_Pitch, false ) * pitchBus;
 
 			// Read voice samples
 			switch( voice.channels )
@@ -854,7 +854,7 @@ void SysAudio::audio_mixer( i16 *output, u32 frames )
 			}
 
 			// Process per-voice effects
-			for( u32 k = 0; k < SysAudio::EFFECTTYPE_COUNT; k++ )
+			for( u32 k = 0; k < CoreAudio::EFFECTTYPE_COUNT; k++ )
 			{
 				Effect &effect = voice.effects[k];
 				EffectState &state = voice.states[k];
@@ -897,9 +897,9 @@ void SysAudio::audio_mixer( i16 *output, u32 frames )
 			const u32 framesToMix = stream.description.loop ? frames : min( frames, framesRemaining );
 			const u32 framesCount = stream.samplesCount / stream.channels;
 
-			Assert( stream.effects[SysAudio::EffectType_Core].active );
-			const float pitch = stream.effects[SysAudio::EffectType_Core].get_parameter(
-				SysAudio::EffectParam_Core_Pitch, false ) * pitchBus;
+			Assert( stream.effects[CoreAudio::EffectType_Core].active );
+			const float pitch = stream.effects[CoreAudio::EffectType_Core].get_parameter(
+				CoreAudio::EffectParam_Core_Pitch, false ) * pitchBus;
 
 			// Read stream samples
 			switch( stream.channels )
@@ -931,8 +931,8 @@ void SysAudio::audio_mixer( i16 *output, u32 frames )
 						const u32 bufferNext = ( frameNext >> AUDIO_STREAM_BLOCK_DIV_EXPN ) % AUDIO_STREAM_BUFFERS;
 						const u32 sampleNext = ( frameNext & AUDIO_STREAM_BLOCK_MOD_MASK );
 
-						const float valueThis = I16_TO_FLOAT( SysAudio::buffers[j][bufferThis][sampleThis] );
-						const float valueNext = I16_TO_FLOAT( SysAudio::buffers[j][bufferNext][sampleNext] );
+						const float valueThis = I16_TO_FLOAT( CoreAudio::buffers[j][bufferThis][sampleThis] );
+						const float valueNext = I16_TO_FLOAT( CoreAudio::buffers[j][bufferNext][sampleNext] );
 
 						const float lerp = stream.samplePosition - sample;
 						const float valueMono = valueThis * ( 1.0f - lerp ) + valueNext * lerp;
@@ -978,10 +978,10 @@ void SysAudio::audio_mixer( i16 *output, u32 frames )
 						const u32 sampleNextRight = ( ( sampleNext & AUDIO_STREAM_BLOCK_MOD_MASK ) << 1 ) + 1;
 						const u32 bufferNext = ( ( sampleNext >> AUDIO_STREAM_BLOCK_DIV_EXPN ) % AUDIO_STREAM_BUFFERS );
 
-						const float valueThisLeft = I16_TO_FLOAT( SysAudio::buffers[j][bufferThis][sampleThisLeft] );
-						const float valueThisRight = I16_TO_FLOAT( SysAudio::buffers[j][bufferThis][sampleThisRight] );
-						const float valueNextLeft = I16_TO_FLOAT( SysAudio::buffers[j][bufferNext][sampleNextLeft] );
-						const float valueNextRight = I16_TO_FLOAT( SysAudio::buffers[j][bufferNext][sampleNextRight] );
+						const float valueThisLeft = I16_TO_FLOAT( CoreAudio::buffers[j][bufferThis][sampleThisLeft] );
+						const float valueThisRight = I16_TO_FLOAT( CoreAudio::buffers[j][bufferThis][sampleThisRight] );
+						const float valueNextLeft = I16_TO_FLOAT( CoreAudio::buffers[j][bufferNext][sampleNextLeft] );
+						const float valueNextRight = I16_TO_FLOAT( CoreAudio::buffers[j][bufferNext][sampleNextRight] );
 
 						const float lerp = stream.samplePosition - sample;
 						const float valueLeft = valueThisLeft * ( 1.0f - lerp ) + valueNextLeft * lerp;
@@ -1002,7 +1002,7 @@ void SysAudio::audio_mixer( i16 *output, u32 frames )
 			}
 
 			// Process per-stream effects
-			for( u32 k = 0; k < SysAudio::EFFECTTYPE_COUNT; k++ )
+			for( u32 k = 0; k < CoreAudio::EFFECTTYPE_COUNT; k++ )
 			{
 				Effect &effect = stream.effects[k];
 				EffectState &state = stream.states[k];
@@ -1034,7 +1034,7 @@ void SysAudio::audio_mixer( i16 *output, u32 frames )
 		}
 
 		// Process per-bus effects
-		for( u32 j = 0; j < SysAudio::EFFECTTYPE_COUNT; j++ )
+		for( u32 j = 0; j < CoreAudio::EFFECTTYPE_COUNT; j++ )
 		{
 			Effect &effect = bus.effects[j];
 			EffectState &state = bus.states[j];
@@ -1066,7 +1066,7 @@ void SysAudio::audio_mixer( i16 *output, u32 frames )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void SysAudio::Bus::init()
+void CoreAudio::Bus::init()
 {
 	available = true;
 	bypass = false;
@@ -1080,7 +1080,7 @@ void SysAudio::Bus::init()
 	upZ = 0.0f;
 
 	new ( &effects ) AudioEffects { };
-	for( int i = 0; i < SysAudio::EFFECTTYPE_COUNT; i++ )
+	for( int i = 0; i < CoreAudio::EFFECTTYPE_COUNT; i++ )
 	{
 		memory_set( &states[i], 0, sizeof( states[i] ) );
 		if( effectFunctions[i].init == nullptr ) { continue; }
@@ -1089,7 +1089,7 @@ void SysAudio::Bus::init()
 }
 
 
-void SysAudio::Voice::init()
+void CoreAudio::Voice::init()
 {
 	idBus = -1;
 	generation = 0;
@@ -1103,7 +1103,7 @@ void SysAudio::Voice::init()
 
 	new ( &description ) AudioDescription { };
 	new ( &effects ) AudioEffects { };
-	for( int i = 0; i < SysAudio::EFFECTTYPE_COUNT; i++ )
+	for( int i = 0; i < CoreAudio::EFFECTTYPE_COUNT; i++ )
 	{
 		memory_set( &states[i], 0, sizeof( states[i] ) );
 		if( effectFunctions[i].init == nullptr ) { continue; }
@@ -1112,7 +1112,7 @@ void SysAudio::Voice::init()
 };
 
 
-void SysAudio::Stream::init()
+void CoreAudio::Stream::init()
 {
 	idBus = -1;
 	generation = 0;
@@ -1129,7 +1129,7 @@ void SysAudio::Stream::init()
 
 	new ( &description ) AudioDescription { };
 	new ( &effects ) AudioEffects { };
-	for( int i = 0; i < SysAudio::EFFECTTYPE_COUNT; i++ )
+	for( int i = 0; i < CoreAudio::EFFECTTYPE_COUNT; i++ )
 	{
 		memory_set( &states[i], 0, sizeof( states[i] ) );
 		if( effectFunctions[i].init == nullptr ) { continue; }
@@ -1139,16 +1139,16 @@ void SysAudio::Stream::init()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-SoundHandle SysAudio::play_voice( const int idBus, const i16 *const samples, const u32 samplesCount,
+SoundHandle CoreAudio::play_voice( const int idBus, const i16 *const samples, const u32 samplesCount,
 	const int channels, const AudioEffects &effects, const AudioDescription &description, const char *name )
 {
 	const u16 v = find_voice();
 	if( v == U16_MAX ) { return SoundHandle { }; }
-	SysAudio::Voice &voice = SysAudio::voices[v];
+	CoreAudio::Voice &voice = CoreAudio::voices[v];
 
 	// Effects
 	memory_copy( &voice.effects, &effects, sizeof( voice.effects ) );
-	for( int i = 0; i < SysAudio::EFFECTTYPE_COUNT; i++ )
+	for( int i = 0; i < CoreAudio::EFFECTTYPE_COUNT; i++ )
 	{
 		memory_set( &voice.states[i], 0, sizeof( voice.states[i] ) );
 		if( effectFunctions[i].init == nullptr ) { continue; }
@@ -1162,7 +1162,7 @@ SoundHandle SysAudio::play_voice( const int idBus, const i16 *const samples, con
 
 	// State
 	voice.samplePosition = description.startTimeRandomize ?
-		SysAudio::random.next_float( samplesCount ) : description.startTimeMS;
+		CoreAudio::random.next_float( samplesCount ) : description.startTimeMS;
 	voice.channels = channels;
 	voice.samples = samples;
 	voice.samplesCount = samplesCount;
@@ -1179,20 +1179,20 @@ SoundHandle SysAudio::play_voice( const int idBus, const i16 *const samples, con
 }
 
 
-SoundHandle SysAudio::play_stream( const int idBus, const u32 assetID,
+SoundHandle CoreAudio::play_stream( const int idBus, const u32 assetID,
 	const AudioEffects &effects, const AudioDescription &description, const char *name )
 {
 	const u16 s = find_stream();
 	if( s == U16_MAX ) { return SoundHandle { }; }
-	SysAudio::Stream &stream = SysAudio::sounds[s];
+	CoreAudio::Stream &stream = CoreAudio::sounds[s];
 
-	Assert( assetID < Assets::soundCount );
-	const BinSound &binSound = Assets::sounds[assetID];
+	Assert( assetID < CoreAssets::soundCount );
+	const Assets::SoundEntry &binSound = Assets::sound( assetID );
 	Assert( binSound.streamed );
 
 	// Effects
 	memory_copy( &stream.effects, &effects, sizeof( stream.effects ) );
-	for( int i = 0; i < SysAudio::EFFECTTYPE_COUNT; i++ )
+	for( int i = 0; i < CoreAudio::EFFECTTYPE_COUNT; i++ )
 	{
 		memory_set( &stream.states[i], 0, sizeof( stream.states[i] ) );
 		if( effectFunctions[i].init == nullptr ) { continue; }
@@ -1207,7 +1207,7 @@ SoundHandle SysAudio::play_stream( const int idBus, const u32 assetID,
 	// State
 	stream.channels = binSound.channels;
 	stream.samplePosition = description.startTimeRandomize ?
-		SysAudio::random.next_float( binSound.sampleCount ) : description.startTimeMS;
+		CoreAudio::random.next_float( binSound.sampleCount ) : description.startTimeMS;
 	stream.samplesCount = binSound.sampleCount;
 
 	stream.assetID = assetID;
@@ -1232,15 +1232,15 @@ SoundHandle SysAudio::play_stream( const int idBus, const u32 assetID,
 void AudioEffects::init()
 {
 	// Zero-initialize Effects
-	for( int i = 0; i < SysAudio::EFFECTTYPE_COUNT; i++ )
+	for( int i = 0; i < CoreAudio::EFFECTTYPE_COUNT; i++ )
 	{
 		memory_set( &effects[i], 0, sizeof( effects[i] ) );
 	}
 
 	// First effect is always AudioEffect_Core
-	effects[SysAudio::EffectType_Core].active = true;
-	effects[SysAudio::EffectType_Core].set_parameter( SysAudio::EffectParam_Core_Gain, 1.0f, 0.0f );
-	effects[SysAudio::EffectType_Core].set_parameter( SysAudio::EffectParam_Core_Pitch, 1.0f, 0.0f );
+	effects[CoreAudio::EffectType_Core].active = true;
+	effects[CoreAudio::EffectType_Core].set_parameter( CoreAudio::EffectParam_Core_Gain, 1.0f, 0.0f );
+	effects[CoreAudio::EffectType_Core].set_parameter( CoreAudio::EffectParam_Core_Pitch, 1.0f, 0.0f );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1250,14 +1250,14 @@ bool SoundHandle::is_playing() const
 	if( idStream == U16_MAX )
 	{
 		if( idVoice >= AUDIO_VOICE_COUNT ) { return false; }
-		if( SysAudio::voices[idVoice].generation != generation ) { return false; }
-		return !( SysAudio::voices[idVoice].idBus < 0 );
+		if( CoreAudio::voices[idVoice].generation != generation ) { return false; }
+		return !( CoreAudio::voices[idVoice].idBus < 0 );
 	}
 	else if( idVoice == U16_MAX )
 	{
 		if( idStream >= AUDIO_STREAM_COUNT ) { return false; }
-		if( SysAudio::sounds[idStream].generation != generation ) { return false; }
-		return !( SysAudio::sounds[idStream].idBus < 0 );
+		if( CoreAudio::sounds[idStream].generation != generation ) { return false; }
+		return !( CoreAudio::sounds[idStream].idBus < 0 );
 	}
 
 	return false;
@@ -1267,7 +1267,7 @@ bool SoundHandle::is_playing() const
 bool SoundHandle::is_paused() const
 {
 	if( !is_playing() ) { return false; }
-	return idStream == U16_MAX ? SysAudio::voices[idVoice].bypass : SysAudio::sounds[idStream].bypass;
+	return idStream == U16_MAX ? CoreAudio::voices[idVoice].bypass : CoreAudio::sounds[idStream].bypass;
 }
 
 
@@ -1275,8 +1275,8 @@ bool SoundHandle::pause( const bool pause ) const
 {
 	if( !is_playing() ) { return false; }
 
-	if( idVoice != U16_MAX ) { SysAudio::voices[idVoice].bypass = pause; }
-	if( idStream != U16_MAX ) { SysAudio::sounds[idStream].bypass = pause; }
+	if( idVoice != U16_MAX ) { CoreAudio::voices[idVoice].bypass = pause; }
+	if( idStream != U16_MAX ) { CoreAudio::sounds[idStream].bypass = pause; }
 
 	return true;
 }
@@ -1286,8 +1286,8 @@ bool SoundHandle::stop() const
 {
 	if( !is_playing() ) { return true; }
 
-	if( idVoice != U16_MAX ) { SysAudio::voices[idVoice].idBus = -1; }
-	if( idStream != U16_MAX ) { SysAudio::sounds[idStream].idBus = -1; }
+	if( idVoice != U16_MAX ) { CoreAudio::voices[idVoice].idBus = -1; }
+	if( idStream != U16_MAX ) { CoreAudio::sounds[idStream].idBus = -1; }
 
 	return true;
 }
@@ -1296,7 +1296,7 @@ bool SoundHandle::stop() const
 AudioEffects *SoundHandle::operator->() const
 {
 	if( !is_playing() ) { return &NULL_AUDIO_EFFECTS; }
-	return idStream == U16_MAX ? &SysAudio::voices[idVoice].effects : &SysAudio::sounds[idStream].effects;
+	return idStream == U16_MAX ? &CoreAudio::voices[idVoice].effects : &CoreAudio::sounds[idStream].effects;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1306,14 +1306,14 @@ void AudioContext::init( const AudioEffects &effects, const char *name )
 	// Reserve an audio bus
 	idBus = find_bus();
 	ErrorIf( idBus < 0, "AudioContext: exceeded bus capacity!" );
-	SysAudio::Bus &bus = SysAudio::buses[idBus];
+	CoreAudio::Bus &bus = CoreAudio::buses[idBus];
 	bus.available = false;
 	this->name = name;
 	bus.name = name;
 
 	// Copy Effects
 	memory_copy( &bus.effects, &effects, sizeof( AudioEffects ) );
-	for( int i = 0; i < SysAudio::EFFECTTYPE_COUNT; i++ )
+	for( int i = 0; i < CoreAudio::EFFECTTYPE_COUNT; i++ )
 	{
 		memory_set( &bus.states[i], 0, sizeof( bus.states[i] ) );
 		if( effectFunctions[i].init == nullptr ) { continue; }
@@ -1329,12 +1329,12 @@ void AudioContext::free()
 	// Stop playing voices
 	for( int i = 0; i < AUDIO_VOICE_COUNT; i++ )
 	{
-		SysAudio::Voice &voice = SysAudio::voices[i];
+		CoreAudio::Voice &voice = CoreAudio::voices[i];
 		if( voice.idBus == idBus ) { voice.idBus = -1; }
 	}
 
 	// Mark our audio bus as available
-	SysAudio::Bus &bus = SysAudio::buses[idBus];
+	CoreAudio::Bus &bus = CoreAudio::buses[idBus];
 	bus.available = true;
 };
 
@@ -1342,21 +1342,21 @@ void AudioContext::free()
 AudioEffects *AudioContext::operator->() const
 {
 	Assert( idBus > 0 || idBus < AUDIO_BUS_COUNT );
-	return &SysAudio::buses[idBus].effects;
+	return &CoreAudio::buses[idBus].effects;
 }
 
 
 bool AudioContext::is_paused() const
 {
 	if( idBus < 0 || idBus >= AUDIO_BUS_COUNT ) { return false; }
-	return SysAudio::buses[idBus].bypass;
+	return CoreAudio::buses[idBus].bypass;
 }
 
 
 bool AudioContext::pause( const bool pause ) const
 {
 	if( idBus < 0 || idBus >= AUDIO_BUS_COUNT ) { return false; }
-	SysAudio::buses[idBus].bypass = pause;
+	CoreAudio::buses[idBus].bypass = pause;
 	return true;
 }
 
@@ -1365,12 +1365,12 @@ void AudioContext::set_listener( const float lookX, const float lookY, const flo
 	const float upX, const float upY, const float upZ )
 {
 	if( idBus < 0 || idBus >= AUDIO_BUS_COUNT ) { return; }
-	SysAudio::buses[idBus].lookX = lookX;
-	SysAudio::buses[idBus].lookY = lookY;
-	SysAudio::buses[idBus].lookZ = lookZ;
-	SysAudio::buses[idBus].upX = upX;
-	SysAudio::buses[idBus].upY = upY;
-	SysAudio::buses[idBus].upZ = upZ;
+	CoreAudio::buses[idBus].lookX = lookX;
+	CoreAudio::buses[idBus].lookY = lookY;
+	CoreAudio::buses[idBus].lookZ = lookZ;
+	CoreAudio::buses[idBus].upX = upX;
+	CoreAudio::buses[idBus].upY = upY;
+	CoreAudio::buses[idBus].upZ = upZ;
 }
 
 
@@ -1379,8 +1379,8 @@ SoundHandle AudioContext::play_sound( const u32 sound,
 {
 	Assert( idBus >= 0 || idBus < AUDIO_BUS_COUNT );
 
-	Assert( sound < Assets::soundCount );
-	const BinSound &binSound = Assets::sounds[sound];
+	Assert( sound < CoreAssets::soundCount );
+	const Assets::SoundEntry &binSound = Assets::sound( sound );
 
 #if COMPILE_DEBUG
 	const char *name = binSound.name;
@@ -1390,14 +1390,14 @@ SoundHandle AudioContext::play_sound( const u32 sound,
 
 	if( binSound.streamed )
 	{
-		return SysAudio::play_stream( idBus, sound, effects, description, name );
+		return CoreAudio::play_stream( idBus, sound, effects, description, name );
 	}
 	else
 	{
-		const i16 *const samples = &SysAudio::samples[binSound.sampleOffset];
+		const i16 *const samples = &CoreAudio::samples[binSound.sampleOffset];
 		const u32 samplesCount = binSound.sampleCount;
 		const int channels = binSound.channels;
-		return SysAudio::play_voice( idBus, samples, samplesCount, channels, effects, description, name );
+		return CoreAudio::play_voice( idBus, samples, samplesCount, channels, effects, description, name );
 	}
 }
 
@@ -1471,7 +1471,7 @@ static void audio_draw_label_value( const float x, const float y, const int widt
 }
 
 
-int_v2 SysAudio::draw_debug( const Delta delta, const float x, const float y )
+int_v2 CoreAudio::draw_debug( const Delta delta, const float x, const float y )
 {
 	int_v2 dimensions = int_v2 { 0, 0 };
 	if( !DEBUG_ENABLED ) { return dimensions; }
@@ -1491,7 +1491,7 @@ int_v2 SysAudio::draw_debug( const Delta delta, const float x, const float y )
 }
 
 
-bool SysAudio::draw_bus( const Delta delta, const int id, float &x, float &y )
+bool CoreAudio::draw_bus( const Delta delta, const int id, float &x, float &y )
 {
 	Bus &bus = buses[id];
 	if( bus.available ) { return false; }
@@ -1507,7 +1507,7 @@ bool SysAudio::draw_bus( const Delta delta, const int id, float &x, float &y )
 
 	// Effects
 	x += 16.0f;
-	for( int i = 0; i < SysAudio::EFFECTTYPE_COUNT; i++ )
+	for( int i = 0; i < CoreAudio::EFFECTTYPE_COUNT; i++ )
 	{
 		draw_effect( delta, bus.effects[i], i, x, y );
 	}
@@ -1547,7 +1547,7 @@ bool SysAudio::draw_bus( const Delta delta, const int id, float &x, float &y )
 }
 
 
-bool SysAudio::draw_voice( const Delta delta, const int id, float &x, float &y )
+bool CoreAudio::draw_voice( const Delta delta, const int id, float &x, float &y )
 {
 	Voice &voice = voices[id];
 	if( voice.idBus < 0 ) { return false; }
@@ -1568,7 +1568,7 @@ bool SysAudio::draw_voice( const Delta delta, const int id, float &x, float &y )
 	y += 16.0f;
 
 	// Effects
-	for( int i = 0; i < SysAudio::EFFECTTYPE_COUNT; i++ )
+	for( int i = 0; i < CoreAudio::EFFECTTYPE_COUNT; i++ )
 	{
 		draw_effect( delta, voice.effects[i], i, x, y );
 	}
@@ -1578,7 +1578,7 @@ bool SysAudio::draw_voice( const Delta delta, const int id, float &x, float &y )
 }
 
 
-bool SysAudio::draw_stream( const Delta delta, const int id, float &x, float &y )
+bool CoreAudio::draw_stream( const Delta delta, const int id, float &x, float &y )
 {
 	Stream &stream = sounds[id];
 	if( stream.idBus < 0 ) { return false; }
@@ -1615,7 +1615,7 @@ bool SysAudio::draw_stream( const Delta delta, const int id, float &x, float &y 
 	y += 16.0f;
 
 	// Effects
-	for( int i = 0; i < SysAudio::EFFECTTYPE_COUNT; i++ )
+	for( int i = 0; i < CoreAudio::EFFECTTYPE_COUNT; i++ )
 	{
 		draw_effect( delta, stream.effects[i], i, x, y );
 	}
@@ -1625,7 +1625,7 @@ bool SysAudio::draw_stream( const Delta delta, const int id, float &x, float &y 
 }
 
 
-bool SysAudio::draw_effect( const Delta delta, Effect &effect, const int type, float &x, float &y )
+bool CoreAudio::draw_effect( const Delta delta, Effect &effect, const int type, float &x, float &y )
 {
 	if( !effect.active ) { return false; }
 
@@ -1634,7 +1634,7 @@ bool SysAudio::draw_effect( const Delta delta, Effect &effect, const int type, f
 
 	// Helper Lambda
 	char value[16];
-	auto draw_value_label = [ &value, &effect, &x, &y ]( const char *label, const SysAudio::EffectParam param )
+	auto draw_value_label = [ &value, &effect, &x, &y ]( const char *label, const CoreAudio::EffectParam param )
 	{
 		snprintf( value, 16, "%.2f", effect.get_parameter( param ) );
 		audio_draw_label_value( x, y, labelWidth, colorLabel, colorSeparator, colorValue, label, value );
@@ -1644,33 +1644,33 @@ bool SysAudio::draw_effect( const Delta delta, Effect &effect, const int type, f
 	// Draw Effect Labels
 	switch( type )
 	{
-		case SysAudio::EffectType_Core:
+		case CoreAudio::EffectType_Core:
 		{
 			draw_text( font, fontSizeLabel, x, y, c_white, "Core" );
 			x += labelIndent;
-			draw_value_label( "Gain", SysAudio::EffectParam_Core_Gain );
-			draw_value_label( "Pitch", SysAudio::EffectParam_Core_Pitch );
+			draw_value_label( "Gain", CoreAudio::EffectParam_Core_Gain );
+			draw_value_label( "Pitch", CoreAudio::EffectParam_Core_Pitch );
 			x -= labelIndent;
 		}
 		return true;
 
-		case SysAudio::EffectType_Lowpass:
+		case CoreAudio::EffectType_Lowpass:
 		{
 			draw_text( font, fontSizeLabel, x, y, c_white, "Lowpass" );
 			x += labelIndent;
-			draw_value_label( "Cutoff", SysAudio::EffectParam_Lowpass_Cutoff );
+			draw_value_label( "Cutoff", CoreAudio::EffectParam_Lowpass_Cutoff );
 			x -= labelIndent;
 		}
 		return true;
 
-		case SysAudio::EffectType_Reverb:
+		case CoreAudio::EffectType_Reverb:
 		{
 			draw_text( font, fontSizeLabel, x, y, c_white, "Reverb" );
 			x += labelIndent;
-			draw_value_label( "Room Size", SysAudio::EffectParam_Reverb_RoomSize );
-			draw_value_label( "Wet", SysAudio::EffectParam_Reverb_Wet );
-			draw_value_label( "Dry", SysAudio::EffectParam_Reverb_Dry );
-			draw_value_label( "Width", SysAudio::EffectParam_Reverb_Width );
+			draw_value_label( "Room Size", CoreAudio::EffectParam_Reverb_RoomSize );
+			draw_value_label( "Wet", CoreAudio::EffectParam_Reverb_Wet );
+			draw_value_label( "Dry", CoreAudio::EffectParam_Reverb_Dry );
+			draw_value_label( "Width", CoreAudio::EffectParam_Reverb_Width );
 			x -= labelIndent;
 		}
 		return true;

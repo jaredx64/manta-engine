@@ -167,6 +167,7 @@ const char *StructTypeNames[] =
 	"uniform_buffer",
 	"constant_buffer",
 	"mutable_buffer",
+	"instance_input",
 	"vertex_input",
 	"vertex_output",
 	"fragment_input",
@@ -186,6 +187,7 @@ const char *Semantics[] =
 	"COLOR",
 	"BINORMAL",
 	"TANGENT",
+	"INSTANCE",
 };
 static_assert( ARRAY_LENGTH( Semantics ) == SEMANTICTYPE_COUNT, "Missing SemanticType!" );
 
@@ -242,6 +244,7 @@ const Keyword KeywordNames[] =
 	{ "uniform_buffer",         TokenType_UniformBuffer },
 	{ "constant_buffer",        TokenType_ConstantBuffer },
 	{ "mutable_buffer",         TokenType_MutableBuffer },
+	{ "instance_input",         TokenType_InstanceInput },
 	{ "vertex_input",           TokenType_VertexInput },
 	{ "vertex_output",          TokenType_VertexOutput },
 	{ "fragment_input",         TokenType_FragmentInput },
@@ -264,6 +267,7 @@ const Keyword KeywordNames[] =
 	{ "COLOR",                  TokenType_COLOR },
 	{ "BINORMAL",               TokenType_BINORMAL },
 	{ "TANGENT",                TokenType_TANGENT },
+	{ "INSTANCE",               TokenType_INSTANCE },
 	{ "format",                 TokenType_InputFormat },
 	{ "UNORM8",                 TokenType_UNORM8 },
 	{ "UNORM16",                TokenType_UNORM16 },
@@ -938,6 +942,7 @@ bool Parser::parse( const char *string )
 			case TokenType_UniformBuffer:
 			case TokenType_ConstantBuffer:
 			case TokenType_MutableBuffer:
+			case TokenType_InstanceInput:
 			case TokenType_VertexInput:
 			case TokenType_VertexOutput:
 			case TokenType_FragmentInput:
@@ -1014,6 +1019,40 @@ static bool vertex_input_type_allowed( const TypeID typeID )
 		case Primitive_UInt4:
 		case Primitive_Float4:
 		case Primitive_Double4:
+			// Allowed type
+		return true;
+	}
+
+	// Illegal type
+	return false;
+}
+
+
+static bool instance_input_type_allowed( const TypeID typeID )
+{
+	switch( typeID )
+	{
+		case Primitive_Bool:
+		case Primitive_Int:
+		case Primitive_UInt:
+		case Primitive_Float:
+		case Primitive_Double:
+		case Primitive_Bool2:
+		case Primitive_Int2:
+		case Primitive_UInt2:
+		case Primitive_Float2:
+		case Primitive_Double2:
+		case Primitive_Bool3:
+		case Primitive_Int3:
+		case Primitive_UInt3:
+		case Primitive_Float3:
+		case Primitive_Double3:
+		case Primitive_Bool4:
+		case Primitive_Int4:
+		case Primitive_UInt4:
+		case Primitive_Float4:
+		case Primitive_Double4:
+		case Primitive_Float4x4:
 			// Allowed type
 		return true;
 	}
@@ -1115,6 +1154,13 @@ Node *Parser::parse_structure()
 			structType = StructType_MutableBuffer;
 			expectSlot = true;
 			expectSize = true;
+			type.global = true;
+			type.pipelineIntermediate = false;
+		break;
+
+		case TokenType_InstanceInput:
+			structType = StructType_InstanceInput;
+			expectTags = true;
 			type.global = true;
 			type.pipelineIntermediate = false;
 		break;
@@ -1265,11 +1311,17 @@ Node *Parser::parse_structure()
 			const bool allowedType = buffer_type_allowed( variableType.tokenType, variable.typeID );
 			ErrorIf( !allowedType, "Type not allowed in this structure! Must be a primitive or shared_struct" );
 		}
+		else if( structType == StructType_InstanceInput )
+		{
+			const bool allowedType = instance_input_type_allowed( variable.typeID );
+			ErrorIf( !allowedType, "Type not allowed in instance_input!" );
+		}
 		else if( structType == StructType_VertexInput )
 		{
 			const bool allowedType = vertex_input_type_allowed( variable.typeID );
 			ErrorIf( !allowedType, "Type not allowed in vertex_input! Must be a primitive, non-matrix type" );
 		}
+
 
 		// Parse Tags
 		if( expectTags )
@@ -1282,7 +1334,7 @@ Node *Parser::parse_structure()
 				ErrorIf( token.type != TokenType_LParen, "%s: expected '(' before semantic type", structName );
 
 				token = scanner.next();
-				ErrorIf( token.type < TokenType_POSITION || token.type > TokenType_TANGENT,
+				ErrorIf( token.type < TokenType_POSITION || token.type > TokenType_INSTANCE,
 					"%s: unknown semantic", structName );
 				variable.semantic = ( token.type - TokenType_POSITION ); // TODO: Wrapper for this?
 
@@ -1296,6 +1348,26 @@ Node *Parser::parse_structure()
 				// fragment_output requirements
 				ErrorIf( structType == StructType_FragmentOutput,
 					"%s members require a semantic() of 'COLOR' or 'DEPTH'", structName );
+			}
+
+			// instance_input
+			if( structType == StructType_InstanceInput )
+			{
+				// Input Format
+				ErrorIf( token.type != TokenType_InputFormat, "instance_input members require a format()" );
+
+				token = scanner.next();
+				ErrorIf( token.type != TokenType_LParen, "%s: expected '(' before format type", structName );
+
+				token = scanner.next();
+				ErrorIf( token.type < TokenType_UNORM8 || token.type > TokenType_FLOAT32,
+					"%s: invalid format() type", structName );
+				variable.format = ( token.type - TokenType_UNORM8 ); // TODO: Wrapper for this?
+
+				token = scanner.next();
+				ErrorIf( token.type != TokenType_RParen, "%s: expected ')' after format type", structName );
+
+				token = scanner.next();
 			}
 
 			// vertex_input
@@ -2191,7 +2263,8 @@ Node *Parser::parse_variable_declaration()
 	variable.typeID = typeMap.get( token.name );
 
 	// Is the variable a constant structure type?
-	if( token.type == TokenType_VertexInput ||
+	if( token.type == TokenType_InstanceInput ||
+		token.type == TokenType_VertexInput ||
 		token.type == TokenType_FragmentInput ||
 		token.type == TokenType_ComputeInput )
 	{
@@ -2285,21 +2358,21 @@ Node *Parser::parse_function_declaration()
 	{
 		scanner.back();
 		return parse_function_declaration_main( FunctionType_MainVertex, "vertex_main",
-												TokenType_VertexInput, TokenType_VertexOutput );
+			TokenType_VertexInput, TokenType_VertexOutput );
 	}
 	else if( token.name.length == strlen( "fragment_main" ) &&
-			 strncmp( "fragment_main", token.name.data, token.name.length ) == 0 )
+		strncmp( "fragment_main", token.name.data, token.name.length ) == 0 )
 	{
 		scanner.back();
 		return parse_function_declaration_main( FunctionType_MainFragment, "fragment_main",
-												TokenType_FragmentInput, TokenType_FragmentOutput );
+			TokenType_FragmentInput, TokenType_FragmentOutput );
 	}
 	else if( token.name.length == strlen( "compute_main" ) &&
-			  strncmp( "compute_main", token.name.data, token.name.length ) == 0 )
+		strncmp( "compute_main", token.name.data, token.name.length ) == 0 )
 	{
 		scanner.back();
 		return parse_function_declaration_main( FunctionType_MainCompute, "compute_main",
-												TokenType_ComputeInput, TokenType_ComputeOutput );
+			TokenType_ComputeInput, TokenType_ComputeOutput );
 	}
 
 	// Function Parameters
@@ -2345,7 +2418,7 @@ Node *Parser::parse_function_declaration()
 
 
 Node *Parser::parse_function_declaration_main( FunctionType functionType, const char *functionName,
-											   TokenType inToken, TokenType outToken )
+	TokenType inToken, TokenType outToken )
 {
 	Function function;
 	Token token = scanner.current();
@@ -2370,6 +2443,7 @@ Node *Parser::parse_function_declaration_main( FunctionType functionType, const 
 	// Requirements
 	bool hasIn = false;
 	bool hasOut = false;
+	bool hasInstance = false; // vertex main only
 
 	// Function Parameters
 	u32 parameterID = 0;
@@ -2398,6 +2472,13 @@ Node *Parser::parse_function_declaration_main( FunctionType functionType, const 
 				Error( "%s() first parameter must be type '%s'",
 					functionName, KeywordNames[inToken - TOKENTYPE_KEYWORD_FIRST].key );
 			}
+
+			// Vertex Format
+			if( functionType == FunctionType_MainVertex )
+			{
+				vertexFormatTypeName = paramType.name;
+			}
+
 			hasIn = true;
 		} else
 		// Output Parameter
@@ -2412,14 +2493,42 @@ Node *Parser::parse_function_declaration_main( FunctionType functionType, const 
 			}
 			hasOut = true;
 		} else
-		// Buffer Parameters Only
+		// Instance Format (vertex main only)
+		if( functionType == FunctionType_MainVertex && paramType.tokenType == TokenType_InstanceInput )
 		{
-			if( parameterID > 1 && !( paramType.tokenType == TokenType_UniformBuffer ||
-				paramType.tokenType == TokenType_ConstantBuffer || paramType.tokenType == TokenType_MutableBuffer ) )
+			if( hasInstance )
 			{
 				scanner.back();
 				scanner.back();
-				Error( "%s() can only take additional parameters of type *_buffer", functionName );
+				Error( "%s() can only take one instance_input '%s'",
+					functionName, KeywordNames[inToken - TOKENTYPE_KEYWORD_FIRST].key );
+			}
+
+			instanceFormatTypeName = paramType.name;
+			hasInstance = true;
+		} else
+		// Buffer Parameters Only
+		{
+			const bool isBufferType = paramType.tokenType == TokenType_UniformBuffer ||
+				paramType.tokenType == TokenType_ConstantBuffer ||
+				paramType.tokenType == TokenType_MutableBuffer;
+
+			const bool isInstanceInput = paramType.tokenType == TokenType_InstanceInput;
+
+			if( parameterID > 1 )
+			{
+				// Type 'instance_input' is only allowed in vertex_main
+				if( isInstanceInput && functionType != FunctionType_MainVertex )
+				{
+					scanner.back(); scanner.back();
+					Error( "instance_input is not allowed as a parameter to %s()", functionName );
+				}
+				// Only buffer types are allowed in shader stage entry points
+				if( !isBufferType && !isInstanceInput )
+				{
+					scanner.back(); scanner.back();
+					Error( "%s() can only take in additional parameters of type *_buffer", functionName );
+				}
 			}
 		}
 
@@ -2936,19 +3045,16 @@ Node *Parser::parse_subscript_operator()
 {
 	Node *node = parse_fundamental();
 
-	switch( scanner.current().type )
-	{
-		case TokenType_LBrack:
-		{
-			Token token = scanner.next();
-			Node *expr = parse_expression();
+	while( scanner.current().type == TokenType_LBrack )
+    {
+		Token token = scanner.next();
+		Node *expr = parse_expression();
 
-			token = scanner.current();
-			ErrorIf( token.type != TokenType_RBrack, "Expected ']' after array indexing" );
+		token = scanner.current();
+		ErrorIf( token.type != TokenType_RBrack, "Expected ']' after array indexing" );
 
-			scanner.next();
-			return ast.add( NodeExpressionBinary( ExpressionBinaryType_Subscript, node, expr ) );
-		}
+		scanner.next();
+		node = ast.add( NodeExpressionBinary( ExpressionBinaryType_Subscript, node, expr ) );
 	}
 
 	// No access operators

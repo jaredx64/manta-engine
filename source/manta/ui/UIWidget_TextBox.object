@@ -17,7 +17,7 @@ SOURCE_INCLUDES
 OBJECT( UIWidget_TextBox )
 PARENT( UIWidget )
 
-CATEGORY( CategoryUI )
+CATEGORY( UI )
 BUCKET_SIZE( 64 )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -54,7 +54,7 @@ PROTECTED void init()
 	input.allowTabs = true;
 
 	// Scrollable Region
-	region = context->create_widget( UIWidget_ScrollableRegion, id ); Assert( region );
+	region = context->create_widget( ObjectType::UIWidget_ScrollableRegion, id ); Assert( region );
 }
 
 
@@ -80,7 +80,7 @@ PROTECTED void update( const Delta delta )
 	tween( tweenClick, 0.0f, 0.05f, delta, 0.01f );
 
 	// Scrollable Region
-	auto regionHandle = context->handle<UIWidget_ScrollableRegion>( region );
+	auto regionHandle = context->handle<ObjectType::UIWidget_ScrollableRegion>( region );
 	Assert( regionHandle );
 
 	// Update Scrollable Region Dimensions
@@ -106,22 +106,22 @@ PROTECTED void update( const Delta delta )
 	// Update Scrollable Region Area
 	const int_v2 dimensionText = input->get_dimensions();
 	const int_v2 dimensionsRegion = int_v2 { max( regionHandle->viewWidth, dimensionText.x ),
-	                                       max( regionHandle->viewHeight, dimensionText.y ) };
+		max( regionHandle->viewHeight, dimensionText.y ) };
 	regionHandle->set_scrollable_area( dimensionsRegion.x, dimensionsRegion.y );
 
 	// Caret Scrolling
-	if( SysText::ACTIVE_TEXT_EDITOR == &input )
+	if( CoreText::ACTIVE_TEXT_EDITOR == &input )
 	{
 		const int_v3 caretPos = input->get_position_from_index( input.caret_get_position() );
 		const int_v2 viewVer = { regionHandle->offsetY, regionHandle->offsetY + regionHandle->viewHeight };
 		const int_v2 viewHor = { regionHandle->offsetX, regionHandle->offsetX + regionHandle->viewWidth };
 
-		auto verticalHandle = context->handle<UIWidget_Scrollbar>( regionHandle->scrollbarVertical );
+		auto verticalHandle = context->handle<ObjectType::UIWidget_Scrollbar>( regionHandle->scrollbarVertical );
 		Assert( verticalHandle );
 		if( caretPos.y < viewVer.x ) { verticalHandle->set_position_pixels( caretPos.y ); } else
 		if( caretPos.z > viewVer.y ) { verticalHandle->set_position_pixels( caretPos.z - regionHandle->viewHeight ); }
 
-		auto horizontalHandle = context->handle<UIWidget_Scrollbar>( regionHandle->scrollbarHorizontal );
+		auto horizontalHandle = context->handle<ObjectType::UIWidget_Scrollbar>( regionHandle->scrollbarHorizontal );
 		Assert( horizontalHandle );
 		if( caretPos.x < viewHor.x ) { horizontalHandle->set_position_pixels( caretPos.x ); } else
 		if( caretPos.x > viewHor.y ) { horizontalHandle->set_position_pixels( caretPos.x - regionHandle->viewWidth ); }
@@ -143,11 +143,11 @@ PROTECTED void update( const Delta delta )
 	if( active )
 	{
 		tweenClick = 1.0f;
-		if( SysText::ACTIVE_TEXT_EDITOR != &input ) { deactivate(); }
+		if( CoreText::ACTIVE_TEXT_EDITOR != &input ) { deactivate(); }
 	}
 	else
 	{
-		Assert( SysText::ACTIVE_TEXT_EDITOR != &input );
+		Assert( CoreText::ACTIVE_TEXT_EDITOR != &input );
 	}
 }
 
@@ -170,7 +170,7 @@ PROTECTED void render( const Delta delta, const Alpha alpha )
 	context->scissor_set_nested( p1.x + 2, p1.y + 2, p2.x - 2, p2.y - 2 );
 
 	// Text Editor
-	auto regionHandle = context->handle<UIWidget_ScrollableRegion>( region );
+	auto regionHandle = context->handle<ObjectType::UIWidget_ScrollableRegion>( region );
 	Assert( regionHandle );
 	input.draw( delta, p1.x + 6 - regionHandle->offsetX, p1.y + 6 - regionHandle->offsetY, alpha );
 	input.screenX = p1.x + 6 - regionHandle->offsetX;
@@ -191,7 +191,7 @@ PROTECTED void render( const Delta delta, const Alpha alpha )
 
 PUBLIC void activate()
 {
-	if( active ) { Assert( SysText::ACTIVE_TEXT_EDITOR == &input ); return; }
+	if( active ) { Assert( CoreText::ACTIVE_TEXT_EDITOR == &input ); return; }
 	input.activate();
 	input.caret_set_position( input->length() );
 	active = true;
@@ -200,7 +200,7 @@ PUBLIC void activate()
 
 PUBLIC void deactivate()
 {
-	if( !active ) { Assert( SysText::ACTIVE_TEXT_EDITOR != &input ); return; }
+	if( !active ) { Assert( CoreText::ACTIVE_TEXT_EDITOR != &input ); return; }
 	input.deactivate();
 	input.caret_reset_selection();
 	if( callbackOnInteract ) { callbackOnInteract( *context, id ); }

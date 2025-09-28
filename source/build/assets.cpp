@@ -22,6 +22,7 @@ namespace Assets
 	FileTime timeCache;
 
 	// Asset Types
+	DataAssets dataAssets;
 	Textures textures;
 	Glyphs glyphs;
 	Sprites sprites;

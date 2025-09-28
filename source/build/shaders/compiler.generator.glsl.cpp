@@ -798,15 +798,16 @@ void GeneratorGLSL::generate_expression_binary( NodeExpressionBinary *node )
 					if( type.pipelineIntermediate )
 					{
 						output.append( "pipelineIntermediate_" );
+						generate_node( node->expr2 );
+						break;
 					}
 					else
 					{
 						String &typeName = type_name( variable.typeID );
 						output.append( typeName ).append( "_" );
+						generate_node( node->expr2 );
+						break;
 					}
-
-					generate_node( node->expr2 );
-					break;
 				}
 			}
 
@@ -830,11 +831,189 @@ void GeneratorGLSL::generate_expression_binary( NodeExpressionBinary *node )
 
 void GeneratorGLSL::generate_structure( NodeStruct *node )
 {
+	// Skip generating StructType_InstanceInput
+	if( node->structType == StructType_InstanceInput ) { return; }
+
+	// layout( location = ... )
+	int location = 0;
+
+	struct StructInfo { bool hasBody, hasIn, hasOut, hasLayout; };
+	auto get_struct_info = [&]( StructType structType ) -> StructInfo
+	{
+		StructInfo out;
+		switch( node->structType )
+		{
+			default:
+			case StructType_Struct: { out.hasBody = true;  out.hasIn = false; out.hasOut = false; out.hasLayout = false; } break;
+			case StructType_SharedStruct: { out.hasBody = true;  out.hasIn = false; out.hasOut = false; out.hasLayout = false; } break;
+			case StructType_UniformBuffer: { out.hasBody = true;  out.hasIn = false; out.hasOut = false; out.hasLayout = false; } break;
+			case StructType_ConstantBuffer: { out.hasBody = true;  out.hasIn = false; out.hasOut = false; out.hasLayout = false; } break;
+			case StructType_MutableBuffer: { out.hasBody = true;  out.hasIn = false; out.hasOut = false; out.hasLayout = false; } break;
+			case StructType_InstanceInput: { out.hasBody = false; out.hasIn = true;  out.hasOut = false; out.hasLayout = true; } break;
+			case StructType_VertexInput: { out.hasBody = false; out.hasIn = true;  out.hasOut = false; out.hasLayout = true; } break;
+			case StructType_VertexOutput: { out.hasBody = false; out.hasIn = false; out.hasOut = true;  out.hasLayout = true; } break;
+			case StructType_FragmentInput: { out.hasBody = false; out.hasIn = true;  out.hasOut = false; out.hasLayout = true; } break;
+			case StructType_FragmentOutput: { out.hasBody = false; out.hasIn = false; out.hasOut = true;  out.hasLayout = true; } break;
+			case StructType_ComputeInput: { out.hasBody = false; out.hasIn = true;  out.hasOut = false; out.hasLayout = false; } break;
+			case StructType_ComputeOutput: { out.hasBody = false; out.hasIn = false; out.hasOut = true;  out.hasLayout = false; } break;
+		}
+		return out;
+	};
+
+	auto append_structure_members = [&]( NodeStruct *node ) -> void
+	{
+		const Struct &structure = parser.structs[node->structID];
+		const Type &type = parser.types[structure.typeID];
+		const String &typeName = type_name( structure.typeID );
+		const VariableID first = type.memberFirst;
+		const VariableID last = first + type.memberCount;
+		const StructInfo info = get_struct_info( node->structType );;
+
+		const bool expectMeta = !( node->structType == StructType_UniformBuffer ||
+			node->structType == StructType_ConstantBuffer || node->structType == StructType_MutableBuffer ||
+			node->structType == StructType_Struct || node->structType == StructType_SharedStruct );
+
+		for( usize i = first; i < last; i++ )
+		{
+			Variable &memberVariable = parser.variables[i];
+			Type &memberVariableType = parser.types[memberVariable.typeID];
+			const String &memberVariableName = variable_name( i );
+			const String &memberTypeName = type_name( memberVariable.typeID );
+			output.append( indent );
+
+			// GLSL Restrictions
+			switch( node->structType )
+			{
+				// vertex_output
+				case StructType_VertexOutput:
+				{
+					switch( memberVariable.semantic )
+					{
+						case SemanticType_POSITION:
+						{
+							output.append( "// " );
+							//String replace = String( typeName ).append( "_" ).append( memberVariableName );
+							String replace = String( "pipelineIntermediate_" ).append( memberVariableName );
+							SemanticSubstitutions.add( SemanticSubsituation( replace.cstr(), "gl_Position" ) );
+						}
+						break;
+					}
+				}
+				break;
+
+				// fragment_input
+				case StructType_FragmentInput:
+				{
+					switch( memberVariable.semantic )
+					{
+						case SemanticType_POSITION:
+						{
+							output.append( "// " );
+							//String replace = String( typeName ).append( "_" ).append( memberVariableName );
+							String replace = String( "pipelineIntermediate_" ).append( memberVariableName );
+							SemanticSubstitutions.add( SemanticSubsituation( replace.cstr(), "gl_FragCoord" ) );
+						}
+						break;
+					}
+				}
+				break;
+
+				// fragment_output
+				case StructType_FragmentOutput:
+				{
+					switch( memberVariable.semantic )
+					{
+						case SemanticType_DEPTH:
+						{
+							output.append( "// " );
+							String replace = String( typeName ).append( "_" ).append( memberVariableName );
+							SemanticSubstitutions.add( SemanticSubsituation( replace.cstr(), "gl_FragDepth" ) );
+						}
+						break;
+					}
+				}
+				break;
+			}
+
+			// <layout>
+			if( info.hasLayout )
+			{
+				int slot = memberVariable.slot != -1 ? memberVariable.slot : location;
+				output.append( "layout( location = " ).append( slot ).append( " ) " );
+			}
+
+			// Flat
+			if( node->structType == StructType_VertexOutput ||
+				node->structType == StructType_FragmentInput )
+			{
+				switch( memberVariable.typeID )
+				{
+					case Primitive_Bool:
+					case Primitive_Bool2:
+					case Primitive_Bool3:
+					case Primitive_Bool4:
+					case Primitive_Int:
+					case Primitive_Int2:
+					case Primitive_Int3:
+					case Primitive_Int4:
+					case Primitive_UInt:
+					case Primitive_UInt2:
+					case Primitive_UInt3:
+					case Primitive_UInt4:
+						output.append( "flat " );
+					break;
+				}
+			}
+
+			// <in> / <out>
+			if( info.hasIn ) { output.append( "in " ); }
+			if( info.hasOut ) { output.append( "out " ); }
+
+			// <type>
+			output.append( memberTypeName ).append( " " );
+
+			// <name>
+			if( node->structType == StructType_UniformBuffer ||
+				node->structType == StructType_ConstantBuffer ||
+				node->structType == StructType_MutableBuffer || !info.hasBody )
+			{
+				if( node->structType == StructType_VertexOutput || node->structType == StructType_FragmentInput )
+				{
+					// Vertex output and fragment input names must match
+					// Note: This shouldn't be the case with OpenGL 4.1 and explicit layouts,
+					//       but there is a bug with MacOS OpenGL compiler.
+					output.append( "pipelineIntermediate_" );
+				}
+				else
+				{
+					// uniform_buffer, constant_buffer, mutable_buffer, vertex_input, and fragment_output
+					// are in global namespace, so we prefix them with the structure name
+					output.append( typeName ).append( "_" );
+				}
+			}
+
+			output.append( memberVariableName );
+
+			// [arrayX]
+			if( memberVariable.arrayLengthX > 0 )
+			{
+				output.append( "[" ).append( memberVariable.arrayLengthX ).append( "]");
+			}
+
+			// [arrayY]
+			if( memberVariable.arrayLengthY > 0 )
+			{
+				output.append( "[" ).append( memberVariable.arrayLengthY ).append( "]");
+			}
+
+			output.append( ";\n" );
+
+			location++;
+		}
+	};
+
 	Struct &structure = parser.structs[node->structID];
-	Type &type = parser.types[structure.typeID];
-	const String &typeName = type_name( structure.typeID );
-	const VariableID first = type.memberFirst;
-	const VariableID last = first + type.memberCount;
+	const StructInfo info = get_struct_info( node->structType );;
 
 	static const char *structNames[] =
 	{
@@ -843,6 +1022,7 @@ void GeneratorGLSL::generate_structure( NodeStruct *node )
 		"layout( std140 ) uniform", // StructType_UniformBuffer
 		"layout( std140 ) uniform", // StructType_ConstantBuffer
 		"layout( std140 ) uniform", // StructType_MutuableBuffer
+		"",                         // StructType_InstanceInput
 		"",                         // StructType_VertexInput
 		"",                         // StructType_VertexOutput
 		"",                         // StructType_FragmentInput
@@ -853,181 +1033,257 @@ void GeneratorGLSL::generate_structure( NodeStruct *node )
 	static_assert( ARRAY_LENGTH( structNames ) == STRUCTTYPE_COUNT,
 		"Missing TextureType" );
 
-	const bool expectSlot =  ( node->structType == StructType_UniformBuffer ||
-		node->structType == StructType_ConstantBuffer || node->structType == StructType_MutableBuffer );
-
-	const bool expectMeta = !( node->structType == StructType_UniformBuffer ||
-		node->structType == StructType_ConstantBuffer || node->structType == StructType_MutableBuffer ||
-		node->structType == StructType_Struct || node->structType == StructType_SharedStruct );
-
-	bool hasBody, hasIn, hasOut, hasLayout;
-	switch( node->structType )
-	{
-		default:
-		case StructType_Struct:         { hasBody = true;  hasIn = false; hasOut = false; hasLayout = false; } break;
-		case StructType_SharedStruct:   { hasBody = true;  hasIn = false; hasOut = false; hasLayout = false; } break;
-		case StructType_UniformBuffer:  { hasBody = true;  hasIn = false; hasOut = false; hasLayout = false; } break;
-		case StructType_ConstantBuffer: { hasBody = true;  hasIn = false; hasOut = false; hasLayout = false; } break;
-		case StructType_MutableBuffer:  { hasBody = true;  hasIn = false; hasOut = false; hasLayout = false; } break;
-		case StructType_VertexInput:    { hasBody = false; hasIn = true;  hasOut = false; hasLayout = true;  } break;
-		case StructType_VertexOutput:   { hasBody = false; hasIn = false; hasOut = true;  hasLayout = true;  } break;
-		case StructType_FragmentInput:  { hasBody = false; hasIn = true;  hasOut = false; hasLayout = true;  } break;
-		case StructType_FragmentOutput: { hasBody = false; hasIn = false; hasOut = true;  hasLayout = true;  } break;
-		case StructType_ComputeInput:   { hasBody = false; hasIn = true;  hasOut = false; hasLayout = false; } break;
-		case StructType_ComputeOutput:  { hasBody = false; hasIn = false; hasOut = true;  hasLayout = false; } break;
-	}
-
-	// { <body> }
-	if( hasBody )
+	// {
+	if( info.hasBody )
 	{
 		// <name> <type>
-		output.append( structNames[node->structType] ).append( " " ).append( typeName );
+		output.append( structNames[node->structType] ).append( " " );
+		output.append( type_name( structure.typeID ) );
 		output.append( "\n{\n" );
 		indent_add();
 	}
 
-	for( usize i = first, location = 0; i < last; i++, location++ )
+	// Members
+	append_structure_members( node );
+
+	// In GLSL, instance_input members belong to the vertex format
+	if( node->structType == StructType_VertexInput && shader.instanceFormatID != U32_MAX )
 	{
-		Variable &memberVariable = parser.variables[i];
-		Type &memberVariableType = parser.types[memberVariable.typeID];
-		const String &memberVariableName = variable_name( i );
-		const String &memberTypeName = type_name( memberVariable.typeID );
-		output.append( indent );
-
-		// GLSL Restrictions
-		switch( node->structType )
+		const InstanceFormat &instanceFormat = Gfx::instanceFormats[shader.instanceFormatID];
+		if( instanceFormat.node != nullptr )
 		{
-			// vertex_output
-			case StructType_VertexOutput:
-			{
-				switch( memberVariable.semantic )
-				{
-					case SemanticType_POSITION:
-					{
-						output.append( "// " );
-						//String replace = String( typeName ).append( "_" ).append( memberVariableName );
-						String replace = String( "pipelineIntermediate_" ).append( memberVariableName );
-						SemanticSubstitutions.add( SemanticSubsituation( replace.cstr(), "gl_Position" ) );
-					}
-					break;
-				}
-			}
-			break;
-
-			// fragment_input
-			case StructType_FragmentInput:
-			{
-				switch( memberVariable.semantic )
-				{
-					case SemanticType_POSITION:
-					{
-						output.append( "// " );
-						//String replace = String( typeName ).append( "_" ).append( memberVariableName );
-						String replace = String( "pipelineIntermediate_" ).append( memberVariableName );
-						SemanticSubstitutions.add( SemanticSubsituation( replace.cstr(), "gl_FragCoord" ) );
-					}
-					break;
-				}
-			}
-			break;
-
-			// fragment_output
-			case StructType_FragmentOutput:
-			{
-				switch( memberVariable.semantic )
-				{
-					case SemanticType_DEPTH:
-					{
-						output.append( "// " );
-						String replace = String( typeName ).append( "_" ).append( memberVariableName );
-						SemanticSubstitutions.add( SemanticSubsituation( replace.cstr(), "gl_FragDepth" ) );
-					}
-					break;
-				}
-			}
-			break;
+			NodeStruct *nodeInstanceInput = reinterpret_cast<NodeStruct *>( instanceFormat.node );
+			output.append( "\n" );
+			append_structure_members( nodeInstanceInput );
 		}
-
-		// <layout>
-		if( hasLayout )
-		{
-			int slot = memberVariable.slot != -1 ? memberVariable.slot : static_cast<int>( location );
-			output.append( "layout( location = " ).append( slot ).append( " ) " );
-		}
-
-		// Flat
-		if( node->structType == StructType_VertexOutput ||
-			node->structType == StructType_FragmentInput )
-		{
-			switch( memberVariable.typeID )
-			{
-				case Primitive_Bool:
-				case Primitive_Bool2:
-				case Primitive_Bool3:
-				case Primitive_Bool4:
-				case Primitive_Int:
-				case Primitive_Int2:
-				case Primitive_Int3:
-				case Primitive_Int4:
-				case Primitive_UInt:
-				case Primitive_UInt2:
-				case Primitive_UInt3:
-				case Primitive_UInt4:
-					output.append( "flat " );
-				break;
-			}
-		}
-
-		// <in> / <out>
-		if( hasIn ) { output.append( "in " ); }
-		if( hasOut ) { output.append( "out " ); }
-
-		// <type>
-		output.append( memberTypeName ).append( " " );
-
-		// <name>
-		if( node->structType == StructType_UniformBuffer ||
-			node->structType == StructType_ConstantBuffer ||
-			node->structType == StructType_MutableBuffer || !hasBody )
-		{
-			if( node->structType == StructType_VertexOutput || node->structType == StructType_FragmentInput )
-			{
-				// Vertex output and fragment input names must match
-				// Note: This shouldn't be the case with OpenGL 4.1 and explicit layouts,
-				//       but there is a bug with MacOS OpenGL compiler.
-				output.append( "pipelineIntermediate_" );
-			}
-			else
-			{
-				// uniform_buffer, constant_buffer, mutable_buffer, vertex_input, and fragment_output
-				// are in global namespace, so we prefix them with the structure name
-				output.append( typeName ).append( "_" );
-			}
-		}
-		output.append( memberVariableName );
-
-		// [arrayX]
-		if( memberVariable.arrayLengthX > 0 )
-		{
-			output.append( "[" ).append( memberVariable.arrayLengthX ).append( "]");
-		}
-
-		// [arrayY]
-		if( memberVariable.arrayLengthY > 0 )
-		{
-			output.append( "[" ).append( memberVariable.arrayLengthY ).append( "]");
-		}
-
-		output.append( ";\n" );
 	}
 
-	if( hasBody )
+
+	// }
+	if( info.hasBody )
 	{
 		indent_sub();
 		output.append( "};\n" );
 	}
 
 	output.append( "\n" );
+}
+
+
+bool GeneratorGLSL::generate_structure_gfx_instance( NodeStruct *node )
+{
+	// Register this instance format in the system
+	if( !Generator::generate_structure_gfx_instance( node ) )
+	{
+		return false; // Already registered -- no need to continue
+	}
+
+	// Generate OpenGL/GLSL Instance Format interfaces
+	const Struct &structure = parser.structs[node->structID];
+	const Type &type = parser.types[structure.typeID];
+	const VariableID first = type.memberFirst;
+	const VariableID last = first + type.memberCount;
+	const String &structureName = type_name( structure.typeID );
+
+	int byteOffset = 0;
+
+	String link;
+	String bind;
+
+	for( usize i = first; i < last; i++ )
+	{
+		Variable &memberVariable = parser.variables[i];
+		const String &memberVariableName = variable_name( i );
+
+		// opengl_instance_input_layout_init
+		{
+			link.append( "\tnglBindAttribLocation( program, location + " );
+			link.append( static_cast<int>( i - first ) ).append( ", \"" );
+			link.append( structureName ).append( "_" ).append( memberVariableName ).append( "\" );\n" );
+		}
+
+		// opengl_instance_input_layout_bind
+		{
+			// Get glVertexAttribPointer function
+			const char *glVertexAttribFunc = "";
+			bool hasNormFlag = false;
+			switch( memberVariable.typeID )
+			{
+				case Primitive_Int:
+				case Primitive_UInt:
+				case Primitive_Int2:
+				case Primitive_UInt2:
+				case Primitive_Int3:
+				case Primitive_UInt3:
+				case Primitive_Int4:
+				case Primitive_UInt4:
+					glVertexAttribFunc = "nglVertexAttribIPointer";
+				break;
+
+				case Primitive_Double:
+				case Primitive_Double2:
+				case Primitive_Double3:
+				case Primitive_Double4:
+					glVertexAttribFunc = "nglVertexAttribLPointer";
+				break;
+
+				default:
+					glVertexAttribFunc = "nglVertexAttribPointer";
+					hasNormFlag = true;
+				break;
+			}
+
+			// Get type dimensions (vector length)
+			int dimensions = 0;
+			switch( memberVariable.typeID )
+			{
+				case Primitive_Bool:
+				case Primitive_Int:
+				case Primitive_UInt:
+				case Primitive_Float:
+				case Primitive_Double:
+					dimensions = 1;
+				break;
+
+				case Primitive_Bool2:
+				case Primitive_Int2:
+				case Primitive_UInt2:
+				case Primitive_Float2:
+				case Primitive_Double2:
+					dimensions = 2;
+				break;
+
+				case Primitive_Bool3:
+				case Primitive_Int3:
+				case Primitive_UInt3:
+				case Primitive_Float3:
+				case Primitive_Double3:
+					dimensions = 3;
+				break;
+
+				case Primitive_Bool4:
+				case Primitive_Int4:
+				case Primitive_UInt4:
+				case Primitive_Float4:
+				case Primitive_Double4:
+					dimensions = 4;
+				break;
+
+				default:
+					Error( "Unexpected instance input type: %llu (%s)",
+						memberVariable.typeID, memberVariableName.cstr() );
+				break;
+			}
+
+			// Get type format
+			struct FormatInfo
+			{
+				FormatInfo() = default;
+				FormatInfo( const char *type, bool normalized, int size, int stride = 0 ) :
+					type{ type }, normalized{ normalized }, size{ size }, stride{ stride } { }
+
+				const char *type = "";
+				bool normalized = false;
+				int size = 1;
+				int stride = 0;
+			};
+
+			FormatInfo format;
+			switch( memberVariable.format )
+			{
+				// 1 Byte
+				case InputFormat_UNORM8:
+					//format = FormatInfo( "GL_UNSIGNED_BYTE", true, 1, 0 );
+					format = FormatInfo( "GL_UNSIGNED_BYTE", true, 1, 0 );
+				break;
+
+				case InputFormat_SNORM8:
+					format = FormatInfo( "GL_BYTE", true, 1, 0 );
+				break;
+
+				case InputFormat_UINT8:
+					format = FormatInfo( "GL_UNSIGNED_BYTE", false, 1, 0 );
+				break;
+
+				case InputFormat_SINT8:
+					format = FormatInfo( "GL_BYTE", false, 1, 0 );
+				break;
+
+				// 2 Bytes
+				case InputFormat_UNORM16:
+					format = FormatInfo( "GL_UNSIGNED_SHORT", true, 2, 0 );
+				break;
+
+				case InputFormat_SNORM16:
+					format = FormatInfo( "GL_SHORT", true, 2, 0 );
+				break;
+
+				case InputFormat_UINT16:
+					format = FormatInfo( "GL_UNSIGNED_SHORT", false, 2, 0 );
+				break;
+
+				case InputFormat_SINT16:
+					format = FormatInfo( "GL_SHORT", false, 2, 0 );
+				break;
+
+				case InputFormat_FLOAT16:
+					format = FormatInfo( "GL_HALF_FLOAT", false, 2, 0 );
+				break;
+
+				// 4 Bytes
+				case InputFormat_UNORM32:
+					format = FormatInfo( "GL_UNSIGNED_INT", true, 4, 0 );
+				break;
+
+				case InputFormat_SNORM32:
+					format = FormatInfo( "GL_INT", true, 4, 0 );
+				break;
+
+				case InputFormat_UINT32:
+					format = FormatInfo( "GL_UNSIGNED_INT", false, 4, 0 );
+				break;
+
+				case InputFormat_SINT32:
+					format = FormatInfo( "GL_INT", false, 4, 0 );
+				break;
+
+				case InputFormat_FLOAT32:
+					format = FormatInfo( "GL_FLOAT", false, 4, 0 );
+				break;
+			}
+
+			bind.append( "\t" ).append( glVertexAttribFunc ).append( "( location + " );
+			bind.append( static_cast<int>( i - first ) ).append( ", " );
+			bind.append( dimensions ).append( ", " ).append( format.type ).append( ", " );
+			if( hasNormFlag ) { bind.append( format.normalized ? "true" : "false" ).append( ", " ); }
+			bind.append( "sizeof( GfxInstance::" ).append( type.name ).append( " ), " );
+			bind.append( "reinterpret_cast<void *>( " ).append( byteOffset ).append( " ) );\n" );
+			byteOffset += format.size * dimensions;
+
+			bind.append( "\tnglEnableVertexAttribArray( location + " );
+			bind.append( static_cast<int>( i - first ) ).append( " );\n" );
+
+			bind.append( "\tnglVertexAttribDivisor( location + " );
+			bind.append( static_cast<int>( i - first ) ).append( ", 1 );\n" );
+		}
+	}
+	link.append( "\treturn " ).append( last - first ).append( ";\n" );
+	bind.append( "\treturn " ).append( last - first ).append( ";\n" );
+
+	// Write To gfx.api.generated.cpp
+	shader.source.append( "static GLuint opengl_input_layout_instance_init_" );
+	shader.source.append( type.name ).append( "( GLuint program, GLuint location )\n" );
+	shader.source.append( "{\n" );
+	shader.source.append( link );
+	shader.source.append( "}\n\n" );
+
+	shader.source.append( "static GLuint opengl_input_layout_instance_bind_" );
+	shader.source.append( type.name ).append( "( GLuint location )\n" );
+	shader.source.append( "{\n" );
+	shader.source.append( bind );
+	shader.source.append( "}\n\n" );
+
+	return true;
 }
 
 
@@ -1056,14 +1312,14 @@ bool GeneratorGLSL::generate_structure_gfx_vertex( NodeStruct *node )
 		Variable &memberVariable = parser.variables[i];
 		const String &memberVariableName = variable_name( i );
 
-		// opengl_vertex_input_layout_init
+		// opengl_input_layout_vertex_init
 		{
-			link.append( "\tnglBindAttribLocation( program, " );
+			link.append( "\tnglBindAttribLocation( program, location + " );
 			link.append( static_cast<int>( i - first ) ).append( ", \"" );
 			link.append( structureName ).append( "_" ).append( memberVariableName ).append( "\" );\n" );
 		}
 
-		// opengl_verteX_input_layout_bind
+		// opengl_input_layout_vertex_bind
 		{
 			// Get glVertexAttribPointer function
 			const char *glVertexAttribFunc = "";
@@ -1213,7 +1469,7 @@ bool GeneratorGLSL::generate_structure_gfx_vertex( NodeStruct *node )
 				break;
 			}
 
-			bind.append( "\t" ).append( glVertexAttribFunc ).append( "( " );
+			bind.append( "\t" ).append( glVertexAttribFunc ).append( "( location + " );
 			bind.append( static_cast<int>( i - first ) ).append( ", " );
 			bind.append( dimensions ).append( ", " ).append( format.type ).append( ", " );
 			if( hasNormFlag ) { bind.append( format.normalized ? "true" : "false" ).append( ", " ); }
@@ -1221,20 +1477,22 @@ bool GeneratorGLSL::generate_structure_gfx_vertex( NodeStruct *node )
 			bind.append( "reinterpret_cast<void *>( " ).append( byteOffset ).append( " ) );\n" );
 			byteOffset += format.size * dimensions;
 
-			bind.append( "\tnglEnableVertexAttribArray( " );
+			bind.append( "\tnglEnableVertexAttribArray( location + " );
 			bind.append( static_cast<int>( i - first ) ).append( " );\n" );
 		}
 	}
+	link.append( "\treturn " ).append( last - first ).append( ";\n" );
+	bind.append( "\treturn " ).append( last - first ).append( ";\n" );
 
 	// Write To gfx.api.generated.cpp
-	shader.source.append( "static void opengl_vertex_input_layout_init_" );
-	shader.source.append( type.name ).append( "( GLuint program )\n" );
+	shader.source.append( "static GLuint opengl_input_layout_vertex_init_" );
+	shader.source.append( type.name ).append( "( GLuint program, GLuint location )\n" );
 	shader.source.append( "{\n" );
 	shader.source.append( link );
 	shader.source.append( "}\n\n" );
 
-	shader.source.append( "static void opengl_vertex_input_layout_bind_" );
-	shader.source.append( type.name ).append( "()\n" );
+	shader.source.append( "static GLuint opengl_input_layout_vertex_bind_" );
+	shader.source.append( type.name ).append( "( GLuint location )\n" );
 	shader.source.append( "{\n" );
 	shader.source.append( bind );
 	shader.source.append( "}\n\n" );

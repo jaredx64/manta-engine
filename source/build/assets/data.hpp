@@ -5,34 +5,32 @@
 #include <core/buffer.hpp>
 #include <core/string.hpp>
 
-#include <build/objloader.hpp>
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct Mesh
+struct DataAsset
 {
-	MeshObj meshFile;
-	usize vertexBufferOffset = 0;
-	usize indexBufferOffset = 0;
-	float minX, minY, minZ;
-	float maxX, maxY, maxZ;
+	DataAsset( String name ) : name( name ) { }
 
 	String name;
-	String filepath;
+	usize offset;
+	usize size;
+
+	String filePath;
+	Buffer fileData;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct Meshes
+struct DataAssets
 {
-	void make_new( const Mesh &material );
+	void make_new( const DataAsset &asset );
 	void gather( const char *path, const bool recurse = true );
 	void load( const char *path );
 	void write();
 
-	Mesh &operator[]( const u32 meshID ) { return meshes[meshID]; }
+	DataAsset &operator[]( const u32 dataAssetID ) { return dataAssets[dataAssetID]; }
 
-	List<Mesh> meshes;
+	List<DataAsset> dataAssets;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

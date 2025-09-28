@@ -20,23 +20,23 @@ static inline void draw_call()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-namespace GfxCore
+namespace CoreGfx
 {
 	GfxState states[2];
 	bool flip = false;
 	bool rendering = false;
 
-	GfxTexture2D textures[Assets::texturesCount];
-	GfxShader shaders[Gfx::shadersCount];
+	GfxShader shaders[CoreGfx::shaderCount];
+	GfxTexture2D textures[CoreAssets::textureCount];
 
 	GfxSwapChain swapchain;
 	GfxViewport viewport;
 
-	doublem44 matrixModel;
-	doublem44 matrixView;
-	doublem44 matrixViewInverse;
-	doublem44 matrixPerspective;
-	doublem44 matrixMVP;
+	double_m44 matrixModel;
+	double_m44 matrixView;
+	double_m44 matrixViewInverse;
+	double_m44 matrixPerspective;
+	double_m44 matrixMVP;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -138,6 +138,10 @@ void debug_overlay_gfx( const float x, const float y )
 	drawY += 20.0f;
 
 	draw_text_f( fnt_iosevka, 14, drawX, drawY, c_white,
+		"  Instance Buffers: %.4f mb", MB( stats.gpuMemoryInstanceBuffers ) );
+	drawY += 20.0f;
+
+	draw_text_f( fnt_iosevka, 14, drawX, drawY, c_white,
 		"  Index Buffers: %.4f mb", MB( stats.gpuMemoryIndexBuffers ) );
 	drawY += 20.0f;
 
@@ -152,23 +156,23 @@ void debug_overlay_gfx( const float x, const float y )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool SysGfx::init()
+bool CoreGfx::init()
 {
 #if GRAPHICS_ENABLED
 	// Initialize Backend
-	ErrorIf( !GfxCore::rb_init(), "%s: Failed to initialize %s backend!", __FUNCTION__, BUILD_GRAPHICS );
+	ErrorIf( !CoreGfx::rb_init(), "%s: Failed to initialize %s backend!", __FUNCTION__, BUILD_GRAPHICS );
 
 	// Initialize Textures
-	ErrorIf( !SysGfx::init_textures(), "%s: Failed to initialize textures!", __FUNCTION__ );
+	ErrorIf( !CoreGfx::init_textures(), "%s: Failed to initialize textures!", __FUNCTION__ );
 
 	// Initialize Shaders
-	ErrorIf( !SysGfx::init_shaders(), "%s: Failed to initialize shaders!", __FUNCTION__ );
+	ErrorIf( !CoreGfx::init_shaders(), "%s: Failed to initialize shaders!", __FUNCTION__ );
 
 	// Initialize Constant Buffers
- 	ErrorIf( !GfxCore::rb_init_uniform_buffers(), "%s: Failed to initialize constant buffers!", __FUNCTION__ );
+ 	ErrorIf( !CoreGfx::rb_init_uniform_buffers(), "%s: Failed to initialize constant buffers!", __FUNCTION__ );
 
 	// Initialize Quad Batch
-	ErrorIf( !SysGfx::quadBatch.init( RENDER_QUAD_BATCH_SIZE ),
+	ErrorIf( !CoreGfx::quadBatch.init( RENDER_QUAD_BATCH_SIZE ),
 		"%s: Failed to initialize default quad batch!", __FUNCTION__ );
 #endif
 
@@ -177,23 +181,23 @@ bool SysGfx::init()
 }
 
 
-bool SysGfx::free()
+bool CoreGfx::free()
 {
 #if GRAPHICS_ENABLED
 	// Free Quad Batch
-	ErrorIf( !SysGfx::quadBatch.free(), "%s: Failed to free default quad batch!", __FUNCTION__ );
+	ErrorIf( !CoreGfx::quadBatch.free(), "%s: Failed to free default quad batch!", __FUNCTION__ );
 
 	// Free Constant Buffers
-	ErrorIf( !GfxCore::rb_free_uniform_buffers(), "%s: Failed to free shaders!", __FUNCTION__ );
+	ErrorIf( !CoreGfx::rb_free_uniform_buffers(), "%s: Failed to free shaders!", __FUNCTION__ );
 
 	// Free Shaders
-	ErrorIf( !SysGfx::free_shaders(), "%s: Failed to free shaders!", __FUNCTION__ );
+	ErrorIf( !CoreGfx::free_shaders(), "%s: Failed to free shaders!", __FUNCTION__ );
 
 	// Free Textures
-	ErrorIf( !SysGfx::free_textures(), "%s: Failed to free textures!", __FUNCTION__ );
+	ErrorIf( !CoreGfx::free_textures(), "%s: Failed to free textures!", __FUNCTION__ );
 
 	// Free Backend
-	ErrorIf( !GfxCore::rb_free(), "%s: Failed to free %s backend!", __FUNCTION__, BUILD_GRAPHICS );
+	ErrorIf( !CoreGfx::rb_free(), "%s: Failed to free %s backend!", __FUNCTION__, BUILD_GRAPHICS );
 #endif
 
 	// Success
@@ -201,15 +205,15 @@ bool SysGfx::free()
 }
 
 
-bool SysGfx::init_textures()
+bool CoreGfx::init_textures()
 {
 #if GRAPHICS_ENABLED
 	// Load Textures
-	for( u32 i = 0; i < Assets::texturesCount; i++ )
+	for( u32 i = 0; i < CoreAssets::textureCount; i++ )
 	{
-		const BinTexture &binTexture = Assets::textures[i];
+		const Assets::TextureEntry &binTexture = Assets::texture( i );
 
-		GfxCore::textures[i].init( Assets::binary.data + binTexture.offset,
+		CoreGfx::textures[i].init( Assets::binary.data + binTexture.offset,
 			binTexture.width, binTexture.height, binTexture.levels,
 			GfxColorFormat_R8G8B8A8_FLOAT );
 	}
@@ -220,13 +224,13 @@ bool SysGfx::init_textures()
 }
 
 
-bool SysGfx::free_textures()
+bool CoreGfx::free_textures()
 {
 #if GRAPHICS_ENABLED
 	// Free Textures
-	for( u32 i = 0; i < Assets::texturesCount; i++ )
+	for( u32 i = 0; i < CoreAssets::textureCount; i++ )
 	{
-		GfxCore::textures[i].free();
+		CoreGfx::textures[i].free();
 	}
 #endif
 
@@ -235,14 +239,14 @@ bool SysGfx::free_textures()
 }
 
 
-bool SysGfx::init_shaders()
+bool CoreGfx::init_shaders()
 {
 #if GRAPHICS_ENABLED
 	// Load Shaders
-	for( u32 i = 0; i < Gfx::shadersCount; i++ )
+	for( u32 i = 0; i < CoreGfx::shaderCount; i++ )
 	{
-		const BinShader &binShader = Gfx::binShaders[i];
-		GfxCore::shaders[i].init( i, binShader );
+		const ShaderEntry &shaderEntry = CoreGfx::shaderEntries[i];
+		CoreGfx::shaders[i].init( i, shaderEntry );
 	}
 #endif
 
@@ -251,13 +255,13 @@ bool SysGfx::init_shaders()
 }
 
 
-bool SysGfx::free_shaders()
+bool CoreGfx::free_shaders()
 {
 #if GRAPHICS_ENABLED
 	// Free Shaders
-	for( u32 i = 0; i < Gfx::shadersCount; i++ )
+	for( u32 i = 0; i < CoreGfx::shaderCount; i++ )
 	{
-		GfxCore::shaders[i].free();
+		CoreGfx::shaders[i].free();
 	}
 #endif
 
@@ -266,61 +270,63 @@ bool SysGfx::free_shaders()
 }
 
 
-void SysGfx::state_reset()
+void CoreGfx::state_reset()
 {
 #if GRAPHICS_ENABLED
-	GfxCore::states[0] = { };
-	GfxCore::states[1] = { };
-	GfxCore::flip = false;
+	CoreGfx::states[0] = { };
+	CoreGfx::states[1] = { };
+	CoreGfx::flip = false;
 
 	// Default Shader (TODO: Refactor?)
-	Gfx::shader_bind( SHADER_DEFAULT );
+	Gfx::shader_bind( Shader::SHADER_DEFAULT );
 
 	// Update State
-	SysGfx::state_apply( true );
+	CoreGfx::state_apply( true );
 #endif
 }
 
 
-void SysGfx::state_apply( const bool dirty )
+void CoreGfx::state_apply( const bool dirty )
 {
 #if GRAPHICS_ENABLED
 	#define GFX_STATE_CHECK(condition) UNLIKELY( ( condition ) )
 
 	// This function runs at every draw call
 	// It is responsible for making sure that the GPU render state reflects the CPU render state
-	GfxState &current = GfxCore::states[GfxCore::flip];
-	GfxState &previous = GfxCore::states[!GfxCore::flip];
+	GfxState &current = CoreGfx::states[CoreGfx::flip];
+	GfxState &previous = CoreGfx::states[!CoreGfx::flip];
 
 	// Raster State
 	if( dirty || GFX_STATE_CHECK( current.raster != previous.raster ) )
-		{ GfxCore::rb_set_raster_state( current.raster ); }
+		{ CoreGfx::rb_set_raster_state( current.raster ); }
 
 	// Sampler State
 	if( dirty || GFX_STATE_CHECK( current.sampler != previous.sampler ) )
-		{ GfxCore::rb_set_sampler_state( current.sampler ); }
+		{ CoreGfx::rb_set_sampler_state( current.sampler ); }
 
 	// Blend State
 	if( dirty || GFX_STATE_CHECK( current.blend != previous.blend ) )
-		{ GfxCore::rb_set_blend_state( current.blend ); }
+		{ CoreGfx::rb_set_blend_state( current.blend ); }
 
 	// Depth State
 	if( dirty || GFX_STATE_CHECK( current.depth != previous.depth ) )
-		{ GfxCore::rb_set_depth_state( current.depth ); }
+		{ CoreGfx::rb_set_depth_state( current.depth ); }
 
+#if 0
 	// Texture 2D Binding
 	if( GFX_STATE_CHECK( current.textureResource[0] != previous.textureResource[0] &&
 	                     current.textureResource[0] != nullptr ) )
-		{ GfxCore::rb_texture_2d_bind( current.textureResource[0], 0 ); }
+		{ CoreGfx::rb_texture_2d_bind( current.textureResource[0], 0 ); }
+#endif
 
 	// Cache State
 	previous = current;
-	GfxCore::flip = !GfxCore::flip;
+	CoreGfx::flip = !CoreGfx::flip;
 #endif
 }
 
 
-byte *SysGfx::scratch_buffer( const usize size )
+byte *CoreGfx::scratch_buffer( const usize size )
 {
 #if GRAPHICS_ENABLED
 	static byte *scratchData = nullptr;
@@ -388,7 +394,7 @@ usize Gfx::mip_buffer_size_2d( u16 width, u16 height, u16 levels,
 		levels--;
 	}
 
-	return GfxCore::colorFormatPixelSizeBytes[format] * count;
+	return CoreGfx::colorFormatPixelSizeBytes[format] * count;
 }
 
 
@@ -407,7 +413,7 @@ bool Gfx::mip_generate_next_2d( void *data, const u16 width, const u16 height,
 	const u16 mipWidth = width / 2;
 	const u16 mipHeight = height / 2;
 
-	const u16 pixelSizeBytes = GfxCore::colorFormatPixelSizeBytes[format];
+	const u16 pixelSizeBytes = CoreGfx::colorFormatPixelSizeBytes[format];
 	const usize mipSizeBytes = pixelSizeBytes * mipWidth * mipHeight;
 
 	ErrorReturnIf( size != mipSizeBytes, false,
@@ -609,7 +615,7 @@ bool Gfx::mip_generate_next_2d_alloc( void *data, const u16 width, const u16 hei
 	const u16 mipWidth = width / 2;
 	const u16 mipHeight = height / 2;
 
-	const u16 pixelSizeBytes = GfxCore::colorFormatPixelSizeBytes[format];
+	const u16 pixelSizeBytes = CoreGfx::colorFormatPixelSizeBytes[format];
 	outSize = pixelSizeBytes * mipWidth * mipHeight;
 	outData = memory_alloc( outSize );
 
@@ -639,7 +645,7 @@ bool Gfx::mip_generate_chain_2d( void *data, const u16 width, const u16 height,
 		"%s: cannot generate mip for input dimensions: %u x %u", __FUNCTION__, width, height );
 
 	const u16 levels = mip_level_count_2d( width, height );
-	const u16 pixelSizeBytes = GfxCore::colorFormatPixelSizeBytes[format];
+	const u16 pixelSizeBytes = CoreGfx::colorFormatPixelSizeBytes[format];
 	const usize mipSizeBytes = mip_buffer_size_2d( width, height, levels, format );
 
 	ErrorReturnIf( size != mipSizeBytes, false,
@@ -671,7 +677,7 @@ bool Gfx::mip_generate_chain_2d_alloc( void *data, const u16 width, const u16 he
 {
 	// Generates a mip level half the size of width, height
 	Assert( format < GFXCOLORFORMAT_COUNT );
-	const u16 pixelSizeBytes = GfxCore::colorFormatPixelSizeBytes[format];
+	const u16 pixelSizeBytes = CoreGfx::colorFormatPixelSizeBytes[format];
 
 	ErrorReturnIf( data == nullptr, false,
 		"%s: data is nullptr", __FUNCTION__ );
@@ -699,7 +705,7 @@ bool Gfx::mip_generate_chain_2d_alloc( void *data, const u16 width, const u16 he
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-namespace SysGfx
+namespace CoreGfx
 {
 	GfxQuadBatch<GfxVertex::BuiltinVertex> quadBatch;
 }
@@ -708,7 +714,7 @@ namespace SysGfx
 bool Gfx::quad_batch_break()
 {
 #if GRAPHICS_ENABLED
-	return SysGfx::quadBatch.batch_break();
+	return CoreGfx::quadBatch.batch_break();
 #endif
 	return false;
 }
@@ -717,7 +723,7 @@ bool Gfx::quad_batch_break()
 bool Gfx::quad_batch_can_break()
 {
 #if GRAPHICS_ENABLED
-	return SysGfx::quadBatch.can_break();
+	return CoreGfx::quadBatch.can_break();
 #else
 	return true;
 #endif
@@ -727,7 +733,7 @@ bool Gfx::quad_batch_can_break()
 void Gfx::quad_batch_break_check()
 {
 #if GRAPHICS_ENABLED
-	SysGfx::quadBatch.break_check();
+	CoreGfx::quadBatch.break_check();
 #endif
 }
 
@@ -737,7 +743,7 @@ void Gfx::quad_batch_write( const GfxQuadBatch<GfxVertex::BuiltinVertex>::Quad &
 {
 #if GRAPHICS_ENABLED
 	if( LIKELY( texture != nullptr ) ) { texture->bind( 0 ); }
-	SysGfx::quadBatch.write( quad );
+	CoreGfx::quadBatch.write( quad );
 #endif
 }
 
@@ -758,7 +764,7 @@ void Gfx::quad_batch_write( const float x1, const float y1, const float x2, cons
 		{ { x2, y2, depth }, { u2, v2 }, { c4.r, c4.g, c4.b, c4.a } },
 	};
 
-	SysGfx::quadBatch.write( quad );
+	CoreGfx::quadBatch.write( quad );
 #endif
 }
 
@@ -780,7 +786,7 @@ void Gfx::quad_batch_write( const float x1, const float y1, const float x2, cons
 		{ { x4, y4, depth }, { u2, v2 }, { c4.r, c4.g, c4.b, c4.a } },
 	};
 
-	SysGfx::quadBatch.write( quad );
+	CoreGfx::quadBatch.write( quad );
 #endif
 }
 
@@ -800,7 +806,7 @@ void Gfx::quad_batch_write( const float x1, const float y1, const float x2, cons
 		{ { x2, y2, depth }, { u2, v2 }, { color.r, color.g, color.b, color.a } },
 	};
 
-	SysGfx::quadBatch.write( quad );
+	CoreGfx::quadBatch.write( quad );
 #endif
 }
 
@@ -821,7 +827,7 @@ void Gfx::quad_batch_write( const float x1, const float y1, const float x2, cons
 		{ { x4, y4, depth }, { u2, v2 }, { color.r, color.g, color.b, color.a } },
 	};
 
-	SysGfx::quadBatch.write( quad );
+	CoreGfx::quadBatch.write( quad );
 #endif
 }
 
@@ -830,7 +836,7 @@ void Gfx::quad_batch_write( const float x1, const float y1, const float x2, cons
 void GfxTexture2D::init( void *data, const u16 width, const u16 height, const GfxColorFormat &format )
 {
 #if GRAPHICS_ENABLED
-	ErrorIf( !GfxCore::rb_texture_2d_init( resource, data, width, height, 1, format ),
+	ErrorIf( !CoreGfx::rb_texture_2d_init( resource, data, width, height, 1, format ),
 		"Failed to init GfxTexture2D!" );
 #endif
 }
@@ -841,7 +847,7 @@ void GfxTexture2D::init( void *data, const u16 width, const u16 height, const u1
 #if GRAPHICS_ENABLED
 	ErrorIf( levels == 0,
 		"Must have at least one mip level (highest resolution)" );
-	ErrorIf( !GfxCore::rb_texture_2d_init( resource, data, width, height, levels, format ),
+	ErrorIf( !CoreGfx::rb_texture_2d_init( resource, data, width, height, levels, format ),
 		"Failed to init GfxTexture2D!" );
 #endif
 }
@@ -851,7 +857,7 @@ void GfxTexture2D::free()
 {
 #if GRAPHICS_ENABLED
 	if( resource == nullptr ) { return; }
-	ErrorIf( !GfxCore::rb_texture_2d_free( resource ),
+	ErrorIf( !CoreGfx::rb_texture_2d_free( resource ),
 		"Failed to free GfxTexture2D!" );
 #endif
 }
@@ -864,9 +870,9 @@ void GfxTexture2D::bind( const int slot ) const
 
 	// Texture binding forces a batch break
 	draw_call();
-	Gfx::state().textureResource[slot] = resource;
 
-	ErrorIf( !GfxCore::rb_texture_2d_bind( resource, slot ),
+	Gfx::state().textureResource[slot] = resource;
+	ErrorIf( !CoreGfx::rb_texture_2d_bind( resource, slot ),
 		"Failed to bind GfxTexture2D to slot %d!", slot );
 #endif
 }
@@ -875,11 +881,13 @@ void GfxTexture2D::bind( const int slot ) const
 void GfxTexture2D::release() const
 {
 #if GRAPHICS_ENABLED
-	for( int i = 0; i < 32; i++ )
+	for( int slot = 0; slot < GFX_TEXTURE_SLOT_COUNT; slot++ )
 	{
-		if( Gfx::state().textureResource[i] == resource )
+		if( Gfx::state().textureResource[slot] == resource )
 		{
-			Gfx::state().textureResource[i] = nullptr;
+			Gfx::state().textureResource[slot] = nullptr;
+			ErrorIf( !CoreGfx::rb_texture_2d_release( resource, slot ),
+				"Failed to release GfxTexture2D from slot %d!", slot );
 		}
 	}
 #endif
@@ -887,9 +895,9 @@ void GfxTexture2D::release() const
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static doublem44 RT_CACHE_MATRIX_MODEL;
-static doublem44 RT_CACHE_MATRIX_VIEW;
-static doublem44 RT_CACHE_MATRIX_PERSPECTIVE;
+static double_m44 RT_CACHE_MATRIX_MODEL;
+static double_m44 RT_CACHE_MATRIX_VIEW;
+static double_m44 RT_CACHE_MATRIX_PERSPECTIVE;
 static GfxViewport RT_CACHE_VIEWPORT;
 static GfxBlendState RT_CACHE_BLEND_STATE;
 
@@ -897,7 +905,7 @@ static GfxBlendState RT_CACHE_BLEND_STATE;
 void GfxRenderTarget2D::init( const u16 width, const u16 height, const GfxRenderTargetDescription &desc )
 {
 #if GRAPHICS_ENABLED
-	ErrorIf( !GfxCore::rb_render_target_2d_init( resource,
+	ErrorIf( !CoreGfx::rb_render_target_2d_init( resource,
 		textureColor.resource, textureDepth.resource, width, height, desc ),
 		"Failed to init RenderTarget2D!" );
 
@@ -913,7 +921,7 @@ void GfxRenderTarget2D::free()
 {
 #if GRAPHICS_ENABLED
 	if( resource == nullptr ) { return; }
-	ErrorIf( !GfxCore::rb_render_target_2d_free( resource, textureColor.resource, textureDepth.resource ),
+	ErrorIf( !CoreGfx::rb_render_target_2d_free( resource, textureColor.resource, textureDepth.resource ),
 		"Failed to free RenderTarget2D!" );
 #endif
 }
@@ -935,7 +943,7 @@ void GfxRenderTarget2D::copy( GfxRenderTarget2D &source )
 	ErrorIf( resource == nullptr, "Attempting to copy GfxRenderTarget2D that does not exist!" );
 	ErrorIf( source.resource == nullptr, "Attempting to copy from GfxRenderTarget2D that does not exist!" );
 
-	const bool success = GfxCore::rb_render_target_2d_copy(
+	const bool success = CoreGfx::rb_render_target_2d_copy(
 		source.resource, source.textureColor.resource, source.textureDepth.resource,
 		resource, textureColor.resource, textureDepth.resource );
 
@@ -974,7 +982,7 @@ void GfxRenderTarget2D::copy_part( GfxRenderTarget2D &source, int srcX, int srcY
 #if GRAPHICS_D3D11
 	if( this->textureDepth.resource && source.textureDepth.resource )
 	{
-		Gfx::shader_bind( SHADER_DEFAULT_COPY_DEPTH );
+		Gfx::shader_bind( Shader::SHADER_DEFAULT_COPY_DEPTH );
 		Gfx::set_depth_test_mode( GfxDepthTestMode_ALWAYS );
 		this->bind();
 		source.textureDepth.bind( 0 );
@@ -1000,7 +1008,7 @@ void GfxRenderTarget2D::copy_part( GfxRenderTarget2D &source, int srcX, int srcY
 #endif
 
 	// Copy Part
-	const bool success = GfxCore::rb_render_target_2d_copy_part(
+	const bool success = CoreGfx::rb_render_target_2d_copy_part(
 		source.resource, source.textureColor.resource, source.textureDepth.resource,
 		resource, textureColor.resource, textureDepth.resource,
 		srcX1, srcY1, dstX1, dstY1, copyWidth, copyHeight );
@@ -1019,25 +1027,25 @@ void GfxRenderTarget2D::bind( const int slot )
 	draw_call();
 
 	// Backend
-	ErrorIf( !GfxCore::rb_render_target_2d_bind( resource, slot ),
+	ErrorIf( !CoreGfx::rb_render_target_2d_bind( resource, slot ),
 		"Failed to bind RenderTarget2D!" );
 
 	if( slot == 0 )
 	{
 		// MVP Matrix
 		RT_CACHE_MATRIX_MODEL = Gfx::get_matrix_model();
-		Gfx::set_matrix_model( doublem44_build_identity() );
+		Gfx::set_matrix_model( double_m44_build_identity() );
 		RT_CACHE_MATRIX_VIEW = Gfx::get_matrix_view();
-		Gfx::set_matrix_view( doublem44_build_identity() );
+		Gfx::set_matrix_view( double_m44_build_identity() );
 		RT_CACHE_MATRIX_PERSPECTIVE = Gfx::get_matrix_perspective();
-		Gfx::set_matrix_perspective( doublem44_build_orthographic( 0.0, width, 0.0, height, 0.0, 1.0 ) );
+		Gfx::set_matrix_perspective( double_m44_build_orthographic( 0.0, width, 0.0, height, 0.0, 1.0 ) );
 
 		// Viewport
-		RT_CACHE_VIEWPORT = GfxCore::viewport;
+		RT_CACHE_VIEWPORT = CoreGfx::viewport;
 		Gfx::set_viewport_size( width, height, false );
 
 		// D3D11 needs to explicitly update depth test state here
-		GfxCore::rb_set_depth_state( Gfx::state().depth );
+		CoreGfx::rb_set_depth_state( Gfx::state().depth );
 
 		// Blend State
 		RT_CACHE_BLEND_STATE = Gfx::state().blend;
@@ -1045,7 +1053,7 @@ void GfxRenderTarget2D::bind( const int slot )
 		Gfx::set_blend_mode_color( GfxBlendFactor_ONE, GfxBlendFactor_INV_SRC_ALPHA, GfxBlendOperation_ADD );
 
 		// Apply State
-		SysGfx::state_apply();
+		CoreGfx::state_apply();
 	}
 
 	// Set Slot
@@ -1063,7 +1071,7 @@ void GfxRenderTarget2D::release()
 	draw_call();
 
 	// Backend
-	ErrorIf( !GfxCore::rb_render_target_2d_release( this->resource, this->slot ),
+	ErrorIf( !CoreGfx::rb_render_target_2d_release( this->resource, this->slot ),
 		"Failed to release RenderTarget2D!" );
 
 	if( this->slot == 0 )
@@ -1080,7 +1088,7 @@ void GfxRenderTarget2D::release()
 		Gfx::set_blend_state( RT_CACHE_BLEND_STATE );
 
 		// Apply State
-		SysGfx::state_apply();
+		CoreGfx::state_apply();
 	}
 
 	// Reset slot
@@ -1090,11 +1098,11 @@ void GfxRenderTarget2D::release()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void GfxShader::init( const u32 shaderID, const BinShader &binShader )
+void GfxShader::init( const u32 shaderID, const ShaderEntry &shaderEntry )
 {
 #if GRAPHICS_ENABLED
 	this->shaderID = shaderID;
-	ErrorIf( !GfxCore::rb_shader_init( resource, shaderID, binShader ),
+	ErrorIf( !CoreGfx::rb_shader_init( resource, shaderID, shaderEntry ),
 		"Failed to init shader! (%u)", this->shaderID );
 #endif
 }
@@ -1103,7 +1111,7 @@ void GfxShader::init( const u32 shaderID, const BinShader &binShader )
 void GfxShader::free()
 {
 #if GRAPHICS_ENABLED
-	ErrorIf( !GfxCore::rb_shader_free( resource ),
+	ErrorIf( !CoreGfx::rb_shader_free( resource ),
 		"Failed to free shader! (%u)", this->shaderID );
 #endif
 }
@@ -1116,15 +1124,16 @@ void GfxShader::bind()
 	{
 		draw_call(); // Shader changes force batch break
 		Gfx::state().shader.resource = resource;
+		Gfx::state().shader.shaderID = shaderID;
 	}
 
-	ErrorIf( !GfxCore::rb_shader_bind( resource ),
+	ErrorIf( !CoreGfx::rb_shader_bind( resource ),
 		"Failed to bind shader!" );
-	ErrorIf( !GfxCore::rb_shader_bind_uniform_buffers_vertex[shaderID](),
+	ErrorIf( !CoreGfx::rb_shader_bind_uniform_buffers_vertex[shaderID](),
 		"Failed to bind vertex shader uniform buffers! (%u)", this->shaderID );
-	ErrorIf( !GfxCore::rb_shader_bind_uniform_buffers_fragment[shaderID](),
+	ErrorIf( !CoreGfx::rb_shader_bind_uniform_buffers_fragment[shaderID](),
 		"Failed to bind fragment shader uniform buffers! (%u)", this->shaderID );
-	ErrorIf( !GfxCore::rb_shader_bind_uniform_buffers_compute[shaderID](),
+	ErrorIf( !CoreGfx::rb_shader_bind_uniform_buffers_compute[shaderID](),
 		"Failed to bind compute shader uniform buffers! (%u)", this->shaderID );
 #endif
 }
@@ -1132,7 +1141,7 @@ void GfxShader::bind()
 
 void GfxShader::release()
 {
-	GfxCore::shaders[SHADER_DEFAULT].bind();
+	CoreGfx::shaders[Shader::SHADER_DEFAULT].bind();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1143,10 +1152,10 @@ void Gfx::viewport_update()
 	// Update Viewport
 	const int viewportWidth = static_cast<int>( Window::width * Window::scale );
 	const int viewportHeight = static_cast<int>( Window::height * Window::scale );
-	GfxCore::rb_viewport_resize( viewportWidth, viewportHeight, Window::fullscreen );
+	CoreGfx::rb_viewport_resize( viewportWidth, viewportHeight, Window::fullscreen );
 
 	// Resize Swapchain
-	GfxCore::rb_swapchain_resize( Window::width, Window::height, Window::fullscreen );
+	CoreGfx::rb_swapchain_resize( Window::width, Window::height, Window::fullscreen );
 #endif
 }
 
@@ -1155,22 +1164,22 @@ void Gfx::frame_begin()
 {
 #if GRAPHICS_ENABLED
 	// Reset State
-	SysGfx::state_reset();
+	CoreGfx::state_reset();
 
 	// Backend
-	GfxCore::rb_frame_begin();
+	CoreGfx::rb_frame_begin();
 
 	// Quad Batch
-	SysGfx::quadBatch.batch_begin();
+	CoreGfx::quadBatch.batch_begin();
 
 	// Reset Matrices
-	const doublem44 identity = doublem44_build_identity();
+	const double_m44 identity = double_m44_build_identity();
 	Gfx::set_matrix_model( identity );
 	Gfx::set_matrix_view( identity );
 	Gfx::set_matrix_perspective( identity );
 
 	// Start Rendering
-	GfxCore::rendering = true;
+	CoreGfx::rendering = true;
 #endif
 }
 
@@ -1179,13 +1188,13 @@ void Gfx::frame_end()
 {
 #if GRAPHICS_ENABLED
 	// Stop Rendering
-	GfxCore::rendering = false;
+	CoreGfx::rendering = false;
 
 	// Quad Batch
-	SysGfx::quadBatch.batch_end();
+	CoreGfx::quadBatch.batch_end();
 
 	// Backend
-	GfxCore::rb_frame_end();
+	CoreGfx::rb_frame_end();
 
 	// Statistics
 #if PROFILING_GFX
@@ -1199,7 +1208,7 @@ void Gfx::frame_end()
 void Gfx::clear_color( const Color color )
 {
 #if GRAPHICS_ENABLED
-	GfxCore::rb_clear_color( color );
+	CoreGfx::rb_clear_color( color );
 #endif
 }
 
@@ -1207,7 +1216,7 @@ void Gfx::clear_color( const Color color )
 void Gfx::clear_depth( const float depth )
 {
 #if GRAPHICS_ENABLED
-	GfxCore::rb_clear_depth( depth );
+	CoreGfx::rb_clear_depth( depth );
 #endif
 }
 
@@ -1215,7 +1224,7 @@ void Gfx::clear_depth( const float depth )
 void Gfx::set_swapchain_size( const u16 width, const u16 height, const bool fullscreen )
 {
 #if GRAPHICS_ENABLED
-	GfxCore::rb_swapchain_resize( width, height, fullscreen );
+	CoreGfx::rb_swapchain_resize( width, height, fullscreen );
 #endif
 }
 
@@ -1223,12 +1232,12 @@ void Gfx::set_swapchain_size( const u16 width, const u16 height, const bool full
 void Gfx::set_viewport_size( const u16 width, const u16 height, const bool fullscreen )
 {
 #if GRAPHICS_ENABLED
-	GfxCore::rb_viewport_resize( width, height, fullscreen );
+	CoreGfx::rb_viewport_resize( width, height, fullscreen );
 #endif
 }
 
 
-void Gfx::set_shader_globals( const GfxCoreUniformBuffer::ShaderGlobals_t &globals )
+void Gfx::set_shader_globals( const CoreGfxUniformBuffer::ShaderGlobals_t &globals )
 {
 #if GRAPHICS_ENABLED
 	// Shader globals changes force a batch break
@@ -1244,53 +1253,53 @@ void Gfx::set_shader_globals( const GfxCoreUniformBuffer::ShaderGlobals_t &globa
 static void update_matrix_mvp()
 {
 #if GRAPHICS_ENABLED
-	GfxCore::matrixMVP = doublem44_multiply( GfxCore::matrixPerspective,
-		doublem44_multiply( GfxCore::matrixView, GfxCore::matrixModel ) );
+	CoreGfx::matrixMVP = double_m44_multiply( CoreGfx::matrixPerspective,
+		double_m44_multiply( CoreGfx::matrixView, CoreGfx::matrixModel ) );
 
 	auto &globals = GfxUniformBuffer::ShaderGlobals;
-	globals.matrixModel = float_m44_from_doublem44( GfxCore::matrixModel );
-	globals.matrixView = float_m44_from_doublem44( GfxCore::matrixView );
-	globals.matrixPerspective = float_m44_from_doublem44( GfxCore::matrixPerspective );
-	globals.matrixMVP = float_m44_from_doublem44( GfxCore::matrixMVP );
+	globals.matrixModel = float_m44_from_double_m44( CoreGfx::matrixModel );
+	globals.matrixView = float_m44_from_double_m44( CoreGfx::matrixView );
+	globals.matrixPerspective = float_m44_from_double_m44( CoreGfx::matrixPerspective );
+	globals.matrixMVP = float_m44_from_double_m44( CoreGfx::matrixMVP );
 
 	Gfx::set_shader_globals( globals );
 #endif
 };
 
 
-void Gfx::set_matrix_model( const doublem44 &matrix )
+void Gfx::set_matrix_model( const double_m44 &matrix )
 {
 #if GRAPHICS_ENABLED
-	GfxCore::matrixModel = matrix;
+	CoreGfx::matrixModel = matrix;
 	update_matrix_mvp();
 #endif
 }
 
 
-void Gfx::set_matrix_view( const doublem44 &matrix )
+void Gfx::set_matrix_view( const double_m44 &matrix )
 {
 #if GRAPHICS_ENABLED
-	GfxCore::matrixView = matrix;
+	CoreGfx::matrixView = matrix;
 	update_matrix_mvp();
 #endif
 }
 
 
-void Gfx::set_matrix_perspective( const doublem44 &matrix )
+void Gfx::set_matrix_perspective( const double_m44 &matrix )
 {
 #if GRAPHICS_ENABLED
-	GfxCore::matrixPerspective = matrix;
+	CoreGfx::matrixPerspective = matrix;
 	update_matrix_mvp();
 #endif
 }
 
 
-void Gfx::set_matrix_mvp( const doublem44 &matModel, const doublem44 &matView, const doublem44 &matPerspective )
+void Gfx::set_matrix_mvp( const double_m44 &matModel, const double_m44 &matView, const double_m44 &matPerspective )
 {
 #if GRAPHICS_ENABLED
-	GfxCore::matrixModel = matModel;
-	GfxCore::matrixView = matView;
-	GfxCore::matrixPerspective = matPerspective;
+	CoreGfx::matrixModel = matModel;
+	CoreGfx::matrixView = matView;
+	CoreGfx::matrixPerspective = matPerspective;
 	update_matrix_mvp();
 #endif
 }
@@ -1300,12 +1309,12 @@ void Gfx::set_matrix_mvp_2d_orthographic( const double x, const double y, const 
 	const double width, const double height, const double znear, const double zfar )
 {
 #if GRAPHICS_ENABLED
-	GfxCore::matrixModel = doublem44_build_identity();
-	doublem44 matrixView = doublem44_build_rotation_z( angle * DEG2RAD );
-	matrixView = doublem44_multiply( doublem44_build_scaling( zoom, zoom, 1.0 ), matrixView );
-	matrixView = doublem44_multiply( doublem44_build_translation( -x, -y, 0.0 ), matrixView );
-	GfxCore::matrixView = matrixView;
-	GfxCore::matrixPerspective = doublem44_build_orthographic( 0.0, width, 0.0, height, znear, zfar );
+	CoreGfx::matrixModel = double_m44_build_identity();
+	double_m44 matrixView = double_m44_build_rotation_z( angle * DEG2RAD );
+	matrixView = double_m44_multiply( double_m44_build_scaling( zoom, zoom, 1.0 ), matrixView );
+	matrixView = double_m44_multiply( double_m44_build_translation( -x, -y, 0.0 ), matrixView );
+	CoreGfx::matrixView = matrixView;
+	CoreGfx::matrixPerspective = double_m44_build_orthographic( 0.0, width, 0.0, height, znear, zfar );
 	update_matrix_mvp();
 #endif
 }
@@ -1317,35 +1326,35 @@ void Gfx::set_matrix_mvp_3d_perspective( const double fov, const double aspect, 
 {
 #if GRAPHICS_ENABLED
 	AssertMsg( znear > 0.0, "znear must be > 0.0f!" );
-	GfxCore::matrixModel = doublem44_build_identity();
-	GfxCore::matrixView = doublem44_build_lookat( x, y, z, xto, yto, zto, xup, yup, zup );
-	GfxCore::matrixPerspective = doublem44_build_perspective( fov, aspect, znear, zfar );
+	CoreGfx::matrixModel = double_m44_build_identity();
+	CoreGfx::matrixView = double_m44_build_lookat( x, y, z, xto, yto, zto, xup, yup, zup );
+	CoreGfx::matrixPerspective = double_m44_build_perspective( fov, aspect, znear, zfar );
 	update_matrix_mvp();
 #endif
 }
 
 
-const doublem44 &Gfx::get_matrix_model()
+const double_m44 &Gfx::get_matrix_model()
 {
-	return GfxCore::matrixModel;
+	return CoreGfx::matrixModel;
 }
 
 
-const doublem44 &Gfx::get_matrix_view()
+const double_m44 &Gfx::get_matrix_view()
 {
-	return GfxCore::matrixView;
+	return CoreGfx::matrixView;
 }
 
 
-const doublem44 &Gfx::get_matrix_perspective()
+const double_m44 &Gfx::get_matrix_perspective()
 {
-	return GfxCore::matrixPerspective;
+	return CoreGfx::matrixPerspective;
 }
 
 
-const doublem44 &Gfx::get_matrix_mvp()
+const double_m44 &Gfx::get_matrix_mvp()
 {
-	return GfxCore::matrixMVP;
+	return CoreGfx::matrixMVP;
 }
 
 
@@ -1573,6 +1582,22 @@ void Gfx::set_depth_write_mask( const GfxDepthWriteFlag &mask )
 	GfxDepthState state = Gfx::state().depth;
 	state.depthWriteMask = mask;
 	Gfx::set_depth_state( state );
+#endif
+}
+
+
+void Gfx::shader_bind( const Shader shader )
+{
+#if GRAPHICS_ENABLED
+	CoreGfx::shaders[shader].bind();
+#endif
+}
+
+
+void Gfx::shader_release()
+{
+#if GRAPHICS_ENABLED
+	CoreGfx::shaders[Shader::SHADER_DEFAULT].bind();
 #endif
 }
 

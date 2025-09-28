@@ -12,7 +12,7 @@ thread_local static double frequency;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool SysTime::init()
+bool CoreTime::init()
 {
 	mach_timebase_info_data_t info;
 	if( mach_timebase_info( &info ) != KERN_SUCCESS ) { ErrorReturnMsg( false, "MACH: Failed get mach timer info" ); }
@@ -23,7 +23,7 @@ bool SysTime::init()
 }
 
 
-bool SysTime::free()
+bool CoreTime::free()
 {
 	return true;
 }

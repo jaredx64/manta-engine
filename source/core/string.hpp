@@ -13,16 +13,16 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-namespace SysText
+namespace CoreText
 {
 	extern void macro_strjoin( const usize size, char *buffer, ... );
 	extern void macro_strjoin_path( const usize size, char *buffer, ... );
 	extern void macro_strappend( const usize size, char *buffer, const char *string );
 }
 
-#define strjoin( buffer, ... ) SysText::macro_strjoin( sizeof( buffer ), buffer, __VA_ARGS__, nullptr )
-#define strjoin_path( buffer, ... ) SysText::macro_strjoin_path( sizeof( buffer ), buffer, __VA_ARGS__, nullptr );
-#define strappend( buffer, string ) SysText::macro_strappend( sizeof( buffer ), buffer, string )
+#define strjoin( buffer, ... ) CoreText::macro_strjoin( sizeof( buffer ), buffer, __VA_ARGS__, nullptr )
+#define strjoin_path( buffer, ... ) CoreText::macro_strjoin_path( sizeof( buffer ), buffer, __VA_ARGS__, nullptr );
+#define strappend( buffer, string ) CoreText::macro_strappend( sizeof( buffer ), buffer, string )
 
 extern char chrlower( char c );
 extern char chrupper( char c );

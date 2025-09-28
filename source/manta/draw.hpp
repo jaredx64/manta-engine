@@ -72,36 +72,38 @@ extern void draw_quad_uv_color( const float x1, const float y1, const float x2, 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-inline u16 sprite_subimg_mod( const u32 sprite, const u16 subimg )
+inline u16 sprite_subimg_mod( const Sprite sprite, const u16 subimg )
 {
-	Assert( sprite < Assets::spritesCount );
-	return subimg % Assets::sprites[sprite].count;
+	Assert( sprite < CoreAssets::spriteCount );
+	return subimg % Assets::sprite( sprite ).count;
 }
 
 
-extern void draw_sprite( const u32 sprite, const u16 subimg, float x, float y,
+extern void draw_sprite( const Sprite sprite, const u16 subimg, float x, float y,
 	const float xscale = 1.0f, const float yscale = 1.0f,
 	const Color color = c_white, const float depth = 0.0f );
 
 
-extern void draw_sprite_part( const u32 sprite, const u16 subimg, float x, float y,
+extern void draw_sprite_part( const Sprite sprite, const u16 subimg, float x, float y,
 	const float u1, const float v1, const float u2, const float v2,
 	const float xscale = 1.0f, const float yscale = 1.0f,
 	const Color color = c_white, const float depth = 0.0f );
 
 
-extern void draw_sprite_part_quad( const u32 sprite, const u16 subimg,
+extern void draw_sprite_part_quad( const Sprite sprite, const u16 subimg,
 	const float x1, const float y1, const float x2, const float y2,
 	const float u1, const float v1, const float u2, const float v2,
 	const Color color = c_white, const float depth = 0.0f );
 
 
-extern void draw_sprite_angle( const u32 sprite, const u16 subimg, float x, float y, const float angle,
+extern void draw_sprite_angle( const Sprite sprite, const u16 subimg,
+	float x, float y, const float angle,
 	const float xscale = 1.0f, const float yscale = 1.0f,
 	const Color color = c_white, const float depth = 0.0f );
 
 
-extern void draw_sprite_fast( const u32 sprite, const u16 subimg, float x, float y, const Color color = c_white );
+extern void draw_sprite_fast( const Sprite sprite, const u16 subimg,
+	float x, float y, const Color color = c_white );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -708,6 +708,7 @@ using GLclampf   = float;
 	#define nglVertexAttribIPointer glVertexAttribIPointer
 	#define nglVertexAttribPointer glVertexAttribPointer
 	#define nglEnableVertexAttribArray glEnableVertexAttribArray
+	#define nglVertexAttribDivisor glVertexAttribDivisor
 	#define nglGetUniformLocation glGetUniformLocation
 	#define nglUniform1i glUniform1i
 	#define nglUniformMatrix4fv glUniformMatrix4fv
@@ -742,6 +743,8 @@ using GLclampf   = float;
 	#define nglRenderbufferStorageMultisample glRenderbufferStorageMultisample
 	#define nglFramebufferRenderbuffer glFramebufferRenderbuffer
 	#define nglTexImage2DMultisample glTexImage2DMultisample
+	#define nglDrawElementsInstanced glDrawElementsInstanced
+	#define nglDrawArraysInstanced glDrawArraysInstanced
 #endif
 
 

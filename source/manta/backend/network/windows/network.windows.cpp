@@ -303,7 +303,7 @@ void socket_free( Socket &socket )
 
 #if 0
 
-bool SysNetwork::init()
+bool CoreNetwork::init()
 {
 	// Initialize Winsock
 	WSADATA wsa;
@@ -313,7 +313,7 @@ bool SysNetwork::init()
 }
 
 
-bool SysNetwork::free()
+bool CoreNetwork::free()
 {
 	// Free Winsock
 	ErrorReturnIf( WSACleanup() != 0, false, "%s: failed to free Winsock", __FUNCTION__ );

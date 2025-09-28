@@ -15,7 +15,7 @@ SOURCE_INCLUDES
 OBJECT( UIWidget_ScrollableRegion )
 PARENT( UIWidget )
 
-CATEGORY( CategoryUI )
+CATEGORY( UI )
 BUCKET_SIZE( 64 )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -54,8 +54,10 @@ PROTECTED void init()
 	container = true;
 
 	// Create Scrollbars
-	scrollbarHorizontal = context->create_widget( UIWidget_Scrollbar, parent ); Assert( scrollbarHorizontal );
-	scrollbarVertical = context->create_widget( UIWidget_Scrollbar, parent ); Assert( scrollbarVertical );
+	scrollbarHorizontal = context->create_widget( ObjectType::UIWidget_Scrollbar, parent );
+	Assert( scrollbarHorizontal );
+	scrollbarVertical = context->create_widget( ObjectType::UIWidget_Scrollbar, parent );
+	Assert( scrollbarVertical );
 
 	// Color
 	randomize_color();
@@ -79,9 +81,9 @@ PROTECTED void update( const Delta delta )
 	const bool isHovering = isInteractable && is_hovering();
 
 	// Scrollbar Handles
-	auto horizontalHandle = context->handle<UIWidget_Scrollbar>( scrollbarHorizontal );
+	auto horizontalHandle = context->handle<ObjectType::UIWidget_Scrollbar>( scrollbarHorizontal );
 	Assert( horizontalHandle );
-	auto verticalHandle = context->handle<UIWidget_Scrollbar>( scrollbarVertical );
+	auto verticalHandle = context->handle<ObjectType::UIWidget_Scrollbar>( scrollbarVertical );
 	Assert( verticalHandle );
 
 	// Scrollbar Positions

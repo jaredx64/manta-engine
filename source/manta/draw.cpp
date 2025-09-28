@@ -12,9 +12,9 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static const BinSprite &nullSprite = Assets::sprites[SPRITE_DEFAULT];
-static const BinGlyph &nullGlyph = Assets::glyphs[nullSprite.glyph];
-static const GfxTexture2D *const nullTexture = &GfxCore::textures[nullSprite.texture];
+static const Assets::SpriteEntry &nullSprite = Assets::sprite( Sprite::SPRITE_DEFAULT );
+static const Assets::GlyphEntry &nullGlyph = Assets::glyph( nullSprite.glyph );
+static const GfxTexture2D *const nullTexture = &CoreGfx::textures[nullSprite.texture];
 
 static Align halign = Align_Left;
 static Align valign = Align_Top;
@@ -146,13 +146,13 @@ void draw_quad_uv_color( const float x1, const float y1, const float x2, const f
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void draw_sprite( const u32 sprite, const u16 subimg, float x, float y, const float xscale, const float yscale,
+void draw_sprite( const Sprite sprite, const u16 subimg, float x, float y, const float xscale, const float yscale,
 	const Color color, const float depth )
 {
 #if GRAPHICS_ENABLED
-	const BinSprite &dSprite = Assets::sprites[sprite];
-	const BinGlyph &dGlyph = Assets::glyphs[dSprite.glyph + ( subimg % Assets::sprites[sprite].count )];
-	GfxTexture2D *texture = &GfxCore::textures[dSprite.texture];
+	const Assets::SpriteEntry &dSprite = Assets::sprite( sprite );
+	const Assets::GlyphEntry &dGlyph = Assets::glyph( dSprite.glyph + ( subimg % Assets::sprite( sprite ).count ) );
+	GfxTexture2D *texture = &CoreGfx::textures[dSprite.texture];
 
 	float width  = dSprite.width * xscale;
 	float height = dSprite.height * yscale;
@@ -166,14 +166,14 @@ void draw_sprite( const u32 sprite, const u16 subimg, float x, float y, const fl
 }
 
 
-void draw_sprite_part( const u32 sprite, const u16 subimg, float x, float y,
+void draw_sprite_part( const Sprite sprite, const u16 subimg, float x, float y,
 	const float u1, const float v1, const float u2, const float v2,
 	const float xscale, const float yscale, const Color color, const float depth )
 {
 #if GRAPHICS_ENABLED
-	const BinSprite &dSprite = Assets::sprites[sprite];
-	const BinGlyph &dGlyph = Assets::glyphs[dSprite.glyph + ( subimg % Assets::sprites[sprite].count )];
-	const GfxTexture2D *const texture = &GfxCore::textures[dSprite.texture];
+	const Assets::SpriteEntry &dSprite = Assets::sprite( sprite );
+	const Assets::GlyphEntry &dGlyph = Assets::glyph( dSprite.glyph + ( subimg % Assets::sprite( sprite ).count ) );
+	const GfxTexture2D *const texture = &CoreGfx::textures[dSprite.texture];
 
 	float width  = dSprite.width * xscale;
 	float height = dSprite.height * yscale;
@@ -191,15 +191,15 @@ void draw_sprite_part( const u32 sprite, const u16 subimg, float x, float y,
 }
 
 
-void draw_sprite_part_quad( const u32 sprite, const u16 subimg,
+void draw_sprite_part_quad( const Sprite sprite, const u16 subimg,
 	const float x1, const float y1, const float x2, const float y2,
 	const float u1, const float v1, const float u2, const float v2,
 	const Color color, const float depth )
 {
 #if GRAPHICS_ENABLED
-	const BinSprite &dSprite = Assets::sprites[sprite];
-	const BinGlyph &dGlyph = Assets::glyphs[dSprite.glyph + ( subimg % Assets::sprites[sprite].count )];
-	const GfxTexture2D *const texture = &GfxCore::textures[dSprite.texture];
+	const Assets::SpriteEntry &dSprite = Assets::sprite( sprite );
+	const Assets::GlyphEntry &dGlyph = Assets::glyph( dSprite.glyph + ( subimg % Assets::sprite( sprite ).count ) );
+	const GfxTexture2D *const texture = &CoreGfx::textures[dSprite.texture];
 
 	const u16 u = dGlyph.u2 - dGlyph.u1;
 	const u16 v = dGlyph.v2 - dGlyph.v1;
@@ -211,13 +211,13 @@ void draw_sprite_part_quad( const u32 sprite, const u16 subimg,
 }
 
 
-void draw_sprite_angle( const u32 sprite, const u16 subimg, float x, float y, const float angle,
+void draw_sprite_angle( const Sprite sprite, const u16 subimg, float x, float y, const float angle,
 	const float xscale, const float yscale, const Color color, const float depth )
 {
 #if GRAPHICS_ENABLED
-	const BinSprite &dSprite = Assets::sprites[sprite];
-	const BinGlyph &dGlyph = Assets::glyphs[dSprite.glyph + ( subimg % Assets::sprites[sprite].count )];
-	const GfxTexture2D *const texture = &GfxCore::textures[dSprite.texture];
+	const Assets::SpriteEntry &dSprite = Assets::sprite( sprite );
+	const Assets::GlyphEntry &dGlyph = Assets::glyph( dSprite.glyph + ( subimg % Assets::sprite( sprite ).count ) );
+	const GfxTexture2D *const texture = &CoreGfx::textures[dSprite.texture];
 
 	const float width = dSprite.width * xscale;
 	const float height = dSprite.height * yscale;
@@ -247,12 +247,12 @@ void draw_sprite_angle( const u32 sprite, const u16 subimg, float x, float y, co
 }
 
 
-void draw_sprite_fast( const u32 sprite, const u16 subimg, float x, float y, const Color color )
+void draw_sprite_fast( const Sprite sprite, const u16 subimg, float x, float y, const Color color )
 {
 #if GRAPHICS_ENABLED
-	const BinSprite &dSprite = Assets::sprites[sprite];
-	const BinGlyph &dGlyph = Assets::glyphs[dSprite.glyph + subimg];
-	const GfxTexture2D *const texture = &GfxCore::textures[dSprite.texture];
+	const Assets::SpriteEntry &dSprite = Assets::sprite( sprite );
+	const Assets::GlyphEntry &dGlyph = Assets::glyph( dSprite.glyph + subimg );
+	const GfxTexture2D *const texture = &CoreGfx::textures[dSprite.texture];
 
 	const float width = dSprite.width;
 	const float height = dSprite.height;
@@ -325,7 +325,7 @@ void draw_rectangle( const float x1, const float y1, const float x2, const float
 	}
 	else
 	{
-		const BinGlyph &g = nullGlyph;
+		const Assets::GlyphEntry &g = nullGlyph;
 		Gfx::quad_batch_write( x1, y1, x2, y2, g.u1, g.v1, g.u2, g.v2, color, nullTexture, depth );
 	}
 #endif
@@ -368,7 +368,7 @@ void draw_rectangle_angle( const float x1, const float y1, const float x2, const
 	}
 	else
 	{
-		const BinGlyph &g = nullGlyph;
+		const Assets::GlyphEntry &g = nullGlyph;
 
 		if( angle != 0.0f )
 		{
@@ -406,7 +406,7 @@ void draw_rectangle_gradient( const float x1, const float y1, const float x2, co
 	}
 	else
 	{
-		const BinGlyph &g = nullGlyph;
+		const Assets::GlyphEntry &g = nullGlyph;
 		Gfx::quad_batch_write( x1, y1, x2, y2, g.u1, g.v1, g.u2, g.v2, c1, c2, c3, c4, nullTexture, depth );
 	}
 #endif
@@ -450,7 +450,7 @@ void draw_rectangle_gradient_angle( const float x1, const float y1, const float 
 	}
 	else
 	{
-		const BinGlyph &g = nullGlyph;
+		const Assets::GlyphEntry &g = nullGlyph;
 
 		if( angle != 0.0f )
 		{
@@ -517,7 +517,7 @@ void draw_circle_gradient( float x, float y, float radius,
         float x4 = x + radius * cos( angle2 );
         float y4 = y + radius * sin( angle2 );
 
-		const BinGlyph &g = nullGlyph;
+		const Assets::GlyphEntry &g = nullGlyph;
 
 		Gfx::quad_batch_write( x1, y1, x2, y2, x3, y3, x4, y4, g.u1, g.v1, g.u2, g.v2,
 		                       c1, c2, c2, c2, nullTexture, depth );
@@ -532,7 +532,7 @@ void draw_circle_outline_gradient( float x, float y, float radius, float thickne
 	const float increment = 2.0f * PI / resolution;
 	const float radiusOuter = ( radius + thickness * 0.5f );
 	const float radiusInner = ( radius - thickness * 0.5f );
-	const BinGlyph &g = nullGlyph;
+	const Assets::GlyphEntry &g = nullGlyph;
 
 	for( u32 i = 0; i < resolution; i++ )
 	{
@@ -560,7 +560,7 @@ void draw_circle_outline_gradient( float x, float y, float radius, float thickne
 void draw_text( const Font font, const u16 size, const float x, const float y, Color color, const char *string )
 {
 #if GRAPHICS_ENABLED
-	Assert( font < Assets::fontsCount );
+	Assert( font < CoreAssets::fontCount );
 	Assert( size > 0 );
 
 	int offsetX = 0;
@@ -583,7 +583,7 @@ void draw_text( const Font font, const u16 size, const float x, const float y, C
 		}
 
 		// Retrieve FontGlyphInfo
-		SysFonts::FontGlyphInfo &glyphInfo = SysFonts::get( SysFonts::FontGlyphKey { codepoint, font.ttf, size } );
+		CoreFonts::FontGlyphInfo &glyphInfo = CoreFonts::get( CoreFonts::FontGlyphKey { codepoint, font.ttf, size } );
 
 		// Draw Quad
 		if( glyphInfo.width != 0 && glyphInfo.height != 0 )
@@ -593,7 +593,7 @@ void draw_text( const Font font, const u16 size, const float x, const float y, C
 			const float glyphX2 = x + offsetX + glyphInfo.xshift + glyphInfo.width;
 			const float glyphY2 = y + offsetY + glyphInfo.yshift + glyphInfo.height;
 
-			constexpr u16 uvScale = ( 1 << 16 ) / SysFonts::FONTS_TEXTURE_SIZE;
+			constexpr u16 uvScale = ( 1 << 16 ) / CoreFonts::FONTS_TEXTURE_SIZE;
 			const u16 u1 = ( glyphInfo.u ) * uvScale;
 			const u16 v1 = ( glyphInfo.v ) * uvScale;
 			const u16 u2 = ( glyphInfo.u + glyphInfo.width ) * uvScale;
@@ -601,13 +601,13 @@ void draw_text( const Font font, const u16 size, const float x, const float y, C
 
 			// TODO: Implement this properly...
 			if( UNLIKELY( Gfx::quad_batch_can_break() ) ||
-			    UNLIKELY( Gfx::state().textureResource[0] != SysFonts::texture2D.resource ) )
+			    UNLIKELY( Gfx::state().textureResource[0] != CoreFonts::texture2D.resource ) )
 			{
-				SysFonts::update();
+				CoreFonts::update();
 			}
 
 			Gfx::quad_batch_write( glyphX1, glyphY1, glyphX2, glyphY2,
-			                       u1, v1, u2, v2, color, &SysFonts::texture2D, 0.0f );
+			                       u1, v1, u2, v2, color, &CoreFonts::texture2D, 0.0f );
 		}
 
 		// Advance Character
@@ -634,7 +634,7 @@ void draw_text_f( const Font font, const u16 size, const float x, const float y,
 
 int_v2 text_dimensions( const Font font, const u16 size, const char *string )
 {
-	Assert( font.id < Assets::fontsCount );
+	Assert( font.id < CoreAssets::fontCount );
 	Assert( size > 0 );
 
 	int offsetX = 0;
@@ -659,7 +659,7 @@ int_v2 text_dimensions( const Font font, const u16 size, const char *string )
 		}
 
 		// Retrieve FontGlyphInfo & advance
-		SysFonts::FontGlyphInfo &glyphInfo = SysFonts::get( SysFonts::FontGlyphKey { codepoint, font.ttf, size } );
+		CoreFonts::FontGlyphInfo &glyphInfo = CoreFonts::get( CoreFonts::FontGlyphKey { codepoint, font.ttf, size } );
 		result.x = max( result.x, offsetX + static_cast<int>( glyphInfo.advance ) );
 		result.y = max( result.y, offsetY + glyphInfo.height );
 		offsetX += glyphInfo.advance;

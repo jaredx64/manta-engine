@@ -20,6 +20,20 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// Compiler Supplied Preprocessor Defines:
+
+#define SHADER_HLSL
+#define SHADER_GLSL
+#define SHADER_METAL
+
+#define SHADER_D3D11
+#define SHADER_D3D12
+#define SHADER_OPENGL
+#define SHADER_VULKAN
+#define SHADER_METAL
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 #define operator_overloads( type )                    \
 	template <typename T> type operator*( T other );  \
 	template <typename T> type operator*=( T other ); \
@@ -49,6 +63,7 @@ template <typename T> T buffer( T buffer, uint index );
 	#define COLOR
 	#define BINORMAL
 	#define TANGENT
+	#define INSTANCE
 	#define TARGET
 	#define COVERAGE
 	#define IS_FRONT_FACE
@@ -82,6 +97,7 @@ template <typename T> T buffer( T buffer, uint index );
 	#define FLOAT16
 	#define FLOAT32
 
+#define instance_input struct
 #define vertex_input struct
 #define vertex_output struct
 #define fragment_input struct

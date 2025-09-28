@@ -1,7 +1,9 @@
 #!/bin/sh
 
-# Setup Directory
-mkdir -p output
+mkdir extension
+cp -R syntax       extension/syntax
+cp -R extension.js extension
+cp -R package.json extension
 
-# Build Extension
-vsce package -o output/vscmanta.vsix && code --install-extension output/vscmanta.vsix
+zip -rqm custom.vsix extension
+code --install-extension custom.vsix && rm custom.vsix

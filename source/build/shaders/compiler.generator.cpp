@@ -26,6 +26,34 @@ void Generator::generate_stage( ShaderStage stage )
 		// Generate Node
 		generate_node( node );
 	}
+
+	// Resolve Vertex Format
+	shader.vertexFormatID = U32_MAX;
+	if( !parser.vertexFormatTypeName.is_empty() )
+	{
+		for( VertexFormat format : Gfx::vertexFormats )
+		{
+			if( format.name.equals( parser.vertexFormatTypeName ) )
+			{
+				shader.vertexFormatID = format.id;
+				break;
+			}
+		}
+	}
+
+	// Resolve Instance Format
+	shader.instanceFormatID = U32_MAX;
+	if( !parser.instanceFormatTypeName.is_empty() )
+	{
+		for( InstanceFormat format : Gfx::instanceFormats )
+		{
+			if( format.name.equals( parser.instanceFormatTypeName ) )
+			{
+				shader.instanceFormatID = format.id;
+				break;
+			}
+		}
+	}
 }
 
 
@@ -823,6 +851,7 @@ void Generator::generate_structure( NodeStruct *node )
 		"uniform_buffer",  // StructType_UniformBuffer
 		"constant_buffer", // StructType_ConstantBuffer
 		"mutable_buffer",  // StructType_MutableBuffer
+		"instance_input",  // StructType_InstanceInput
 		"vertex_input",    // StructType_VertexInput
 		"vertex_output",   // StructType_VertexOutput
 		"fragment_input",  // StructType_FragmentInput
@@ -894,6 +923,7 @@ void Generator::generate_structure( NodeStruct *node )
 				case SemanticType_COLOR: semantic = "COLOR"; break;
 				case SemanticType_BINORMAL: semantic = "BINORMAL"; break;
 				case SemanticType_TANGENT: semantic = "TANGENT"; break;
+				case SemanticType_INSTANCE: semantic = "INSTANCE"; break;
 				default: Error( "Unexpected semantic type: %u", memberVariable.semantic ); return;
 			};
 			output.append( " " ).append( "semantic( " ).append( semantic ).append( " )" );
@@ -945,6 +975,10 @@ void Generator::generate_structure_gfx( NodeStruct *node )
 
 		case StructType_MutableBuffer:
 			generate_structure_gfx_uniform_buffer( node ); // TODO: Implement this
+		break;
+
+		case StructType_InstanceInput:
+			generate_structure_gfx_instance( node );
 		break;
 
 		case StructType_VertexInput:
@@ -1102,13 +1136,161 @@ bool Generator::generate_structure_gfx_uniform_buffer( NodeStruct *node )
 
 	source.append( "\n\tvoid ").append( uniformBuffer.name ).append( "_t::upload() const\n\t{\n" );
 	source.append( "\t#if GRAPHICS_ENABLED\n" );
-	source.append( "\t\tauto *&resource = GfxCore::gfxUniformBufferResources[" );
+	source.append( "\t\tauto *&resource = CoreGfx::gfxUniformBufferResources[" );
 	source.append( static_cast<int>( uniformBuffer.id ) ).append( "];\n" );
-	source.append( "\t\tGfxCore::rb_constant_buffered_write_begin( resource );\n" );
-	source.append( "\t\tGfxCore::rb_constant_buffered_write( resource, this );\n" );
-	source.append( "\t\tGfxCore::rb_constant_buffered_write_end( resource );\n" );
+	source.append( "\t\tCoreGfx::rb_constant_buffered_write_begin( resource );\n" );
+	source.append( "\t\tCoreGfx::rb_constant_buffered_write( resource, this );\n" );
+	source.append( "\t\tCoreGfx::rb_constant_buffered_write_end( resource );\n" );
 	source.append( "\t#endif\n" );
 	source.append( "\t}\n" );
+	return true;
+}
+
+
+bool Generator::generate_structure_gfx_instance( NodeStruct *node )
+{
+	Struct &structure = parser.structs[node->structID];
+	Type &type = parser.types[structure.typeID];
+	const VariableID first = type.memberFirst;
+	const VariableID last = type.memberFirst + type.memberCount;
+
+	// Layout identifier
+	String layout;
+	for( VariableID i = first; i < last; i++ )
+	{
+		Type &memberType = parser.types[parser.variables[i].typeID];
+		layout.append( memberType.name );
+	};
+
+	// Instance format cache
+	const u32 checksumKey = checksum_xcrc32( type.name.data, type.name.length, 0 );
+	const u32 checksumBuffer = checksum_xcrc32( layout.data, layout.length_bytes(), 0 );
+
+	// Instance format with this name already exists
+	if( Gfx::instanceFormatCache.contains( checksumKey ) )
+	{
+		InstanceFormat &instanceFormat = Gfx::instanceFormats[Gfx::instanceFormatCache.get( checksumKey )];
+		if( parser.instanceFormatTypeName.equals( type.name ) ) { shader.instanceFormatID = instanceFormat.id; }
+		if( instanceFormat.checksum == checksumBuffer ) { return false; }
+		Error( "Instance format with name '%.*s' already declared with a different layout",
+			type.name.length, type.name.data );
+		return false;
+	}
+
+	// Register Instance Format & Generate C++ Struct
+	InstanceFormat &instanceFormat = Gfx::instanceFormats.add( { } );
+	String &header = instanceFormat.header;
+	String &source = instanceFormat.source;
+	instanceFormat.name.append( type.name );
+	instanceFormat.id = static_cast<u32>( Gfx::instanceFormats.size() - 1 );
+	instanceFormat.checksum = checksumBuffer;
+	instanceFormat.node = node;
+
+	Gfx::instanceFormatCache.add( checksumKey, instanceFormat.id );
+	if( parser.instanceFormatTypeName.equals( type.name ) ) { shader.instanceFormatID = instanceFormat.id; }
+
+	if( instanceFormat.id != 0 ) { header.append( "\n" ); }
+	header.append( "\tstruct " ).append( type.name ).append( "\n" );
+	header.append( "\t{\n" );
+
+	for( usize i = first; i < last; i++ )
+	{
+		Variable &memberVariable = parser.variables[i];
+
+		// Get member type
+		const char *memberTypeName = "";
+		switch( memberVariable.format )
+		{
+			// 1 Byte
+			case InputFormat_UNORM8:
+			case InputFormat_UINT8:
+				memberTypeName = "u8";
+			break;
+
+			case InputFormat_SNORM8:
+			case InputFormat_SINT8:
+				memberTypeName = "i8";
+			break;
+
+			// 2 Bytes
+			case InputFormat_UNORM16:
+			case InputFormat_UINT16:
+				memberTypeName = "u16";
+			break;
+
+			case InputFormat_SNORM16:
+			case InputFormat_SINT16:
+				memberTypeName = "i16";
+			break;
+
+			// 4 Bytes
+			case InputFormat_UNORM32:
+			case InputFormat_UINT32:
+				memberTypeName = "u32";
+			break;
+
+			case InputFormat_SNORM32:
+			case InputFormat_SINT32:
+				memberTypeName = "int";
+			break;
+
+			case InputFormat_FLOAT16:
+			case InputFormat_FLOAT32:
+				memberTypeName = "float";
+			break;
+		}
+
+		// Get member type dimensions (vector length)
+		int dimensions = 0;
+		switch( memberVariable.typeID )
+		{
+			case Primitive_Bool:
+			case Primitive_Int:
+			case Primitive_UInt:
+			case Primitive_Float:
+			case Primitive_Double:
+				dimensions = 1;
+			break;
+
+			case Primitive_Bool2:
+			case Primitive_Int2:
+			case Primitive_UInt2:
+			case Primitive_Float2:
+			case Primitive_Double2:
+				dimensions = 2;
+			break;
+
+			case Primitive_Bool3:
+			case Primitive_Int3:
+			case Primitive_UInt3:
+			case Primitive_Float3:
+			case Primitive_Double3:
+				dimensions = 3;
+			break;
+
+			case Primitive_Bool4:
+			case Primitive_Int4:
+			case Primitive_UInt4:
+			case Primitive_Float4:
+			case Primitive_Double4:
+				dimensions = 4;
+			break;
+
+			default:
+				Error( "Unexpected instance input type: %llu (%.*s)", memberVariable.typeID,
+				       memberVariable.name.length, memberVariable.name.data );
+			break;
+		}
+
+		header.append( "\t\t" );
+		header.append( memberTypeName );
+		if( dimensions > 1 ) { header.append( "_v" ).append( dimensions ); }
+		header.append( " " );
+		header.append( memberVariable.name );
+		header.append( ";\n" );
+	}
+
+	header.append( "\t};\n" );
 	return true;
 }
 
@@ -1136,7 +1318,7 @@ bool Generator::generate_structure_gfx_vertex( NodeStruct *node )
 	if( Gfx::vertexFormatCache.contains( checksumKey ) )
 	{
 		VertexFormat &vertexFormat = Gfx::vertexFormats[Gfx::vertexFormatCache.get( checksumKey )];
-		shader.vertexFormatID = vertexFormat.id;
+		if( parser.vertexFormatTypeName.equals( type.name ) ) { shader.vertexFormatID = vertexFormat.id; }
 		if( vertexFormat.checksum == checksumBuffer ) { return false; }
 		Error( "Vertex format with name '%.*s' already declared with a different layout",
 			type.name.length, type.name.data );
@@ -1150,9 +1332,10 @@ bool Generator::generate_structure_gfx_vertex( NodeStruct *node )
 	vertexFormat.name.append( type.name );
 	vertexFormat.id = static_cast<u32>( Gfx::vertexFormats.size() - 1 );
 	vertexFormat.checksum = checksumBuffer;
+	vertexFormat.node = node;
 
 	Gfx::vertexFormatCache.add( checksumKey, vertexFormat.id );
-	shader.vertexFormatID = vertexFormat.id;
+	if( parser.vertexFormatTypeName.equals( type.name ) ) { shader.vertexFormatID = vertexFormat.id; }
 
 	if( vertexFormat.id != 0 ) { header.append( "\n" ); }
 	header.append( "\tstruct " ).append( type.name ).append( "\n" );
@@ -1407,10 +1590,25 @@ void Generator::indent_sub()
 
 
 int Generator::append_structure_padding( String &output, const char *indent,
-	int alignment, int current )
+	int sizeType, int alignmentType, int current )
 {
-	int padding = ( alignment - ( current % alignment ) ) % alignment;
+	const int sizeBlock = max( 16, sizeType );
 
+	// Pad to next alignment interval
+	int padding = ( alignmentType - ( current % alignmentType ) ) % alignmentType;
+
+	// Ensure type at alignment interval fits within a block (16 bytes)
+	int byteStart = current + padding;
+	int byteStartBlock = ( byteStart / sizeBlock ) * sizeBlock;
+	int byteEndBlock = byteStartBlock + sizeBlock;
+
+	// If not, pad to the next block interval
+	if( byteStart + sizeType > byteEndBlock )
+	{
+		padding += ( sizeBlock - ( byteStart % sizeBlock ) );
+	}
+
+	// Append padding
 	if( padding > 0 )
 	{
 		output.append( indent );
@@ -1472,7 +1670,7 @@ void Generator::append_structure_member_padded( String &output, const char *inde
 	if( type.tokenType == TokenType_SharedStruct ) { size = type.sizeBytesPadded; align = 16; }
 
 	// Calculate required padding & increment byte offset
-	structureByteOffset += Generator::append_structure_padding( output, indent, align, structureByteOffset );
+	structureByteOffset += Generator::append_structure_padding( output, indent, size, align, structureByteOffset );
 	auto round_up16 = []( int size ) { return ( size + 15 ) & ~15; };
 
 	// Type

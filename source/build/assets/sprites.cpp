@@ -121,6 +121,7 @@ void Sprites::write()
 	Buffer &binary = Assets::binary;
 	String &header = Assets::header;
 	String &source = Assets::source;
+	const u32 count = static_cast<u32>( sprites.size() );
 
 	Timer timer;
 
@@ -134,22 +135,20 @@ void Sprites::write()
 		// Group
 		assets_group( header );
 
-		// Struct
-		header.append( "struct BinSprite;\n\n" );
-
 		// Enums
-		header.append( "enum\n{\n" );
-		for( Sprite &sprite : sprites )
-		{
-			header.append( "\t" ).append( sprite.name ).append( ",\n" );
-		}
-		header.append( "};\n\n" );
+		header.append( "enum_class_type\n(\n\tSprite, u32,\n\n" );
+		for( Sprite &sprite : sprites ) { header.append( "\t" ).append( sprite.name ).append( ",\n" ); }
+		header.append( "\n\tNull = 0,\n" );
+		header.append( ");\n\n" );
+
+		// Struct
+		header.append( "namespace Assets { struct SpriteEntry; }\n\n" );
 
 		// Table
-		header.append( "namespace Assets\n{\n" );
-		header.append( "\tconstexpr u32 spritesCount = " );
-		header.append( static_cast<int>( sprites.size() ) ).append( ";\n" );
-		header.append( "\textern const BinSprite sprites[];\n" );
+		header.append( "namespace CoreAssets\n{\n" );
+		header.append( "\tconstexpr u32 spriteCount = " ).append( count ).append( ";\n" );
+		header.append( count > 0 ? "\textern const Assets::SpriteEntry sprites[spriteCount];\n" :
+			"\textern const Assets::SpriteEntry *sprites;\n" );
 		header.append( "}\n\n" );
 	}
 
@@ -157,28 +156,36 @@ void Sprites::write()
 	{
 		// Group
 		assets_group( source );
-		source.append( "namespace Assets\n{\n" );
+		source.append( "namespace CoreAssets\n{\n" );
 
 		// Table
-		char buffer[PATH_SIZE];
-		source.append( "\tconst BinSprite sprites[spritesCount] =\n\t{\n" );
-		for( Sprite &sprite : sprites )
+		if( count > 0 )
 		{
-			snprintf( buffer, PATH_SIZE,
-				"\t\t{ %d, %d, %d, %d, %d, %d, %d }, // %s\n",
-				sprite.glyphID,
-				sprite.textureID,
-				sprite.count,
-				sprite.width,
-				sprite.height,
-				sprite.xorigin,
-				sprite.yorigin,
+			char buffer[PATH_SIZE];
+			source.append( "\tconst Assets::SpriteEntry sprites[spriteCount] =\n\t{\n" );
+			for( Sprite &sprite : sprites )
+			{
+				snprintf( buffer, PATH_SIZE,
+					"\t\t{ %d, %d, %d, %d, %d, %d, %d }, // %s\n",
+					sprite.glyphID,
+					sprite.textureID,
+					sprite.count,
+					sprite.width,
+					sprite.height,
+					sprite.xorigin,
+					sprite.yorigin,
 
-				sprite.name.cstr() );
+					sprite.name.cstr() );
 
-			source.append( buffer );
+				source.append( buffer );
+			}
+			source.append( "\t};\n" );
 		}
-		source.append( "\t};\n" );
+		else
+		{
+			source.append( "\tconst Assets::SpriteEntry *sprites = nullptr;\n" );
+		}
+
 		source.append( "}\n\n" );
 	}
 

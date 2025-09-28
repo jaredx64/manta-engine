@@ -10,38 +10,44 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define NULL_BUCKET ( 0 )
+
 #define NULL_TYPE ( 0 )
 
-#define TYPE_BUCKET(context,type) SysObjects::CATEGORY_TYPE_BUCKET[context][type]
-#define TYPE_VALID(context,type) ( type > 0 && type < OBJECT_TYPE_COUNT && TYPE_BUCKET( context, type ) != 0 )
-#define TYPE_INVALID(context,type) UNLIKELY( !TYPE_VALID( context, type ) )
+#define TYPE_BUCKET(context,type) \
+	CoreObjects::CATEGORY_TYPE_BUCKET[context][type]
+
+#define TYPE_VALID(context,type) \
+	( type > 0 && type < ObjectType::OBJECT_TYPE_COUNT && TYPE_BUCKET( context, type ) != 0 )
+
+#define TYPE_INVALID(context,type) \
+	UNLIKELY( !TYPE_VALID( context, type ) )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool object_is_parent_of( const u16 thisType, const u16 otherType )
+bool object_is_parent_of( const ObjectType thisType, const ObjectType otherType )
 {
 	if( thisType >= otherType ) { return false; }
-	if( thisType == OBJECT_TYPE_DEFAULT || otherType == OBJECT_TYPE_DEFAULT ) { return false; }
-	if(	thisType >= OBJECT_TYPE_COUNT || otherType >= OBJECT_TYPE_COUNT ) { return false; }
-	const u16 thisDepth = SysObjects::TYPE_INHERITANCE_DEPTH[thisType];
-	if( SysObjects::TYPE_INHERITANCE_DEPTH[otherType] <= thisDepth ) { return false; }
+	if( thisType == ObjectType::DEFAULT || otherType == ObjectType::DEFAULT ) { return false; }
+	if(	thisType >= ObjectType::OBJECT_TYPE_COUNT || otherType >= ObjectType::OBJECT_TYPE_COUNT ) { return false; }
+	const u16 thisDepth = CoreObjects::TYPE_INHERITANCE_DEPTH[thisType];
+	if( CoreObjects::TYPE_INHERITANCE_DEPTH[otherType] <= thisDepth ) { return false; }
 
-	for( u16 type = thisType + 1; type < otherType; type++ )
+	for( ObjectType_t type = thisType + 1; type < otherType; type++ )
 	{
-		if( SysObjects::TYPE_INHERITANCE_DEPTH[type] <= thisDepth ) { return false; }
+		if( CoreObjects::TYPE_INHERITANCE_DEPTH[type] <= thisDepth ) { return false; }
 	}
 
 	return true;
 }
 
-bool object_is_child_of( const u16 thisType, const u16 otherType )
+bool object_is_child_of( const ObjectType thisType, const ObjectType otherType )
 {
 	return object_is_parent_of( otherType, thisType );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-Object::Serialization::InstanceTable Object::Serialization::instances[OBJECT_TYPE_COUNT];
+Object::Serialization::InstanceTable Object::Serialization::instances[ObjectType::OBJECT_TYPE_COUNT];
 const ObjectContext *Object::Serialization::context = nullptr;
 bool Object::Serialization::dirty = false;
 
@@ -109,7 +115,7 @@ void Object::Serialization::init()
 
 void Object::Serialization::free()
 {
-	for( u16 type = 0; type < OBJECT_TYPE_COUNT; type++ ) { instances[type].free(); }
+	for( ObjectType_t type = 0; type < ObjectType::OBJECT_TYPE_COUNT; type++ ) { instances[type].free(); }
 	context = nullptr;
 }
 
@@ -122,10 +128,10 @@ void Object::Serialization::prepare( const ObjectContext &activeContext )
 	dirty = false;
 
 	// Generate instance table from objects
-	for( u16 type = 0; type < OBJECT_TYPE_COUNT; type++ )
+	for( ObjectType_t type = 0; type < ObjectType::OBJECT_TYPE_COUNT; type++ )
 	{
 		// Initialize instance table
-		if( !SysObjects::TYPE_SERIALIZED[type] ) { continue; }
+		if( !CoreObjects::TYPE_SERIALIZED[type] ) { continue; }
 		const u16 bucketID = TYPE_BUCKET( context->category, type );
 		if( bucketID == NULL_BUCKET ) { continue; }
 		instances[type].init( context->count( type ) );
@@ -160,7 +166,7 @@ u32 Object::Serialization::instance_from_object( const Object &object )
 	AssertMsg( context != nullptr, "Missing Object::Serialization::prepare()...end() block!" );
 	MemoryAssert( context->buckets != nullptr );
 	if( TYPE_INVALID( context->category, object.type ) ) { return U32_MAX; }
-	if( !SysObjects::TYPE_SERIALIZED[object.type] ) { return U32_MAX; }
+	if( !CoreObjects::TYPE_SERIALIZED[object.type] ) { return U32_MAX; }
 	if( !context->exists( object ) ) { return U32_MAX; };
 
 	// Find instance
@@ -169,12 +175,12 @@ u32 Object::Serialization::instance_from_object( const Object &object )
 }
 
 
-Object Object::Serialization::object_from_instance( const u16 type, const u32 instance )
+Object Object::Serialization::object_from_instance( const ObjectType type, const u32 instance )
 {
 	AssertMsg( context != nullptr, "Missing Object::Serialization::prepare()...end() block!" );
 	MemoryAssert( context->buckets != nullptr );
 	if( TYPE_INVALID( context->category, type ) ) { return Object { }; }
-	if( !SysObjects::TYPE_SERIALIZED[type] ) { return Object { }; }
+	if( !CoreObjects::TYPE_SERIALIZED[type] ) { return Object { }; }
 
 	// Find object
 	const u32 key = instances[type].get_key( instance );
@@ -189,10 +195,10 @@ Object Object::Serialization::object_from_instance( const u16 type, const u32 in
 void Object::serialize( Buffer &buffer, const Object &object )
 {
 	SerializedObject serialized { 0, 0 };
-	if( SysObjects::TYPE_SERIALIZED[object.type] )
+	if( CoreObjects::TYPE_SERIALIZED[object.type] )
 	{
 		const u32 instance = Object::Serialization::instance_from_object( object );
-		if( instance != U32_MAX ) { serialized = { SysObjects::TYPE_HASH[object.type], instance }; }
+		if( instance != U32_MAX ) { serialized = { CoreObjects::TYPE_HASH[object.type], instance }; }
 	}
 	buffer.write<SerializedObject>( serialized );
 }
@@ -207,11 +213,11 @@ void Object::deserialize( Buffer &buffer, Object &object )
 	if( serialized.hash == 0 ) { object = Object { }; return; }
 
 	// Attempt resolve type from hash & deserialize
-	for( u16 type = 0; type < OBJECT_TYPE_COUNT; type++ )
+	for( ObjectType_t type = 0; type < ObjectType::OBJECT_TYPE_COUNT; type++ )
 	{
-		if( SysObjects::TYPE_HASH[type] == serialized.hash )
+		if( CoreObjects::TYPE_HASH[type] == serialized.hash )
 		{
-			if( !SysObjects::TYPE_SERIALIZED[type] ) { break; }
+			if( !CoreObjects::TYPE_SERIALIZED[type] ) { break; }
 			object = Object::Serialization::object_from_instance( type, serialized.instance );
 			return;
 		}
@@ -240,7 +246,7 @@ void Object::id_string( char *buffer, const usize length ) const
 {
 	if( alive )
 	{
-		const char *name = type < OBJECT_TYPE_COUNT ? SysObjects::TYPE_NAME[type] : "invalid";
+		const char *name = type < ObjectType::OBJECT_TYPE_COUNT ? CoreObjects::TYPE_NAME[type] : "invalid";
 		snprintf( buffer, length, "[%s (%u), b: %u, i: %u, g: %u]", name, type, bucketID, index, generation );
 	}
 	else
@@ -255,8 +261,8 @@ void Object::id_string( char *buffer, const usize length ) const
 bool ObjectContext::init()
 {
 	// State
-	capacity = SysObjects::CATEGORY_TYPE_COUNT[category];
-	current = SysObjects::CATEGORY_TYPE_COUNT[category];
+	capacity = CoreObjects::CATEGORY_TYPE_COUNT[category];
+	current = CoreObjects::CATEGORY_TYPE_COUNT[category];
 	disableEvents = false;
 
 	// Allocate Memory
@@ -275,7 +281,7 @@ bool ObjectContext::init()
 		ObjectBucket *bucket = &buckets[bucketID];
 		new ( bucket ) ObjectBucket{ *this };
 		bucket->bucketID = bucketID;
-		bucket->type = SysObjects::CATEGORY_TYPES[category][bucketID];
+		bucket->type = CoreObjects::CATEGORY_TYPES[category][bucketID];
 		bucket->bucketIDNext = i == capacity ? NULL_BUCKET : i;
 		bucketCache[TYPE_BUCKET( category, bucket->type )] = bucketID;
 	}
@@ -350,7 +356,7 @@ bool ObjectContext::grow()
 }
 
 
-u16 ObjectContext::new_bucket( const u16 type )
+u16 ObjectContext::new_bucket( const ObjectType_t type )
 {
 	// Grow buffer?
 	if( current == capacity )
@@ -367,13 +373,13 @@ u16 ObjectContext::new_bucket( const u16 type )
 }
 
 
-ObjectContext::ObjectBucket *ObjectContext::new_object( const u16 type )
+ObjectContext::ObjectBucket *ObjectContext::new_object( const ObjectType_t type )
 {
 	// Validate type
 	if( TYPE_INVALID( category, type ) ) { return nullptr; }
 
 	// At type capacity?
-	if( count( type ) == SysObjects::TYPE_MAX_COUNT[type] ) { return nullptr; }
+	if( count( type ) == CoreObjects::TYPE_MAX_COUNT[type] ) { return nullptr; }
 
 	// Lazy initialize first bucket for each object type
 	ObjectBucket *bucket = &buckets[bucketCache[TYPE_BUCKET( category, type )]];
@@ -383,7 +389,7 @@ ObjectContext::ObjectBucket *ObjectContext::new_object( const u16 type )
 	for( ;; )
 	{
 		// Early out if the bucket still has capacity
-		if( LIKELY( bucket->current < SysObjects::TYPE_BUCKET_CAPACITY[type] ) ) { break; }
+		if( LIKELY( bucket->current < CoreObjects::TYPE_BUCKET_CAPACITY[type] ) ) { break; }
 
 		// This bucket is full, but a 'next' bucket of our type already exists
 		if( bucket->bucketIDNext != NULL_BUCKET && buckets[bucket->bucketIDNext].type == bucket->type )
@@ -426,17 +432,17 @@ byte *ObjectContext::get_object_pointer( const Object &object ) const
 }
 
 
-Object ObjectContext::create( const u16 type )
+Object ObjectContext::create( const ObjectType type )
 {
-	Assert( type < OBJECT_TYPE_COUNT );
+	Assert( type < ObjectType::OBJECT_TYPE_COUNT );
 
 	// Find Available Bucket
 	ObjectBucket *bucket = new_object( type );
 	if( UNLIKELY( bucket == nullptr ) ) { return Object { }; }
 
 	// Create Object
-	void *const object = bucket->data + ( bucket->current * SysObjects::TYPE_SIZE[type] );
-	SysObjects::TYPE_CONSTRUCT[type]( object ); // Constructor
+	void *const object = bucket->data + ( bucket->current * CoreObjects::TYPE_SIZE[type] );
+	CoreObjects::TYPE_CONSTRUCT[type]( object ); // Constructor
 	return bucket->new_object( object );
 }
 
@@ -467,7 +473,7 @@ void ObjectContext::destroy_all()
 	}
 
 	// Reset current
-	current = SysObjects::CATEGORY_TYPE_COUNT[category];
+	current = CoreObjects::CATEGORY_TYPE_COUNT[category];
 
 	// Default-initialize ObjectBuckets for every object type
 	for( u16 i = current; i > 0; i-- )
@@ -476,14 +482,14 @@ void ObjectContext::destroy_all()
 		ObjectBucket *bucket = &buckets[bucketID];
 		new ( bucket ) ObjectBucket{ *this };
 		bucket->bucketID = bucketID;
-		bucket->type = SysObjects::CATEGORY_TYPES[category][bucketID];
+		bucket->type = CoreObjects::CATEGORY_TYPES[category][bucketID];
 		bucket->bucketIDNext = i == current ? NULL_BUCKET : i;
 		bucketCache[TYPE_BUCKET( category, bucket->type )] = bucketID;
 	}
 }
 
 
-void ObjectContext::destroy_all_type( const u16 type )
+void ObjectContext::destroy_all_type( const ObjectType type )
 {
 	// Free buckets
 	for( u16 bucketID = 0; bucketID < current; bucketID++ )
@@ -497,8 +503,8 @@ void ObjectContext::destroy_all_type( const u16 type )
 bool ObjectContext::activate( Object &object, const bool setActive )
 {
 	MemoryAssert( buckets != nullptr );
-	SysObjects::OBJECT_TYPE_DEFAULT_t *instance =
-		reinterpret_cast<SysObjects::OBJECT_TYPE_DEFAULT_t *>( get_object_pointer( object ) );
+	CoreObjects::DEFAULT_t *instance =
+		reinterpret_cast<CoreObjects::DEFAULT_t *>( get_object_pointer( object ) );
 	if( instance == nullptr ) { return false; }
 	instance->id.deactivated = !setActive;
 	object.deactivated = !setActive;
@@ -509,11 +515,14 @@ bool ObjectContext::activate( Object &object, const bool setActive )
 void ObjectContext::activate_all( const bool setActive )
 {
 	MemoryAssert( buckets != nullptr );
-	for( u16 type = 1; type < SysObjects::CATEGORY_TYPE_COUNT[category]; type++ ) { activate_all_type( type, setActive ); }
+	for( ObjectType_t type = 1; type < CoreObjects::CATEGORY_TYPE_COUNT[category]; type++ )
+	{
+		activate_all_type( type, setActive );
+	}
 }
 
 
-void ObjectContext::activate_all_type( const u16 type, const bool setActive )
+void ObjectContext::activate_all_type( const ObjectType type, const bool setActive )
 {
 	MemoryAssert( buckets != nullptr );
 	if( TYPE_INVALID( category, type ) ) { return; }
@@ -529,8 +538,9 @@ void ObjectContext::activate_all_type( const u16 type, const bool setActive )
 		// Loop over live objects in the bucket and cache them
 		for( u16 i = bucket->bottom; i < bucket->top; i++ )
 		{
-			byte *objectPtr = bucket->data + i * SysObjects::TYPE_SIZE[type];
-			SysObjects::OBJECT_TYPE_DEFAULT_t &object = *reinterpret_cast<SysObjects::OBJECT_TYPE_DEFAULT_t *>( objectPtr );
+			byte *objectPtr = bucket->data + i * CoreObjects::TYPE_SIZE[type];
+			CoreObjects::DEFAULT_t &object =
+				*reinterpret_cast<CoreObjects::DEFAULT_t *>( objectPtr );
 			object.id.deactivated = !setActive;
 		}
 
@@ -542,7 +552,7 @@ void ObjectContext::activate_all_type( const u16 type, const bool setActive )
 }
 
 
-u32 ObjectContext::count( const u16 type ) const
+u32 ObjectContext::count( const ObjectType type ) const
 {
 	MemoryAssert( objectCount != nullptr );
 	return objectCount[TYPE_BUCKET( category, type )];
@@ -575,7 +585,7 @@ void ObjectContext::serialize( Buffer &buffer, const ObjectContext &context )
 
 	Serializer serializer;
 	serializer.begin( buffer, 0 );
-	SysObjects::serialize( serializer, context );
+	CoreObjects::serialize( serializer, context );
 	serializer.end();
 }
 
@@ -587,14 +597,14 @@ void ObjectContext::deserialize( Buffer &buffer, ObjectContext &context )
 	context.disableEvents = true;
 	Deserializer deserializer;
 	deserializer.begin( buffer, 0 );
-	SysObjects::deserialize( deserializer, context );
+	CoreObjects::deserialize( deserializer, context );
 	deserializer.end();
 	context.disableEvents = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool ObjectContext::ObjectBucket::init( const u16 type )
+bool ObjectContext::ObjectBucket::init( const ObjectType_t type )
 {
 	// State
 	this->type = type;
@@ -603,8 +613,9 @@ bool ObjectContext::ObjectBucket::init( const u16 type )
 	this->bottom = 0;
 
 	// Allocate Memory
-	data = reinterpret_cast<byte *>( memory_alloc( SysObjects::TYPE_BUCKET_CAPACITY[type] * SysObjects::TYPE_SIZE[type] ) );
-	memory_set( data, 0, SysObjects::TYPE_BUCKET_CAPACITY[type] * SysObjects::TYPE_SIZE[type] );
+	data = reinterpret_cast<byte *>( memory_alloc( CoreObjects::TYPE_BUCKET_CAPACITY[type] *
+		CoreObjects::TYPE_SIZE[type] ) );
+	memory_set( data, 0, CoreObjects::TYPE_BUCKET_CAPACITY[type] * CoreObjects::TYPE_SIZE[type] );
 	return true;
 }
 
@@ -624,8 +635,8 @@ void ObjectContext::ObjectBucket::clear()
 	if( data == nullptr ) { return; }
 	for( u32 i = 0; i < top; i++ )
 	{
-		byte *const objectPtr = data + i * SysObjects::TYPE_SIZE[type];
-		delete_object( i, reinterpret_cast<SysObjects::OBJECT_TYPE_DEFAULT_t *>( objectPtr )->id.generation );
+		byte *const objectPtr = data + i * CoreObjects::TYPE_SIZE[type];
+		delete_object( i, reinterpret_cast<CoreObjects::DEFAULT_t *>( objectPtr )->id.generation );
 	}
 }
 
@@ -634,17 +645,17 @@ void *ObjectContext::ObjectBucket::new_object_pointer()
 {
 	// At capacity?
 	//MemoryAssert( data != nullptr );
-	//if( UNLIKELY( current == SysObjects::TYPE_BUCKET_CAPACITY[type] ) ) { return nullptr; }
+	//if( UNLIKELY( current == CoreObjects::TYPE_BUCKET_CAPACITY[type] ) ) { return nullptr; }
 
 	// Return Pointer
-	return data + current * SysObjects::TYPE_SIZE[type];
+	return data + current * CoreObjects::TYPE_SIZE[type];
 }
 
 
 Object ObjectContext::ObjectBucket::new_object( void *ptr )
 {
 	// Object
-	SysObjects::OBJECT_TYPE_DEFAULT_t *object = reinterpret_cast<SysObjects::OBJECT_TYPE_DEFAULT_t *>( ptr );
+	CoreObjects::DEFAULT_t *object = reinterpret_cast<CoreObjects::DEFAULT_t *>( ptr );
 
 	// Set Object
 	const u16 generation = object->id.generation + 1;
@@ -653,10 +664,10 @@ Object ObjectContext::ObjectBucket::new_object( void *ptr )
 
 	// Update bottom, current, & top
 	bottom = current < bottom ? current : bottom;
-	while( ++current < SysObjects::TYPE_BUCKET_CAPACITY[type] )
+	while( ++current < CoreObjects::TYPE_BUCKET_CAPACITY[type] )
 	{
-		const byte *const objectPtr = data + current * SysObjects::TYPE_SIZE[type];
-		if( reinterpret_cast<const SysObjects::OBJECT_TYPE_DEFAULT_t *>( objectPtr )->id.alive == false ) { break; }
+		const byte *const objectPtr = data + current * CoreObjects::TYPE_SIZE[type];
+		if( reinterpret_cast<const CoreObjects::DEFAULT_t *>( objectPtr )->id.alive == false ) { break; }
 	}
 	top = current > top ? current : top;
 
@@ -680,17 +691,17 @@ bool ObjectContext::ObjectBucket::delete_object( const u16 index, const u16 gene
 {
 	// Verify alive
 	MemoryAssert( data != nullptr );
-	Assert( index < SysObjects::TYPE_BUCKET_CAPACITY[type] );
-	byte *const objectPtr = data + index * SysObjects::TYPE_SIZE[type];
-	SysObjects::OBJECT_TYPE_DEFAULT_t *object = reinterpret_cast<SysObjects::OBJECT_TYPE_DEFAULT_t *>( objectPtr );
-	if( UNLIKELY( object->id.alive == false ) ) { return false; } // object isn't alive
-	if( UNLIKELY( object->id.generation != generation ) ) { return false; } // object doesn't match current object's generation
+	Assert( index < CoreObjects::TYPE_BUCKET_CAPACITY[type] );
+	byte *const objectPtr = data + index * CoreObjects::TYPE_SIZE[type];
+	CoreObjects::DEFAULT_t *object = reinterpret_cast<CoreObjects::DEFAULT_t *>( objectPtr );
+	if( UNLIKELY( object->id.alive == false ) ) { return false; }
+	if( UNLIKELY( object->id.generation != generation ) ) { return false; }
 
 	// Destroy event
 	object->event_destroy();
 
 	// Destructor
-	SysObjects::TYPE_DESTRUCT[type]( object );
+	CoreObjects::TYPE_DESTRUCT[type]( object );
 
 	// Mark dead
 	object->id.alive = false;
@@ -701,25 +712,29 @@ bool ObjectContext::ObjectBucket::delete_object( const u16 index, const u16 gene
 	// Update bottom
 	if( index == bottom )
 	{
-		SysObjects::OBJECT_TYPE_DEFAULT_t *objectBottom =
-			reinterpret_cast<SysObjects::OBJECT_TYPE_DEFAULT_t *>( data + bottom * SysObjects::TYPE_SIZE[type] );
-		while( bottom < SysObjects::TYPE_BUCKET_CAPACITY[type] && objectBottom->id.alive == false )
+		CoreObjects::DEFAULT_t *objectBottom =
+			reinterpret_cast<CoreObjects::DEFAULT_t *>( data + bottom * CoreObjects::TYPE_SIZE[type] );
+
+		while( bottom < CoreObjects::TYPE_BUCKET_CAPACITY[type] && objectBottom->id.alive == false )
 		{
 			bottom++;
-			objectBottom = reinterpret_cast<SysObjects::OBJECT_TYPE_DEFAULT_t *>( data + bottom * SysObjects::TYPE_SIZE[type] );
+			objectBottom = reinterpret_cast<CoreObjects::DEFAULT_t *>( data +
+				bottom * CoreObjects::TYPE_SIZE[type] );
 		}
-		if( bottom == SysObjects::TYPE_BUCKET_CAPACITY[type] ) { bottom = 0; }
+		if( bottom == CoreObjects::TYPE_BUCKET_CAPACITY[type] ) { bottom = 0; }
 	}
 
 	// Update top
 	if( index == ( top - 1 ) )
 	{
-		SysObjects::OBJECT_TYPE_DEFAULT_t *objectTop =
-			reinterpret_cast<SysObjects::OBJECT_TYPE_DEFAULT_t *>( data + ( top - 1 ) * SysObjects::TYPE_SIZE[type] );
+		CoreObjects::DEFAULT_t *objectTop =
+			reinterpret_cast<CoreObjects::DEFAULT_t *>( data + ( top - 1 ) * CoreObjects::TYPE_SIZE[type] );
+
 		while( top > 0 && objectTop->id.alive == false )
 		{
 			top--;
-			objectTop = reinterpret_cast<SysObjects::OBJECT_TYPE_DEFAULT_t *>( data + ( top - 1 ) * SysObjects::TYPE_SIZE[type] );
+			objectTop = reinterpret_cast<CoreObjects::DEFAULT_t *>( data +
+				( top - 1 ) * CoreObjects::TYPE_SIZE[type] );
 		}
 	}
 
@@ -742,9 +757,10 @@ byte *ObjectContext::ObjectBucket::get_object_pointer( const u16 index, const u1
 {
 	// Get Object Pointer
 	MemoryAssert( data != nullptr );
-	Assert( index < SysObjects::TYPE_BUCKET_CAPACITY[type] );
-	byte *objectPtr = data + index * SysObjects::TYPE_SIZE[type];
-	const SysObjects::OBJECT_TYPE_DEFAULT_t *const object = reinterpret_cast<SysObjects::OBJECT_TYPE_DEFAULT_t *>( objectPtr );
+	Assert( index < CoreObjects::TYPE_BUCKET_CAPACITY[type] );
+	byte *objectPtr = data + index * CoreObjects::TYPE_SIZE[type];
+	const CoreObjects::DEFAULT_t *const object =
+		reinterpret_cast<CoreObjects::DEFAULT_t *>( objectPtr );
 
 	// Error cases
 	if( UNLIKELY( object->id.alive == false ) ) { return nullptr; } // object slot isn't alive
@@ -759,9 +775,10 @@ const Object &ObjectContext::ObjectBucket::get_object_id( const u16 index ) cons
 {
 	// Get Object Pointer
 	MemoryAssert( data != nullptr );
-	Assert( index < SysObjects::TYPE_BUCKET_CAPACITY[type] );
-	byte *objectPtr = data + index * SysObjects::TYPE_SIZE[type];
-	const SysObjects::OBJECT_TYPE_DEFAULT_t *const object = reinterpret_cast<SysObjects::OBJECT_TYPE_DEFAULT_t *>( objectPtr );
+	Assert( index < CoreObjects::TYPE_BUCKET_CAPACITY[type] );
+	byte *objectPtr = data + index * CoreObjects::TYPE_SIZE[type];
+	const CoreObjects::DEFAULT_t *const object =
+		reinterpret_cast<CoreObjects::DEFAULT_t *>( objectPtr );
 
 	// Return Object ID
 	return object->id;
@@ -770,8 +787,7 @@ const Object &ObjectContext::ObjectBucket::get_object_id( const u16 index ) cons
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool ObjectContext::ObjectIteratorAll::find_object_ptr( ObjectIterator &itr,
-                                                        const ObjectBucket *const bucket,
-                                                        const u16 start )
+	const ObjectBucket *const bucket, const u16 start )
 {
 	// Bucket Verification
 	if( bucket->data == nullptr ) { return false; }
@@ -779,9 +795,9 @@ bool ObjectContext::ObjectIteratorAll::find_object_ptr( ObjectIterator &itr,
 	// Loop over the bucket's instances & check if they're alive
 	for( u32 i = start; i < bucket->top; i++ )
 	{
-		byte *const objectPtr = bucket->data + i * SysObjects::TYPE_SIZE[bucket->type];
-		const SysObjects::OBJECT_TYPE_DEFAULT_t *const object =
-			reinterpret_cast<const SysObjects::OBJECT_TYPE_DEFAULT_t *>( objectPtr );
+		byte *const objectPtr = bucket->data + i * CoreObjects::TYPE_SIZE[bucket->type];
+		const CoreObjects::DEFAULT_t *const object =
+			reinterpret_cast<const CoreObjects::DEFAULT_t *>( objectPtr );
 
 		// Skip dead or deactivated objects
 		if( !object->id.alive ) { continue; }
@@ -799,8 +815,7 @@ bool ObjectContext::ObjectIteratorAll::find_object_ptr( ObjectIterator &itr,
 
 
 bool ObjectContext::ObjectIteratorActive::find_object_ptr( ObjectIterator &itr,
-                                                           const ObjectBucket *const bucket,
-                                                           const u16 start )
+	const ObjectBucket *const bucket, const u16 start )
 {
 	// Bucket Verification
 	if( bucket->data == nullptr ) { return false; }
@@ -808,9 +823,9 @@ bool ObjectContext::ObjectIteratorActive::find_object_ptr( ObjectIterator &itr,
 	// Loop over the bucket's instances & check if they're alive
 	for( u32 i = start; i < bucket->top; i++ )
 	{
-		byte *const objectPtr = bucket->data + i * SysObjects::TYPE_SIZE[bucket->type];
-		const SysObjects::OBJECT_TYPE_DEFAULT_t *const object =
-			reinterpret_cast<const SysObjects::OBJECT_TYPE_DEFAULT_t *>( objectPtr );
+		byte *const objectPtr = bucket->data + i * CoreObjects::TYPE_SIZE[bucket->type];
+		const CoreObjects::DEFAULT_t *const object =
+			reinterpret_cast<const CoreObjects::DEFAULT_t *>( objectPtr );
 
 		// Skip dead or deactivated objects
 		if( !object->id.alive || object->id.deactivated ) { continue; }
@@ -852,8 +867,8 @@ void ObjectContext::ObjectIterator::find_object( u32 startIndex )
 		if( !polymorphic ) { break; }
 
 		// If so, check if the bucket is one of our child types
-		const u16 targetTypeDepth = SysObjects::TYPE_INHERITANCE_DEPTH[this->type];
-		const u16 bucketTypeDepth = SysObjects::TYPE_INHERITANCE_DEPTH[bucket->type];
+		const u16 targetTypeDepth = CoreObjects::TYPE_INHERITANCE_DEPTH[this->type];
+		const u16 bucketTypeDepth = CoreObjects::TYPE_INHERITANCE_DEPTH[bucket->type];
 		if( bucketTypeDepth > targetTypeDepth ) { continue; }
 
 		// We must be at the end of valid buckets
@@ -885,7 +900,7 @@ const Color colors[] =
 
 void ObjectContext::ObjectBucket::draw( String &label, float x, float y )
 {
-	const u16 bCapacity = SysObjects::TYPE_BUCKET_CAPACITY[type];
+	const u16 bCapacity = CoreObjects::TYPE_BUCKET_CAPACITY[type];
 	const bool isCache = ( context.bucketCache[TYPE_BUCKET( context.category, type )] == bucketID );
 	ObjectContext::ObjectBucket &next = context.buckets[bucketIDNext];
 	float allocatedMemoryKb = 0.0f;
@@ -899,17 +914,17 @@ void ObjectContext::ObjectBucket::draw( String &label, float x, float y )
 
 		// Draw Information
 		char info[256];
-		allocatedMemoryKb = KB( bCapacity * SysObjects::TYPE_SIZE[type] );
+		allocatedMemoryKb = KB( bCapacity * CoreObjects::TYPE_SIZE[type] );
 
 		snprintf( info, sizeof( info ),
-			"bucket id: %d\n\ntype: %s (id: %d)\n\ninheritance depth: %d\n\ncapacity: %d\n\nmemory: %.2f kb (%d bytes/obj)",
+			"bucket: %d\n\ntype: %s (id: %d)\n\ninheritance depth: %d\n\ncapacity: %d\n\nmemory: %.2f kb (%d bytes/o)",
 			bucketID,
-			SysObjects::TYPE_NAME[type],
+			CoreObjects::TYPE_NAME[type],
 			type,
-			SysObjects::TYPE_INHERITANCE_DEPTH[type],
+			CoreObjects::TYPE_INHERITANCE_DEPTH[type],
 			bCapacity,
 			allocatedMemoryKb,
-			SysObjects::TYPE_SIZE[type] );
+			CoreObjects::TYPE_SIZE[type] );
 
 		draw_text( fnt_iosevka, 14, x, y, c_white, info );
 		y += 144.0f;
@@ -920,8 +935,8 @@ void ObjectContext::ObjectBucket::draw( String &label, float x, float y )
 		// Draw Object Cells
 		for( u16 index = 0; index < bCapacity; index++ )
 		{
-			byte *objectPtr = data + index * SysObjects::TYPE_SIZE[type];
-			SysObjects::OBJECT_TYPE_DEFAULT_t &object = *reinterpret_cast<SysObjects::OBJECT_TYPE_DEFAULT_t *>( objectPtr );
+			byte *objectPtr = data + index * CoreObjects::TYPE_SIZE[type];
+			CoreObjects::DEFAULT_t &object = *reinterpret_cast<CoreObjects::DEFAULT_t *>( objectPtr );
 			const bool alive = object.id.alive;
 			const bool active = object.id.deactivated;
 
@@ -944,7 +959,7 @@ void ObjectContext::ObjectBucket::draw( String &label, float x, float y )
 					snprintf( buffer, sizeof( buffer ),
 						"type id: %u (%s)\n\nbucket id: %u\n\nindex: %u\n\ngeneration: %u\n\nid: %llu",
 						object.id.type,
-						SysObjects::TYPE_NAME[type],
+						CoreObjects::TYPE_NAME[type],
 						object.id.bucketID,
 						object.id.index,
 						object.id.generation,
@@ -1003,7 +1018,7 @@ void ObjectContext::ObjectBucket::draw( String &label, float x, float y )
 
 		// Draw Next Arrow
 		if( next.data != nullptr && ( next.type == type ||
-		    SysObjects::TYPE_INHERITANCE_DEPTH[next.type] > SysObjects::TYPE_INHERITANCE_DEPTH[type] ) )
+		    CoreObjects::TYPE_INHERITANCE_DEPTH[next.type] > CoreObjects::TYPE_INHERITANCE_DEPTH[type] ) )
 		{
 			const float x1 = ( x + bWidth * cellSize + 32 ) - 32.0f * 0.5f;
 			const float y1 = ( y + ( bHeight * cellSize ) * 0.5f ) - 16.0f * 0.5f;

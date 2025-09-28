@@ -6,7 +6,7 @@
 	#include <vendor/stddef.hpp>
 	#import <Cocoa/Cocoa.h>
 
-	namespace SysWindow
+	namespace CoreWindow
 	{
 		extern NSView *view;
 		extern NSWindow *window;

@@ -16,7 +16,7 @@ SOURCE_INCLUDES
 OBJECT( UIWidget_ColorPicker_Spectrum )
 PARENT( UIWidget )
 
-CATEGORY( CategoryUI )
+CATEGORY( UI )
 BUCKET_SIZE( 64 )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -216,7 +216,7 @@ PROTECTED void render( const Delta delta, const Alpha a )
 	}
 
 	// Colors
-	Gfx::shader_bind( SHADER_DEFAULT_HSV );
+	Gfx::shader_bind( Shader::SHADER_DEFAULT_HSV );
 	{
 		// Spectrum
 		{
@@ -247,7 +247,7 @@ PROTECTED void render( const Delta delta, const Alpha a )
 			draw_quad_uv_color( pA.x, pA.y, pA.z, pA.w, 0, 0, 0xFFFF, 0xFFFF, c1, c2, c3, c4 );
 		}
 	}
-	Gfx::shader_bind( SHADER_DEFAULT );
+	Gfx::shader_bind( Shader::SHADER_DEFAULT );
 
 	// Spectrum Picker
 	{

@@ -77,7 +77,7 @@ bool opengl_init()
 	HGLRC context;
 
 	// Get Device Context
-	device = GetDC( SysWindow::handle );
+	device = GetDC( CoreWindow::handle );
 
 	// Choose Pixel Format
 	if( ( format = ChoosePixelFormat( device, &pfd ) ) == 0 )

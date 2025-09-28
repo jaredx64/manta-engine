@@ -32,7 +32,7 @@ static XAtom TARGETS;
 static XAtom UTF8_STRING;
 static XAtom target;
 
-namespace SysWindow
+namespace CoreWindow
 {
 	XDisplay *display;
 	XWindow handle;
@@ -49,30 +49,30 @@ namespace SysWindow
 		Window::resized = true;
 
 		// Open XDisplay
-		if( ( SysWindow::display = XOpenDisplay( nullptr ) ) == nullptr )
+		if( ( CoreWindow::display = XOpenDisplay( nullptr ) ) == nullptr )
 			{ ErrorReturnMsg( false, "X11: Failed to open X11 display" ); }
 
 	#if GRAPHICS_OPENGL
 		// Setup Window Visual
-		if( ( visual = SysWindow::x11_create_visual() ) == nullptr )
+		if( ( visual = CoreWindow::x11_create_visual() ) == nullptr )
 			{ ErrorReturnMsg( false, "X11: Failed to create X11 visual" ); }
 	#endif
 
 		// Setup Window Attribute
-		attributes.background_pixel = BlackPixel( SysWindow::display, DefaultScreen( SysWindow::display ) );
-		attributes.border_pixel = BlackPixel( SysWindow::display, DefaultScreen( SysWindow::display ) );
+		attributes.background_pixel = BlackPixel( CoreWindow::display, DefaultScreen( CoreWindow::display ) );
+		attributes.border_pixel = BlackPixel( CoreWindow::display, DefaultScreen( CoreWindow::display ) );
 		attributes.event_mask = KeyPressMask | KeyReleaseMask | ButtonPressMask |
 		                        ButtonReleaseMask | PointerMotionMask | FocusChangeMask | StructureNotifyMask;
 
 		// TODO: dependency on 'visual'
-		attributes.colormap = XCreateColormap( SysWindow::display, DefaultRootWindow( SysWindow::display ),
+		attributes.colormap = XCreateColormap( CoreWindow::display, DefaultRootWindow( CoreWindow::display ),
 		                                       visual != nullptr ? visual->visual : 0, AllocNone );
 
 		// Create Window
-		SysWindow::handle =
+		CoreWindow::handle =
 			XCreateWindow(
-				SysWindow::display,
-				DefaultRootWindow( SysWindow::display ),
+				CoreWindow::display,
+				DefaultRootWindow( CoreWindow::display ),
 				0,
 				0,
 				Window::width,
@@ -86,18 +86,18 @@ namespace SysWindow
 			);
 
 		// Setup Atoms
-		WM_DELETE_WINDOW = XInternAtom( SysWindow::display, "WM_DELETE_WINDOW", false );
-		_NET_WM_STATE = XInternAtom( SysWindow::display, "_NET_WM_STATE", false );
-		_NET_WM_STATE_FULLSCREEN = XInternAtom( SysWindow::display, "_NET_WM_STATE_FULLSCREEN", false );
+		WM_DELETE_WINDOW = XInternAtom( CoreWindow::display, "WM_DELETE_WINDOW", false );
+		_NET_WM_STATE = XInternAtom( CoreWindow::display, "_NET_WM_STATE", false );
+		_NET_WM_STATE_FULLSCREEN = XInternAtom( CoreWindow::display, "_NET_WM_STATE_FULLSCREEN", false );
 
-		CLIPBOARD = XInternAtom( SysWindow::display , "CLIPBOARD", false );
-		PRIMARY = XInternAtom( SysWindow::display, "PRIMARY", false );
-		TARGETS = XInternAtom( SysWindow::display , "TARGETS", false );
-		UTF8_STRING = XInternAtom( SysWindow::display, "UTF8_STRING", false );
+		CLIPBOARD = XInternAtom( CoreWindow::display , "CLIPBOARD", false );
+		PRIMARY = XInternAtom( CoreWindow::display, "PRIMARY", false );
+		TARGETS = XInternAtom( CoreWindow::display , "TARGETS", false );
+		UTF8_STRING = XInternAtom( CoreWindow::display, "UTF8_STRING", false );
 		target = None;
 
 		// Setup Protocols
-		if( !XSetWMProtocols( SysWindow::display, SysWindow::handle, &WM_DELETE_WINDOW, 1 ) )
+		if( !XSetWMProtocols( CoreWindow::display, CoreWindow::handle, &WM_DELETE_WINDOW, 1 ) )
 			{ ErrorReturnMsg( false, "X11: Failed to set X11 WM protocols" ); }
 
 		// Setup Size
@@ -106,13 +106,13 @@ namespace SysWindow
 		hints.min_height = WINDOW_HEIGHT_MIN;
 		hints.max_width = WINDOW_WIDTH_MAX;
 		hints.max_height = WINDOW_HEIGHT_MAX;
-		XSetWMNormalHints( SysWindow::display, SysWindow::handle, &hints );
+		XSetWMNormalHints( CoreWindow::display, CoreWindow::handle, &hints );
 
 		// Set Window Title
-		XStoreName( SysWindow::display, SysWindow::handle, PROJECT_CAPTION );
+		XStoreName( CoreWindow::display, CoreWindow::handle, PROJECT_CAPTION );
 
 		// Enable detectable key auto-repeat #include <X11/XKBlib.h>
-		XkbSetDetectableAutoRepeat( SysWindow::display, true, 0 );
+		XkbSetDetectableAutoRepeat( CoreWindow::display, true, 0 );
 	#endif
 
 		// Success
@@ -132,18 +132,18 @@ namespace SysWindow
 	void show()
 	{
 	#if WINDOW_ENABLED
-		XMapRaised( SysWindow::display, SysWindow::handle );
+		XMapRaised( CoreWindow::display, CoreWindow::handle );
 	#endif
 	}
 
 	void poll()
 	{
 	#if WINDOW_ENABLED
-		while( XPending( SysWindow::display ) )
+		while( XPending( CoreWindow::display ) )
 		{
 			XEvent event;
 
-			XNextEvent( SysWindow::display, &event );
+			XNextEvent( CoreWindow::display, &event );
 
 			if( XFilterEvent( &event, None ) ) { continue; }
 
@@ -195,10 +195,10 @@ namespace SysWindow
 				case KeyRelease:
 				{
 					// Detect auto-repeat explicitly
-					if( XEventsQueued( SysWindow::display, QueuedAfterReading ) )
+					if( XEventsQueued( CoreWindow::display, QueuedAfterReading ) )
 					{
 						XEvent nextEvent;
-						XPeekEvent( SysWindow::display, &nextEvent );
+						XPeekEvent( CoreWindow::display, &nextEvent );
 						if( nextEvent.type == KeyPress &&
 							nextEvent.xkey.time == event.xkey.time &&
 							nextEvent.xkey.keycode == event.xkey.keycode )
@@ -286,13 +286,13 @@ namespace SysWindow
 					XAtom selection = None;
 					const char *data = nullptr;
 
-					if( XGetSelectionOwner( SysWindow::display, CLIPBOARD ) == SysWindow::handle &&
+					if( XGetSelectionOwner( CoreWindow::display, CLIPBOARD ) == CoreWindow::handle &&
 						request.selection == CLIPBOARD )
 					{
 						selection = CLIPBOARD;
 						data = clipboard;
 					}
-					else if( XGetSelectionOwner( SysWindow::display, PRIMARY ) == SysWindow::handle &&
+					else if( XGetSelectionOwner( CoreWindow::display, PRIMARY ) == CoreWindow::handle &&
 						request.selection == PRIMARY )
 					{
 						selection = PRIMARY;
@@ -323,7 +323,7 @@ namespace SysWindow
 						sendEvent.property = request.property;
 						sendEvent.time = request.time;
 
-						XSendEvent( SysWindow::display, request.requestor, 0, 0, (XEvent *)&sendEvent );
+						XSendEvent( CoreWindow::display, request.requestor, 0, 0, (XEvent *)&sendEvent );
 					}
 				}
 				break;
@@ -346,8 +346,8 @@ namespace SysWindow
 	void mouse_set_position( const int x, const int y )
 	{
 	#if WINDOW_ENABLED
-		XWarpPointer( SysWindow::display, None, SysWindow::handle, 0, 0, 0, 0, x, y );
-		XSync( SysWindow::display, false );
+		XWarpPointer( CoreWindow::display, None, CoreWindow::handle, 0, 0, 0, 0, x, y );
+		XSync( CoreWindow::display, false );
 	#endif
 	}
 };
@@ -375,14 +375,14 @@ namespace Window
 	void set_size( int width, int height )
 	{
 	#if WINDOW_ENABLED
-		const XScreen *const screen = DefaultScreenOfDisplay( SysWindow::display );
+		const XScreen *const screen = DefaultScreenOfDisplay( CoreWindow::display );
 		if( !screen ) { return; }
 
 		const int x = ( screen->width - width ) / 2;
 		const int y = ( screen->height - height ) / 2;
-		XResizeWindow( SysWindow::display, SysWindow::handle, width, height );
-		XMoveWindow( SysWindow::display, SysWindow::handle, x, y );
-		XFlush( SysWindow::display );
+		XResizeWindow( CoreWindow::display, CoreWindow::handle, width, height );
+		XMoveWindow( CoreWindow::display, CoreWindow::handle, x, y );
+		XFlush( CoreWindow::display );
 	#endif
 	}
 
@@ -399,7 +399,7 @@ namespace Window
 		// the _NET_WM_STATE_FULLSCREEN atom from the _NET_WM_STATE depending
 		// on whether we're entering or exiting fullscreen.
 		event.xclient.type = ClientMessage;
-		event.xclient.window = SysWindow::handle;
+		event.xclient.window = CoreWindow::handle;
 		event.xclient.message_type = _NET_WM_STATE;
 		event.xclient.format = 32;
 		event.xclient.data.l[0] = fullscreen;
@@ -408,7 +408,7 @@ namespace Window
 		event.xclient.data.l[3] = 0;
 
 		// Send the message to the window manager
-		XSendEvent( SysWindow::display, DefaultRootWindow( SysWindow::display ),
+		XSendEvent( CoreWindow::display, DefaultRootWindow( CoreWindow::display ),
 		            false, SubstructureRedirectMask | SubstructureNotifyMask, &event );
 
 		// Don't forget to update the internal fullscreen state!
@@ -420,7 +420,7 @@ namespace Window
 	void set_caption( const char *caption )
 	{
 	#if WINDOW_ENABLED
-		XStoreName( SysWindow::display, SysWindow::handle, caption );
+		XStoreName( CoreWindow::display, CoreWindow::handle, caption );
 	#endif
 	}
 
@@ -432,8 +432,8 @@ namespace Window
 		snprintf( clipboard, sizeof( clipboard ), "%s", buffer );
 
 		// Trigger SelectionRequest events (processed in Window::poll() above)
-		XSetSelectionOwner( SysWindow::display, CLIPBOARD, SysWindow::handle, CurrentTime );
-		if( XGetSelectionOwner( SysWindow::display, CLIPBOARD ) != SysWindow::handle ) { return false; }
+		XSetSelectionOwner( CoreWindow::display, CLIPBOARD, CoreWindow::handle, CurrentTime );
+		if( XGetSelectionOwner( CoreWindow::display, CLIPBOARD ) != CoreWindow::handle ) { return false; }
 	#endif
 		return true;
 	}
@@ -444,23 +444,23 @@ namespace Window
 	#if WINDOW_ENABLED
 		// Request the clipboard
 		buffer[0] = '\0';
-		if( XGetSelectionOwner( SysWindow::display, CLIPBOARD ) == None ) { return false; }
+		if( XGetSelectionOwner( CoreWindow::display, CLIPBOARD ) == None ) { return false; }
 
 		// If we're the current owner, short circuit to our own clipboard cache
-		if( XGetSelectionOwner( SysWindow::display, CLIPBOARD ) == SysWindow::handle )
+		if( XGetSelectionOwner( CoreWindow::display, CLIPBOARD ) == CoreWindow::handle )
 		{
 			snprintf( buffer, size, "%s", clipboard );
 			return true;
 		}
 
 		// If the owner is a different app, request and wait for a SelectionNotify event
-		XConvertSelection( SysWindow::display, CLIPBOARD, UTF8_STRING, CLIPBOARD, SysWindow::handle, CurrentTime );
+		XConvertSelection( CoreWindow::display, CLIPBOARD, UTF8_STRING, CLIPBOARD, CoreWindow::handle, CurrentTime );
 
 		Timer timer;
 		while( timer.ms() < 100.0 ) // 100 ms timeout
 		{
 			XEvent event;
-			XNextEvent( SysWindow::display, &event );
+			XNextEvent( CoreWindow::display, &event );
 			if( XFilterEvent( &event, None ) ) { continue; }
 
 			if( event.type == SelectionNotify )
@@ -474,7 +474,7 @@ namespace Window
 				unsigned char *data;
 				unsigned long count;
 
-				XGetWindowProperty( SysWindow::display, SysWindow::handle, CLIPBOARD, 0, I32_MAX, false,
+				XGetWindowProperty( CoreWindow::display, CoreWindow::handle, CLIPBOARD, 0, I32_MAX, false,
 					AnyPropertyType, &actualType, &actualFormat, &count, &bytesAfter, &data );
 
 				if( selection.target == TARGETS )
@@ -488,8 +488,8 @@ namespace Window
 
 					if( target != None )
 					{
-						XConvertSelection( SysWindow::display, CLIPBOARD, target, CLIPBOARD,
-							SysWindow::handle, CurrentTime );
+						XConvertSelection( CoreWindow::display, CLIPBOARD, target, CLIPBOARD,
+							CoreWindow::handle, CurrentTime );
 					}
 				}
 
@@ -516,8 +516,8 @@ namespace Window
 		snprintf( primary, sizeof( primary ), "%s", buffer );
 
 		// Trigger SelectionRequest events (processed in Window::poll() above)
-		XSetSelectionOwner( SysWindow::display, PRIMARY, SysWindow::handle, CurrentTime );
-		if( XGetSelectionOwner( SysWindow::display, PRIMARY ) != SysWindow::handle ) { return false; }
+		XSetSelectionOwner( CoreWindow::display, PRIMARY, CoreWindow::handle, CurrentTime );
+		if( XGetSelectionOwner( CoreWindow::display, PRIMARY ) != CoreWindow::handle ) { return false; }
 	#endif
 
 		return true;
@@ -529,23 +529,23 @@ namespace Window
 	#if WINDOW_ENABLED
 		// Request the selection
 		buffer[0] = '\0';
-		if( XGetSelectionOwner( SysWindow::display, PRIMARY ) == None ) { return false; }
+		if( XGetSelectionOwner( CoreWindow::display, PRIMARY ) == None ) { return false; }
 
 		// If we're the current owner, short circuit to our own selection cache
-		if( XGetSelectionOwner( SysWindow::display, PRIMARY ) == SysWindow::handle )
+		if( XGetSelectionOwner( CoreWindow::display, PRIMARY ) == CoreWindow::handle )
 		{
 			snprintf( buffer, size, "%s", primary );
 			return true;
 		}
 
 		// If the owner is a different app, request and wait for a SelectionNotify event
-		XConvertSelection( SysWindow::display, PRIMARY, UTF8_STRING, PRIMARY, SysWindow::handle, CurrentTime );
+		XConvertSelection( CoreWindow::display, PRIMARY, UTF8_STRING, PRIMARY, CoreWindow::handle, CurrentTime );
 
 		Timer timer;
 		while( timer.ms() < 100.0 ) // 100 ms timeout
 		{
 			XEvent event;
-			XNextEvent( SysWindow::display, &event );
+			XNextEvent( CoreWindow::display, &event );
 			if( XFilterEvent( &event, None ) ) { continue; }
 
 			if( event.type == SelectionNotify )
@@ -559,7 +559,7 @@ namespace Window
 				unsigned char *data;
 				unsigned long count;
 
-				XGetWindowProperty( SysWindow::display, SysWindow::handle, PRIMARY, 0, I32_MAX, false,
+				XGetWindowProperty( CoreWindow::display, CoreWindow::handle, PRIMARY, 0, I32_MAX, false,
 					AnyPropertyType, &actualType, &actualFormat, &count, &bytesAfter, &data );
 
 				if( selection.target == TARGETS )
@@ -573,8 +573,8 @@ namespace Window
 
 					if( target != None )
 					{
-						XConvertSelection( SysWindow::display, PRIMARY, target, PRIMARY,
-							SysWindow::handle, CurrentTime );
+						XConvertSelection( CoreWindow::display, PRIMARY, target, PRIMARY,
+							CoreWindow::handle, CurrentTime );
 					}
 				}
 

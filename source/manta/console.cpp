@@ -24,7 +24,6 @@ static UIContext ui;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 constexpr Color COLOR_PANELS = Color { 35, 40, 55, 255 };
-constexpr Color COLOR_LOG = Color { 0, 0, 0, 150 };
 
 constexpr Color COLOR_COMMAND = c_white;
 constexpr Color COLOR_HINT_COMMAND = Color { 255, 255, 255, 120 };
@@ -33,6 +32,11 @@ constexpr Color COLOR_HINT_PARAMETER_OPTIONAL = Color { 255, 255, 255, 120 };
 constexpr Color COLOR_DESC_COMMAND = Color { 255, 220, 175, 255 };
 constexpr Color COLOR_DESC_PARAM = Color { 110, 150, 175, 255 };
 constexpr Color COLOR_NAVIGATE = Color { 150, 255, 0, 255 };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+float Console::backgroundAlpha = 0.70f;
+float Console::logAlpha = 0.55f;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -487,8 +491,10 @@ public:
 		}
 
 		// Sliding
-		const float percentMouseX = ( ( mouse_x - anchorMouse.x ) - ( bounds.x + size.x / 2 ) ) / ( sizeView - size.x );
-		const float percentMouseY = ( ( mouse_y - anchorMouse.y ) - ( bounds.y + size.y / 2 ) ) / ( sizeView - size.y );
+		const float percentMouseX = ( ( mouse_x - anchorMouse.x ) -
+			( bounds.x + size.x / 2 ) ) / ( sizeView - size.x );
+		const float percentMouseY = ( ( mouse_y - anchorMouse.y ) -
+			( bounds.y + size.y / 2 ) ) / ( sizeView - size.y );
 		const float percentMouse = clamp( vertical ? percentMouseY : percentMouseX, 0.0f, 1.0f );
 		if( Mouse::check_released( mb_left ) )
 		{
@@ -603,7 +609,7 @@ public:
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-namespace SysConsole
+namespace CoreConsole
 {
 	static bool initialized = false;
 	static bool open = false;
@@ -644,32 +650,32 @@ namespace SysConsole
 	{
 		for( CommandCompare i = 0, j = 0; i <= CommandCompare_Contains; i++ )
 		{
-			for( const usize &candidate : SysConsole::candidates[i] )
+			for( const usize &candidate : CoreConsole::candidates[i] )
 			{
-				Assert( candidate < SysConsole::commands.count() );
-				if( static_cast<usize>( j++ ) == index ) { return SysConsole::commands[candidate]; }
+				Assert( candidate < CoreConsole::commands.count() );
+				if( static_cast<usize>( j++ ) == index ) { return CoreConsole::commands[candidate]; }
 			}
 		}
 
 		// Unreachable
 		Assert( false );
-		return SysConsole::commands[0];
+		return CoreConsole::commands[0];
 	}
 
 	static usize candidates_count()
 	{
 		const usize count =
-			SysConsole::candidates[CommandCompare_Exact].count() +
-			SysConsole::candidates[CommandCompare_Close].count() +
-			SysConsole::candidates[CommandCompare_Partial].count() +
-			SysConsole::candidates[CommandCompare_Contains].count();
+			CoreConsole::candidates[CommandCompare_Exact].count() +
+			CoreConsole::candidates[CommandCompare_Close].count() +
+			CoreConsole::candidates[CommandCompare_Partial].count() +
+			CoreConsole::candidates[CommandCompare_Contains].count();
 		return count;
 	}
 
 	static usize candidates_parameters_count()
 	{
 		if( candidates_count() != 1 ) { return 0; }
-		const Command &command = SysConsole::get_candidate_command( 0 );
+		const Command &command = CoreConsole::get_candidate_command( 0 );
 		return command.numParams;
 	}
 
@@ -683,9 +689,9 @@ namespace SysConsole
 
 	static usize log_find_next_command( const usize index )
 	{
-		for( usize i = index == USIZE_MAX ? 0 : index + 1; i < SysConsole::log.count(); i++ )
+		for( usize i = index == USIZE_MAX ? 0 : index + 1; i < CoreConsole::log.count(); i++ )
 		{
-			const LogLine &line = SysConsole::log[i];
+			const LogLine &line = CoreConsole::log[i];
 			if( line.command[0] != '\0' ) { return i; }
 		}
 		return USIZE_MAX;
@@ -693,9 +699,9 @@ namespace SysConsole
 
 	static usize log_find_previous_command( const usize index )
 	{
-		for( usize i = index == USIZE_MAX ? SysConsole::log.count() : index; i > 0; i-- )
+		for( usize i = index == USIZE_MAX ? CoreConsole::log.count() : index; i > 0; i-- )
 		{
-			const LogLine &line = SysConsole::log[i - 1];
+			const LogLine &line = CoreConsole::log[i - 1];
 			if( line.command[0] != '\0' ) { return i - 1; }
 		}
 		return USIZE_MAX;
@@ -708,22 +714,22 @@ THREAD_FUNCTION( stdin_listener )
 {
 	char buffer[256];
 
-	SysConsole::stdinAlive = true;
-	while( !SysConsole::stdinKill )
+	CoreConsole::stdinAlive = true;
+	while( !CoreConsole::stdinKill )
 	{
 		Thread::sleep( 100 );
 		if( fgets( buffer, sizeof( buffer ), stdin ) == nullptr ) { continue; }
 		Console::command_execute( buffer );
 		buffer[0] = '\0';
 	}
-	SysConsole::stdinAlive = false;
+	CoreConsole::stdinAlive = false;
 
 	return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool SysConsole::init()
+bool CoreConsole::init()
 {
 	// Init Objects & UI Context
 	ui.init();
@@ -733,7 +739,7 @@ bool SysConsole::init()
 	input.allowTabs = false;
 	input->filter = Text::filter_console;
 	input->limitCharacters = 255;
-	input->callbackOnUpdate = []( Text &text ) { SysConsole::updateCandidates = true; };
+	input->callbackOnUpdate = []( Text &text ) { CoreConsole::updateCandidates = true; };
 
 	TextFormat format;
 	format.font = fnt_iosevka;
@@ -743,29 +749,29 @@ bool SysConsole::init()
 	input->defaultFormat = format;
 
 	// Initalize Memory
-	SysConsole::log.init( LOG_MAX );
-	SysConsole::tokens.init();
-	SysConsole::commands.init();
-	SysConsole::history.init( HISTORY_MAX );
-	for( int i = 0; i < COMMANDCOMPARE_COUNT; i++ ) { SysConsole::candidates[i].init(); }
+	CoreConsole::log.init( LOG_MAX );
+	CoreConsole::tokens.init();
+	CoreConsole::commands.init();
+	CoreConsole::history.init( HISTORY_MAX );
+	for( int i = 0; i < COMMANDCOMPARE_COUNT; i++ ) { CoreConsole::candidates[i].init(); }
 
 	// System Ready
-	SysConsole::initialized = true;
+	CoreConsole::initialized = true;
 
 	// Initialize Deferred DVars
-	SysConsole::DVarInitializer &initializer = SysConsole::DVarInitializer::get_instance();
+	CoreConsole::DVarInitializer &initializer = CoreConsole::DVarInitializer::get_instance();
 	initializer.defer = false;
 	for( usize i = 0; i < initializer.current; i++ )
 	{
 		// Register Command
-		SysConsole::DVarInitializer::dvar_register(
+		CoreConsole::DVarInitializer::dvar_register(
 			initializer.dvars[i].definition,
 			initializer.dvars[i].parameters,
 			initializer.dvars[i].description,
 			initializer.dvars[i].payload,
 			initializer.dvars[i].function );
 	}
-	SysConsole::DVarInitializer::reset_instance();
+	CoreConsole::DVarInitializer::reset_instance();
 
 	// Built-in Commands
 	Console::command_init( "help", "Lists all available commands", CONSOLE_COMMAND_LAMBDA
@@ -773,7 +779,7 @@ bool SysConsole::init()
 			char buffer[COMMAND_SIZE];
 
 			Console::Log( c_white, "" );
-			for( auto itr = SysConsole::commands.rbegin(); itr != SysConsole::commands.rend(); ++itr )
+			for( auto itr = CoreConsole::commands.rbegin(); itr != CoreConsole::commands.rend(); ++itr )
 			{
 				const Command &command = *itr;
 				if( command.hidden || command.disabled ) { continue; }
@@ -801,8 +807,8 @@ bool SysConsole::init()
 
 #if 0
 	// Standard In Listener
-	SysConsole::stdinAlive = false;
-	SysConsole::stdinKill = false;
+	CoreConsole::stdinAlive = false;
+	CoreConsole::stdinKill = false;
 	Thread::create( stdin_listener );
 #endif
 
@@ -811,47 +817,47 @@ bool SysConsole::init()
 }
 
 
-bool SysConsole::free()
+bool CoreConsole::free()
 {
 #if 0
 	// Standard In Listener
-	SysConsole::stdinKill = true;
-	while( SysConsole::stdinAlive ) { Thread::sleep( 1 ); }
+	CoreConsole::stdinKill = true;
+	while( CoreConsole::stdinAlive ) { Thread::sleep( 1 ); }
 #endif
 
 	// Close Console
 	Console::close();
 
 	// Initalize Memory
-	for( int i = 0; i < COMMANDCOMPARE_COUNT; i++ ) { SysConsole::candidates[i].free(); }
-	SysConsole::history.free();
-	SysConsole::commands.free();
-	SysConsole::tokens.free();
-	SysConsole::log.free();
+	for( int i = 0; i < COMMANDCOMPARE_COUNT; i++ ) { CoreConsole::candidates[i].free(); }
+	CoreConsole::history.free();
+	CoreConsole::commands.free();
+	CoreConsole::tokens.free();
+	CoreConsole::log.free();
 
 	// Init Objects & UI Context
 	ui.free();
 
 	// Success
-	SysConsole::initialized = false;
+	CoreConsole::initialized = false;
 	return true;
 }
 
 
-Command *SysConsole::command( const CommandHandle handle )
+Command *CoreConsole::command( const CommandHandle handle )
 {
-	for( usize i = 0; i < SysConsole::commands.count(); i++ )
+	for( usize i = 0; i < CoreConsole::commands.count(); i++ )
 	{
-		if( SysConsole::commands[i].handle == handle ) { return &SysConsole::commands[i]; }
+		if( CoreConsole::commands[i].handle == handle ) { return &CoreConsole::commands[i]; }
 	}
 	return nullptr;
 }
 
 
-void SysConsole::tokenize_input( const char *string )
+void CoreConsole::tokenize_input( const char *string )
 {
 	// Clear Tokens
-	SysConsole::tokens.clear();
+	CoreConsole::tokens.clear();
 
 	// Tokenize Input
 	for( int i = 0; i < COMMAND_SIZE; i++ )
@@ -863,51 +869,51 @@ void SysConsole::tokenize_input( const char *string )
 		Token token;
 		const int increment = token.init( &string[i] );
 		if( token.length == 0 ) { continue; } else { i += increment; }
-		SysConsole::tokens.add( token );
+		CoreConsole::tokens.add( token );
 	}
 }
 
 
-void SysConsole::update_input()
+void CoreConsole::update_input()
 {
-	SysConsole::tokens.clear();
-	SysConsole::input->cstr( SysConsole::buffer, sizeof( SysConsole::buffer ) );
-	SysConsole::tokenize_input( SysConsole::buffer );
+	CoreConsole::tokens.clear();
+	CoreConsole::input->cstr( CoreConsole::buffer, sizeof( CoreConsole::buffer ) );
+	CoreConsole::tokenize_input( CoreConsole::buffer );
 }
 
 
-void SysConsole::update_candidates( const bool processHiddenCommands )
+void CoreConsole::update_candidates( const bool processHiddenCommands )
 {
 	// Reset Candidates List
-	for( int i = 0; i < COMMANDCOMPARE_COUNT; i++ ) { SysConsole::candidates[i].clear(); }
+	for( int i = 0; i < COMMANDCOMPARE_COUNT; i++ ) { CoreConsole::candidates[i].clear(); }
 
 	// Loop through registered commands and test them
 	usize numExact = 0;
 	usize numExactPartial = 0;
 	usize numPartial = 0;
 
-	for( usize candidate = 0; candidate < SysConsole::commands.count(); candidate++ )
+	for( usize candidate = 0; candidate < CoreConsole::commands.count(); candidate++ )
 	{
-		const Command &command = SysConsole::commands[candidate];
+		const Command &command = CoreConsole::commands[candidate];
 		if( ( !processHiddenCommands && command.hidden ) || command.disabled ) { continue; }
-		SysConsole::candidates[command.compare( SysConsole::tokens )].add( candidate );
+		CoreConsole::candidates[command.compare( CoreConsole::tokens )].add( candidate );
 	}
 
 	// Mark Region Dirty
-	SysConsole::candidateRegion.dirty = true;
+	CoreConsole::candidateRegion.dirty = true;
 }
 
 
-void SysConsole::navigate()
+void CoreConsole::navigate()
 {
 	// Navigation
 	static char inputCache[COMMAND_SIZE];
-	const usize candidatesCount = SysConsole::candidates_count();
-	Region &candidateRegion = SysConsole::candidateRegion;
-	usize &candidateIndex = SysConsole::candidateIndex;
-	Region &logRegion = SysConsole::logRegion;
-	usize &logIndex = SysConsole::logIndex;
-	usize &historyIndex = SysConsole::historyIndex;
+	const usize candidatesCount = CoreConsole::candidates_count();
+	Region &candidateRegion = CoreConsole::candidateRegion;
+	usize &candidateIndex = CoreConsole::candidateIndex;
+	Region &logRegion = CoreConsole::logRegion;
+	usize &logIndex = CoreConsole::logIndex;
+	usize &historyIndex = CoreConsole::historyIndex;
 
 	// Navigate Candidates / Log
 	if( Keyboard::check( vk_shift ) )
@@ -919,9 +925,9 @@ void SysConsole::navigate()
 			{
 				if( candidateIndex == USIZE_MAX )
 				{
-					SysConsole::input->cstr( inputCache, sizeof( inputCache ) );
+					CoreConsole::input->cstr( inputCache, sizeof( inputCache ) );
 					candidateIndex = candidatesCount - 1;
-					SysConsole::get_candidate_command( candidateIndex ).set_as_input();
+					CoreConsole::get_candidate_command( candidateIndex ).set_as_input();
 					candidateRegion.set_position_percent( 0.0f, false );
 				}
 				else
@@ -934,7 +940,7 @@ void SysConsole::navigate()
 					}
 					else
 					{
-						SysConsole::get_candidate_command( candidateIndex ).set_as_input();
+						CoreConsole::get_candidate_command( candidateIndex ).set_as_input();
 					}
 
 					candidateRegion.set_position_percent( 0.0f, false );
@@ -945,16 +951,16 @@ void SysConsole::navigate()
 			{
 				if( logIndex == USIZE_MAX )
 				{
-					SysConsole::input->cstr( inputCache, sizeof( inputCache ) );
+					CoreConsole::input->cstr( inputCache, sizeof( inputCache ) );
 				}
 
-				logIndex = SysConsole::log_find_next_command( logIndex );
+				logIndex = CoreConsole::log_find_next_command( logIndex );
 				logRegion.set_position_percent( 0.0f, false );
 
-				Console::set_input( logIndex == USIZE_MAX ? inputCache : SysConsole::log[logIndex].command );
+				Console::set_input( logIndex == USIZE_MAX ? inputCache : CoreConsole::log[logIndex].command );
 			}
 
-			SysConsole::updateCandidates = false;
+			CoreConsole::updateCandidates = false;
 		}
 		else if( Keyboard::check_pressed( vk_down ) )
 		{
@@ -963,9 +969,9 @@ void SysConsole::navigate()
 			{
 				if( candidateIndex == USIZE_MAX )
 				{
-					SysConsole::input->cstr( inputCache, sizeof( inputCache ) );
+					CoreConsole::input->cstr( inputCache, sizeof( inputCache ) );
 					candidateIndex = 0;
-					SysConsole::get_candidate_command( candidateIndex ).set_as_input();
+					CoreConsole::get_candidate_command( candidateIndex ).set_as_input();
 					candidateRegion.set_position_percent( 0.0f, false );
 				}
 				else
@@ -978,7 +984,7 @@ void SysConsole::navigate()
 					}
 					else
 					{
-						SysConsole::get_candidate_command( candidateIndex ).set_as_input();
+						CoreConsole::get_candidate_command( candidateIndex ).set_as_input();
 					}
 
 					candidateRegion.set_position_percent( 0.0f, false );
@@ -989,27 +995,27 @@ void SysConsole::navigate()
 			{
 				if( logIndex == USIZE_MAX )
 				{
-					SysConsole::input->cstr( inputCache, sizeof( inputCache ) );
+					CoreConsole::input->cstr( inputCache, sizeof( inputCache ) );
 				}
 
-				logIndex = SysConsole::log_find_previous_command( logIndex );
+				logIndex = CoreConsole::log_find_previous_command( logIndex );
 				logRegion.set_position_percent( 0.0f, false );
 
-				Console::set_input( logIndex == USIZE_MAX ? inputCache : SysConsole::log[logIndex].command );
+				Console::set_input( logIndex == USIZE_MAX ? inputCache : CoreConsole::log[logIndex].command );
 			}
 
-			SysConsole::updateCandidates = false;
+			CoreConsole::updateCandidates = false;
 		}
 	}
 	// Navigate History
-	else if( SysConsole::history.count() > 0 )
+	else if( CoreConsole::history.count() > 0 )
 	{
 		if( Keyboard::check_pressed( vk_up ) )
 		{
 			if( historyIndex == USIZE_MAX )
 			{
-				SysConsole::input->cstr( inputCache, sizeof( inputCache ) );
-				historyIndex = SysConsole::history.count() - 1;
+				CoreConsole::input->cstr( inputCache, sizeof( inputCache ) );
+				historyIndex = CoreConsole::history.count() - 1;
 			}
 			else if( historyIndex > 0 )
 			{
@@ -1017,13 +1023,13 @@ void SysConsole::navigate()
 			}
 
 			Console::set_input( historyIndex == USIZE_MAX ?
-				inputCache : SysConsole::history[historyIndex].string );
+				inputCache : CoreConsole::history[historyIndex].string );
 		}
 		else if( Keyboard::check_pressed( vk_down ) )
 		{
-			historyIndex = historyIndex < SysConsole::history.count() - 1 ? historyIndex + 1 : USIZE_MAX;
+			historyIndex = historyIndex < CoreConsole::history.count() - 1 ? historyIndex + 1 : USIZE_MAX;
 			Console::set_input( historyIndex == USIZE_MAX ?
-				inputCache : SysConsole::history[historyIndex].string );
+				inputCache : CoreConsole::history[historyIndex].string );
 		}
 	}
 
@@ -1032,13 +1038,13 @@ void SysConsole::navigate()
 	{
 		candidateIndex = USIZE_MAX;
 		logIndex = USIZE_MAX;
-		SysConsole::updateCandidates = true;
+		CoreConsole::updateCandidates = true;
 	}
 
 	// Tab
-	if( Keyboard::check_pressed( vk_tab ) && SysConsole::candidates_count() > 0 )
+	if( Keyboard::check_pressed( vk_tab ) && CoreConsole::candidates_count() > 0 )
 	{
-		const Command &command = SysConsole::get_candidate_command( 0 );
+		const Command &command = CoreConsole::get_candidate_command( 0 );
 		command.set_as_input();
 	}
 
@@ -1062,8 +1068,8 @@ void SysConsole::navigate()
 	// Log Navigation Scrolling
 	else if( logIndex != USIZE_MAX )
 	{
-		const int positionTop = 0 + ( SysConsole::log.count() - 1 - logIndex  ) * 20;
-		const int positionBottom = 2 + ( SysConsole::log.count() - 1 - logIndex ) * 20 + 20;
+		const int positionTop = 0 + ( CoreConsole::log.count() - 1 - logIndex  ) * 20;
+		const int positionBottom = 2 + ( CoreConsole::log.count() - 1 - logIndex ) * 20 + 20;
 		const int viewTop = 0 - logRegion.offset.y;
 		const int viewBottom = logRegion.dimensionsView.y - logRegion.offset.y;
 
@@ -1079,9 +1085,9 @@ void SysConsole::navigate()
 }
 
 
-void SysConsole::draw_input( const Delta delta )
+void CoreConsole::draw_input( const Delta delta )
 {
-	TextEditor &input = SysConsole::input;
+	TextEditor &input = CoreConsole::input;
 
 	// Background
 	const int bX1 = 4;
@@ -1091,14 +1097,14 @@ void SysConsole::draw_input( const Delta delta )
 	draw_rectangle( bX1, bY1, bX2, bY2, COLOR_PANELS );
 
 	// Region
-	Region &region = SysConsole::inputRegion;
+	Region &region = CoreConsole::inputRegion;
 	region.scrollbarVisible = bool_v2 { false, false };
 	const int rX1 = 20;
 	const int rY1 = 4;
 	const int rX2 = Window::width - 8;
 	const int rY2 = rY1 + 32;
 	region.dimensionsView = int_v2 { rX2 - rX1, rY2 - rY1 };
-	if( SysText::ACTIVE_TEXT_EDITOR == &SysConsole::input )
+	if( CoreText::ACTIVE_TEXT_EDITOR == &CoreConsole::input )
 	{
 		const int caretX = input->get_position_from_index( input.caret_get_position() ).x;
 		if( caretX + 2 < ( 0 - region.offset.x ) )
@@ -1120,45 +1126,45 @@ void SysConsole::draw_input( const Delta delta )
 	Gfx::set_scissor_nested( rX1, rY1, rX2, rY2 );
 	{
 		// Hints
-		if( input->length() > 0 && SysConsole::tokens.count() > 0 )
+		if( input->length() > 0 && CoreConsole::tokens.count() > 0 )
 		{
 			// Find candidate command
 			Command *command = nullptr;
 			for( CommandCompare i = CommandCompare_Exact; i <= CommandCompare_Partial; i++ )
 			{
-				if( SysConsole::candidates[i].count() == 0 ) { continue; }
-				command = &SysConsole::commands[SysConsole::candidates[i][0]];
+				if( CoreConsole::candidates[i].count() == 0 ) { continue; }
+				command = &CoreConsole::commands[CoreConsole::candidates[i][0]];
 				Assert( command != nullptr );
 				break;
 			}
 
 			// Draw Hints
-			const bool navigating = SysConsole::historyIndex != USIZE_MAX || SysConsole::candidateIndex != USIZE_MAX;
+			const bool navigating = CoreConsole::historyIndex != USIZE_MAX || CoreConsole::candidateIndex != USIZE_MAX;
 			if( command != nullptr && !navigating )
 			{
-				input->cstr( SysConsole::buffer, sizeof( SysConsole::buffer ) );
-				const int widthInput = text_dimensions_f( fnt_iosevka.bold(), 16, SysConsole::buffer ).x;
+				input->cstr( CoreConsole::buffer, sizeof( CoreConsole::buffer ) );
+				const int widthInput = text_dimensions_f( fnt_iosevka.bold(), 16, CoreConsole::buffer ).x;
 				const int widthSpace = text_dimensions( fnt_iosevka, 16, " " ).x;
 				int xOffset = input.screenX + widthInput + 1;
 				int yOffset = input.screenY + 2;
 
-				const bool skipParam = SysConsole::tokens.count() <= static_cast<usize>( command->numRequiredTokens );
+				const bool skipParam = CoreConsole::tokens.count() <= static_cast<usize>( command->numRequiredTokens );
 				if( skipParam && input[input->length() - 1].codepoint == ' ' ) { xOffset -= widthSpace; } else
 				if( !skipParam && input[input->length() - 1].codepoint != ' ' ) { xOffset += widthSpace; }
 
-				for( usize i = SysConsole::tokens.count(); i < command->tokens.count() + skipParam; i++ )
+				for( usize i = CoreConsole::tokens.count(); i < command->tokens.count() + skipParam; i++ )
 				{
 					// Command Tokens
 					if( i <= static_cast<usize>( command->numRequiredTokens ) )
 					{
 						const Token &token = command->tokens[i - skipParam];
 
-						const int offset = i == SysConsole::tokens.count() ?
-							SysConsole::tokens[SysConsole::tokens.count() - skipParam].length : 0;
+						const int offset = i == CoreConsole::tokens.count() ?
+							CoreConsole::tokens[CoreConsole::tokens.count() - skipParam].length : 0;
 
 						if( offset <= token.length )
 						{
-							const char *hint = &token.string[i == SysConsole::tokens.count() ? offset : 0];
+							const char *hint = &token.string[i == CoreConsole::tokens.count() ? offset : 0];
 							draw_text( fnt_iosevka, 16, xOffset, yOffset, COLOR_HINT_COMMAND, hint );
 							xOffset += text_dimensions( fnt_iosevka, 16, hint ).x + widthSpace;
 						}
@@ -1188,7 +1194,7 @@ void SysConsole::draw_input( const Delta delta )
 }
 
 
-void SysConsole::draw_log( const Delta delta )
+void CoreConsole::draw_log( const Delta delta )
 {
 	const int mX = mouse_x;
 	const int mY = mouse_y;
@@ -1198,10 +1204,10 @@ void SysConsole::draw_log( const Delta delta )
 	const int bY1 = 40;
 	const int bX2 = Window::width - 4;
 	const int bY2 = Window::height - 64;
-	draw_rectangle( bX1, bY1, bX2, bY2, COLOR_LOG );
+	draw_rectangle( bX1, bY1, bX2, bY2, Color { 0, 0, 0, static_cast<u8>( Console::logAlpha * 255.0f ) } );
 
 	// Region
-	Region &region = SysConsole::logRegion;
+	Region &region = CoreConsole::logRegion;
 	const int rX1 = bX1;
 	const int rY1 = bY1;
 	const int rX2 = bX2 - Region::scrollbarThickness;
@@ -1216,15 +1222,15 @@ void SysConsole::draw_log( const Delta delta )
 		int_v2 dimensions = { 0, 0 };
 
 		int yOffset = 0;
-		for( usize i = SysConsole::log.count(); i > 0; i-- )
+		for( usize i = CoreConsole::log.count(); i > 0; i-- )
 		{
-			LogLine &line = SysConsole::log[i - 1];
+			LogLine &line = CoreConsole::log[i - 1];
 			int xOffset = 0;
 			const int tX = rX1 + region.offset.x + 4;
 			const int tY = rY1 + region.offset.y + 4;
 
 			// Highlight
-			const bool navigating = SysConsole::logIndex == ( i - 1 );
+			const bool navigating = CoreConsole::logIndex == ( i - 1 );
 			if( line.command[0] != '\0' )
 			{
 				const int hX1 = rX1 + region.offset.x;
@@ -1268,8 +1274,12 @@ void SysConsole::draw_log( const Delta delta )
 
 			// Draw Text
 			const Color color = color_mix( line.color, COLOR_NAVIGATE, navigating );
+			const int_v2 lineDimensions = text_dimensions( fnt_iosevka, 14, line.string );
+			draw_rectangle( tX + xOffset - 2, tY + yOffset - 2,
+				tX + xOffset + lineDimensions.x + 2, tY + yOffset + 16,
+				Color { 0, 0, 0, 150 } );
 			draw_text( fnt_iosevka, 14, tX + xOffset, tY + yOffset, color, line.string );
-			dimensions.x = max( dimensions.x, text_dimensions( fnt_iosevka, 14, line.string ).x );
+			dimensions.x = max( dimensions.x, lineDimensions.x );
 			dimensions.y += 20; yOffset += 20;
 		}
 
@@ -1281,11 +1291,11 @@ void SysConsole::draw_log( const Delta delta )
 }
 
 
-void SysConsole::draw_candidates( const Delta delta )
+void CoreConsole::draw_candidates( const Delta delta )
 {
-	if( SysConsole::candidates_count() == 0 ) { return; }
-	if( SysConsole::hideCandidates ) { return; }
-	const usize parameterHintCount = SysConsole::candidates_parameters_count();
+	if( CoreConsole::candidates_count() == 0 ) { return; }
+	if( CoreConsole::hideCandidates ) { return; }
+	const usize parameterHintCount = CoreConsole::candidates_parameters_count();
 	const int mX = mouse_x;
 	const int mY = mouse_y;
 	const int widthSpace = text_dimensions( fnt_iosevka, 14, " " ).x;
@@ -1294,11 +1304,11 @@ void SysConsole::draw_candidates( const Delta delta )
 	const int bX1 = 16;
 	const int bY1 = 44;
 	const int bX2 = bX1 + ( Window::width - bX1 * 2 ) - 16;
-	const int bY2 = bY1 + 4 + SysConsole::candidates_count_view() * 24;
+	const int bY2 = bY1 + 4 + CoreConsole::candidates_count_view() * 24;
 	draw_rectangle( bX1, bY1, bX2, bY2, COLOR_PANELS );
 
 	// Region
-	Region &region = SysConsole::candidateRegion;
+	Region &region = CoreConsole::candidateRegion;
 	const int rX1 = bX1;
 	const int rY1 = bY1;
 	const int rX2 = bX2;
@@ -1313,16 +1323,16 @@ void SysConsole::draw_candidates( const Delta delta )
 	// Candidates
 	for( CommandCompare i = 0, j = 0; i <= CommandCompare_Contains; i++ )
 	{
-		for( const usize &candidate : SysConsole::candidates[i] )
+		for( const usize &candidate : CoreConsole::candidates[i] )
 		{
-			Assert( candidate < SysConsole::commands.count() );
-			Command &command = SysConsole::commands[candidate];
+			Assert( candidate < CoreConsole::commands.count() );
+			Command &command = CoreConsole::commands[candidate];
 
 			int xOffset = 0;
 			const int tX = bX1 + 8 + region.offset.x;
 			const int tY = bY1 + 8 + yOffset + region.offset.y;
 
-			const bool navigating = SysConsole::candidateIndex == static_cast<usize>( j++ );
+			const bool navigating = CoreConsole::candidateIndex == static_cast<usize>( j++ );
 			const Color colorCommand = color_mix( COLOR_COMMAND, COLOR_NAVIGATE, navigating );
 			const Color colorRequired = color_mix( COLOR_HINT_PARAMETER_REQUIRED, COLOR_NAVIGATE, navigating );
 			const Color colorOptional = color_mix( COLOR_HINT_PARAMETER_OPTIONAL, COLOR_NAVIGATE, navigating );
@@ -1347,9 +1357,9 @@ void SysConsole::draw_candidates( const Delta delta )
 				command.set_as_input();
 				if( Keyboard::check( vk_control ) )
 				{
-					SysConsole::update_input();
+					CoreConsole::update_input();
 					Console::command_execute();
-					SysConsole::input.clear();
+					CoreConsole::input.clear();
 					return;
 				}
 				Mouse::clear();
@@ -1391,7 +1401,7 @@ void SysConsole::draw_candidates( const Delta delta )
 	// Parameter Hints
 	for( usize i = 0; i < parameterHintCount; i++ )
 	{
-		const Command &command = SysConsole::get_candidate_command( 0 );
+		const Command &command = CoreConsole::get_candidate_command( 0 );
 		const Token &token = command.tokens[command.numRequiredTokens + i];
 		const bool isParamRequired = ( token.string[0] == PARAMETER_CHAR_REQUIRED );
 		const int tX = bX1 + 8 + region.offset.x;
@@ -1421,45 +1431,47 @@ void SysConsole::draw_candidates( const Delta delta )
 }
 
 
-void SysConsole::Log( const Color color, const char *command, const char *message )
+void CoreConsole::Log( const Color color, const char *command, const char *message )
 {
 	// Reset log seek position
-	SysConsole::logIndex = USIZE_MAX;
+	CoreConsole::logIndex = USIZE_MAX;
 
 	// Add line
-	if( SysConsole::log.count() >= LOG_MAX ) { SysConsole::log.remove( 0 ); }
-	SysConsole::log.add( LogLine { color, command, message } );
-	SysConsole::logRegion.set_position_percent( 0.0f, true );
-	SysConsole::logRegion.set_position_percent( 0.0f, false );
+	if( CoreConsole::log.count() >= LOG_MAX ) { CoreConsole::log.remove( 0 ); }
+	CoreConsole::log.add( LogLine { color, command, message } );
+	CoreConsole::logRegion.set_position_percent( 0.0f, true );
+	CoreConsole::logRegion.set_position_percent( 0.0f, false );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-SysConsole::DVarInitializer &SysConsole::DVarInitializer::get_instance()
+CoreConsole::DVarInitializer &CoreConsole::DVarInitializer::get_instance()
 {
-	// - DVars may be initialized before Console::init() -- to handle this, we defer command registration via this
-	// DVarInitializer class
-	// - Singleton pattern is used here to ensure the arrays above are always in a valid state, regardless the order or
-	// translation unit they are accessed from (necessary for DVars in static scope across multiple translation units)
+	// DVars may be initialized before Console::init() -- to handle this, we defer command registration via this
+	// DVarInitializer class.
 
-	static SysConsole::DVarInitializer initializer;
+	// A singleton pattern is used here to ensure the arrays above are always in a valid state, regardless of the
+	// order or translation unit they are accessed from (necessary for DVars in static scope across multiple
+	// translation units).
+
+	static CoreConsole::DVarInitializer initializer;
 	return initializer;
 }
 
 
-SysConsole::DVarInitializer &SysConsole::DVarInitializer::reset_instance()
+CoreConsole::DVarInitializer &CoreConsole::DVarInitializer::reset_instance()
 {
-	SysConsole::DVarInitializer &initializer = SysConsole::DVarInitializer::get_instance();
+	CoreConsole::DVarInitializer &initializer = CoreConsole::DVarInitializer::get_instance();
 	initializer.current = 0;
 	return initializer;
 }
 
 
-void SysConsole::DVarInitializer::dvar_register( const char *definition, const char *parameter,
+void CoreConsole::DVarInitializer::dvar_register( const char *definition, const char *parameter,
 	const char *description, void *payload, CONSOLE_COMMAND_FUNCTION_POINTER( function ) )
 {
 	if( payload == nullptr ) { return; }
-	SysConsole::DVarInitializer &initializer = SysConsole::DVarInitializer::get_instance();
+	CoreConsole::DVarInitializer &initializer = CoreConsole::DVarInitializer::get_instance();
 
 	// Defer initialization until a later point; store our parameters
 	if( initializer.defer )
@@ -1477,17 +1489,17 @@ void SysConsole::DVarInitializer::dvar_register( const char *definition, const c
 	// Initialize DVar
 	else
 	{
-		SysConsole::buffer[0] = '\0';
-		snprintf( SysConsole::buffer, sizeof( SysConsole::buffer ), "dv %s %s", definition, parameter );
-		CommandHandle handle = Console::command_init( SysConsole::buffer, description, function, payload );
+		CoreConsole::buffer[0] = '\0';
+		snprintf( CoreConsole::buffer, sizeof( CoreConsole::buffer ), "dv %s %s", definition, parameter );
+		CommandHandle handle = Console::command_init( CoreConsole::buffer, description, function, payload );
 	}
 }
 
 
-void SysConsole::DVarInitializer::dvar_release( void *payload )
+void CoreConsole::DVarInitializer::dvar_release( void *payload )
 {
 	if( payload == nullptr ) { return; }
-	SysConsole::DVarInitializer &initializer = SysConsole::DVarInitializer::get_instance();
+	CoreConsole::DVarInitializer &initializer = CoreConsole::DVarInitializer::get_instance();
 
 	if( initializer.defer )
 	{
@@ -1517,9 +1529,9 @@ void SysConsole::DVarInitializer::dvar_release( void *payload )
 	else
 	{
 		// Release command from Console
-		for( usize i = 0; i < SysConsole::commands.count(); i++ )
+		for( usize i = 0; i < CoreConsole::commands.count(); i++ )
 		{
-			const Command &command = SysConsole::commands[i];
+			const Command &command = CoreConsole::commands[i];
 			if( command.payload == payload )
 			{
 				Console::command_free( i );
@@ -1530,10 +1542,10 @@ void SysConsole::DVarInitializer::dvar_release( void *payload )
 }
 
 
-void SysConsole::DVarInitializer::dvar_set_hidden( void *payload, const bool hidden )
+void CoreConsole::DVarInitializer::dvar_set_hidden( void *payload, const bool hidden )
 {
 	if( payload == nullptr ) { return; }
-	SysConsole::DVarInitializer &initializer = SysConsole::DVarInitializer::get_instance();
+	CoreConsole::DVarInitializer &initializer = CoreConsole::DVarInitializer::get_instance();
 
 	if( initializer.defer )
 	{
@@ -1550,9 +1562,9 @@ void SysConsole::DVarInitializer::dvar_set_hidden( void *payload, const bool hid
 	else
 	{
 		// Release command from Console
-		for( usize i = 0; i < SysConsole::commands.count(); i++ )
+		for( usize i = 0; i < CoreConsole::commands.count(); i++ )
 		{
-			const Command &command = SysConsole::commands[i];
+			const Command &command = CoreConsole::commands[i];
 			if( command.payload == payload )
 			{
 				Console::command_set_hidden( i, hidden );
@@ -1563,10 +1575,10 @@ void SysConsole::DVarInitializer::dvar_set_hidden( void *payload, const bool hid
 }
 
 
-void SysConsole::DVarInitializer::dvar_set_enabled( void *payload, const bool enabled )
+void CoreConsole::DVarInitializer::dvar_set_enabled( void *payload, const bool enabled )
 {
 	if( payload == nullptr ) { return; }
-	SysConsole::DVarInitializer &initializer = SysConsole::DVarInitializer::get_instance();
+	CoreConsole::DVarInitializer &initializer = CoreConsole::DVarInitializer::get_instance();
 
 	if( initializer.defer )
 	{
@@ -1583,9 +1595,9 @@ void SysConsole::DVarInitializer::dvar_set_enabled( void *payload, const bool en
 	else
 	{
 		// Release command from Console
-		for( usize i = 0; i < SysConsole::commands.count(); i++ )
+		for( usize i = 0; i < CoreConsole::commands.count(); i++ )
 		{
-			const Command &command = SysConsole::commands[i];
+			const Command &command = CoreConsole::commands[i];
 			if( command.payload == payload )
 			{
 				Console::command_set_enabled( i, enabled );
@@ -1614,8 +1626,8 @@ static void dvar_color_picker_window( Color *variable )
 	ui.destroy_widget( window );
 
 	// Create New Window
-	window = ui.create_widget( UIWidget_Window );
-	auto windowHandle = ui.handle<UIWidget_Window>( window );
+	window = ui.create_widget( ObjectType::UIWidget_Window );
+	auto windowHandle = ui.handle<ObjectType::UIWidget_Window>( window );
 	if( windowHandle )
 	{
 		windowHandle->x = 64;
@@ -1626,17 +1638,18 @@ static void dvar_color_picker_window( Color *variable )
 		windowHandle->color = c_dkgray;
 	}
 
-	spectrum = ui.create_widget( UIWidget_ColorPicker_Spectrum, window );
-	auto spectrumHandle = ui.handle<UIWidget_ColorPicker_Spectrum>( spectrum ); Assert( spectrumHandle );
+	spectrum = ui.create_widget( ObjectType::UIWidget_ColorPicker_Spectrum, window );
+	auto spectrumHandle = ui.handle<ObjectType::UIWidget_ColorPicker_Spectrum>( spectrum );
+	Assert( spectrumHandle );
 	if( spectrumHandle )
 	{
 		spectrumHandle->set_rgba( color != nullptr ? *color : c_teal );
 
 		spectrumHandle->callbackOnUpdate = []( UIContext &context, Object widget )
 			{
-				auto widgetHandle = context.handle<UIWidget_ColorPicker_Spectrum>( widget );
+				auto widgetHandle = context.handle<ObjectType::UIWidget_ColorPicker_Spectrum>( widget );
 				Assert( widgetHandle );
-				auto parentHandle = context.handle<UIWidget_Window>( widgetHandle->parent );
+				auto parentHandle = context.handle<ObjectType::UIWidget_Window>( widgetHandle->parent );
 				Assert( parentHandle );
 
 				widgetHandle->x = 4;
@@ -1647,9 +1660,9 @@ static void dvar_color_picker_window( Color *variable )
 
 		spectrumHandle->callbackOnInteract = []( UIContext &context, Object widget )
 			{
-				auto textboxesHandle = context.handle<UIWidget_ColorPicker_TextBox>( textboxes );
+				auto textboxesHandle = context.handle<ObjectType::UIWidget_ColorPicker_TextBox>( textboxes );
 				Assert( textboxesHandle );
-				auto spectrumHandle = context.handle<UIWidget_ColorPicker_Spectrum>( spectrum );
+				auto spectrumHandle = context.handle<ObjectType::UIWidget_ColorPicker_Spectrum>( spectrum );
 				Assert( spectrumHandle );
 
 				const Color c = spectrumHandle->get_rgba();
@@ -1658,17 +1671,18 @@ static void dvar_color_picker_window( Color *variable )
 			};
 	}
 
-	textboxes = ui.create_widget( UIWidget_ColorPicker_TextBox, window );
-	auto textboxesHandle = ui.handle<UIWidget_ColorPicker_TextBox>( textboxes ); Assert( spectrumHandle );
+	textboxes = ui.create_widget( ObjectType::UIWidget_ColorPicker_TextBox, window );
+	auto textboxesHandle = ui.handle<ObjectType::UIWidget_ColorPicker_TextBox>( textboxes );
+	Assert( spectrumHandle );
 	if( textboxesHandle )
 	{
 		textboxesHandle->set_rgba( c_teal );
 
 		textboxesHandle->callbackOnUpdate = []( UIContext &context, Object widget )
 			{
-				auto widgetHandle = context.handle<UIWidget_ColorPicker_TextBox>( widget );
+				auto widgetHandle = context.handle<ObjectType::UIWidget_ColorPicker_TextBox>( widget );
 				Assert( widgetHandle );
-				auto parentHandle = context.handle<UIWidget_Window>( widgetHandle->parent );
+				auto parentHandle = context.handle<ObjectType::UIWidget_Window>( widgetHandle->parent );
 				Assert( parentHandle );
 
 				widgetHandle->x = 4;
@@ -1677,9 +1691,9 @@ static void dvar_color_picker_window( Color *variable )
 
 		textboxesHandle->callbackOnInteract = []( UIContext &context, Object widget )
 			{
-				auto textboxesHandle = context.handle<UIWidget_ColorPicker_TextBox>( textboxes );
+				auto textboxesHandle = context.handle<ObjectType::UIWidget_ColorPicker_TextBox>( textboxes );
 				Assert( textboxesHandle );
-				auto spectrumHandle = context.handle<UIWidget_ColorPicker_Spectrum>( spectrum );
+				auto spectrumHandle = context.handle<ObjectType::UIWidget_ColorPicker_Spectrum>( spectrum );
 				Assert( spectrumHandle );
 
 				const Color c = textboxesHandle->get_rgba();
@@ -1699,7 +1713,7 @@ static void dvar_render_target_window( GfxRenderTarget2D *variable )
 
 	// Find name
 	const char *name = "GfxRenderTarget2D";
-	for( Command &command : SysConsole::commands )
+	for( Command &command : CoreConsole::commands )
 	{
 		if( command.payload == reinterpret_cast<void *>( variable ) )
 		{
@@ -1708,8 +1722,8 @@ static void dvar_render_target_window( GfxRenderTarget2D *variable )
 	}
 
 	// Window
-	Object window = ui.create_widget( UIWidget_Window_GfxRenderTarget2D );
-	auto windowHandle = ui.handle<UIWidget_Window_GfxRenderTarget2D>( window );
+	Object window = ui.create_widget( ObjectType::UIWidget_Window_GfxRenderTarget2D );
+	auto windowHandle = ui.handle<ObjectType::UIWidget_Window_GfxRenderTarget2D>( window );
 	if( windowHandle )
 	{
 		windowHandle->x = 64;
@@ -1728,19 +1742,19 @@ static void dvar_render_target_window( GfxRenderTarget2D *variable )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-SysConsole::DVar::~DVar()
+CoreConsole::DVar::~DVar()
 {
 	if( payload == nullptr ) { return; }
 	DVarInitializer::dvar_release( payload );
 }
 
 
-SysConsole::DVar::DVar( bool scoped, int *variable, const char *definition, const char *description )
+CoreConsole::DVar::DVar( bool scoped, int *variable, const char *definition, const char *description )
 {
 	Assert( variable != nullptr );
 	payload = scoped ? reinterpret_cast<void *>( variable ) : nullptr;
 
-	SysConsole::DVarInitializer::dvar_register( definition, "[value]", description, variable,
+	CoreConsole::DVarInitializer::dvar_register( definition, "[value]", description, variable,
 		CONSOLE_COMMAND_LAMBDA
 		{
 			Assert( payload != nullptr );
@@ -1750,12 +1764,12 @@ SysConsole::DVar::DVar( bool scoped, int *variable, const char *definition, cons
 }
 
 
-SysConsole::DVar::DVar( bool scoped, u32 *variable, const char *definition, const char *description )
+CoreConsole::DVar::DVar( bool scoped, u32 *variable, const char *definition, const char *description )
 {
 	Assert( variable != nullptr );
 	payload = scoped ? reinterpret_cast<void *>( variable ) : nullptr;
 
-	SysConsole::DVarInitializer::dvar_register( definition, "[value]", description, variable,
+	CoreConsole::DVarInitializer::dvar_register( definition, "[value]", description, variable,
 		CONSOLE_COMMAND_LAMBDA
 		{
 			Assert( payload != nullptr );
@@ -1765,12 +1779,12 @@ SysConsole::DVar::DVar( bool scoped, u32 *variable, const char *definition, cons
 }
 
 
-SysConsole::DVar::DVar( bool scoped, u64 *variable, const char *definition, const char *description )
+CoreConsole::DVar::DVar( bool scoped, u64 *variable, const char *definition, const char *description )
 {
 	Assert( variable != nullptr );
 	payload = scoped ? reinterpret_cast<void *>( variable ) : nullptr;
 
-	SysConsole::DVarInitializer::dvar_register( definition, "[value]", description, variable,
+	CoreConsole::DVarInitializer::dvar_register( definition, "[value]", description, variable,
 		CONSOLE_COMMAND_LAMBDA
 		{
 			Assert( payload != nullptr );
@@ -1780,12 +1794,12 @@ SysConsole::DVar::DVar( bool scoped, u64 *variable, const char *definition, cons
 }
 
 
-SysConsole::DVar::DVar( bool scoped, double *variable, const char *definition, const char *description )
+CoreConsole::DVar::DVar( bool scoped, double *variable, const char *definition, const char *description )
 {
 	Assert( variable != nullptr );
 	payload = scoped ? reinterpret_cast<void *>( variable ) : nullptr;
 
-	SysConsole::DVarInitializer::dvar_register( definition, "[value]", description, variable,
+	CoreConsole::DVarInitializer::dvar_register( definition, "[value]", description, variable,
 		CONSOLE_COMMAND_LAMBDA
 		{
 			Assert( payload != nullptr );
@@ -1795,12 +1809,12 @@ SysConsole::DVar::DVar( bool scoped, double *variable, const char *definition, c
 }
 
 
-SysConsole::DVar::DVar( bool scoped, bool *variable, const char *definition, const char *description )
+CoreConsole::DVar::DVar( bool scoped, bool *variable, const char *definition, const char *description )
 {
 	Assert( variable != nullptr );
 	payload = scoped ? reinterpret_cast<void *>( variable ) : nullptr;
 
-	SysConsole::DVarInitializer::dvar_register( definition, "[value]", description, variable,
+	CoreConsole::DVarInitializer::dvar_register( definition, "[value]", description, variable,
 		CONSOLE_COMMAND_LAMBDA
 		{
 			Assert( payload != nullptr );
@@ -1810,12 +1824,12 @@ SysConsole::DVar::DVar( bool scoped, bool *variable, const char *definition, con
 }
 
 
-SysConsole::DVar::DVar( bool scoped, float *variable, const char *definition, const char *description )
+CoreConsole::DVar::DVar( bool scoped, float *variable, const char *definition, const char *description )
 {
 	Assert( variable != nullptr );
 	payload = scoped ? reinterpret_cast<void *>( variable ) : nullptr;
 
-	SysConsole::DVarInitializer::dvar_register( definition, "[value]", description, variable,
+	CoreConsole::DVarInitializer::dvar_register( definition, "[value]", description, variable,
 		CONSOLE_COMMAND_LAMBDA
 		{
 			Assert( payload != nullptr );
@@ -1825,12 +1839,12 @@ SysConsole::DVar::DVar( bool scoped, float *variable, const char *definition, co
 }
 
 
-SysConsole::DVar::DVar( bool scoped, Color *variable, const char *definition, const char *description )
+CoreConsole::DVar::DVar( bool scoped, Color *variable, const char *definition, const char *description )
 {
 	Assert( variable != nullptr );
 	payload = scoped ? reinterpret_cast<void *>( variable ) : nullptr;
 
-	SysConsole::DVarInitializer::dvar_register( definition, "<r> <g> <b> <a>", description, variable,
+	CoreConsole::DVarInitializer::dvar_register( definition, "<r> <g> <b> <a>", description, variable,
 		CONSOLE_COMMAND_LAMBDA
 		{
 			Assert( payload != nullptr );
@@ -1850,12 +1864,12 @@ SysConsole::DVar::DVar( bool scoped, Color *variable, const char *definition, co
 }
 
 
-SysConsole::DVar::DVar( bool scoped, GfxRenderTarget2D *variable, const char *definition, const char *description )
+CoreConsole::DVar::DVar( bool scoped, GfxRenderTarget2D *variable, const char *definition, const char *description )
 {
 	Assert( variable != nullptr );
 	payload = scoped ? reinterpret_cast<void *>( variable ) : nullptr;
 
-	SysConsole::DVarInitializer::dvar_register( definition, "", description, variable,
+	CoreConsole::DVarInitializer::dvar_register( definition, "", description, variable,
 		CONSOLE_COMMAND_LAMBDA
 		{
 			Assert( payload != nullptr );
@@ -1868,11 +1882,11 @@ SysConsole::DVar::DVar( bool scoped, GfxRenderTarget2D *variable, const char *de
 CommandHandle Console::command_init( const char *definition, const char *description,
 	CONSOLE_COMMAND_FUNCTION_POINTER( function ), void *payload )
 {
-	Assert( SysConsole::initialized );
+	Assert( CoreConsole::initialized );
 
 	// Hide Duplicate Commands
 	bool hidden = false;
-	for( const Command &command : SysConsole::commands )
+	for( const Command &command : CoreConsole::commands )
 	{
 		if( strncmp( definition, command.string, sizeof( command.string ) ) == 0 )
 		{
@@ -1882,20 +1896,20 @@ CommandHandle Console::command_init( const char *definition, const char *descrip
 	}
 
 	// Register Command
-	Command &command = SysConsole::commands.add( Command { } );
+	Command &command = CoreConsole::commands.add( Command { } );
 	command.init( definition, description, function, payload );
-	command.handle = SysConsole::handleCurrent++;
+	command.handle = CoreConsole::handleCurrent++;
 	command.hidden = hidden;
 	for( int i = 0; i < PARAMETERS_MAX; i++ ) { command.paramDesc[i] = ""; }
-	SysConsole::updateCandidates = true;
+	CoreConsole::updateCandidates = true;
 	return command.handle ;
 }
 
 
 void Console::command_param_description( const CommandHandle command, const int param, const char *description )
 {
-	Assert( SysConsole::initialized );
-	Command *cmd = SysConsole::command( command );
+	Assert( CoreConsole::initialized );
+	Command *cmd = CoreConsole::command( command );
 	Assert( cmd != nullptr );
 	Assert( param < cmd->numParams );
 	cmd->paramDesc[param] = description;
@@ -1904,43 +1918,43 @@ void Console::command_param_description( const CommandHandle command, const int 
 
 void Console::command_free( const CommandHandle command )
 {
-	Assert( SysConsole::initialized );
-	for( usize i = 0; i < SysConsole::commands.count(); i++ )
+	Assert( CoreConsole::initialized );
+	for( usize i = 0; i < CoreConsole::commands.count(); i++ )
 	{
-		Command &cmd = SysConsole::commands[i];
+		Command &cmd = CoreConsole::commands[i];
 		if( cmd.handle != command ) { continue; }
 		cmd.free();
-		SysConsole::commands.remove( i );
-		SysConsole::updateCandidates = true;
+		CoreConsole::commands.remove( i );
+		CoreConsole::updateCandidates = true;
 	}
 }
 
 
 void Console::command_set_hidden( const CommandHandle command, const bool hidden )
 {
-	Assert( SysConsole::initialized );
-	Command *cmd = SysConsole::command( command );
+	Assert( CoreConsole::initialized );
+	Command *cmd = CoreConsole::command( command );
 	Assert( cmd != nullptr );
 	cmd->hidden = hidden;
-	SysConsole::updateCandidates = true;
+	CoreConsole::updateCandidates = true;
 }
 
 
 void Console::command_set_enabled( const CommandHandle command, const bool enabled )
 {
-	Assert( SysConsole::initialized );
-	Command *cmd = SysConsole::command( command );
+	Assert( CoreConsole::initialized );
+	Command *cmd = CoreConsole::command( command );
 	Assert( cmd != nullptr );
 	cmd->disabled = !enabled;
-	SysConsole::updateCandidates = true;
+	CoreConsole::updateCandidates = true;
 }
 
 
 void Console::draw( const Delta delta )
 {
-	Region &inputRegion = SysConsole::inputRegion;
-	Region &candidateRegion = SysConsole::candidateRegion;
-	Region &logRegion = SysConsole::logRegion;
+	Region &inputRegion = CoreConsole::inputRegion;
+	Region &candidateRegion = CoreConsole::candidateRegion;
+	Region &logRegion = CoreConsole::logRegion;
 
 	if( !Console::is_open() )
 	{
@@ -1961,19 +1975,19 @@ void Console::draw( const Delta delta )
 		const int mY = mouse_y;
 
 		// Activate TextEditor
-		SysConsole::input.activate();
+		CoreConsole::input.activate();
 
 		// Navigate Console
-		SysConsole::navigate();
+		CoreConsole::navigate();
 
 		// Process Input Updates
-		SysConsole::update_input();
+		CoreConsole::update_input();
 
 		// Update Candidates
-		if( SysConsole::updateCandidates )
+		if( CoreConsole::updateCandidates )
 		{
-			SysConsole::update_candidates( false );
-			SysConsole::updateCandidates = false;
+			CoreConsole::update_candidates( false );
+			CoreConsole::updateCandidates = false;
 		}
 
 		// Input Hover
@@ -1985,12 +1999,12 @@ void Console::draw( const Delta delta )
 
 			const bool canHover = !( ui.get_widget_hover() );
 			inputRegion.hover = point_in_rect( mX, mY, bX1, bY1, bX2, bY2 );
-			SysConsole::input.allowClick = inputRegion.hover;
+			CoreConsole::input.allowClick = inputRegion.hover;
 		}
 
 		// Candidates Hover
 		bool hoverCandidates = false;
-		if( SysConsole::hideCandidates || SysConsole::candidates_count() == 0 )
+		if( CoreConsole::hideCandidates || CoreConsole::candidates_count() == 0 )
 		{
 			candidateRegion.hover = false;
 		}
@@ -1999,7 +2013,7 @@ void Console::draw( const Delta delta )
 			const int bX1 = 16;
 			const int bY1 = 44;
 			const int bX2 = bX1 + ( Window::width - bX1 * 2 ) - 16;
-			const int bY2 = bY1 + 4 + SysConsole::candidates_count_view() * 24;
+			const int bY2 = bY1 + 4 + CoreConsole::candidates_count_view() * 24;
 
 			const bool canHover = !( !Mouse::check_pressed( mb_left ) && Mouse::check( mb_left ) ) &&
 				                  !( ui.get_widget_hover() );
@@ -2067,7 +2081,7 @@ void Console::draw( const Delta delta )
 		// Hide Candidates
 		if( Keyboard::check( vk_control ) && Keyboard::check_pressed( vk_h ) )
 		{
-			SysConsole::hideCandidates = !SysConsole::hideCandidates;
+			CoreConsole::hideCandidates = !CoreConsole::hideCandidates;
 		}
 	}
 
@@ -2075,20 +2089,21 @@ void Console::draw( const Delta delta )
 	if( Console::is_open() )
 	{
 		// Dim Window
-		draw_rectangle( 0, 0, Window::width, Window::height, Color { 0, 0, 0, 180 } );
+		draw_rectangle( 0, 0, Window::width, Window::height,
+			Color { 0, 0, 0, static_cast<u8>( Console::backgroundAlpha * 255.0f ) } );
 
 		// Draw Console Line
-		SysConsole::draw_input( delta );
+		CoreConsole::draw_input( delta );
 
 		// Draw Log
-		SysConsole::draw_log( delta );
+		CoreConsole::draw_log( delta );
 
 		// Draw Candidates
-		SysConsole::draw_candidates( delta );
+		CoreConsole::draw_candidates( delta );
 
 		// Draw Info
 		draw_text( fnt_iosevka, 14, 4, Window::height - 18, c_gray, PROJECT_CAPTION );
-		if( SysConsole::hideCandidates )
+		if( CoreConsole::hideCandidates )
 		{
 			draw_text( fnt_iosevka, 14, 4, Window::height - 38, Color { 200, 0, 0 },
 				"suggestions hidden, ctr-h to re-enable" );
@@ -2104,9 +2119,9 @@ void Console::draw( const Delta delta )
 		// Execute Command
 		if( Keyboard::check_pressed( vk_enter ) )
 		{
-			SysConsole::input->cstr( SysConsole::buffer, sizeof( SysConsole::buffer ) );
-			Console::command_execute( SysConsole::buffer );
-			SysConsole::input.clear();
+			CoreConsole::input->cstr( CoreConsole::buffer, sizeof( CoreConsole::buffer ) );
+			Console::command_execute( CoreConsole::buffer );
+			CoreConsole::input.clear();
 		}
 
 		// Close Console
@@ -2121,32 +2136,32 @@ void Console::draw( const Delta delta )
 
 void Console::set_input( const char *string )
 {
-	SysConsole::input.clear();
-	SysConsole::input->append( string );
-	SysConsole::input.caret_set_position_end();
+	CoreConsole::input.clear();
+	CoreConsole::input->append( string );
+	CoreConsole::input.caret_set_position_end();
 }
 
 
 bool Console::is_open()
 {
-	return SysConsole::open;
+	return CoreConsole::open;
 }
 
 
 void Console::open()
 {
 	// Open Console
-	SysConsole::open = true;
-	SysConsole::updateCandidates = true;
+	CoreConsole::open = true;
+	CoreConsole::updateCandidates = true;
 
 	// Reset TextEditor
-	SysConsole::input.clear();
+	CoreConsole::input.clear();
 
 	// Reset State
-	for( LogLine &line : SysConsole::log ) { line.tween = 0.0f; }
-	for( Command &command : SysConsole::commands) { command.tween = 0.0f; }
-	for( int i = 0; i < COMMANDCOMPARE_COUNT; i++ ) { SysConsole::candidates[i].clear(); }
-	SysConsole::reset_regions();
+	for( LogLine &line : CoreConsole::log ) { line.tween = 0.0f; }
+	for( Command &command : CoreConsole::commands) { command.tween = 0.0f; }
+	for( int i = 0; i < COMMANDCOMPARE_COUNT; i++ ) { CoreConsole::candidates[i].clear(); }
+	CoreConsole::reset_regions();
 
 	// Reset Keyboard
 	Keyboard::clear();
@@ -2155,14 +2170,14 @@ void Console::open()
 
 void Console::close()
 {
-	SysConsole::open = false;
+	CoreConsole::open = false;
 
 	// Deactivate TextEditor
-	SysConsole::input.deactivate();
+	CoreConsole::input.deactivate();
 
 	// Reset State
-	for( int i = 0; i < COMMANDCOMPARE_COUNT; i++ ) { SysConsole::candidates[i].clear(); }
-	SysConsole::reset_regions();
+	for( int i = 0; i < COMMANDCOMPARE_COUNT; i++ ) { CoreConsole::candidates[i].clear(); }
+	CoreConsole::reset_regions();
 
 	// Reset Keyboard
 	Keyboard::clear();
@@ -2177,17 +2192,17 @@ void Console::toggle()
 
 static const Command *get_command( const usize index = 0 )
 {
-	if( SysConsole::candidates[CommandCompare_Exact].count() <= index ) { return nullptr; }
-	const u32 candidate = SysConsole::candidates[CommandCompare_Exact][index];
-	Assert( candidate < SysConsole::commands.count() );
-	return &SysConsole::commands[candidate];
+	if( CoreConsole::candidates[CommandCompare_Exact].count() <= index ) { return nullptr; }
+	const u32 candidate = CoreConsole::candidates[CommandCompare_Exact][index];
+	Assert( candidate < CoreConsole::commands.count() );
+	return &CoreConsole::commands[candidate];
 }
 
 
 bool Console::command_execute()
 {
-	SysConsole::update_candidates( true );
-	for( usize i = 0; i < SysConsole::candidates[CommandCompare_Exact].count(); i++ )
+	CoreConsole::update_candidates( true );
+	for( usize i = 0; i < CoreConsole::candidates[CommandCompare_Exact].count(); i++ )
 	{
 		const Command *const command = get_command( i );
 		if( command == nullptr ) { return false; }
@@ -2196,7 +2211,7 @@ bool Console::command_execute()
 		if( command->function != nullptr )
 		{
 			command->function( command->payload );
-			SysConsole::updateCandidates = true;
+			CoreConsole::updateCandidates = true;
 			return true;
 		}
 	}
@@ -2210,9 +2225,9 @@ bool Console::command_execute( const char *command )
 	if( command[0] == '\0' ) { return false; }
 
 	// Tokenize Custom Command
-	SysConsole::history.add( CommandHistory { command } );
-	SysConsole::historyIndex = USIZE_MAX;
-	SysConsole::tokenize_input( command );
+	CoreConsole::history.add( CommandHistory { command } );
+	CoreConsole::historyIndex = USIZE_MAX;
+	CoreConsole::tokenize_input( command );
 
 	// Execute Command
 	const bool success = Console::command_execute();
@@ -2220,8 +2235,8 @@ bool Console::command_execute( const char *command )
 	// Reset Tokens & Candidates (if necessary)
 	if( Console::is_open() )
 	{
-		SysConsole::update_input();
-		SysConsole::update_candidates( false );
+		CoreConsole::update_input();
+		CoreConsole::update_candidates( false );
 	}
 
 	// Success
@@ -2237,23 +2252,23 @@ bool Console::command_execute( const char *command )
 
 bool Console::command_execute( const CommandHandle command, const char *parameters )
 {
-	Assert( command < SysConsole::commands.count() );
-	Command *cmd = SysConsole::command( command );
+	Assert( command < CoreConsole::commands.count() );
+	Command *cmd = CoreConsole::command( command );
 	Assert( cmd != nullptr );
 
 	// Command Tokens
-	SysConsole::buffer[0] = '\0';
+	CoreConsole::buffer[0] = '\0';
 	for( int i = 0; i <= cmd->numRequiredParams; i++ )
 	{
-		strappend( SysConsole::buffer, cmd->tokens[i].string );
-		strappend( SysConsole::buffer, " " );
+		strappend( CoreConsole::buffer, cmd->tokens[i].string );
+		strappend( CoreConsole::buffer, " " );
 	}
 
 	// Parameters
-	strappend( SysConsole::buffer, parameters );
+	strappend( CoreConsole::buffer, parameters );
 
 	// Execute command
-	return Console::command_execute( SysConsole::buffer );
+	return Console::command_execute( CoreConsole::buffer );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2261,17 +2276,17 @@ bool Console::command_execute( const CommandHandle command, const char *paramete
 void Console::clear_log()
 {
 	// Reset log seek position
-	SysConsole::logIndex = USIZE_MAX;
+	CoreConsole::logIndex = USIZE_MAX;
 
 	// Clear log
-	SysConsole::log.clear();
+	CoreConsole::log.clear();
 }
 
 
 void Console::dump_log( const char *path )
 {
 	String dump;
-	for( const LogLine &line : SysConsole::log ) { dump.append( line.string ).append( "\n" ); }
+	for( const LogLine &line : CoreConsole::log ) { dump.append( line.string ).append( "\n" ); }
 	dump.save( path );
 }
 
@@ -2284,7 +2299,7 @@ void Console::Log( const Color color, const char *message, ... )
 	vsnprintf( buffer, sizeof( buffer ), message, args );
 	va_end( args );
 
-	SysConsole::Log( color, "", buffer );
+	CoreConsole::Log( color, "", buffer );
 }
 
 
@@ -2296,7 +2311,7 @@ void Console::LogCommand( const Color color, const char *command, const char *me
 	vsnprintf( buffer, sizeof( buffer ), message, args );
 	va_end( args );
 
-	SysConsole::Log( color, command, buffer );
+	CoreConsole::Log( color, command, buffer );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2304,7 +2319,7 @@ void Console::LogCommand( const Color color, const char *command, const char *me
 static bool has_parameter( const Command *const command, const int param )
 {
 	Assert( param >= 0 );
-	return ( SysConsole::tokens.count() > PARAMETER_INDEX( command, param ) );
+	return ( CoreConsole::tokens.count() > PARAMETER_INDEX( command, param ) );
 }
 
 
@@ -2312,7 +2327,7 @@ usize Console::get_parameter_count()
 {
 	const Command *const command = get_command();
 	Assert( command != nullptr );
-	return ( SysConsole::tokens.count() - PARAMETER_INDEX( command, 0 ) );
+	return ( CoreConsole::tokens.count() - PARAMETER_INDEX( command, 0 ) );
 }
 
 
@@ -2321,7 +2336,7 @@ const char *Console::get_parameter_string( const int param, const char *defaultV
 	const Command *const command = get_command();
 	Assert( command != nullptr );
 	if( !has_parameter( command, param ) ) { return defaultValue; }
-	return SysConsole::tokens[PARAMETER_INDEX(command, param)].string;
+	return CoreConsole::tokens[PARAMETER_INDEX(command, param)].string;
 }
 
 

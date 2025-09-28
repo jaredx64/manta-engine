@@ -19,7 +19,7 @@ using CommandHandle = u32;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-namespace SysConsole
+namespace CoreConsole
 {
 	extern bool init();
 	extern bool free();
@@ -41,7 +41,7 @@ namespace SysConsole
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-namespace SysConsole
+namespace CoreConsole
 {
 	struct DVarDeferred
 	{
@@ -93,45 +93,48 @@ namespace SysConsole
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define DVAR_RELEASE(variable) \
-	SysConsole::DVarInitializer::dvar_release( &( variable ) )
+	CoreConsole::DVarInitializer::dvar_release( &( variable ) )
 
 #define DVAR_HOOK(variable) \
-	{ SysConsole::DVar __dv_ { false, &( variable ), #variable, "" }; }
+	{ CoreConsole::DVar __dv_ { false, &( variable ), #variable, "" }; }
 #define DVAR_HOOK_DESC(variable,description) \
-	{ SysConsole::DVar __dv_ { false, &( variable ), #variable, description }; }
+	{ CoreConsole::DVar __dv_ { false, &( variable ), #variable, description }; }
 #define DVAR_HOOK_NAME(variable,name) \
-	{ SysConsole::DVar __dv_ { false, &( variable ), name, "" }; }
+	{ CoreConsole::DVar __dv_ { false, &( variable ), name, "" }; }
 #define DVAR_HOOK_NAME_DESC(variable,name,description) \
-	{ SysConsole::DVar __dv_ { false, &( variable ), name, description }; }
+	{ CoreConsole::DVar __dv_ { false, &( variable ), name, description }; }
 
 
 #define DVAR(variable) \
-	SysConsole::DVar __dv_##variable { true, &( variable ), #variable, "" }
+	CoreConsole::DVar __dv_##variable { true, &( variable ), #variable, "" }
 #define DVAR_DESC(variable,description) \
-	SysConsole::DVar __dv_##variable { true, &( variable ), #variable, description }
+	CoreConsole::DVar __dv_##variable { true, &( variable ), #variable, description }
 #define DVAR_NAME(variable,name) \
-	SysConsole::DVar __dv_##variable { true, &( variable ), name, "" }
+	CoreConsole::DVar __dv_##variable { true, &( variable ), name, "" }
 #define DVAR_NAME_DESC(variable,name,description) \
-	SysConsole::DVar __dv_##variable { true, &( variable ), name, description }
+	CoreConsole::DVar __dv_##variable { true, &( variable ), name, description }
 
 #define DVAR_HIDE(variable) \
-	SysConsole::DVarInitializer::dvar_set_hidden( &( variable ), true )
+	CoreConsole::DVarInitializer::dvar_set_hidden( &( variable ), true )
 #define DVAR_UNHIDE(variable) \
-	SysConsole::DVarInitializer::dvar_set_hidden( &( variable ), false )
+	CoreConsole::DVarInitializer::dvar_set_hidden( &( variable ), false )
 #define DVAR_SET_HIDDEN(variable,hidden) \
-	SysConsole::DVarInitializer::dvar_set_hidden( &( variable ), hidden )
+	CoreConsole::DVarInitializer::dvar_set_hidden( &( variable ), hidden )
 
 #define DVAR_ENABLE(variable) \
-	SysConsole::DVarInitializer::dvar_set_enabled( &( variable ), true )
+	CoreConsole::DVarInitializer::dvar_set_enabled( &( variable ), true )
 #define DVAR_DISABLE(variable) \
-	SysConsole::DVarInitializer::dvar_set_enabled( &( variable ), false )
+	CoreConsole::DVarInitializer::dvar_set_enabled( &( variable ), false )
 #define DVAR_SET_ENABLED(variable,enabled) \
-	SysConsole::DVarInitializer::dvar_set_enabled( &( variable ), enabled )
+	CoreConsole::DVarInitializer::dvar_set_enabled( &( variable ), enabled )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 namespace Console
 {
+	extern float backgroundAlpha;
+	extern float logAlpha;
+
 	extern void draw( const Delta delta );
 
 	extern CommandHandle command_init( const char *definition, const char *description,
