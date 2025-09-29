@@ -131,7 +131,8 @@ bool CoreFonts::init()
 	texture2D.init( textureBuffer.data, textureBuffer.width, textureBuffer.height, GfxColorFormat_R8G8B8A8_FLOAT );
 
 	// Init bitmap buffer
-	bitmap = reinterpret_cast<byte *>( memory_alloc( CoreFonts::FONTS_GLYPH_SIZE_MAX * CoreFonts::FONTS_GLYPH_SIZE_MAX ) );
+	bitmap = reinterpret_cast<byte *>(
+		memory_alloc( CoreFonts::FONTS_GLYPH_SIZE_MAX * CoreFonts::FONTS_GLYPH_SIZE_MAX ) );
 
 	// Success
 	return true;
@@ -253,7 +254,7 @@ void CoreFonts::flush()
 	memory_set( data, 0, size );
 
 	// Clear Texture2DBuffer
-	textureBuffer.clear( rgba{ 0, 0, 0, 0 } );
+	textureBuffer.clear( rgba { 0, 0, 0, 0 } );
 
 	// Clear newGlyph list
 	dirtyGlyphs.clear();

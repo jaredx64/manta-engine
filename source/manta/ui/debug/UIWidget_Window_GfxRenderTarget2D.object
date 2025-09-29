@@ -34,12 +34,12 @@ PUBLIC bool showChannelA = true;
 PUBLIC bool showDepth = false;
 PUBLIC bool showInverted = false;
 
-PUBLIC Object widgetChannelR;
-PUBLIC Object widgetChannelG;
-PUBLIC Object widgetChannelB;
-PUBLIC Object widgetChannelA;
-PUBLIC Object widgetDepth;
-PUBLIC Object widgetInverted;
+PUBLIC ObjectInstance widgetChannelR;
+PUBLIC ObjectInstance widgetChannelG;
+PUBLIC ObjectInstance widgetChannelB;
+PUBLIC ObjectInstance widgetChannelA;
+PUBLIC ObjectInstance widgetDepth;
+PUBLIC ObjectInstance widgetInverted;
 
 PUBLIC const char *name;
 
@@ -53,80 +53,80 @@ PROTECTED void init()
 	int bX = 4;
 	int bY = 40;
 
-	widgetChannelR = context->create_widget_button( ObjectType::UIWidget_Button, bX, bY, 24, 24, id );
+	widgetChannelR = context->create_widget_button( Object::UIWidget_Button, bX, bY, 24, 24, id );
 	Assert( widgetChannelR );
 	bX += 28;
- 	auto handleChannelR = context->handle<ObjectType::UIWidget_Button>( widgetChannelR ); Assert( handleChannelR );
+ 	auto handleChannelR = context->handle<Object::UIWidget_Button>( widgetChannelR ); Assert( handleChannelR );
 	handleChannelR->set_label( "R" );
-	handleChannelR->callbackOnInteract = []( UIContext &context, Object widget )
+	handleChannelR->callbackOnInteract = []( UIContext &context, ObjectInstance widget )
 		{
-			auto widgetHandle = context.handle<ObjectType::UIWidget_Button>( widget ); Assert( widgetHandle );
-			auto parentHandle = context.handle<ObjectType::UIWidget_Window_GfxRenderTarget2D>( widgetHandle->parent );
+			auto widgetHandle = context.handle<Object::UIWidget_Button>( widget ); Assert( widgetHandle );
+			auto parentHandle = context.handle<Object::UIWidget_Window_GfxRenderTarget2D>( widgetHandle->parent );
 			Assert( parentHandle );
 			parentHandle->showChannelR = !parentHandle->showChannelR;
 		};
 
-	widgetChannelG = context->create_widget_button( ObjectType::UIWidget_Button, bX, bY, 24, 24, id );
+	widgetChannelG = context->create_widget_button( Object::UIWidget_Button, bX, bY, 24, 24, id );
 	Assert( widgetChannelG );
 	bX += 28;
- 	auto handleChannelG = context->handle<ObjectType::UIWidget_Button>( widgetChannelG ); Assert( handleChannelG );
+ 	auto handleChannelG = context->handle<Object::UIWidget_Button>( widgetChannelG ); Assert( handleChannelG );
 	handleChannelG->set_label( "G" );
-	handleChannelG->callbackOnInteract = []( UIContext &context, Object widget )
+	handleChannelG->callbackOnInteract = []( UIContext &context, ObjectInstance widget )
 		{
-			auto widgetHandle = context.handle<ObjectType::UIWidget_Button>( widget ); Assert( widgetHandle );
-			auto parentHandle = context.handle<ObjectType::UIWidget_Window_GfxRenderTarget2D>( widgetHandle->parent );
+			auto widgetHandle = context.handle<Object::UIWidget_Button>( widget ); Assert( widgetHandle );
+			auto parentHandle = context.handle<Object::UIWidget_Window_GfxRenderTarget2D>( widgetHandle->parent );
 			Assert( parentHandle );
 			parentHandle->showChannelG = !parentHandle->showChannelG;
 		};
 
-	widgetChannelB = context->create_widget_button( ObjectType::UIWidget_Button, bX, bY, 24, 24, id );
+	widgetChannelB = context->create_widget_button( Object::UIWidget_Button, bX, bY, 24, 24, id );
 	Assert( widgetChannelB );
 	bX += 28;
- 	auto handleChannelB = context->handle<ObjectType::UIWidget_Button>( widgetChannelB ); Assert( handleChannelB );
+ 	auto handleChannelB = context->handle<Object::UIWidget_Button>( widgetChannelB ); Assert( handleChannelB );
 	handleChannelB->set_label( "B" );
-	handleChannelB->callbackOnInteract = []( UIContext &context, Object widget )
+	handleChannelB->callbackOnInteract = []( UIContext &context, ObjectInstance widget )
 		{
-			auto widgetHandle = context.handle<ObjectType::UIWidget_Button>( widget ); Assert( widgetHandle );
-			auto parentHandle = context.handle<ObjectType::UIWidget_Window_GfxRenderTarget2D>( widgetHandle->parent );
+			auto widgetHandle = context.handle<Object::UIWidget_Button>( widget ); Assert( widgetHandle );
+			auto parentHandle = context.handle<Object::UIWidget_Window_GfxRenderTarget2D>( widgetHandle->parent );
 			Assert( parentHandle );
 			parentHandle->showChannelB = !parentHandle->showChannelB;
 		};
 
-	widgetChannelA = context->create_widget_button( ObjectType::UIWidget_Button, bX, bY, 24, 24, id );
+	widgetChannelA = context->create_widget_button( Object::UIWidget_Button, bX, bY, 24, 24, id );
 	Assert( widgetChannelA );
 	bX += 28;
- 	auto handleChannelA = context->handle<ObjectType::UIWidget_Button>( widgetChannelA ); Assert( handleChannelA );
+ 	auto handleChannelA = context->handle<Object::UIWidget_Button>( widgetChannelA ); Assert( handleChannelA );
 	handleChannelA->set_label( "A" );
-	handleChannelA->callbackOnInteract = []( UIContext &context, Object widget )
+	handleChannelA->callbackOnInteract = []( UIContext &context, ObjectInstance widget )
 		{
-			auto widgetHandle = context.handle<ObjectType::UIWidget_Button>( widget ); Assert( widgetHandle );
-			auto parentHandle = context.handle<ObjectType::UIWidget_Window_GfxRenderTarget2D>( widgetHandle->parent );
+			auto widgetHandle = context.handle<Object::UIWidget_Button>( widget ); Assert( widgetHandle );
+			auto parentHandle = context.handle<Object::UIWidget_Window_GfxRenderTarget2D>( widgetHandle->parent );
 			Assert( parentHandle );
 			parentHandle->showChannelA = !parentHandle->showChannelA;
 		};
 
-	widgetDepth = context->create_widget_button( ObjectType::UIWidget_Button, bX, bY, 48, 24, id );
+	widgetDepth = context->create_widget_button( Object::UIWidget_Button, bX, bY, 48, 24, id );
 	Assert( widgetChannelA );
 	bX += 52;
- 	auto handleDepth = context->handle<ObjectType::UIWidget_Button>( widgetDepth ); Assert( handleDepth );
+ 	auto handleDepth = context->handle<Object::UIWidget_Button>( widgetDepth ); Assert( handleDepth );
 	handleDepth->set_label( "Depth" );
-	handleDepth->callbackOnInteract = []( UIContext &context, Object widget )
+	handleDepth->callbackOnInteract = []( UIContext &context, ObjectInstance widget )
 		{
-			auto widgetHandle = context.handle<ObjectType::UIWidget_Button>( widget ); Assert( widgetHandle );
-			auto parentHandle = context.handle<ObjectType::UIWidget_Window_GfxRenderTarget2D>( widgetHandle->parent );
+			auto widgetHandle = context.handle<Object::UIWidget_Button>( widget ); Assert( widgetHandle );
+			auto parentHandle = context.handle<Object::UIWidget_Window_GfxRenderTarget2D>( widgetHandle->parent );
 			Assert( parentHandle );
 			parentHandle->showDepth = !parentHandle->showDepth;
 		};
 
-	widgetInverted = context->create_widget_button( ObjectType::UIWidget_Button, bX, bY, 48, 24, id );
+	widgetInverted = context->create_widget_button( Object::UIWidget_Button, bX, bY, 48, 24, id );
 	Assert( widgetInverted );
 	bX += 52;
- 	auto handleInverted = context->handle<ObjectType::UIWidget_Button>( widgetInverted ); Assert( handleInverted );
+ 	auto handleInverted = context->handle<Object::UIWidget_Button>( widgetInverted ); Assert( handleInverted );
 	handleInverted->set_label( "Flip Y" );
-	handleInverted->callbackOnInteract = []( UIContext &context, Object widget )
+	handleInverted->callbackOnInteract = []( UIContext &context, ObjectInstance widget )
 		{
-			auto widgetHandle = context.handle<ObjectType::UIWidget_Button>( widget ); Assert( widgetHandle );
-			auto parentHandle = context.handle<ObjectType::UIWidget_Window_GfxRenderTarget2D>( widgetHandle->parent );
+			auto widgetHandle = context.handle<Object::UIWidget_Button>( widget ); Assert( widgetHandle );
+			auto parentHandle = context.handle<Object::UIWidget_Window_GfxRenderTarget2D>( widgetHandle->parent );
 			Assert( parentHandle );
 			parentHandle->showInverted = !parentHandle->showInverted;
 		};
@@ -156,23 +156,23 @@ PROTECTED void update( const Delta delta )
 	widthMax = rt->width;
 	heightMax = rt->height + 68;
 
- 	auto handleChannelR = context->handle<ObjectType::UIWidget_Button>( widgetChannelR ); Assert( handleChannelR );
+ 	auto handleChannelR = context->handle<Object::UIWidget_Button>( widgetChannelR ); Assert( handleChannelR );
 	handleChannelR->color = showChannelR ? colorEnabled : colorDisabled;
 
- 	auto handleChannelG = context->handle<ObjectType::UIWidget_Button>( widgetChannelG ); Assert( handleChannelG );
+ 	auto handleChannelG = context->handle<Object::UIWidget_Button>( widgetChannelG ); Assert( handleChannelG );
 	handleChannelG->color = showChannelG ? colorEnabled : colorDisabled;
 
- 	auto handleChannelB = context->handle<ObjectType::UIWidget_Button>( widgetChannelB ); Assert( handleChannelB );
+ 	auto handleChannelB = context->handle<Object::UIWidget_Button>( widgetChannelB ); Assert( handleChannelB );
 	handleChannelB->color = showChannelB ? colorEnabled : colorDisabled;
 
- 	auto handleChannelA = context->handle<ObjectType::UIWidget_Button>( widgetChannelA ); Assert( handleChannelA );
+ 	auto handleChannelA = context->handle<Object::UIWidget_Button>( widgetChannelA ); Assert( handleChannelA );
 	handleChannelA->color = showChannelA ? colorEnabled : colorDisabled;
 
- 	auto handleDepth = context->handle<ObjectType::UIWidget_Button>( widgetDepth ); Assert( handleDepth );
+ 	auto handleDepth = context->handle<Object::UIWidget_Button>( widgetDepth ); Assert( handleDepth );
 	handleDepth->color = showDepth ? colorEnabled : colorDisabled;
 	handleDepth->locked = rt->desc.depthFormat == GfxDepthFormat_NONE;
 
- 	auto handleInverted = context->handle<ObjectType::UIWidget_Button>( widgetInverted ); Assert( handleInverted );
+ 	auto handleInverted = context->handle<Object::UIWidget_Button>( widgetInverted ); Assert( handleInverted );
 	handleInverted->color = showInverted ? colorEnabled : colorDisabled;
 
 	INHERIT::update( delta );

@@ -77,7 +77,7 @@ R"(
 OBJECT( DEFAULT )
 ABSTRACT( true )
 
-PUBLIC Object id;
+PUBLIC ObjectInstance id;
 
 EVENT_CREATE MANUAL
 {
@@ -1210,7 +1210,7 @@ void ObjectFile::write_header()
 		output.append( "\n{\n" );
 		{
 			// Friends
-			output.append( "\tfriend struct CoreObjects::OBJECT_ENCODER<ObjectType::" ).append( name ).append( ">;\n" );
+			output.append( "\tfriend struct CoreObjects::OBJECT_ENCODER<Object::" ).append( name ).append( ">;\n" );
 			for( String &f : friendsHeader ) { output.append( "\tfriend " ).append( f ).append( ";\n" ); }
 
 			// Public
@@ -1298,7 +1298,7 @@ void ObjectFile::write_header()
 	// Custom Constructor
 	if( constructorHeader.size() > 0 )
 	{
-		output.append( "\ntemplate <typename... Args> struct TYPE_CONSTRUCT_VARIADIC<ObjectType::" );
+		output.append( "\ntemplate <typename... Args> struct TYPE_CONSTRUCT_VARIADIC<Object::" );
 		output.append( name ).append( ", Args...>\n{\n" );
 		output.append( "\tstatic void CONSTRUCT( void *object, Args... args ) { new ( object ) " );
 		output.append( type ).append( "( args... ); }\n};\n" );
@@ -1306,28 +1306,28 @@ void ObjectFile::write_header()
 	output.append( "__INTERNAL_OBJECT_SYSTEM_END\n\n" );
 
 	// ObjectHandle
-	output.append( "template <> struct ObjectHandle<ObjectType::" ).append( name ).append( ">\n{\n" );
+	output.append( "template <> struct ObjectHandle<Object::" ).append( name ).append( ">\n{\n" );
 	output.append( "\tstatic CoreObjects::" ).append( type ).append( " stub;\n" );
 	output.append( "\tCoreObjects::" ).append( type ).append( " *data = nullptr;\n" );
 	output.append( "\tCoreObjects::" ).append( type );
 	output.append( " *operator->() const { " );
-	output.append( "return UNLIKELY( data == nullptr ) ? &ObjectHandle<ObjectType::" ).append( name );
+	output.append( "return UNLIKELY( data == nullptr ) ? &ObjectHandle<Object::" ).append( name );
 	output.append( ">::stub : data; }\n" );
 	output.append( "\texplicit operator bool() const { return data != nullptr; }\n" );
 	output.append( "\tObjectHandle( void *object ) { data = reinterpret_cast<CoreObjects::" );
 	output.append( type ).append( " *>( object ); }\n" );
 	if( hasWriteRead )
 	{
-		output.append( "\tstatic void write( class Buffer &buffer, const ObjectHandle<ObjectType::" );
+		output.append( "\tstatic void write( class Buffer &buffer, const ObjectHandle<Object::" );
 		output.append( name ).append( "> &handle );\n" );
-		output.append( "\tstatic void read( class Buffer &buffer, ObjectHandle<ObjectType::" );
+		output.append( "\tstatic void read( class Buffer &buffer, ObjectHandle<Object::" );
 		output.append( name ).append( "> &handle );\n" );
 	}
 	if( hasSerialize )
 	{
-		output.append( "\tstatic void serialize( class Buffer &buffer, const ObjectHandle<ObjectType::" );
+		output.append( "\tstatic void serialize( class Buffer &buffer, const ObjectHandle<Object::" );
 		output.append( name ).append( "> &handle );\n" );
-		output.append( "\tstatic void deserialize( class Buffer &buffer, ObjectHandle<ObjectType::" );
+		output.append( "\tstatic void deserialize( class Buffer &buffer, ObjectHandle<Object::" );
 		output.append( name ).append( "> &handle );\n" );
 	}
 	output.append( "};\n" );
@@ -1353,29 +1353,29 @@ void ObjectFile::write_source()
 
 	// ObjectHandle Stub
 	output.append( "CoreObjects::" ).append( type ).append( " " );
-	output.append( "ObjectHandle<ObjectType::" ).append( name ).append(">::stub = { };\n\n" );
+	output.append( "ObjectHandle<Object::" ).append( name ).append(">::stub = { };\n\n" );
 
 	// Global Data
 	for( String &str : globalVariableSource ) { output.append( str ).append( "\n" ); }
 	if( globalVariableSource.count() > 0 ) { output.append( "\n" ); }
 
 	// Encoder
-	output.append( "template <> struct CoreObjects::OBJECT_ENCODER<ObjectType::" ).append( name );
+	output.append( "template <> struct CoreObjects::OBJECT_ENCODER<Object::" ).append( name );
 	output.append(">\n{\n" );
 	output.append( "\tOBJECT_ENCODER( void *data ) : object{ *reinterpret_cast<" ).append( type );
 	output.append( " *>( data ) } { } " ).append( type ).append( " &object;\n" );
 	if( hasWriteRead )
 	{
-		output.append( "\tstatic void write( class Buffer &buffer, const OBJECT_ENCODER<ObjectType::" );
+		output.append( "\tstatic void write( class Buffer &buffer, const OBJECT_ENCODER<Object::" );
 		output.append( name ).append( "> &context ) { context.object._write( buffer ); }\n" );
-		output.append( "\tstatic void read( class Buffer &buffer, OBJECT_ENCODER<ObjectType::" );
+		output.append( "\tstatic void read( class Buffer &buffer, OBJECT_ENCODER<Object::" );
 		output.append( name ).append( "> &context ) { context.object._read( buffer ); }\n" );
 	}
 	if( hasSerialize )
 	{
-		output.append( "\tstatic void serialize( class Buffer &buffer, const OBJECT_ENCODER<ObjectType::" );
+		output.append( "\tstatic void serialize( class Buffer &buffer, const OBJECT_ENCODER<Object::" );
 		output.append( name ).append( "> &context ) { context.object._serialize( buffer ); }\n" );
-		output.append( "\tstatic void deserialize( class Buffer &buffer, OBJECT_ENCODER<ObjectType::" );
+		output.append( "\tstatic void deserialize( class Buffer &buffer, OBJECT_ENCODER<Object::" );
 		output.append( name ).append( "> &context ) { context.object._deserialize( buffer ); }\n" );
 	}
 	output.append( "};\n\n" );
@@ -1411,9 +1411,9 @@ void ObjectFile::write_source()
 		output.append( serializeSource );
 		output.append( "\n\tserializer.end();\n}\n\n" );
 
-		// ObjectHandle<ObjectType>::serialize
-		output.append( "void ObjectHandle<ObjectType::" ).append( name );
-		output.append( ">::serialize( Buffer &buffer, const ObjectHandle<ObjectType::" ).append( name );
+		// ObjectHandle<Object>::serialize
+		output.append( "void ObjectHandle<Object::" ).append( name );
+		output.append( ">::serialize( Buffer &buffer, const ObjectHandle<Object::" ).append( name );
 		output.append( "> &handle )\n{\n" );
 		output.append( "\tAssert( handle.data != nullptr );\n" );
 		output.append( "\tSerializer serializer; serializer.begin( buffer, 0 );\n" );
@@ -1421,7 +1421,7 @@ void ObjectFile::write_source()
 		for( ObjectFile *par = this; par != nullptr; par = par->parent )
 		{
 			if( !par->hasSerialize ) { continue; }
-			output.append( "\t{ CoreObjects::OBJECT_ENCODER<ObjectType::" ).append( par->name );
+			output.append( "\t{ CoreObjects::OBJECT_ENCODER<Object::" ).append( par->name );
 			output.append( "> slice { handle.data }; serializer.write( " );
 			output.append( par->hashHex ).append( ", slice ); }\n" );
 		}
@@ -1437,9 +1437,9 @@ void ObjectFile::write_source()
 		output.append( deserializeSource );
 		output.append( "\n\tdeserializer.end();\n}\n\n" );
 
-		// ObjectHandle<ObjectType>::deserialize
-		output.append( "void ObjectHandle<ObjectType::" ).append( name );
-		output.append( ">::deserialize( Buffer &buffer, ObjectHandle<ObjectType::" ).append( name );
+		// ObjectHandle<Object>::deserialize
+		output.append( "void ObjectHandle<Object::" ).append( name );
+		output.append( ">::deserialize( Buffer &buffer, ObjectHandle<Object::" ).append( name );
 		output.append( "> &handle )\n{\n" );
 		output.append( "\tAssert( handle.data != nullptr );\n" );
 		output.append( "\tDeserializer deserializer; deserializer.begin( buffer, 0 );\n" );
@@ -1448,7 +1448,7 @@ void ObjectFile::write_source()
 		for( ObjectFile *par = this; par != nullptr; par = par->parent )
 		{
 			if( !par->hasSerialize ) { continue; }
-			output.append( "\t{ CoreObjects::OBJECT_ENCODER<ObjectType::" ).append( par->name );
+			output.append( "\t{ CoreObjects::OBJECT_ENCODER<Object::" ).append( par->name );
 			output.append( "> slice { handle.data }; deserializer.read( " );
 			output.append( par->hashHex ).append( ", slice ); }\n" );
 		}
@@ -1845,13 +1845,17 @@ void Objects::generate_header_system( String &output )
 	output.append( COMMENT_BREAK "\n\n" );
 
 	// Object Types
-	output.append( "enum_class_type\n(\n\tObjectType, u16,\n\n" );
+	output.append( "enum_class_type\n(\n\tObject, u16,\n\n" );
 	for( ObjectFile *object : objectFilesSorted )
 	{
 		output.append( "\t" ).append( object->name ).append( ",\n" );
 	}
-	output.append( "\n\tOBJECT_TYPE_COUNT,\n" );
 	output.append( ");\n\n" );
+
+	// TYPE_COUNT
+	output.append( "namespace CoreObjects\n{\n" );
+	output.append( "\tconstexpr u16 TYPE_COUNT = " );
+	output.append( objectTypes.count() ).append( ";\n}\n\n" );
 
 	// ObjectContext Categories
 	output.append( COMMENT_BREAK "\n\n" );
@@ -1861,8 +1865,12 @@ void Objects::generate_header_system( String &output )
 	{
 		output.append( "\t" ).append( category.value ).append( ",\n" );
 	}
-	output.append( "\n\tOBJECT_CATEGORY_COUNT,\n" );
 	output.append( ");\n\n" );
+
+	// CATEGORY_COUNT
+	output.append( "namespace CoreObjects\n{\n" );
+	output.append( "\tconstexpr u16 CATEGORY_COUNT = " );
+	output.append( objectCategories.count() + 1 ).append( ";\n}\n\n" );
 
 	// EOF
 	output.append( COMMENT_BREAK );
@@ -1876,7 +1884,7 @@ void Objects::generate_source_system( String &output )
 	// CATEGORY_TYPE_BUCKET
 	List<u16> categoryTypeCount;
 	output.append( "const u16 CoreObjects::CATEGORY_TYPE_BUCKET" );
-	output.append( "[ObjectCategory::OBJECT_CATEGORY_COUNT][ObjectType::OBJECT_TYPE_COUNT] =\n{\n" );
+	output.append( "[CoreObjects::CATEGORY_COUNT][CoreObjects::TYPE_COUNT] =\n{\n" );
 	categoryTypeCount.add( generate_source_system_category_types_mapped( output, "DEFAULT" ) );
 	for( auto &category : objectCategories )
 	{
@@ -1885,7 +1893,7 @@ void Objects::generate_source_system( String &output )
 	output.append( "};\n\n" );
 
 	output.append( "const u16 CoreObjects::CATEGORY_TYPES" );
-	output.append( "[ObjectCategory::OBJECT_CATEGORY_COUNT][ObjectType::OBJECT_TYPE_COUNT] =\n{\n" );
+	output.append( "[CoreObjects::CATEGORY_COUNT][CoreObjects::TYPE_COUNT] =\n{\n" );
 	generate_source_system_category_types( output, "DEFAULT" );
 	for( auto &category : objectCategories )
 	{
@@ -1894,7 +1902,7 @@ void Objects::generate_source_system( String &output )
 	output.append( "};\n\n" );
 
 	// CATEGORY_TYPE_COUNT
-	output.append( "const u16 CoreObjects::CATEGORY_TYPE_COUNT[ObjectCategory::OBJECT_CATEGORY_COUNT] =\n{\n\t" );
+	output.append( "const u16 CoreObjects::CATEGORY_TYPE_COUNT[CoreObjects::CATEGORY_COUNT] =\n{\n\t" );
 	for( usize i = 0, j = 0; i < categoryTypeCount.size(); i++, j++ )
 	{
 		output.append( categoryTypeCount[i] );
@@ -1904,7 +1912,7 @@ void Objects::generate_source_system( String &output )
 
 	// CATEGORY_NAME
 	output.append( "#if COMPILE_DEBUG\n" );
-	output.append( "const char *CoreObjects::CATEGORY_NAME[ObjectCategory::OBJECT_CATEGORY_COUNT] =\n{\n" );
+	output.append( "const char *CoreObjects::CATEGORY_NAME[CoreObjects::CATEGORY_COUNT] =\n{\n" );
 	output.append( "\t\"DEFAULT\",\n" );
 	for( auto &category : objectCategories )
 	{
@@ -1914,7 +1922,7 @@ void Objects::generate_source_system( String &output )
 	output.append( "#endif\n\n" );
 
 	// TYPE_SIZE
-	output.append( "const u16 CoreObjects::TYPE_SIZE[ObjectType::OBJECT_TYPE_COUNT] =\n{\n\t" );
+	output.append( "const u16 CoreObjects::TYPE_SIZE[CoreObjects::TYPE_COUNT] =\n{\n\t" );
 	for( usize i = 0, j = 0; i < objectFilesSorted.size(); i++, j++ )
 	{
 		ObjectFile &object = *objectFilesSorted[i];
@@ -1926,7 +1934,7 @@ void Objects::generate_source_system( String &output )
 
 	// TYPE_NAME
 	output.append( "#if COMPILE_DEBUG\n" );
-	output.append( "const char *CoreObjects::TYPE_NAME[ObjectType::OBJECT_TYPE_COUNT] =\n{\n" );
+	output.append( "const char *CoreObjects::TYPE_NAME[CoreObjects::TYPE_COUNT] =\n{\n" );
 	for( usize i = 0, j = 0; i < objectFilesSorted.size(); i++, j++ )
 	{
 		ObjectFile &object = *objectFilesSorted[i];
@@ -1936,7 +1944,7 @@ void Objects::generate_source_system( String &output )
 	output.append( "#endif\n\n" );
 
 	// TYPE_BUCKET_CAPACITY
-	output.append( "const u16 CoreObjects::TYPE_BUCKET_CAPACITY[ObjectType::OBJECT_TYPE_COUNT] =\n{\n\t" );
+	output.append( "const u16 CoreObjects::TYPE_BUCKET_CAPACITY[CoreObjects::TYPE_COUNT] =\n{\n\t" );
 	for( usize i = 0, j = 0; i < objectFilesSorted.size(); i++, j++ )
 	{
 		ObjectFile &object = *objectFilesSorted[i];
@@ -1946,7 +1954,7 @@ void Objects::generate_source_system( String &output )
 	output.append( "\n};\n\n" );
 
 	// TYPE_MAX_COUNT
-	output.append( "const u32 CoreObjects::TYPE_MAX_COUNT[ObjectType::OBJECT_TYPE_COUNT] =\n{\n\t" );
+	output.append( "const u32 CoreObjects::TYPE_MAX_COUNT[CoreObjects::TYPE_COUNT] =\n{\n\t" );
 	for( usize i = 0, j = 0; i < objectFilesSorted.size(); i++, j++ )
 	{
 		ObjectFile &object = *objectFilesSorted[i];
@@ -1956,7 +1964,7 @@ void Objects::generate_source_system( String &output )
 	output.append( "\n};\n\n" );
 
 	// TYPE_INHERITANCE_DEPTH
-	output.append( "const u16 CoreObjects::TYPE_INHERITANCE_DEPTH[ObjectType::OBJECT_TYPE_COUNT] =\n{\n\t" );
+	output.append( "const u16 CoreObjects::TYPE_INHERITANCE_DEPTH[CoreObjects::TYPE_COUNT] =\n{\n\t" );
 	for( usize i = 0, j = 0; i < objectFilesSorted.size(); i++, j++ )
 	{
 		ObjectFile &object = *objectFilesSorted[i];
@@ -1969,7 +1977,7 @@ void Objects::generate_source_system( String &output )
 
 	// TYPE_HASH
 	HashMap<u32, bool> hashesSeen;
-	output.append( "const u32 CoreObjects::TYPE_HASH[ObjectType::OBJECT_TYPE_COUNT] =\n{\n\t" );
+	output.append( "const u32 CoreObjects::TYPE_HASH[CoreObjects::TYPE_COUNT] =\n{\n\t" );
 	for( usize i = 0, j = 0; i < objectFilesSorted.size(); i++, j++ )
 	{
 		ObjectFile &object = *objectFilesSorted[i];
@@ -1988,7 +1996,7 @@ void Objects::generate_source_system( String &output )
 	output.append( "\n};\n\n" );
 
 	// TYPE_SERIALIZED
-	output.append( "const bool CoreObjects::TYPE_SERIALIZED[ObjectType::OBJECT_TYPE_COUNT] =\n{\n\t" );
+	output.append( "const bool CoreObjects::TYPE_SERIALIZED[CoreObjects::TYPE_COUNT] =\n{\n\t" );
 	for( usize i = 0, j = 0; i < objectFilesSorted.size(); i++, j++ )
 	{
 		ObjectFile &object = *objectFilesSorted[i];
@@ -2001,7 +2009,7 @@ void Objects::generate_source_system( String &output )
 	output.append( COMMENT_BREAK "\n\n" );
 	output.append( "bool CoreObjects::init()\n{\n" );
 	{
-		output.append( "\tObject::Serialization::init();\n\n" );
+		output.append( "\tObjectInstance::Serialization::init();\n\n" );
 		output.append( "\treturn true;\n" );
 	}
 	output.append( "}\n\n" );
@@ -2009,7 +2017,7 @@ void Objects::generate_source_system( String &output )
 	// bool free()
 	output.append( "bool CoreObjects::free()\n{\n" );
 	{
-		output.append( "\tObject::Serialization::free();\n\n" );
+		output.append( "\tObjectInstance::Serialization::free();\n\n" );
 		output.append( "\treturn true;\n" );
 	}
 	output.append( "}\n\n" );
@@ -2017,12 +2025,12 @@ void Objects::generate_source_system( String &output )
 	// Serialize
 	output.append( COMMENT_BREAK "\n\n" );
 	output.append( "void CoreObjects::serialize( Serializer &serializer, const ObjectContext &context )\n{\n" );
-	output.append( "\tObject::Serialization::prepare( context );\n" );
+	output.append( "\tObjectInstance::Serialization::prepare( context );\n" );
 	for( ObjectFile *object : objectFilesSorted )
 	{
 		if( !object->hasSerialize ) { continue; }
 		output.append( "\tserializer.write( " ).append( object->hashHex );
-		output.append( ", ObjectContextSerializer<ObjectType::").append( object->name );
+		output.append( ", ObjectContextSerializer<Object::").append( object->name );
 		output.append( ">{ context } );\n" );
 	}
 	output.append( "}\n\n" );
@@ -2032,15 +2040,15 @@ void Objects::generate_source_system( String &output )
 	for( ObjectFile *object : objectFilesSorted )
 	{
 		if( !object->hasSerialize ) { continue; }
-		output.append( "\t{ ObjectContextDeserializerA<ObjectType::" ).append( object->name );
+		output.append( "\t{ ObjectContextDeserializerA<Object::" ).append( object->name );
 		output.append( "> type { context }; " );
 		output.append( "deserializer.read( " ).append( object->hashHex ).append( ", type ); }\n" );
 	}
-	output.append( "\tObject::Serialization::prepare( context );\n" );
+	output.append( "\tObjectInstance::Serialization::prepare( context );\n" );
 	for( ObjectFile *object : objectFilesSorted )
 	{
 		if( !object->hasSerialize ) { continue; }
-		output.append( "\t{ ObjectContextDeserializerB<ObjectType::" ).append( object->name );
+		output.append( "\t{ ObjectContextDeserializerB<Object::" ).append( object->name );
 		output.append( "> type { context }; " );
 		output.append( "deserializer.read( " ).append( object->hashHex ).append( ", type ); }\n" );
 	}
@@ -2216,12 +2224,12 @@ void Objects::generate_source_objects( String &output )
 	// ObjectContext Functions
 	generate_source_objects_events( output );
 
-	// ObjectHandle<ObjectType>.handle
+	// ObjectHandle<Object>.handle
 	output.append( COMMENT_BREAK "\n\n" );
 	for( ObjectFile *object : objectFilesSorted )
 	{
-		output.append( "template <> ObjectHandle<ObjectType::" ).append( object->name );
-		output.append( "> Object::handle<ObjectType::" ).append( object->name );
+		output.append( "template <> ObjectHandle<Object::" ).append( object->name );
+		output.append( "> ObjectInstance::handle<Object::" ).append( object->name );
 		output.append( ">( const ObjectContext &context ) const\n{\n" );
 		output.append( "\treturn { context.get_object_pointer( *this ) };\n}\n\n" );
 	}
@@ -2304,7 +2312,7 @@ String Objects::generate_source_objects_events_category( String &output, const u
 		if( object->events[eventID].manual ) { continue; }
 		if( !defaultCategory && !object->categories.contains( category.hash() ) ) { continue; }
 
-		event.append( "\tforeach_object( context, ObjectType::" ).append( object->name ).append( ", h ) { " );
+		event.append( "\tforeach_object( context, Object::" ).append( object->name ).append( ", h ) { " );
 		event.append( "h->" ).append( g_EVENT_FUNCTIONS[eventID][EventFunction_Name] );
 		event.append( g_EVENT_FUNCTIONS[eventID][EventFunction_ParametersCaller] ).append( "; }\n" );
 		generated = true;

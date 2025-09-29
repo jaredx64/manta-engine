@@ -1,6 +1,5 @@
 {
-	"name": "spr_rocket_ship",
-	"texture": "spr_rocket_ship.png",
+	"path": "spr_rocket_ship.png",
 	"atlas": "ui",
 
 	"count": 1,

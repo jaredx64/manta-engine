@@ -2440,6 +2440,34 @@ Node *Parser::parse_function_declaration_main( FunctionType functionType, const 
 	check_namespace_conflicts( token.name );
 	function.name = token.name;
 
+	// Group IDs (compute_main only)
+	if( functionType == FunctionType_MainCompute )
+	{
+		token = scanner.next();
+		ErrorIf( token.type != TokenType_LParen, "compute_main: expected '(' before thread groups" );
+
+		token = scanner.next();
+		ErrorIf( token.type != TokenType_Integer, "compute_main: expected thread group x" );
+		threadGroupX = token.integer;
+
+		token = scanner.next();
+		ErrorIf( token.type != TokenType_Comma, "compute_main: expected ','" );
+
+		token = scanner.next();
+		ErrorIf( token.type != TokenType_Integer, "compute_main: expected thread group y" );
+		threadGroupY = token.integer;
+
+		token = scanner.next();
+		ErrorIf( token.type != TokenType_Comma, "compute_main: expected ','" );
+
+		token = scanner.next();
+		ErrorIf( token.type != TokenType_Integer, "compute_main: expected thread group z" );
+		threadGroupZ = token.integer;
+
+		token = scanner.next();
+		ErrorIf( token.type != TokenType_RParen, "compute_main: expected ')' after thread groups" );
+	}
+
 	// Requirements
 	bool hasIn = false;
 	bool hasOut = false;
@@ -2540,8 +2568,11 @@ Node *Parser::parse_function_declaration_main( FunctionType functionType, const 
 	};
 	function.parameterCount = variables.size() - function.parameterFirst;
 
-	ErrorIf( !hasIn, "%s() requires a first parameter of type 'vertex_input'", functionName );
-	ErrorIf( !hasOut, "%s() requires a second parameter of type 'vertex_output'", functionName );
+	if( functionType != FunctionType_MainCompute )
+	{
+		ErrorIf( !hasIn, "%s() requires a first parameter of type 'vertex_input'", functionName );
+		ErrorIf( !hasOut, "%s() requires a second parameter of type 'vertex_output'", functionName );
+	}
 
 	// Parse Block
 	token = scanner.next();

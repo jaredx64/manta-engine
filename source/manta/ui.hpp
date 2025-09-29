@@ -31,7 +31,7 @@ namespace CoreUI
 
 namespace UI
 {
-	extern Object hoverWidgetID;
+	extern ObjectInstance hoverWidgetID;
 	extern UIContext *hoverWidgetContext;
 	extern void update( const Delta delta );
 }
@@ -90,40 +90,40 @@ public:
 	void clear();
 
 public:
-	bool destroy_widget( Object &widget );
-	Object create_widget( u16 type, Object parent = { } );
+	bool destroy_widget( ObjectInstance &widget );
+	ObjectInstance create_widget( u16 type, ObjectInstance parent = { } );
 
-	Object create_widget_window( u16 type, int x, int y, int width, int height,
-		bool resizable = true, Object parent = { } );
+	ObjectInstance create_widget_window( u16 type, int x, int y, int width, int height,
+		bool resizable = true, ObjectInstance parent = { } );
 
-	Object create_widget_scrollable_region( u16 type, int x, int y, int width, int height,
-		const bool hasVerticalScrollbar, const bool hasHorizontalScrollbar, Object parent = { } );
+	ObjectInstance create_widget_scrollable_region( u16 type, int x, int y, int width, int height,
+		const bool hasVerticalScrollbar, const bool hasHorizontalScrollbar, ObjectInstance parent = { } );
 
-	Object create_widget_button( u16 type, int x, int y, int width, int height,
-		Object parent = { } );
+	ObjectInstance create_widget_button( u16 type, int x, int y, int width, int height,
+		ObjectInstance parent = { } );
 
-	Object create_widget_checkbox( u16 type, int x, int y, int width, int height, bool enabled,
-		Object parent = { } );
+	ObjectInstance create_widget_checkbox( u16 type, int x, int y, int width, int height, bool enabled,
+		ObjectInstance parent = { } );
 
-	Object create_widget_slider( u16 type, int x, int y, int width, int height,
-		bool vertical = false, float value = 0.0f, int steps = 0, Object parent = { } );
+	ObjectInstance create_widget_slider( u16 type, int x, int y, int width, int height,
+		bool vertical = false, float value = 0.0f, int steps = 0, ObjectInstance parent = { } );
 
-	Object create_widget_scrollbar( u16 type, int x, int y, int width, int height,
-		bool vertical = false, float value = 0.0f, Object parent = { } );
+	ObjectInstance create_widget_scrollbar( u16 type, int x, int y, int width, int height,
+		bool vertical = false, float value = 0.0f, ObjectInstance parent = { } );
 
-	Object create_widget_textbox( u16 type, int x, int y, int width, int height,
-		TextFormat format = { }, Object parent = { } );
+	ObjectInstance create_widget_textbox( u16 type, int x, int y, int width, int height,
+		TextFormat format = { }, ObjectInstance parent = { } );
 
-	Object create_widget_textline( u16 type, int x, int y, int width, int height,
-		TextFormat format = { }, Object parent = { } );
+	ObjectInstance create_widget_textline( u16 type, int x, int y, int width, int height,
+		TextFormat format = { }, ObjectInstance parent = { } );
 
-	Object create_widget_labeltext( u16 type, int x, int y, const char *label,
-		int width = 0, int height = 0, Object parent = { } );
+	ObjectInstance create_widget_labeltext( u16 type, int x, int y, const char *label,
+		int width = 0, int height = 0, ObjectInstance parent = { } );
 
 public:
-	template <u16 T> ObjectHandle<T> handle( const Object &widget ) const
+	template <Object_t T> ObjectHandle<T> handle( const ObjectInstance &widget ) const
 	{
-		Assert( T == ObjectType::UIWidget || object_is_child_of( T, ObjectType::UIWidget ) );
+		DEBUG( if constexpr( T != Object::UIWidget ) { Assert( object_is_child_of( T, Object::UIWidget ) ) } )
 		if( !( T == widget.type || object_is_child_of( widget.type, T ) ) ) { return ObjectHandle<T>{ nullptr }; }
 		return ObjectHandle<T>{ objects.get_object_pointer( widget ) };
 	}
@@ -141,30 +141,30 @@ public:
 	float_v2 position_float_v2( const float x, const float y );
 	int_v2 position_i32( const int x, const int y );
 
-	void widget_send_top( Object widget );
-	Object get_widget_hover();
-	Object get_widget_top();
+	void widget_send_top( ObjectInstance widget );
+	ObjectInstance get_widget_hover();
+	ObjectInstance get_widget_top();
 
 	void update_widgets( const Delta delta );
 	void render_widgets( const Delta delta, const Alpha alpha = { } );
 
-	void update_widget( const Object &widget, const Delta delta );
-	void render_widget( const Object &widget, const Delta delta, const Alpha alpha );
+	void update_widget( const ObjectInstance &widget, const Delta delta );
+	void render_widget( const ObjectInstance &widget, const Delta delta, const Alpha alpha );
 
 private:
-	Object instantiate_widget( u16 type, Object parent );
+	ObjectInstance instantiate_widget( u16 type, ObjectInstance parent );
 
-	void update_widget( ObjectHandle<ObjectType::UIWidget> &widgetHandle, const Delta delta );
-	void render_widget( ObjectHandle<ObjectType::UIWidget> &widgetHandle, const Delta delta, const Alpha alpha );
+	void update_widget( ObjectHandle<Object::UIWidget> &widgetHandle, const Delta delta );
+	void render_widget( ObjectHandle<Object::UIWidget> &widgetHandle, const Delta delta, const Alpha alpha );
 
-	bool test_widget( ObjectHandle<ObjectType::UIWidget> &widgetHandle );
-	void register_widget( const Object &widget );
-	void release_widget( const Object &widget );
+	bool test_widget( ObjectHandle<Object::UIWidget> &widgetHandle );
+	void register_widget( const ObjectInstance &widget );
+	void release_widget( const ObjectInstance &widget );
 
 private:
 	ObjectContext objects { ObjectCategory::UI };
-	List<Object> widgets;
-	Object hoverWidget;
+	List<ObjectInstance> widgets;
+	ObjectInstance hoverWidget;
 	bool clearing = false;
 
 	float_m44 matrix;

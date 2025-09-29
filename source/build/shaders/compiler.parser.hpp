@@ -163,6 +163,10 @@ public:
 	FunctionID mainFragment = USIZE_MAX;
 	FunctionID mainCompute = USIZE_MAX;
 
+	u64 threadGroupX;
+	u64 threadGroupY;
+	u64 threadGroupZ;
+
 	bool bufferSlots[SHADER_MAX_BUFFER_SLOTS];
 	bool textureSlots[SHADER_MAX_TEXTURE_SLOTS];
 	bool targetSlots[SHADER_MAX_TARGET_SLOTS];

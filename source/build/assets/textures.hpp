@@ -21,6 +21,7 @@ struct Texture
 	u16 levels = 0;
 
 	bool atlasTexture = true;
+	bool generateMips = false;
 	List<GlyphID> glyphs;
 	GlyphID add_glyph( Texture2DBuffer &&textureBuffer );
 	void pack();
@@ -35,6 +36,8 @@ struct Textures
 	TextureID make_new( String &name );
 	TextureID make_new( String &name, Texture2DBuffer &&textureBuffer );
 
+	void gather( const char *path, const bool recurse = true );
+	void load( const char *path );
 	void write();
 
 	Texture &operator[]( const TextureID id ) { return textures[id]; }

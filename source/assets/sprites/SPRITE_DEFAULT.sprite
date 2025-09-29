@@ -1,6 +1,5 @@
 {
-	"name": "SPRITE_DEFAULT",
-	"texture": "SPRITE_DEFAULT.png",
+	"path": "SPRITE_DEFAULT.png",
 	"atlas": "ui",
 
 	"count": 1,

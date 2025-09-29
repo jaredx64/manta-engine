@@ -551,7 +551,7 @@ void draw_circle_outline_gradient( float x, float y, float radius, float thickne
         const float innerY2 = y + radiusInner * sin( angle2 );
 
 		Gfx::quad_batch_write( innerX1, innerY1, innerX2, innerY2, outerX1, outerY1, outerX2, outerY2,
-		                       g.u1, g.v1, g.u2, g.v2, c1, c1, c2, c2, nullTexture, depth );
+			g.u1, g.v1, g.u2, g.v2, c1, c1, c2, c2, nullTexture, depth );
 	}
 }
 

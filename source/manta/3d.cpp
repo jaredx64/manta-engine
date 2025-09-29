@@ -533,10 +533,10 @@ static void frustum_draw( const float_v3 *corners, const Color &color, const boo
 	}
 	frustum.write_end();
 
-	CoreGfx::textures[Assets::material( Material::MATERIAL_DEFAULT ).textureColor].bind( 0 );
+	CoreGfx::textures[Texture::TEXTURE_DEFAULT].bind( 0 );
 
 	GfxDepthTestMode depthTestModeCache = Gfx::state().depth.depthTestMode;
-	frustum.draw( wireframe ? GfxPrimitiveType_LineList : GfxPrimitiveType_TriangleList );
+	Gfx::draw_vertex_buffer( frustum, wireframe ? GfxPrimitiveType_LineList : GfxPrimitiveType_TriangleList );
 	frustum.free();
 }
 

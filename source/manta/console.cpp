@@ -1611,9 +1611,9 @@ void CoreConsole::DVarInitializer::dvar_set_enabled( void *payload, const bool e
 
 static void dvar_color_picker_window( Color *variable )
 {
-	static Object window;
-	static Object spectrum;
-	static Object textboxes;
+	static ObjectInstance window;
+	static ObjectInstance spectrum;
+	static ObjectInstance textboxes;
 	static Color *color;
 	color = variable;
 
@@ -1626,8 +1626,8 @@ static void dvar_color_picker_window( Color *variable )
 	ui.destroy_widget( window );
 
 	// Create New Window
-	window = ui.create_widget( ObjectType::UIWidget_Window );
-	auto windowHandle = ui.handle<ObjectType::UIWidget_Window>( window );
+	window = ui.create_widget( Object::UIWidget_Window );
+	auto windowHandle = ui.handle<Object::UIWidget_Window>( window );
 	if( windowHandle )
 	{
 		windowHandle->x = 64;
@@ -1638,18 +1638,18 @@ static void dvar_color_picker_window( Color *variable )
 		windowHandle->color = c_dkgray;
 	}
 
-	spectrum = ui.create_widget( ObjectType::UIWidget_ColorPicker_Spectrum, window );
-	auto spectrumHandle = ui.handle<ObjectType::UIWidget_ColorPicker_Spectrum>( spectrum );
+	spectrum = ui.create_widget( Object::UIWidget_ColorPicker_Spectrum, window );
+	auto spectrumHandle = ui.handle<Object::UIWidget_ColorPicker_Spectrum>( spectrum );
 	Assert( spectrumHandle );
 	if( spectrumHandle )
 	{
 		spectrumHandle->set_rgba( color != nullptr ? *color : c_teal );
 
-		spectrumHandle->callbackOnUpdate = []( UIContext &context, Object widget )
+		spectrumHandle->callbackOnUpdate = []( UIContext &context, ObjectInstance widget )
 			{
-				auto widgetHandle = context.handle<ObjectType::UIWidget_ColorPicker_Spectrum>( widget );
+				auto widgetHandle = context.handle<Object::UIWidget_ColorPicker_Spectrum>( widget );
 				Assert( widgetHandle );
-				auto parentHandle = context.handle<ObjectType::UIWidget_Window>( widgetHandle->parent );
+				auto parentHandle = context.handle<Object::UIWidget_Window>( widgetHandle->parent );
 				Assert( parentHandle );
 
 				widgetHandle->x = 4;
@@ -1658,11 +1658,11 @@ static void dvar_color_picker_window( Color *variable )
 				widgetHandle->height = parentHandle->height - 80;
 			};
 
-		spectrumHandle->callbackOnInteract = []( UIContext &context, Object widget )
+		spectrumHandle->callbackOnInteract = []( UIContext &context, ObjectInstance widget )
 			{
-				auto textboxesHandle = context.handle<ObjectType::UIWidget_ColorPicker_TextBox>( textboxes );
+				auto textboxesHandle = context.handle<Object::UIWidget_ColorPicker_TextBox>( textboxes );
 				Assert( textboxesHandle );
-				auto spectrumHandle = context.handle<ObjectType::UIWidget_ColorPicker_Spectrum>( spectrum );
+				auto spectrumHandle = context.handle<Object::UIWidget_ColorPicker_Spectrum>( spectrum );
 				Assert( spectrumHandle );
 
 				const Color c = spectrumHandle->get_rgba();
@@ -1671,29 +1671,29 @@ static void dvar_color_picker_window( Color *variable )
 			};
 	}
 
-	textboxes = ui.create_widget( ObjectType::UIWidget_ColorPicker_TextBox, window );
-	auto textboxesHandle = ui.handle<ObjectType::UIWidget_ColorPicker_TextBox>( textboxes );
+	textboxes = ui.create_widget( Object::UIWidget_ColorPicker_TextBox, window );
+	auto textboxesHandle = ui.handle<Object::UIWidget_ColorPicker_TextBox>( textboxes );
 	Assert( spectrumHandle );
 	if( textboxesHandle )
 	{
 		textboxesHandle->set_rgba( c_teal );
 
-		textboxesHandle->callbackOnUpdate = []( UIContext &context, Object widget )
+		textboxesHandle->callbackOnUpdate = []( UIContext &context, ObjectInstance widget )
 			{
-				auto widgetHandle = context.handle<ObjectType::UIWidget_ColorPicker_TextBox>( widget );
+				auto widgetHandle = context.handle<Object::UIWidget_ColorPicker_TextBox>( widget );
 				Assert( widgetHandle );
-				auto parentHandle = context.handle<ObjectType::UIWidget_Window>( widgetHandle->parent );
+				auto parentHandle = context.handle<Object::UIWidget_Window>( widgetHandle->parent );
 				Assert( parentHandle );
 
 				widgetHandle->x = 4;
 				widgetHandle->y = parentHandle->height - 68;
 			};
 
-		textboxesHandle->callbackOnInteract = []( UIContext &context, Object widget )
+		textboxesHandle->callbackOnInteract = []( UIContext &context, ObjectInstance widget )
 			{
-				auto textboxesHandle = context.handle<ObjectType::UIWidget_ColorPicker_TextBox>( textboxes );
+				auto textboxesHandle = context.handle<Object::UIWidget_ColorPicker_TextBox>( textboxes );
 				Assert( textboxesHandle );
-				auto spectrumHandle = context.handle<ObjectType::UIWidget_ColorPicker_Spectrum>( spectrum );
+				auto spectrumHandle = context.handle<Object::UIWidget_ColorPicker_Spectrum>( spectrum );
 				Assert( spectrumHandle );
 
 				const Color c = textboxesHandle->get_rgba();
@@ -1722,8 +1722,8 @@ static void dvar_render_target_window( GfxRenderTarget2D *variable )
 	}
 
 	// Window
-	Object window = ui.create_widget( ObjectType::UIWidget_Window_GfxRenderTarget2D );
-	auto windowHandle = ui.handle<ObjectType::UIWidget_Window_GfxRenderTarget2D>( window );
+	ObjectInstance window = ui.create_widget( Object::UIWidget_Window_GfxRenderTarget2D );
+	auto windowHandle = ui.handle<Object::UIWidget_Window_GfxRenderTarget2D>( window );
 	if( windowHandle )
 	{
 		windowHandle->x = 64;

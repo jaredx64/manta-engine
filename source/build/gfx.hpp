@@ -31,6 +31,14 @@ enum_type( ShaderStage, u32 )
 };
 
 
+constexpr const char *ShaderStageName[SHADERSTAGE_COUNT] =
+{
+	"Vertex Shader", // ShaderStage_Vertex
+	"Fragment Shader", // ShaderStage_Fragment
+	"Compute Shader", // ShaderStage_Compute
+};
+
+
 struct Shader
 {
 	Shader() = default;

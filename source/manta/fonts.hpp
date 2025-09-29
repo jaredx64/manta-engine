@@ -15,10 +15,10 @@ public:
 	constexpr Font( const u16 id, const u16 ttf ) : id{ id }, ttf{ ttf } { };
 	constexpr operator u8() const { return static_cast<u8>( id ); }
 
-	constexpr Font regular() const { return Font { id, CoreAssets::fonts[id].ttfs[0] }; }
-	constexpr Font italics() const { return Font { id, CoreAssets::fonts[id].ttfs[1] }; }
-	constexpr Font bold() const { return Font { id, CoreAssets::fonts[id].ttfs[2] }; }
-	constexpr Font bold_italics() const { return Font { id, CoreAssets::fonts[id].ttfs[3] }; }
+	/*constexpr */Font regular() const { return Font { id, CoreAssets::fonts[id].ttfs[0] }; }
+	/*constexpr */Font italics() const { return Font { id, CoreAssets::fonts[id].ttfs[1] }; }
+	/*constexpr */Font bold() const { return Font { id, CoreAssets::fonts[id].ttfs[2] }; }
+	/*constexpr */Font bold_italics() const { return Font { id, CoreAssets::fonts[id].ttfs[3] }; }
 
 	const u16 id, ttf;
 };

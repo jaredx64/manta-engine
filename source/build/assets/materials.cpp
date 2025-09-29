@@ -52,9 +52,11 @@ void Materials::load( const char *path )
 		Build::cacheDirtyAssets |= file_time_newer( time, Assets::timeCache );
 	}
 
-	// Read file (json)
-	String name = materialJSON.get_string( "name" );
-	ErrorIf( name.length_bytes() == 0, "Material '%s' has an invalid name (required)", path );
+	// Material Name (extracted from <name>.material)
+	char materialName[PATH_SIZE];
+	path_get_filename( materialName, sizeof( materialName ), path );
+	path_remove_extension( materialName );
+	String name = materialName;
 
 	String colorTexture = materialJSON.get_string( "colorTexture" );
 	ErrorIf( colorTexture.length_bytes() == 0, "Material '%s' has an invalid color texture (required)", path );
@@ -77,9 +79,10 @@ void Materials::load( const char *path )
 	// Register Material
 	Material material;
 	material.name = name;
-	material.textureIDColor = Assets::textures.make_new( name ); // TODO: Generate unique name
+	material.textureIDColor = Assets::textures.make_new( name );
 	Texture &colorTextureAsset = Assets::textures[material.textureIDColor];
 	colorTextureAsset.atlasTexture = false;
+	colorTextureAsset.generateMips = true;
 	colorTextureAsset.add_glyph( static_cast<Texture2DBuffer &&>( colorTextureBuffer ) );
 
 	// Register Material

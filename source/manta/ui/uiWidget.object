@@ -22,13 +22,13 @@ CATEGORY( UI )
 FRIEND( UIContext )
 
 PROTECTED UIContext *context = nullptr;
-PROTECTED List<Object> children;
+PROTECTED List<ObjectInstance> children;
 PROTECTED bool releasing = false;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // PUBLIC STATE
 
-PUBLIC Object parent;
+PUBLIC ObjectInstance parent;
 
 PUBLIC int x;
 PUBLIC int y;
@@ -52,9 +52,9 @@ PUBLIC u8 container     : 1; // Restricts child EVENT_TEST events to only occur 
 PUBLIC u8 sortable      : 1; // Allows the widget to be reordered when clicked
 PUBLIC u8 ___unused     : 1;
 
-PUBLIC void ( *callbackOnUpdate )( UIContext &, Object ) = nullptr;
-PUBLIC void ( *callbackOnRender )( UIContext &, Object, const Alpha ) = nullptr;
-PUBLIC void ( *callbackOnInteract )( UIContext &, Object ) = nullptr;
+PUBLIC void ( *callbackOnUpdate )( UIContext &, ObjectInstance ) = nullptr;
+PUBLIC void ( *callbackOnRender )( UIContext &, ObjectInstance, const Alpha ) = nullptr;
+PUBLIC void ( *callbackOnInteract )( UIContext &, ObjectInstance ) = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

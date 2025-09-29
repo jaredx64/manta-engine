@@ -52,13 +52,18 @@ void Sprites::load( const char *path )
 		Build::cacheDirtyAssets |= file_time_newer( time, Assets::timeCache );
 	}
 
+	// Sprite Name (extracted from <name>.sprite)
+	char spriteName[PATH_SIZE];
+	path_get_filename( spriteName, sizeof( spriteName ), path );
+	path_remove_extension( spriteName );
+	String name = spriteName;
+
 	// Read file (json)
-	String name = spriteJSON.get_string( "name" );
-	ErrorIf( name.length_bytes() == 0, "Sprite '%s' has an invalid name (required)", path );
-	String texture = spriteJSON.get_string( "texture" );
-	ErrorIf( texture.length_bytes() == 0, "Sprite '%s' has an invalid texture (required)", path );
+	String texturePath = spriteJSON.get_string( "path" );
+	ErrorIf( texturePath.length_bytes() == 0, "Sprite '%s' has an invalid path (required)", path );
 	String atlas = spriteJSON.get_string( "atlas" );
 	ErrorIf( atlas.length_bytes() == 0, "Sprite '%s' has an invalid atlas texture (required)", path );
+	atlas.insert( 0, "atlas_" );
 	int count = spriteJSON.get_int( "count", 1 );
 	ErrorIf( count < 1, "Sprite '%s' has an invalid count", path );
 	int xorigin = spriteJSON.get_int( "xorigin", 0 );
@@ -68,13 +73,14 @@ void Sprites::load( const char *path )
 	char pathRelative[PATH_SIZE];
 	path_get_directory( pathRelative, sizeof( pathRelative ), path );
 	strappend( pathRelative, SLASH );
-	strappend( pathRelative, texture.cstr() );
+	strappend( pathRelative, texturePath.cstr() );
 	Texture2DBuffer spriteTexture { pathRelative };
 	if( !spriteTexture )
 	{
 		// Relative path failed -- try absolute path
-		spriteTexture.load( texture.cstr() );
-		ErrorIf( !spriteTexture, "Unable to load texture for sprite %s (texture: %s)", path, texture.cstr() );
+		spriteTexture.load( texturePath.cstr() );
+		ErrorIf( !spriteTexture, "Unable to load texture for sprite %s (texture: %s)",
+			path, texturePath.cstr() );
 	}
 
 	// Register Sprite

@@ -161,11 +161,13 @@ void compile_shader( Shader &shader, const char *path )
 	{
 	#if COMPILE_DEBUG
 		String output = "";
+		output.append( COMMENT_BREAK );
 		for( ShaderStage stage = 0; stage < SHADERSTAGE_COUNT; stage++ )
 		{
 			// Combine Stage (Debug)
-			output.append( COMMENT_BREAK "\n\n" );
+			output.append( "\n// " ).append( ShaderStageName[stage] ).append( "\n\n" );
 			output.append( shader.outputs[stage] );
+			output.append( COMMENT_BREAK );
 		}
 		output.save( pathOutput );
 	#endif

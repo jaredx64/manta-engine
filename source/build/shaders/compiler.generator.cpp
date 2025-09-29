@@ -638,7 +638,13 @@ void Generator::generate_function_declaration( NodeFunctionDeclaration *node )
 }
 
 
-void Generator::generate_function_declaration_main( NodeFunctionDeclaration *node )
+void Generator::generate_function_declaration_main_pipeline( NodeFunctionDeclaration *node )
+{
+	// Do nothing
+}
+
+
+void Generator::generate_function_declaration_main_compute( NodeFunctionDeclaration *node )
 {
 	// Do nothing
 }
@@ -1138,9 +1144,9 @@ bool Generator::generate_structure_gfx_uniform_buffer( NodeStruct *node )
 	source.append( "\t#if GRAPHICS_ENABLED\n" );
 	source.append( "\t\tauto *&resource = CoreGfx::gfxUniformBufferResources[" );
 	source.append( static_cast<int>( uniformBuffer.id ) ).append( "];\n" );
-	source.append( "\t\tCoreGfx::rb_constant_buffered_write_begin( resource );\n" );
-	source.append( "\t\tCoreGfx::rb_constant_buffered_write( resource, this );\n" );
-	source.append( "\t\tCoreGfx::rb_constant_buffered_write_end( resource );\n" );
+	source.append( "\t\tCoreGfx::api_uniform_buffer_write_begin( resource );\n" );
+	source.append( "\t\tCoreGfx::api_uniform_buffer_write( resource, this );\n" );
+	source.append( "\t\tCoreGfx::api_uniform_buffer_write_end( resource );\n" );
 	source.append( "\t#endif\n" );
 	source.append( "\t}\n" );
 	return true;

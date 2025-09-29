@@ -16,6 +16,7 @@ static bool point_in_triangle( const double_v3 &point, const double_v3 &vert0,
 	const double dot11 = v0v2.dot( v0v2 );
 
 	const double denom = dot00 * dot11 - dot01 * dot01;
+
 	if( abs( denom ) < 1e-12 )
 	{
 		return ( point - vert0 ).length_sqr() < 1e-12 ||
@@ -202,103 +203,6 @@ CollisionResult sweep_sphere_vs_triangles( const double_v3 &center, const double
 			result.normal = ( centerAtTime - pointClosest ).normalize();
 			result.point = pointClosest;
 			if( t <= 1e-12 ) { return result; } // Early out if t = 0.0 collision
-		}
-	}
-
-	return result;
-}
-
-// Capsule vs Triangles swept test
-CollisionResult sweep_capsule_vs_triangles(
-	const double_v3 &p0, const double_v3 &p1, double radius,
-	const double_v3 &displacement,
-	const double_v3 *vertices, usize count )
-{
-
-	CollisionResult result;
-	result.toi = 1.0;
-
-	// For capsules, we can reduce the problem to a sphere swept along the capsule axis
-	double_v3 axis = p1 - p0;
-	double axis_length = axis.length();
-	double_v3 axis_dir = axis.normalize();
-
-	// Iterate through all triangles
-	for( usize i = 0; i < count; i += 3 )
-	{
-		const double_v3 &v0 = vertices[i + 0];
-		const double_v3 &v1 = vertices[i + 1];
-		const double_v3 &v2 = vertices[i + 2];
-
-		// Compute triangle normal
-		const double_v3 edge1 = v1 - v0;
-		const double_v3 edge2 = v2 - v0;
-		const double_v3 normal = double_v3_cross( edge1, edge2 ).normalize();
-
-		// Find the closest point on the capsule segment to the triangle
-		const double_v3 center = v0 + v1 + v2;
-		const double_v3 tri_center = double_v3_divide( center, 3.0 );
-		const double_v3 to_tri = tri_center - p0;
-		const double proj = clamp( to_tri.dot( axis_dir ), 0.0, axis_length );
-		const double_v3 capsule_point = p0 + axis_dir * proj;
-
-		// Test sphere at this point against the triangle
-		CollisionResult sphere_result = sweep_sphere_vs_triangles(
-			capsule_point, radius, displacement, &vertices[i], 3 );
-
-		if( sphere_result.hit && sphere_result.toi < result.toi )
-		{
-			result = sphere_result;
-		}
-	}
-
-	return result;
-}
-
-// AABB vs Triangles swept test
-CollisionResult sweep_aabb_vs_triangles(
-	const double_v3 &min, const double_v3 &max,
-	const double_v3 &displacement,
-	const double_v3 *vertices, usize count )
-{
-	CollisionResult result;
-	result.toi = 1.0;
-
-	// For AABBs, we can use the separating axis theorem or approximate with sphere tests
-	// at the corners. This is a simplified approach.
-	const double_v3 center = ( min + max ) * 0.5;
-	const double_v3 extents = ( max - min ) * 0.5;
-	const double radius = extents.length();  // Sphere that encloses the AABB
-
-	// Test with an enclosing sphere first
-	CollisionResult sphere_result = sweep_sphere_vs_triangles(
-		center, radius, displacement, vertices, count );
-
-	if (sphere_result.hit) {
-		// Refine the test by checking the AABB more accurately
-		// This is a placeholder - a real implementation would use
-		// the separating axis theorem for continuous collision detection
-		result = sphere_result;
-
-		// Adjust normal based on the actual AABB face that collided
-		if( result.hit )
-		{
-			// Find the dominant axis of the normal
-			const double_v3 abs_normal = double_v3 { abs( result.normal.x ),
-				abs( result.normal.x ), abs( result.normal.z ) };
-
-			if( abs_normal.x >= abs_normal.y && abs_normal.x >= abs_normal.z )
-			{
-				result.normal = double_v3 { ( result.normal.x > 0.0 ) ? 1.0 : -1.0, 0.0, 0.0 };
-			}
-			else if( abs_normal.y >= abs_normal.x && abs_normal.y >= abs_normal.z )
-			{
-				result.normal = double_v3 { 0, ( result.normal.y > 0.0 ) ? 1.0 : -1.0, 0.0 };
-			}
-			else
-			{
-				result.normal = double_v3 { 0.0, 0.0, ( result.normal.z > 0.0 ) ? 1.0 : -1.0 };
-			}
 		}
 	}
 

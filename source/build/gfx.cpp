@@ -356,13 +356,13 @@ void Gfx::write()
 
 			source.append( "\tGfxUniformBufferResource *gfxUniformBufferResources[CoreGfx::uniformBufferCount];\n\n" );
 
-			source.append( "\tbool rb_init_uniform_buffers()\n\t{\n" );
+			source.append( "\tbool api_init_uniform_buffers()\n\t{\n" );
 			for( UniformBuffer &uniformBuffer : Gfx::uniformBuffers )
 			{
 				source.append( "\t\tgfxUniformBufferResources[" ).append( static_cast<int>( uniformBuffer.id ) );
 				source.append( "] = nullptr;\n" );
 				source.append( "\t\tGfxUniformBuffer::" ).append( uniformBuffer.name ).append( ".zero();\n" );
-				source.append( "\t\tif( !CoreGfx::rb_uniform_buffer_init( " );
+				source.append( "\t\tif( !CoreGfx::api_uniform_buffer_init( " );
 				source.append( "gfxUniformBufferResources[" ).append( static_cast<int>( uniformBuffer.id ) );
 				source.append( "], \"t_" ).append( uniformBuffer.name );
 				source.append( "\", " ).append( static_cast<int>( uniformBuffer.id ) );
@@ -373,10 +373,10 @@ void Gfx::write()
 			source.append( "\t\treturn true;\n" );
 			source.append( "\t}\n\n" );
 
-			source.append( "\tbool rb_free_uniform_buffers()\n\t{\n" );
+			source.append( "\tbool api_free_uniform_buffers()\n\t{\n" );
 			source.append( "\t\tfor( u32 i = 0; i < uniformBufferCount; i++ )\n" );
 			source.append( "\t\t{\n" );
-			source.append( "\t\t\tif( !CoreGfx::rb_uniform_buffer_free( gfxUniformBufferResources[i] ) ) { return false; }\n" );
+			source.append( "\t\t\tif( !CoreGfx::api_uniform_buffer_free( gfxUniformBufferResources[i] ) ) { return false; }\n" );
 			source.append( "\t\t}\n" );
 			source.append( "\n\t\t// Success!\n" );
 			source.append( "\t\treturn true;\n" );
@@ -395,7 +395,7 @@ void Gfx::write()
 			{
 				for( ShaderStage stage = 0; stage < SHADERSTAGE_COUNT; stage++ )
 				{
-					source.append( "\tstatic bool rb_shader_bind_uniform_buffers_" );
+					source.append( "\tstatic bool api_shader_bind_uniform_buffers_" );
 					source.append( shaderStages[stage] ).append( "_" );
 					source.append( shader.name ).append( "()\n\t{\n" );
 					for( usize i = 0; i < shader.uniformBufferIDs[stage].size(); i++ )
@@ -403,7 +403,7 @@ void Gfx::write()
 						int uniformBufferID = shader.uniformBufferIDs[stage][i];
 						int uniformBufferSlot = shader.uniformBufferSlots[stage][i];
 						UniformBuffer &uniformBuffer = Gfx::uniformBuffers[uniformBufferID];
-						source.append( "\t\tif( !CoreGfx::rb_uniform_buffer_bind_" ).append( shaderStages[stage] );
+						source.append( "\t\tif( !CoreGfx::api_uniform_buffer_bind_" ).append( shaderStages[stage] );
 						source.append( "( CoreGfx::gfxUniformBufferResources[" );
 						source.append( uniformBufferID ).append( "], " ).append( uniformBufferSlot );
 						source.append( " ) ) { return false; }" );
@@ -414,15 +414,15 @@ void Gfx::write()
 				}
 			}
 
-			// rb_shader_bind_uniform_buffers_vs/fs/cs[] function pointer table
+			// api_shader_bind_uniform_buffers_vs/fs/cs[] function pointer table
 			for( ShaderStage stage = 0; stage < SHADERSTAGE_COUNT; stage++ )
 			{
 				if( stage != 0 ) { source.append( "\n" ); }
-				source.append( "\tFUNCTION_POINTER_ARRAY( bool, rb_shader_bind_uniform_buffers_" );
+				source.append( "\tFUNCTION_POINTER_ARRAY( bool, api_shader_bind_uniform_buffers_" );
 				source.append( shaderStages[stage] ).append( " ) =\n\t{\n" );
 				for( Shader &shader : shaders )
 				{
-					source.append( "\t\trb_shader_bind_uniform_buffers_" ).append( shaderStages[stage] ).append( "_" );
+					source.append( "\t\tapi_shader_bind_uniform_buffers_" ).append( shaderStages[stage] ).append( "_" );
 					source.append( shader.name ).append( ",\n" );
 				}
 				source.append( "\t};\n" );

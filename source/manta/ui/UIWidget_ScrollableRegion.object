@@ -21,8 +21,8 @@ BUCKET_SIZE( 64 )
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // INTERNAL STATE
 
-PUBLIC Object scrollbarVertical;
-PUBLIC Object scrollbarHorizontal;
+PUBLIC ObjectInstance scrollbarVertical;
+PUBLIC ObjectInstance scrollbarHorizontal;
 
 PROTECTED int regionWidth = 64;
 PROTECTED int regionHeight = 64;
@@ -54,9 +54,9 @@ PROTECTED void init()
 	container = true;
 
 	// Create Scrollbars
-	scrollbarHorizontal = context->create_widget( ObjectType::UIWidget_Scrollbar, parent );
+	scrollbarHorizontal = context->create_widget( Object::UIWidget_Scrollbar, parent );
 	Assert( scrollbarHorizontal );
-	scrollbarVertical = context->create_widget( ObjectType::UIWidget_Scrollbar, parent );
+	scrollbarVertical = context->create_widget( Object::UIWidget_Scrollbar, parent );
 	Assert( scrollbarVertical );
 
 	// Color
@@ -81,9 +81,9 @@ PROTECTED void update( const Delta delta )
 	const bool isHovering = isInteractable && is_hovering();
 
 	// Scrollbar Handles
-	auto horizontalHandle = context->handle<ObjectType::UIWidget_Scrollbar>( scrollbarHorizontal );
+	auto horizontalHandle = context->handle<Object::UIWidget_Scrollbar>( scrollbarHorizontal );
 	Assert( horizontalHandle );
-	auto verticalHandle = context->handle<ObjectType::UIWidget_Scrollbar>( scrollbarVertical );
+	auto verticalHandle = context->handle<Object::UIWidget_Scrollbar>( scrollbarVertical );
 	Assert( verticalHandle );
 
 	// Scrollbar Positions

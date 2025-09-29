@@ -16,10 +16,10 @@ bool Model::init( const u32 meshID, u16 materialID )
 	vertexBuffer.init( binMesh.vertexCount, GfxCPUAccessMode_WRITE_NO_OVERWRITE );
 	material = materialID;
 
-	CoreGfx::rb_vertex_buffer_write_begin( vertexBuffer.resource );
-	CoreGfx::rb_vertex_buffer_write( vertexBuffer.resource, Assets::binary.data +
+	CoreGfx::api_vertex_buffer_write_begin( vertexBuffer.resource );
+	CoreGfx::api_vertex_buffer_write( vertexBuffer.resource, Assets::binary.data +
 		binMesh.vertexBufferOffset, binMesh.vertexBufferSize );
-	CoreGfx::rb_vertex_buffer_write_end( vertexBuffer.resource );
+	CoreGfx::api_vertex_buffer_write_end( vertexBuffer.resource );
 
 	return true;
 }
@@ -51,7 +51,7 @@ void Model::draw( double x, double y, double z, double scale, double rotation )
 	Gfx::set_matrix_model( matrixWorld );
 	{
 		CoreGfx::textures[Assets::material( material ).textureColor].bind( 0 );
-		CoreGfx::rb_vertex_buffer_draw( vertexBuffer.resource, GfxPrimitiveType_TriangleList );
+		Gfx::draw_vertex_buffer( vertexBuffer, GfxPrimitiveType_TriangleList );
 	}
 	Gfx::set_matrix_model( matrixModelCache );
 }

@@ -2,6 +2,7 @@
 
 #include <vendor/math.hpp>
 #include <core/list.hpp>
+#include <core/json.hpp>
 
 #include <build/build.hpp>
 #include <build/assets.hpp>
@@ -590,6 +591,78 @@ TextureID Textures::make_new( String &name, Texture2DBuffer &&textureBuffer )
 }
 
 
+void Textures::gather( const char *path, const bool recurse )
+{
+	// Gather & Load Textures
+	Timer timer;
+	List<FileInfo> files;
+	directory_iterate( files, path, ".texture", recurse );
+	for( FileInfo &fileInfo : files ) { load( fileInfo.path ); }
+
+	// Log
+	if( verbose_output() )
+	{
+		const u32 count = files.size();
+		PrintColor( LOG_CYAN, TAB TAB "%u texture%s found in: %s", count, count == 1 ? "" : "s", path );
+		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+	}
+}
+
+
+void Textures::load( const char *path )
+{
+	// Open material file
+	String textureFile;
+	ErrorIf( !textureFile.load( path ), "Unable to load texture file: %s", path );
+	JSON textureJSON { textureFile };
+
+	// Build Cache
+	Assets::assetFileCount++;
+	if( !Build::cacheDirtyAssets )
+	{
+		FileTime time;
+		file_time( path, &time );
+		Build::cacheDirtyAssets |= file_time_newer( time, Assets::timeCache );
+	}
+
+	// Texture Name (extracted from <name>.texture)
+	char textureName[PATH_SIZE];
+	path_get_filename( textureName, sizeof( textureName ), path );
+	path_remove_extension( textureName );
+	String name = textureName;
+
+	// Read file (json)
+	String texturePath = textureJSON.get_string( "path" );
+	ErrorIf( texturePath.length_bytes() == 0,
+		"Texture '%s' has an invalid path (required)", texturePath.cstr() );
+	bool generateMips = textureJSON.get_bool( "mips" );
+
+	// Load texture (try relative path first)
+	char pathRelative[PATH_SIZE];
+	path_get_directory( pathRelative, sizeof( pathRelative ), path );
+	strappend( pathRelative, SLASH );
+	strappend( pathRelative, texturePath.cstr() );
+	Texture2DBuffer textureBuffer { pathRelative };
+	if( !textureBuffer )
+	{
+		// Relative path failed -- try absolute path
+		textureBuffer.load( texturePath.cstr() );
+		if( !textureBuffer )
+		{
+			Error( "Unable to load file for texture: '%s' (path: %s)",
+				textureName, texturePath.cstr() );
+		}
+	}
+
+	// Register Texture
+	Texture &texture = textures[make_new( name )];
+	texture.name = textureName;
+	texture.atlasTexture = false;
+	texture.generateMips = generateMips;
+	texture.add_glyph( static_cast<Texture2DBuffer &&>( textureBuffer ) );
+}
+
+
 void Textures::write()
 {
 	Buffer &binary = Assets::binary;
@@ -643,21 +716,30 @@ void Textures::write()
 				texture.offset = binary.tell;
 
 				// Mipmapping
-				texture.levels = mip_level_count_2d( texture.width, texture.height );
-				Assert( texture.levels > 0 );
-				void *mip = nullptr;
-				usize size = 0;
-
-				if( mip_generate_chain_2d_alloc( glyph.textureBuffer.data,
-						texture.width, texture.height, GfxColorFormat_R8G8B8A8_FLOAT, mip, size ) )
+				if( texture.generateMips )
 				{
-					// Write Binary
-					binary.write( mip, size );
-					sizeBytes += size;
-					memory_free( mip );
+					texture.levels = mip_level_count_2d( texture.width, texture.height );
+					Assert( texture.levels > 0 );
+					void *mip = nullptr;
+					usize size = 0;
+
+					if( mip_generate_chain_2d_alloc( glyph.textureBuffer.data,
+							texture.width, texture.height, GfxColorFormat_R8G8B8A8_FLOAT, mip, size ) )
+					{
+						binary.write( mip, size );
+						sizeBytes += size;
+						memory_free( mip );
+					}
+					else
+					{
+						Error( "Failed to generate mips for texture: %s (%u x %u)",
+							texture.name.cstr(), texture.width, texture.height );
+					}
 				}
 				else
+				// No mipmaps -- write file directly as is
 				{
+					texture.levels = 1;
 					binary.write( glyph.textureBuffer.data, texture.width * texture.height * sizeof( rgba ) );
 					sizeBytes += texture.width * texture.height * sizeof( rgba );
 				}

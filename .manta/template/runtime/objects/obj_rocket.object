@@ -62,8 +62,8 @@ EVENT_UPDATE
 		if( shootTimer >= ( Keyboard::check( vk_control ) ? 0.01f : 0.1f ) )
 		{
 			// Create Projectile
-			Object projectile = Scene::objects.create( ObjectType::obj_projectile );
-			if( auto handle = projectile.handle<ObjectType::obj_projectile>( Scene::objects ); handle )
+			ObjectInstance projectile = Scene::objects.create( Object::obj_projectile );
+			if( auto handle = projectile.handle<Object::obj_projectile>( Scene::objects ); handle )
 			{
 				const float spawnX = lengthdir_x( 28, direction + ( shootSide ? 90.0f : -90.0f ) ) +
 					lengthdir_x( 20, direction );
@@ -87,7 +87,7 @@ EVENT_UPDATE
 	}
 
 	// Death
-	for( auto asteroid : Scene::objects.iterator_all<ObjectType::obj_asteroid>() )
+	for( auto asteroid : Scene::objects.iterator_all<Object::obj_asteroid>() )
 	{
 		const float radiusSqr = ( asteroid->radius * asteroid->size ) * ( asteroid->radius * asteroid->size );
 		if( float_v2_distance_sqr( { x, y }, { asteroid->x, asteroid->y } ) < radiusSqr )

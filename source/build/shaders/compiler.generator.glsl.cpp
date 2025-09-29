@@ -168,6 +168,13 @@ void GeneratorGLSL::generate_stage( ShaderStage stage )
 	output.append( "#version 410 core\n\n" );
 	//output.append( "#extension GL_ARB_separate_shader_objects : enable\n\n" );
 
+	// Compute Extensions
+	if( stage == ShaderStage_Compute )
+	{
+		output.append( "#extension GL_ARB_compute_shader : enable\n" );
+		output.append( "#extension GL_ARB_shading_language_420pack : enable\n\n" );
+	}
+
 	// Super
 	Generator::generate_stage( stage );
 
@@ -183,8 +190,11 @@ void GeneratorGLSL::generate_function_declaration( NodeFunctionDeclaration *node
 	{
 		case FunctionType_MainVertex:
 		case FunctionType_MainFragment:
+			generate_function_declaration_main_pipeline( node );
+		return;
+
 		case FunctionType_MainCompute:
-			generate_function_declaration_main( node );
+			generate_function_declaration_main_compute( node );
 		return;
 	}
 
@@ -246,13 +256,31 @@ void GeneratorGLSL::generate_function_declaration( NodeFunctionDeclaration *node
 }
 
 
-void GeneratorGLSL::generate_function_declaration_main( NodeFunctionDeclaration *node )
+void GeneratorGLSL::generate_function_declaration_main_pipeline( NodeFunctionDeclaration *node )
 {
 	Function &function = parser.functions[node->functionID];
 	Type &returnType = parser.types[function.typeID];
 
 	// Return Type & Name
-	output.append( indent ).append( "void main" ).append( "()\n" );
+	output.append( indent ).append( "void main()\n" );
+	generate_statement_block( reinterpret_cast<NodeStatementBlock *>( node->block ) );
+	output.append( "\n" );
+}
+
+
+void GeneratorGLSL::generate_function_declaration_main_compute( NodeFunctionDeclaration *node )
+{
+	Function &function = parser.functions[node->functionID];
+	Type &returnType = parser.types[function.typeID];
+
+	// thread Groups
+	output.append( indent ).append( "layout( " );
+	output.append( "local_size_x = " ).append( parser.threadGroupX ).append( ", " );
+	output.append( "local_size_y = " ).append( parser.threadGroupY ).append( ", " );
+	output.append( "local_size_z = " ).append( parser.threadGroupZ ).append( " ) in;\n\n" );
+
+	// Return Type & Name
+	output.append( indent ).append( "void main()\n" );
 	generate_statement_block( reinterpret_cast<NodeStatementBlock *>( node->block ) );
 	output.append( "\n" );
 }

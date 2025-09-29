@@ -168,8 +168,8 @@ void GeneratorHLSL::generate_sv_semantic_entry_parameters()
 	else if( stage == ShaderStage_Compute )
 	{
 		output.append( "uint3 dispatchThreadID : SV_DISPATCHTHREADID, " );
-		output.append( "uint3 groupID : SV_GROUPID, " );
 		output.append( "uint3 groupThreadID : SV_GROUPTHREADID, " );
+		output.append( "uint3 groupID : SV_GROUPID, " );
 		output.append( "uint groupIndex : SV_GROUPINDEX" );
 	}
 }
@@ -194,8 +194,8 @@ void GeneratorHLSL::generate_sv_semantic_entry_caching()
 	else if( stage == ShaderStage_Compute )
 	{
 		output.append( indent ).append( "sv.dispatchThreadID = dispatchThreadID;\n" );
-		output.append( indent ).append( "sv.groupID = groupID;\n" );
 		output.append( indent ).append( "sv.groupThreadID = groupThreadID;\n" );
+		output.append( indent ).append( "sv.groupID = groupID;\n" );
 		output.append( indent ).append( "sv.groupIndex = groupIndex;\n" );
 	}
 
@@ -346,8 +346,11 @@ void GeneratorHLSL::generate_function_declaration( NodeFunctionDeclaration *node
 	{
 		case FunctionType_MainVertex:
 		case FunctionType_MainFragment:
+			generate_function_declaration_main_pipeline( node );
+		return;
+
 		case FunctionType_MainCompute:
-			generate_function_declaration_main( node );
+			generate_function_declaration_main_compute( node );
 		return;
 	}
 
@@ -410,7 +413,7 @@ void GeneratorHLSL::generate_function_declaration( NodeFunctionDeclaration *node
 }
 
 
-void GeneratorHLSL::generate_function_declaration_main( NodeFunctionDeclaration *node )
+void GeneratorHLSL::generate_function_declaration_main_pipeline( NodeFunctionDeclaration *node )
 {
 	Function &function = parser.functions[node->functionID];
 	Type &returnType = parser.types[function.typeID];
@@ -438,6 +441,27 @@ void GeneratorHLSL::generate_function_declaration_main( NodeFunctionDeclaration 
 	output.append( indent ).append( "void " ).append( mainName ).append( "( " );
 	output.append( "in " ).append( inTypeName ).append( " " ).append( variable_name( inID ) ).append( ", " );
 	output.append( "out " ).append( outTypeName ).append( " " ).append( variable_name( outID ) ).append( ", " );
+	generate_sv_semantic_entry_parameters();
+	output.append( " )\n" );
+
+	generate_statement_block_main( reinterpret_cast<NodeStatementBlock *>( node->block ) );
+	output.append( "\n" );
+}
+
+
+void GeneratorHLSL::generate_function_declaration_main_compute( NodeFunctionDeclaration *node )
+{
+	Function &function = parser.functions[node->functionID];
+	Type &returnType = parser.types[function.typeID];
+
+	// Thread Groups
+	output.append( indent ).append( "[numthreads( " );
+	output.append( parser.threadGroupX ).append( ", " );
+	output.append( parser.threadGroupY ).append( ", " );
+	output.append( parser.threadGroupZ ).append( " )]\n" );
+
+	// Return Type & Name
+	output.append( indent ).append( "void cs_main( " );
 	generate_sv_semantic_entry_parameters();
 	output.append( " )\n" );
 
@@ -1522,398 +1546,405 @@ bool GeneratorHLSL::generate_structure_gfx_vertex( NodeStruct *node )
 	String desc;
 
 	const usize count = last - first;
-	desc.append( "\t" "static D3D11_INPUT_ELEMENT_DESC inputDescription[] = \n" );
-	desc.append( "\t" "{\n" );
-	for( usize i = first; i < last; i++ )
+	if( count > 0 )
 	{
-		Variable &memberVariable = parser.variables[i];
-		const String &memberVariableName = variable_name( i );
-		const String &memberTypeName = type_name( memberVariable.typeID );
-
-		// SemanticName
-		desc.append( "\t" "\t" "{ \"" );
-		switch( memberVariable.semantic )
+		desc.append( "\t" "static D3D11_INPUT_ELEMENT_DESC inputDescription[] = \n" );
+		desc.append( "\t" "{\n" );
+		for( usize i = first; i < last; i++ )
 		{
-			case SemanticType_POSITION: desc.append( "POSITION" ); break;
-			case SemanticType_TEXCOORD: desc.append( "TEXCOORD" ); break;
-			case SemanticType_NORMAL: desc.append( "NORMAL" ); break;
-			case SemanticType_DEPTH: desc.append( "DEPTH" ); break;
-			case SemanticType_COLOR: desc.append( "COLOR" ); break;
-			case SemanticType_BINORMAL: desc.append( "BINORMAL" ); break;
-			case SemanticType_TANGENT: desc.append( "TANGENT" ); break;
-			case SemanticType_INSTANCE: desc.append( "INSTANCE" ); break;
-			default: Error( "Unexpected semantic type: %u", memberVariable.semantic ); break;
+			Variable &memberVariable = parser.variables[i];
+			const String &memberVariableName = variable_name( i );
+			const String &memberTypeName = type_name( memberVariable.typeID );
+
+			// SemanticName
+			desc.append( "\t" "\t" "{ \"" );
+			switch( memberVariable.semantic )
+			{
+				case SemanticType_POSITION: desc.append( "POSITION" ); break;
+				case SemanticType_TEXCOORD: desc.append( "TEXCOORD" ); break;
+				case SemanticType_NORMAL: desc.append( "NORMAL" ); break;
+				case SemanticType_DEPTH: desc.append( "DEPTH" ); break;
+				case SemanticType_COLOR: desc.append( "COLOR" ); break;
+				case SemanticType_BINORMAL: desc.append( "BINORMAL" ); break;
+				case SemanticType_TANGENT: desc.append( "TANGENT" ); break;
+				case SemanticType_INSTANCE: desc.append( "INSTANCE" ); break;
+				default: Error( "Unexpected semantic type: %u", memberVariable.semantic ); break;
+			}
+			desc.append( "\", " );
+
+			// SemanticIndex
+			desc.append( semanticIndex[memberVariable.semantic] );
+			semanticIndex[memberVariable.semantic]++;
+			desc.append( ", " );
+
+			const char *format = "";
+			int formatSize = 0;
+
+			// Format
+			switch( memberVariable.typeID )
+			{
+				case Primitive_Bool:
+				case Primitive_Int:
+				case Primitive_UInt:
+				case Primitive_Float:
+				case Primitive_Double:
+				{
+					switch( memberVariable.format )
+					{
+						// 1 Byte
+						case InputFormat_UNORM8:
+							format = "DXGI_FORMAT_R8_UNORM";
+							formatSize = 1;
+						break;
+
+						case InputFormat_SNORM8:
+							format = "DXGI_FORMAT_R8_SNORM";
+							formatSize = 1;
+						break;
+
+						case InputFormat_UINT8:
+							format = "DXGI_FORMAT_R8_UINT";
+							formatSize = 1;
+						break;
+
+						case InputFormat_SINT8:
+							format = "DXGI_FORMAT_R8_SINT";
+							formatSize = 1;
+						break;
+
+						// 2 Bytes
+						case InputFormat_UNORM16:
+							format = "DXGI_FORMAT_R16_UNORM";
+							formatSize = 2;
+						break;
+
+						case InputFormat_SNORM16:
+							format = "DXGI_FORMAT_R16_SNORM";
+							formatSize = 2;
+						break;
+
+						case InputFormat_UINT16:
+							format = "DXGI_FORMAT_R16_UINT";
+							formatSize = 2;
+						break;
+
+						case InputFormat_SINT16:
+							format = "DXGI_FORMAT_R16_SINT";
+							formatSize = 2;
+						break;
+
+						case InputFormat_FLOAT16:
+							format = "DXGI_FORMAT_R16_FLOAT";
+							formatSize = 2;
+						break;
+
+						// 4 Bytes
+						case InputFormat_UNORM32:
+							format = "DXGI_FORMAT_R32_UNORM";
+							formatSize = 4;
+						break;
+
+						case InputFormat_SNORM32:
+							format = "DXGI_FORMAT_R32_SNORM";
+							formatSize = 4;
+						break;
+
+						case InputFormat_UINT32:
+							format = "DXGI_FORMAT_R32_UINT";
+							formatSize = 4;
+						break;
+
+						case InputFormat_SINT32:
+							format = "DXGI_FORMAT_R32_SINT";
+							formatSize = 4;
+						break;
+
+						case InputFormat_FLOAT32:
+							format = "DXGI_FORMAT_R32_FLOAT";
+							formatSize = 4;
+						break;
+					}
+				}
+				break;
+
+				case Primitive_Bool2:
+				case Primitive_Int2:
+				case Primitive_UInt2:
+				case Primitive_Float2:
+				case Primitive_Double2:
+				{
+					switch( memberVariable.format )
+					{
+						// 1 Byte
+						case InputFormat_UNORM8:
+							format = "DXGI_FORMAT_R8G8_UNORM";
+							formatSize = 2;
+						break;
+
+						case InputFormat_SNORM8:
+							format = "DXGI_FORMAT_R8G8_SNORM";
+							formatSize = 2;
+						break;
+
+						case InputFormat_UINT8:
+							format = "DXGI_FORMAT_R8G8_UINT";
+							formatSize = 2;
+						break;
+
+						case InputFormat_SINT8:
+							format = "DXGI_FORMAT_R8G8_SINT";
+							formatSize = 2;
+						break;
+
+						// 2 Bytes
+						case InputFormat_UNORM16:
+							format = "DXGI_FORMAT_R16G16_UNORM";
+							formatSize = 4;
+						break;
+
+						case InputFormat_SNORM16:
+							format = "DXGI_FORMAT_R16G16_SNORM";
+							formatSize = 4;
+						break;
+
+						case InputFormat_UINT16:
+							format = "DXGI_FORMAT_R16G16_UINT";
+							formatSize = 4;
+						break;
+
+						case InputFormat_SINT16:
+							format = "DXGI_FORMAT_R16G16_SINT";
+							formatSize = 4;
+						break;
+
+						case InputFormat_FLOAT16:
+							format = "DXGI_FORMAT_R16G16_FLOAT";
+							formatSize = 4;
+						break;
+
+						// 4 Bytes
+						case InputFormat_UNORM32:
+							format = "DXGI_FORMAT_R32G32_UNORM";
+							formatSize = 8;
+						break;
+
+						case InputFormat_SNORM32:
+							format = "DXGI_FORMAT_R32G32_SNORM";
+							formatSize = 8;
+						break;
+
+						case InputFormat_UINT32:
+							format = "DXGI_FORMAT_R32G32_UINT";
+							formatSize = 8;
+						break;
+
+						case InputFormat_SINT32:
+							format = "DXGI_FORMAT_R32G32_SINT";
+							formatSize = 8;
+						break;
+
+						case InputFormat_FLOAT32:
+							format = "DXGI_FORMAT_R32G32_FLOAT";
+							formatSize = 8;
+						break;
+					}
+				}
+				break;
+
+				case Primitive_Bool3:
+				case Primitive_Int3:
+				case Primitive_UInt3:
+				case Primitive_Float3:
+				case Primitive_Double3:
+				{
+					switch( memberVariable.format )
+					{
+						// 1 Byte
+						case InputFormat_UNORM8:
+							format = "DXGI_FORMAT_R8G8B8A8_UNORM";
+							formatSize = 4;
+						break;
+
+						case InputFormat_SNORM8:
+							format = "DXGI_FORMAT_R8G8B8A8_SNORM";
+							formatSize = 4;
+						break;
+
+						case InputFormat_UINT8:
+							format = "DXGI_FORMAT_R8G8B8A8_UINT";
+							formatSize = 4;
+						break;
+
+						case InputFormat_SINT8:
+							format = "DXGI_FORMAT_R8G8B8A8_SINT";
+							formatSize = 4;
+						break;
+
+						// 2 Bytes
+						case InputFormat_UNORM16:
+							format = "DXGI_FORMAT_R16G16B16A16_UNORM";
+							formatSize = 8;
+						break;
+
+						case InputFormat_SNORM16:
+							format = "DXGI_FORMAT_R16G16B16A16_SNORM";
+							formatSize = 8;
+						break;
+
+						case InputFormat_UINT16:
+							format = "DXGI_FORMAT_R16G16B16A16_UINT";
+							formatSize = 8;
+						break;
+
+						case InputFormat_SINT16:
+							format = "DXGI_FORMAT_R16G16B16A16_SINT";
+							formatSize = 8;
+						break;
+
+						case InputFormat_FLOAT16:
+							format = "DXGI_FORMAT_R16G16B16A16_FLOAT";
+							formatSize = 8;
+						break;
+
+						// 4 Bytes
+						case InputFormat_UNORM32:
+							format = "DXGI_FORMAT_R32G32B32_TYPELESS";
+							formatSize = 12;
+						break;
+
+						case InputFormat_SNORM32:
+							format = "DXGI_FORMAT_R32G32B32_TYPELESS";
+							formatSize = 12;
+						break;
+
+						case InputFormat_UINT32:
+							format = "DXGI_FORMAT_R32G32B32_UINT";
+							formatSize = 12;
+						break;
+
+						case InputFormat_SINT32:
+							format = "DXGI_FORMAT_R32G32B32_SINT";
+							formatSize = 12;
+						break;
+
+						case InputFormat_FLOAT32:
+							format = "DXGI_FORMAT_R32G32B32_FLOAT";
+							formatSize = 12;
+						break;
+					}
+				}
+				break;
+
+				case Primitive_Bool4:
+				case Primitive_Int4:
+				case Primitive_UInt4:
+				case Primitive_Float4:
+				case Primitive_Double4:
+				{
+					switch( memberVariable.format )
+					{
+						// 1 Byte
+						case InputFormat_UNORM8:
+							format = "DXGI_FORMAT_R8G8B8A8_UNORM";
+							formatSize = 4;
+						break;
+
+						case InputFormat_SNORM8:
+							format = "DXGI_FORMAT_R8G8B8A8_SNORM";
+							formatSize = 4;
+						break;
+
+						case InputFormat_UINT8:
+							format = "DXGI_FORMAT_R8G8B8A8_UINT";
+							formatSize = 4;
+						break;
+
+						case InputFormat_SINT8:
+							format = "DXGI_FORMAT_R8G8B8A8_SINT";
+							formatSize = 4;
+						break;
+
+						// 2 Bytes
+						case InputFormat_UNORM16:
+							format = "DXGI_FORMAT_R16G16B16A16_UNORM";
+							formatSize = 8;
+						break;
+
+						case InputFormat_SNORM16:
+							format = "DXGI_FORMAT_R16G16B16A16_SNORM";
+							formatSize = 8;
+						break;
+
+						case InputFormat_UINT16:
+							format = "DXGI_FORMAT_R16G16B16A16_UINT";
+							formatSize = 8;
+						break;
+
+						case InputFormat_SINT16:
+							format = "DXGI_FORMAT_R16G16B16A16_SINT";
+							formatSize = 8;
+						break;
+
+						case InputFormat_FLOAT16:
+							format = "DXGI_FORMAT_R16G16B16A16_FLOAT";
+							formatSize = 8;
+						break;
+
+						// 4 Bytes
+						case InputFormat_UNORM32:
+							format = "DXGI_FORMAT_R32G32B32A32_TYPELESS";
+							formatSize = 16;
+						break;
+
+						case InputFormat_SNORM32:
+							format = "DXGI_FORMAT_R32G32B32A32_TYPELESS";
+							formatSize = 16;
+						break;
+
+						case InputFormat_UINT32:
+							format = "DXGI_FORMAT_R32G32B32A32_UINT";
+							formatSize = 16;
+						break;
+
+						case InputFormat_SINT32:
+							format = "DXGI_FORMAT_R32G32B32A32_SINT";
+							formatSize = 16;
+						break;
+
+						case InputFormat_FLOAT32:
+							format = "DXGI_FORMAT_R32G32B32A32_FLOAT";
+							formatSize = 16;
+						break;
+					}
+				}
+				break;
+			}
+			desc.append( format );
+			desc.append( ", " );
+
+			// InputSlot
+			desc.append( "0" );
+			desc.append( ", " );
+
+			// AlignedByteOffset
+			desc.append( byteOffset );
+			byteOffset += formatSize;
+			desc.append( ", " );
+
+			// InputSlotClass
+			desc.append( "D3D11_INPUT_PER_VERTEX_DATA" );
+			desc.append( ", " );
+
+			// InstanceDataStepRate
+			desc.append( "0" );
+			desc.append( " },\n" );
 		}
-		desc.append( "\", " );
-
-		// SemanticIndex
-		desc.append( semanticIndex[memberVariable.semantic] );
-		semanticIndex[memberVariable.semantic]++;
-		desc.append( ", " );
-
-		const char *format = "";
-		int formatSize = 0;
-
-		// Format
-		switch( memberVariable.typeID )
-		{
-			case Primitive_Bool:
-			case Primitive_Int:
-			case Primitive_UInt:
-			case Primitive_Float:
-			case Primitive_Double:
-			{
-				switch( memberVariable.format )
-				{
-					// 1 Byte
-					case InputFormat_UNORM8:
-						format = "DXGI_FORMAT_R8_UNORM";
-						formatSize = 1;
-					break;
-
-					case InputFormat_SNORM8:
-						format = "DXGI_FORMAT_R8_SNORM";
-						formatSize = 1;
-					break;
-
-					case InputFormat_UINT8:
-						format = "DXGI_FORMAT_R8_UINT";
-						formatSize = 1;
-					break;
-
-					case InputFormat_SINT8:
-						format = "DXGI_FORMAT_R8_SINT";
-						formatSize = 1;
-					break;
-
-					// 2 Bytes
-					case InputFormat_UNORM16:
-						format = "DXGI_FORMAT_R16_UNORM";
-						formatSize = 2;
-					break;
-
-					case InputFormat_SNORM16:
-						format = "DXGI_FORMAT_R16_SNORM";
-						formatSize = 2;
-					break;
-
-					case InputFormat_UINT16:
-						format = "DXGI_FORMAT_R16_UINT";
-						formatSize = 2;
-					break;
-
-					case InputFormat_SINT16:
-						format = "DXGI_FORMAT_R16_SINT";
-						formatSize = 2;
-					break;
-
-					case InputFormat_FLOAT16:
-						format = "DXGI_FORMAT_R16_FLOAT";
-						formatSize = 2;
-					break;
-
-					// 4 Bytes
-					case InputFormat_UNORM32:
-						format = "DXGI_FORMAT_R32_UNORM";
-						formatSize = 4;
-					break;
-
-					case InputFormat_SNORM32:
-						format = "DXGI_FORMAT_R32_SNORM";
-						formatSize = 4;
-					break;
-
-					case InputFormat_UINT32:
-						format = "DXGI_FORMAT_R32_UINT";
-						formatSize = 4;
-					break;
-
-					case InputFormat_SINT32:
-						format = "DXGI_FORMAT_R32_SINT";
-						formatSize = 4;
-					break;
-
-					case InputFormat_FLOAT32:
-						format = "DXGI_FORMAT_R32_FLOAT";
-						formatSize = 4;
-					break;
-				}
-			}
-			break;
-
-			case Primitive_Bool2:
-			case Primitive_Int2:
-			case Primitive_UInt2:
-			case Primitive_Float2:
-			case Primitive_Double2:
-			{
-				switch( memberVariable.format )
-				{
-					// 1 Byte
-					case InputFormat_UNORM8:
-						format = "DXGI_FORMAT_R8G8_UNORM";
-						formatSize = 2;
-					break;
-
-					case InputFormat_SNORM8:
-						format = "DXGI_FORMAT_R8G8_SNORM";
-						formatSize = 2;
-					break;
-
-					case InputFormat_UINT8:
-						format = "DXGI_FORMAT_R8G8_UINT";
-						formatSize = 2;
-					break;
-
-					case InputFormat_SINT8:
-						format = "DXGI_FORMAT_R8G8_SINT";
-						formatSize = 2;
-					break;
-
-					// 2 Bytes
-					case InputFormat_UNORM16:
-						format = "DXGI_FORMAT_R16G16_UNORM";
-						formatSize = 4;
-					break;
-
-					case InputFormat_SNORM16:
-						format = "DXGI_FORMAT_R16G16_SNORM";
-						formatSize = 4;
-					break;
-
-					case InputFormat_UINT16:
-						format = "DXGI_FORMAT_R16G16_UINT";
-						formatSize = 4;
-					break;
-
-					case InputFormat_SINT16:
-						format = "DXGI_FORMAT_R16G16_SINT";
-						formatSize = 4;
-					break;
-
-					case InputFormat_FLOAT16:
-						format = "DXGI_FORMAT_R16G16_FLOAT";
-						formatSize = 4;
-					break;
-
-					// 4 Bytes
-					case InputFormat_UNORM32:
-						format = "DXGI_FORMAT_R32G32_UNORM";
-						formatSize = 8;
-					break;
-
-					case InputFormat_SNORM32:
-						format = "DXGI_FORMAT_R32G32_SNORM";
-						formatSize = 8;
-					break;
-
-					case InputFormat_UINT32:
-						format = "DXGI_FORMAT_R32G32_UINT";
-						formatSize = 8;
-					break;
-
-					case InputFormat_SINT32:
-						format = "DXGI_FORMAT_R32G32_SINT";
-						formatSize = 8;
-					break;
-
-					case InputFormat_FLOAT32:
-						format = "DXGI_FORMAT_R32G32_FLOAT";
-						formatSize = 8;
-					break;
-				}
-			}
-			break;
-
-			case Primitive_Bool3:
-			case Primitive_Int3:
-			case Primitive_UInt3:
-			case Primitive_Float3:
-			case Primitive_Double3:
-			{
-				switch( memberVariable.format )
-				{
-					// 1 Byte
-					case InputFormat_UNORM8:
-						format = "DXGI_FORMAT_R8G8B8A8_UNORM";
-						formatSize = 4;
-					break;
-
-					case InputFormat_SNORM8:
-						format = "DXGI_FORMAT_R8G8B8A8_SNORM";
-						formatSize = 4;
-					break;
-
-					case InputFormat_UINT8:
-						format = "DXGI_FORMAT_R8G8B8A8_UINT";
-						formatSize = 4;
-					break;
-
-					case InputFormat_SINT8:
-						format = "DXGI_FORMAT_R8G8B8A8_SINT";
-						formatSize = 4;
-					break;
-
-					// 2 Bytes
-					case InputFormat_UNORM16:
-						format = "DXGI_FORMAT_R16G16B16A16_UNORM";
-						formatSize = 8;
-					break;
-
-					case InputFormat_SNORM16:
-						format = "DXGI_FORMAT_R16G16B16A16_SNORM";
-						formatSize = 8;
-					break;
-
-					case InputFormat_UINT16:
-						format = "DXGI_FORMAT_R16G16B16A16_UINT";
-						formatSize = 8;
-					break;
-
-					case InputFormat_SINT16:
-						format = "DXGI_FORMAT_R16G16B16A16_SINT";
-						formatSize = 8;
-					break;
-
-					case InputFormat_FLOAT16:
-						format = "DXGI_FORMAT_R16G16B16A16_FLOAT";
-						formatSize = 8;
-					break;
-
-					// 4 Bytes
-					case InputFormat_UNORM32:
-						format = "DXGI_FORMAT_R32G32B32_TYPELESS";
-						formatSize = 12;
-					break;
-
-					case InputFormat_SNORM32:
-						format = "DXGI_FORMAT_R32G32B32_TYPELESS";
-						formatSize = 12;
-					break;
-
-					case InputFormat_UINT32:
-						format = "DXGI_FORMAT_R32G32B32_UINT";
-						formatSize = 12;
-					break;
-
-					case InputFormat_SINT32:
-						format = "DXGI_FORMAT_R32G32B32_SINT";
-						formatSize = 12;
-					break;
-
-					case InputFormat_FLOAT32:
-						format = "DXGI_FORMAT_R32G32B32_FLOAT";
-						formatSize = 12;
-					break;
-				}
-			}
-			break;
-
-			case Primitive_Bool4:
-			case Primitive_Int4:
-			case Primitive_UInt4:
-			case Primitive_Float4:
-			case Primitive_Double4:
-			{
-				switch( memberVariable.format )
-				{
-					// 1 Byte
-					case InputFormat_UNORM8:
-						format = "DXGI_FORMAT_R8G8B8A8_UNORM";
-						formatSize = 4;
-					break;
-
-					case InputFormat_SNORM8:
-						format = "DXGI_FORMAT_R8G8B8A8_SNORM";
-						formatSize = 4;
-					break;
-
-					case InputFormat_UINT8:
-						format = "DXGI_FORMAT_R8G8B8A8_UINT";
-						formatSize = 4;
-					break;
-
-					case InputFormat_SINT8:
-						format = "DXGI_FORMAT_R8G8B8A8_SINT";
-						formatSize = 4;
-					break;
-
-					// 2 Bytes
-					case InputFormat_UNORM16:
-						format = "DXGI_FORMAT_R16G16B16A16_UNORM";
-						formatSize = 8;
-					break;
-
-					case InputFormat_SNORM16:
-						format = "DXGI_FORMAT_R16G16B16A16_SNORM";
-						formatSize = 8;
-					break;
-
-					case InputFormat_UINT16:
-						format = "DXGI_FORMAT_R16G16B16A16_UINT";
-						formatSize = 8;
-					break;
-
-					case InputFormat_SINT16:
-						format = "DXGI_FORMAT_R16G16B16A16_SINT";
-						formatSize = 8;
-					break;
-
-					case InputFormat_FLOAT16:
-						format = "DXGI_FORMAT_R16G16B16A16_FLOAT";
-						formatSize = 8;
-					break;
-
-					// 4 Bytes
-					case InputFormat_UNORM32:
-						format = "DXGI_FORMAT_R32G32B32A32_TYPELESS";
-						formatSize = 16;
-					break;
-
-					case InputFormat_SNORM32:
-						format = "DXGI_FORMAT_R32G32B32A32_TYPELESS";
-						formatSize = 16;
-					break;
-
-					case InputFormat_UINT32:
-						format = "DXGI_FORMAT_R32G32B32A32_UINT";
-						formatSize = 16;
-					break;
-
-					case InputFormat_SINT32:
-						format = "DXGI_FORMAT_R32G32B32A32_SINT";
-						formatSize = 16;
-					break;
-
-					case InputFormat_FLOAT32:
-						format = "DXGI_FORMAT_R32G32B32A32_FLOAT";
-						formatSize = 16;
-					break;
-				}
-			}
-			break;
-		}
-		desc.append( format );
-		desc.append( ", " );
-
-		// InputSlot
-		desc.append( "0" );
-		desc.append( ", " );
-
-		// AlignedByteOffset
-		desc.append( byteOffset );
-		byteOffset += formatSize;
-		desc.append( ", " );
-
-		// InputSlotClass
-		desc.append( "D3D11_INPUT_PER_VERTEX_DATA" );
-		desc.append( ", " );
-
-		// InstanceDataStepRate
-		desc.append( "0" );
-		desc.append( " },\n" );
+		desc.append( "\t" "};\n" );
 	}
-	desc.append( "\t" "};\n" );
+	else
+	{
+		desc.append( "\t" "static D3D11_INPUT_ELEMENT_DESC *inputDescription = nullptr;\n" );
+	}
 
 	// Write To gfx.api.generated.cpp
 	shader.source.append( "static void d3d11_input_layout_desc_vertex_" ).append( type.name );

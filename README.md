@@ -289,7 +289,7 @@ _PUBLIC:
 	virtual void EVENT_UPDATE( const Delta delta );
 	virtual void EVENT_RENDER( const Delta delta );
 _PRIVATE:
-	friend struct CoreObjects::OBJECT_ENCODER<ObjectType::obj_rabbit>;
+	friend struct CoreObjects::OBJECT_ENCODER<Object::obj_rabbit>;
 	enum RabbitState
 	{
 		RabbitState_Stand,
@@ -300,16 +300,16 @@ _PRIVATE:
 };
 __INTERNAL_OBJECT_SYSTEM_END
 
-template <typename... Args> struct CoreObjects::ObjectConstructor<ObjectType::obj_rabbit, Args...>
+template <typename... Args> struct CoreObjects::ObjectConstructor<Object::obj_rabbit, Args...>
 {
 	static void construct( Args... args )
 	{
 		new ( CoreObjects::CONSTRUCTOR_BUFFER +
-		      CoreObjects::CONSTRUCTOR_BUFFER_OFFSET[ObjectType::obj_rabbit] ) CoreObjects::obj_rabbit_t( args... );
+		      CoreObjects::CONSTRUCTOR_BUFFER_OFFSET[Object::obj_rabbit] ) CoreObjects::obj_rabbit_t( args... );
 	}
 };
 
-template <> struct ObjectHandle<ObjectType::obj_rabbit>
+template <> struct ObjectHandle<Object::obj_rabbit>
 {
 	CoreObjects::obj_rabbit_t *data = nullptr;
 	CoreObjects::obj_rabbit_t *operator->() const { Assert( data != nullptr ); return data; }
@@ -327,7 +327,7 @@ template <> struct ObjectHandle<ObjectType::obj_rabbit>
 ```c++
 // ...
 
-template <> struct CoreObjects::OBJECT_ENCODER<ObjectType::obj_rabbit>
+template <> struct CoreObjects::OBJECT_ENCODER<Object::obj_rabbit>
 {
 	OBJECT_ENCODER( void *data ) : object{ *reinterpret_cast<obj_rabbit_t *>( data ) } { } obj_rabbit_t &object;
 };
@@ -377,18 +377,18 @@ The object system works off three fundamental types:
 
 1. **ObjectContext**
    - The data structure and interface for object creation, destruction, lookup, and iteration
-2. **Object**
+2. **ObjectInstance**
    - A unique identifier for every instantiated object in an ObjectContext
-3. **ObjectHandle\<_ObjectType_>**
+3. **ObjectHandle\<_Object_>**
    - A handle to a specific object instance data
 
-In the generated code above, you may notice that the object class names are suffixed with **_t** and wrapped within an internal namespace. The reason for this is "raw" object types are not used directly in game code. Rather, object types in code are represented as __ObjectType__ enums. This allows them to be stored in variables and passed as runtime function parameters.
+In the generated code above, you may notice that the object class names are suffixed with **_t** and wrapped within an internal namespace. The reason for this is "raw" object types are not used directly in game code. Rather, object types in code are represented as __Object__ enums. This allows them to be stored in variables and passed as runtime function parameters.
 
 The table looks something like:
 ```c++
 // objects.generated.hpp
 
-enum ObjectType
+enum Object
 {
 	...
 	obj_animal,  // internal::obj_animal_t class
@@ -400,7 +400,7 @@ enum ObjectType
 
 This allows for game code like:
 ```c++
-const ObjectType type = spawnRabbit ? ObjectType::obj_rabbit : ObjectType::obj_chicken;
+const Object type = spawnRabbit ? Object::obj_rabbit : Object::obj_chicken;
 context.create( type ); // Create an obj_rabbit or obj_chicken
 ```
 
@@ -413,12 +413,12 @@ ObjectContext context;
 context.init(); // There can be multiple contexts in a program (ui, scene, etc.)
 
 // Object Creation
-Object rabbit1 = context.create<ObjectType::obj_rabbit>( 64.0f, 64.0f ); // Create with constructor parameters
-Object rabbit2 = context.create( ObjectType::obj_rabbit ); // Create with default parameters
-Object animal1 = context.create( choose( ObjectType::obj_chicken, ObjectType::obj_rabbit ) ); // Creation of chicken OR rabbit (runtime randomness)
+ObjectInstance rabbit1 = context.create<Object::obj_rabbit>( 64.0f, 64.0f ); // Create with constructor parameters
+ObjectInstance rabbit2 = context.create( Object::obj_rabbit ); // Create with default parameters
+ObjectInstance animal1 = context.create( choose( Object::obj_chicken, Object::obj_rabbit ) ); // Creation of chicken OR rabbit (runtime randomness)
 
 // ObjectHandle Retrieval
-ObjectHandle<ObjectType::obj_rabbit> rabbitHandle = rabbit1.handle<ObjectType::obj_rabbit>( context ); // or: auto rabbitHandle = ...
+ObjectHandle<Object::obj_rabbit> rabbitHandle = rabbit1.handle<Object::obj_rabbit>( context ); // or: auto rabbitHandle = ...
 
 // ObjectHandle Validation (handle can be null if the Object does not exist)
 if( rabbitHandle )
@@ -428,14 +428,14 @@ if( rabbitHandle )
 }
 
 // Looping over all obj_rabbit instances
-for( auto rabbitHandle : context.objects<ObjectType::obj_rabbit>() )
+for( auto rabbitHandle : context.objects<Object::obj_rabbit>() )
 {
 	rabbitHandle->x = 0.0f;
 	rabbitHandle->y = 0.0f;
 }
 
 // Looping over all obj_animal instances (includes obj_rabbits & obj_chicken)
-for( auto animalHandle : context.objects<ObjectType::obj_animal>( true ) )
+for( auto animalHandle : context.objects<Object::obj_animal>( true ) )
 {
 	animalHandle->x = 0.0f;
 	animalHandle->y = 0.0f;
@@ -492,7 +492,7 @@ fragment_output FragmentOutput
 	float4 color0 semantic( COLOR ) target( 0 );
 };
 
-cbuffer( 0 ) ShaderGlobals
+uniform_buffer( 0 ) ShaderGlobals
 {
 	float4x4 matrixModel;
 	float4x4 matrixView;
@@ -500,7 +500,7 @@ cbuffer( 0 ) ShaderGlobals
 	float4x4 matrixMVP;
 };
 
-cbuffer( 1 ) ShadowGlobals
+uniform_buffer( 1 ) ShadowGlobals
 {
 	float4x4 matrixViewShadows;
 	float4x4 matrixPerspectiveShadows;
@@ -570,7 +570,7 @@ struct t_VertexOutput
 	float4 v_color : COLOR0;
 };
 
-cbuffer t_ShaderGlobals : register( b0 )
+uniform_buffer t_ShaderGlobals : register( b0 )
 {
 	float4x4 t_ShaderGlobals_v_matrixModel;
 	float4x4 t_ShaderGlobals_v_matrixView;
@@ -578,7 +578,7 @@ cbuffer t_ShaderGlobals : register( b0 )
 	float4x4 t_ShaderGlobals_v_matrixMVP;
 };
 
-cbuffer t_ShadowGlobals : register( b1 )
+uniform_buffer t_ShadowGlobals : register( b1 )
 {
 	float4x4 t_ShadowGlobals_v_matrixViewShadows;
 	float4x4 t_ShadowGlobals_v_matrixPerspectiveShadows;
@@ -771,7 +771,7 @@ The syntax within a .shader is:
 
 ```c++
 // .shader file
-cbuffer( 1 ) ExampleUniformBuffer
+uniform_buffer( 1 ) ExampleUniformBuffer
 {
 	floatv4 color;
     float time;
@@ -781,7 +781,7 @@ cbuffer( 1 ) ExampleUniformBuffer
 Which is parsed and generated into a CPU accessible structure:
 ```c++
 // output/generated/gfx.generated.hpp
-namespace CoreGfxCBuffer
+namespace CoreGfxUniformBuffer
 {
 	// ...
 	struct alignas( 16 ) ExampleUniformBuffer_t
@@ -806,7 +806,7 @@ namespace CoreGfxCBuffer
 }
 
 // output/generated/gfx.generated.cpp
-namespace CoreGfxCBuffer
+namespace CoreGfxUniformBuffer
 {
 	// ...
 	void ExampleUniformBuffer_t::zero()
@@ -816,26 +816,26 @@ namespace CoreGfxCBuffer
 
 	void ExampleUniformBuffer_t::upload() const
 	{
-		auto *&resource = CoreGfx::gfxCBufferResources[2];
-		CoreGfx::rb_constant_buffer_write_begin( resource );
-		CoreGfx::rb_constant_buffer_write( resource, this );
-		CoreGfx::rb_constant_buffer_write_end( resource );
+		auto *&resource = CoreGfx::gfxUniformBufferResources[2];
+		CoreGfx::api_uniform_buffer_write_begin( resource );
+		CoreGfx::api_uniform_buffer_write( resource, this );
+		CoreGfx::api_uniform_buffer_write_end( resource );
 	}
 	// ...
 }
 
 // output/generated/gfx.generated.cpp
-namespace GfxCBuffer
+namespace GfxUniformBuffer
 {
 	// ...
-	CoreGfxCBuffer::ExampleUniformBuffer_t ExampleUniformBuffer; // Globaly accessible API
+	CoreGfxUniformBuffer::ExampleUniformBuffer_t ExampleUniformBuffer; // Globaly accessible API
 	// ...
 }
 ```
 
 And can be used anywhere in project code like:
 ```c++
-GfxCBuffer::ExampleUniformBuffer.color = floatv4 { 1.0, 0.0, 0.0, 1.0 }; // red
-GfxCBuffer::ExampleUniformBuffer.time = globalTime;
-GfxCBuffer::ExampleUniformBuffer.upload();
+GfxUniformBuffer::ExampleUniformBuffer.color = floatv4 { 1.0, 0.0, 0.0, 1.0 }; // red
+GfxUniformBuffer::ExampleUniformBuffer.time = globalTime;
+GfxUniformBuffer::ExampleUniformBuffer.upload();
 ```

@@ -17,22 +17,22 @@
 	CoreObjects::CATEGORY_TYPE_BUCKET[context][type]
 
 #define TYPE_VALID(context,type) \
-	( type > 0 && type < ObjectType::OBJECT_TYPE_COUNT && TYPE_BUCKET( context, type ) != 0 )
+	( type > 0 && type < CoreObjects::TYPE_COUNT && TYPE_BUCKET( context, type ) != 0 )
 
 #define TYPE_INVALID(context,type) \
 	UNLIKELY( !TYPE_VALID( context, type ) )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool object_is_parent_of( const ObjectType thisType, const ObjectType otherType )
+bool object_is_parent_of( const Object thisType, const Object otherType )
 {
 	if( thisType >= otherType ) { return false; }
-	if( thisType == ObjectType::DEFAULT || otherType == ObjectType::DEFAULT ) { return false; }
-	if(	thisType >= ObjectType::OBJECT_TYPE_COUNT || otherType >= ObjectType::OBJECT_TYPE_COUNT ) { return false; }
+	if( thisType == Object::DEFAULT || otherType == Object::DEFAULT ) { return false; }
+	if(	thisType >= CoreObjects::TYPE_COUNT || otherType >= CoreObjects::TYPE_COUNT ) { return false; }
 	const u16 thisDepth = CoreObjects::TYPE_INHERITANCE_DEPTH[thisType];
 	if( CoreObjects::TYPE_INHERITANCE_DEPTH[otherType] <= thisDepth ) { return false; }
 
-	for( ObjectType_t type = thisType + 1; type < otherType; type++ )
+	for( Object_t type = thisType + 1; type < otherType; type++ )
 	{
 		if( CoreObjects::TYPE_INHERITANCE_DEPTH[type] <= thisDepth ) { return false; }
 	}
@@ -40,20 +40,20 @@ bool object_is_parent_of( const ObjectType thisType, const ObjectType otherType 
 	return true;
 }
 
-bool object_is_child_of( const ObjectType thisType, const ObjectType otherType )
+bool object_is_child_of( const Object thisType, const Object otherType )
 {
 	return object_is_parent_of( otherType, thisType );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-Object::Serialization::InstanceTable Object::Serialization::instances[ObjectType::OBJECT_TYPE_COUNT];
-const ObjectContext *Object::Serialization::context = nullptr;
-bool Object::Serialization::dirty = false;
+ObjectInstance::Serialization::InstanceTable ObjectInstance::Serialization::instances[CoreObjects::TYPE_COUNT];
+const ObjectContext *ObjectInstance::Serialization::context = nullptr;
+bool ObjectInstance::Serialization::dirty = false;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Object::Serialization::InstanceTable::init( const u32 reserve )
+void ObjectInstance::Serialization::InstanceTable::init( const u32 reserve )
 {
 	if( keys != nullptr ) { free(); }
 	capacity = reserve;
@@ -63,7 +63,7 @@ void Object::Serialization::InstanceTable::init( const u32 reserve )
 }
 
 
-void Object::Serialization::InstanceTable::free()
+void ObjectInstance::Serialization::InstanceTable::free()
 {
 	if( keys == nullptr ) { return; }
 	memory_free( keys );
@@ -73,7 +73,7 @@ void Object::Serialization::InstanceTable::free()
 }
 
 
-void Object::Serialization::InstanceTable::add( const u32 key )
+void ObjectInstance::Serialization::InstanceTable::add( const u32 key )
 {
 	MemoryAssert( keys != nullptr );
 	Assert( current < capacity );
@@ -81,7 +81,7 @@ void Object::Serialization::InstanceTable::add( const u32 key )
 }
 
 
-u32 Object::Serialization::InstanceTable::get_key( const u32 instance ) const
+u32 ObjectInstance::Serialization::InstanceTable::get_key( const u32 instance ) const
 {
 	MemoryAssert( keys != nullptr );
 	if( instance >= capacity ) { return U32_MAX; }
@@ -89,7 +89,7 @@ u32 Object::Serialization::InstanceTable::get_key( const u32 instance ) const
 }
 
 
-u32 Object::Serialization::InstanceTable::find_instance( const u32 key ) const
+u32 ObjectInstance::Serialization::InstanceTable::find_instance( const u32 key ) const
 {
 	MemoryAssert( keys != nullptr );
 
@@ -107,20 +107,20 @@ u32 Object::Serialization::InstanceTable::find_instance( const u32 key ) const
 }
 
 
-void Object::Serialization::init()
+void ObjectInstance::Serialization::init()
 {
 	context = nullptr;
 }
 
 
-void Object::Serialization::free()
+void ObjectInstance::Serialization::free()
 {
-	for( ObjectType_t type = 0; type < ObjectType::OBJECT_TYPE_COUNT; type++ ) { instances[type].free(); }
+	for( Object_t type = 0; type < CoreObjects::TYPE_COUNT; type++ ) { instances[type].free(); }
 	context = nullptr;
 }
 
 
-void Object::Serialization::prepare( const ObjectContext &activeContext )
+void ObjectInstance::Serialization::prepare( const ObjectContext &activeContext )
 {
 	// State
 	if( context == &activeContext && !dirty ) { return; }
@@ -128,7 +128,7 @@ void Object::Serialization::prepare( const ObjectContext &activeContext )
 	dirty = false;
 
 	// Generate instance table from objects
-	for( ObjectType_t type = 0; type < ObjectType::OBJECT_TYPE_COUNT; type++ )
+	for( Object_t type = 0; type < CoreObjects::TYPE_COUNT; type++ )
 	{
 		// Initialize instance table
 		if( !CoreObjects::TYPE_SERIALIZED[type] ) { continue; }
@@ -146,7 +146,7 @@ void Object::Serialization::prepare( const ObjectContext &activeContext )
 			// Loop over live objects in the bucket and cache them
 			for( u16 index = bucket->bottom; index < bucket->top; index++ )
 			{
-				const Object &object = bucket->get_object_id( index );
+				const ObjectInstance &object = bucket->get_object_id( index );
 				if( !object.alive ) { continue; }
 				const u32 key = ( ( object.bucketID & 0xFFFF ) << 16 ) | ( object.index & 0xFFFF );
 				instances[type].add( key );
@@ -161,9 +161,9 @@ void Object::Serialization::prepare( const ObjectContext &activeContext )
 }
 
 
-u32 Object::Serialization::instance_from_object( const Object &object )
+u32 ObjectInstance::Serialization::instance_from_object( const ObjectInstance &object )
 {
-	AssertMsg( context != nullptr, "Missing Object::Serialization::prepare()...end() block!" );
+	AssertMsg( context != nullptr, "Missing ObjectInstance::Serialization::prepare()...end() block!" );
 	MemoryAssert( context->buckets != nullptr );
 	if( TYPE_INVALID( context->category, object.type ) ) { return U32_MAX; }
 	if( !CoreObjects::TYPE_SERIALIZED[object.type] ) { return U32_MAX; }
@@ -175,62 +175,62 @@ u32 Object::Serialization::instance_from_object( const Object &object )
 }
 
 
-Object Object::Serialization::object_from_instance( const ObjectType type, const u32 instance )
+ObjectInstance ObjectInstance::Serialization::object_from_instance( const Object type, const u32 instance )
 {
-	AssertMsg( context != nullptr, "Missing Object::Serialization::prepare()...end() block!" );
+	AssertMsg( context != nullptr, "Missing ObjectInstance::Serialization::prepare()...end() block!" );
 	MemoryAssert( context->buckets != nullptr );
-	if( TYPE_INVALID( context->category, type ) ) { return Object { }; }
-	if( !CoreObjects::TYPE_SERIALIZED[type] ) { return Object { }; }
+	if( TYPE_INVALID( context->category, type ) ) { return ObjectInstance { }; }
+	if( !CoreObjects::TYPE_SERIALIZED[type] ) { return ObjectInstance { }; }
 
 	// Find object
 	const u32 key = instances[type].get_key( instance );
-	if( key == U32_MAX ) { return Object { }; }
+	if( key == U32_MAX ) { return ObjectInstance { }; }
 	const u16 bucketID = ( key >> 16 ) & 0xFFFF;
 	const u16 index = ( key ) & 0xFFFF;
-	if( context->buckets[bucketID].data == nullptr || context->buckets[bucketID].type != type ) { return Object { }; }
+	if( context->buckets[bucketID].data == nullptr || context->buckets[bucketID].type != type ) { return ObjectInstance { }; }
 	return context->buckets[bucketID].get_object_id( index );
 }
 
 
-void Object::serialize( Buffer &buffer, const Object &object )
+void ObjectInstance::serialize( Buffer &buffer, const ObjectInstance &object )
 {
 	SerializedObject serialized { 0, 0 };
 	if( CoreObjects::TYPE_SERIALIZED[object.type] )
 	{
-		const u32 instance = Object::Serialization::instance_from_object( object );
+		const u32 instance = ObjectInstance::Serialization::instance_from_object( object );
 		if( instance != U32_MAX ) { serialized = { CoreObjects::TYPE_HASH[object.type], instance }; }
 	}
 	buffer.write<SerializedObject>( serialized );
 }
 
 
-void Object::deserialize( Buffer &buffer, Object &object )
+void ObjectInstance::deserialize( Buffer &buffer, ObjectInstance &object )
 {
 	SerializedObject serialized;
 	buffer.read<SerializedObject>( serialized );
 
 	// Null hash?
-	if( serialized.hash == 0 ) { object = Object { }; return; }
+	if( serialized.hash == 0 ) { object = ObjectInstance { }; return; }
 
 	// Attempt resolve type from hash & deserialize
-	for( ObjectType_t type = 0; type < ObjectType::OBJECT_TYPE_COUNT; type++ )
+	for( Object_t type = 0; type < CoreObjects::TYPE_COUNT; type++ )
 	{
 		if( CoreObjects::TYPE_HASH[type] == serialized.hash )
 		{
 			if( !CoreObjects::TYPE_SERIALIZED[type] ) { break; }
-			object = Object::Serialization::object_from_instance( type, serialized.instance );
+			object = ObjectInstance::Serialization::object_from_instance( type, serialized.instance );
 			return;
 		}
 	}
 
 	// Failed
-	object = Object { };
+	object = ObjectInstance { };
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #if COMPILE_DEBUG
 
-u64 Object::id() const
+u64 ObjectInstance::id() const
 {
 	u64 result = 0;
 	result |= static_cast<u64>( alive ) << 63;
@@ -242,11 +242,11 @@ u64 Object::id() const
 }
 
 #include <vendor/stdio.hpp>
-void Object::id_string( char *buffer, const usize length ) const
+void ObjectInstance::id_string( char *buffer, const usize length ) const
 {
 	if( alive )
 	{
-		const char *name = type < ObjectType::OBJECT_TYPE_COUNT ? CoreObjects::TYPE_NAME[type] : "invalid";
+		const char *name = type < CoreObjects::TYPE_COUNT ? CoreObjects::TYPE_NAME[type] : "invalid";
 		snprintf( buffer, length, "[%s (%u), b: %u, i: %u, g: %u]", name, type, bucketID, index, generation );
 	}
 	else
@@ -356,7 +356,7 @@ bool ObjectContext::grow()
 }
 
 
-u16 ObjectContext::new_bucket( const ObjectType_t type )
+u16 ObjectContext::new_bucket( const Object_t type )
 {
 	// Grow buffer?
 	if( current == capacity )
@@ -373,7 +373,7 @@ u16 ObjectContext::new_bucket( const ObjectType_t type )
 }
 
 
-ObjectContext::ObjectBucket *ObjectContext::new_object( const ObjectType_t type )
+ObjectContext::ObjectBucket *ObjectContext::new_object( const Object_t type )
 {
 	// Validate type
 	if( TYPE_INVALID( category, type ) ) { return nullptr; }
@@ -417,7 +417,7 @@ ObjectContext::ObjectBucket *ObjectContext::new_object( const ObjectType_t type 
 }
 
 
-byte *ObjectContext::get_object_pointer( const Object &object ) const
+byte *ObjectContext::get_object_pointer( const ObjectInstance &object ) const
 {
 	// Fetch Bucket
 	MemoryAssert( buckets != nullptr );
@@ -432,13 +432,13 @@ byte *ObjectContext::get_object_pointer( const Object &object ) const
 }
 
 
-Object ObjectContext::create( const ObjectType type )
+ObjectInstance ObjectContext::create( const Object type )
 {
-	Assert( type < ObjectType::OBJECT_TYPE_COUNT );
+	Assert( type < CoreObjects::TYPE_COUNT );
 
 	// Find Available Bucket
 	ObjectBucket *bucket = new_object( type );
-	if( UNLIKELY( bucket == nullptr ) ) { return Object { }; }
+	if( UNLIKELY( bucket == nullptr ) ) { return ObjectInstance { }; }
 
 	// Create Object
 	void *const object = bucket->data + ( bucket->current * CoreObjects::TYPE_SIZE[type] );
@@ -447,17 +447,17 @@ Object ObjectContext::create( const ObjectType type )
 }
 
 
-bool ObjectContext::destroy( Object &object )
+bool ObjectContext::destroy( ObjectInstance &instance )
 {
 	// Fetch Bucket
-	if( UNLIKELY( object.bucketID >= current ) ) { return false; }
-	ObjectBucket *bucket = &buckets[object.bucketID];
-	if( TYPE_INVALID( category, object.type ) ) { return false; }
-	if( UNLIKELY( bucket->type != object.type ) ) { return false; }
+	if( UNLIKELY( instance.bucketID >= current ) ) { return false; }
+	ObjectBucket *bucket = &buckets[instance.bucketID];
+	if( TYPE_INVALID( category, instance.type ) ) { return false; }
+	if( UNLIKELY( bucket->type != instance.type ) ) { return false; }
 	if( UNLIKELY( bucket->data == nullptr ) ) { return false; }
 
 	// Remove Object
-	const bool success = bucket->delete_object( object.index, object.generation );
+	const bool success = bucket->delete_object( instance.index, instance.generation );
 	return success;
 }
 
@@ -489,7 +489,7 @@ void ObjectContext::destroy_all()
 }
 
 
-void ObjectContext::destroy_all_type( const ObjectType type )
+void ObjectContext::destroy_all_type( const Object type )
 {
 	// Free buckets
 	for( u16 bucketID = 0; bucketID < current; bucketID++ )
@@ -500,14 +500,14 @@ void ObjectContext::destroy_all_type( const ObjectType type )
 }
 
 
-bool ObjectContext::activate( Object &object, const bool setActive )
+bool ObjectContext::activate( ObjectInstance &instance, const bool setActive )
 {
 	MemoryAssert( buckets != nullptr );
-	CoreObjects::DEFAULT_t *instance =
-		reinterpret_cast<CoreObjects::DEFAULT_t *>( get_object_pointer( object ) );
-	if( instance == nullptr ) { return false; }
-	instance->id.deactivated = !setActive;
-	object.deactivated = !setActive;
+	CoreObjects::DEFAULT_t *base =
+		reinterpret_cast<CoreObjects::DEFAULT_t *>( get_object_pointer( instance ) );
+	if( base == nullptr ) { return false; }
+	base->id.deactivated = !setActive;
+	instance.deactivated = !setActive;
 	return true;
 }
 
@@ -515,14 +515,14 @@ bool ObjectContext::activate( Object &object, const bool setActive )
 void ObjectContext::activate_all( const bool setActive )
 {
 	MemoryAssert( buckets != nullptr );
-	for( ObjectType_t type = 1; type < CoreObjects::CATEGORY_TYPE_COUNT[category]; type++ )
+	for( Object_t type = 1; type < CoreObjects::CATEGORY_TYPE_COUNT[category]; type++ )
 	{
 		activate_all_type( type, setActive );
 	}
 }
 
 
-void ObjectContext::activate_all_type( const ObjectType type, const bool setActive )
+void ObjectContext::activate_all_type( const Object type, const bool setActive )
 {
 	MemoryAssert( buckets != nullptr );
 	if( TYPE_INVALID( category, type ) ) { return; }
@@ -552,7 +552,7 @@ void ObjectContext::activate_all_type( const ObjectType type, const bool setActi
 }
 
 
-u32 ObjectContext::count( const ObjectType type ) const
+u32 ObjectContext::count( const Object type ) const
 {
 	MemoryAssert( objectCount != nullptr );
 	return objectCount[TYPE_BUCKET( category, type )];
@@ -604,7 +604,7 @@ void ObjectContext::deserialize( Buffer &buffer, ObjectContext &context )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool ObjectContext::ObjectBucket::init( const ObjectType_t type )
+bool ObjectContext::ObjectBucket::init( const Object_t type )
 {
 	// State
 	this->type = type;
@@ -652,7 +652,7 @@ void *ObjectContext::ObjectBucket::new_object_pointer()
 }
 
 
-Object ObjectContext::ObjectBucket::new_object( void *ptr )
+ObjectInstance ObjectContext::ObjectBucket::new_object( void *ptr )
 {
 	// Object
 	CoreObjects::DEFAULT_t *object = reinterpret_cast<CoreObjects::DEFAULT_t *>( ptr );
@@ -674,7 +674,7 @@ Object ObjectContext::ObjectBucket::new_object( void *ptr )
 	// Increment Object Count
 	context.objectCount[TYPE_BUCKET( context.category, type )]++;
 	context.objectCount[NULL_TYPE]++; // total object count
-	Object::Serialization::dirty |= ( Object::Serialization::context == &context );
+	ObjectInstance::Serialization::dirty |= ( ObjectInstance::Serialization::context == &context );
 
 	// Cache bucket
 	context.bucketCache[TYPE_BUCKET( context.category, type )] = bucketID;
@@ -746,7 +746,7 @@ bool ObjectContext::ObjectBucket::delete_object( const u16 index, const u16 gene
 	// Decerement Object Count
 	context.objectCount[TYPE_BUCKET( context.category, type )]--;
 	context.objectCount[NULL_TYPE]--; // total object count
-	Object::Serialization::dirty |= ( Object::Serialization::context == &context );
+	ObjectInstance::Serialization::dirty |= ( ObjectInstance::Serialization::context == &context );
 
 	// Success
 	return true;
@@ -771,7 +771,7 @@ byte *ObjectContext::ObjectBucket::get_object_pointer( const u16 index, const u1
 }
 
 
-const Object &ObjectContext::ObjectBucket::get_object_id( const u16 index ) const
+const ObjectInstance &ObjectContext::ObjectBucket::get_object_id( const u16 index ) const
 {
 	// Get Object Pointer
 	MemoryAssert( data != nullptr );

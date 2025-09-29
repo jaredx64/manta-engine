@@ -43,8 +43,8 @@ PROTECTED enum
 	TEXTBOX_COUNT
 };
 
-PROTECTED Object rgbaTextboxes[TEXTBOX_COUNT];
-PROTECTED Object hsvaTextboxes[TEXTBOX_COUNT];
+PROTECTED ObjectInstance rgbaTextboxes[TEXTBOX_COUNT];
+PROTECTED ObjectInstance hsvaTextboxes[TEXTBOX_COUNT];
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // PUBLIC STATE
@@ -72,8 +72,8 @@ PROTECTED void init()
 		if( i == TextBox_Alpha && !showAlpha ) { continue; }
 		if( i == TextBox_Hex && !showHex ) { continue; }
 
-		ObjectHandle<ObjectType::UIWidget_TextBox> rgbHandle { nullptr };
-		ObjectHandle<ObjectType::UIWidget_TextBox> hsvHandle { nullptr };
+		ObjectHandle<Object::UIWidget_TextBox> rgbHandle { nullptr };
+		ObjectHandle<Object::UIWidget_TextBox> hsvHandle { nullptr };
 
 		if( i > 0 ) { offset += 1; }
 		const int tX = 33 + offset;
@@ -84,9 +84,9 @@ PROTECTED void init()
 		if( showRGB )
 		{
 			const int tY = 0;
-			rgbaTextboxes[i] = context->create_widget_textline( ObjectType::UIWidget_TextBox,
+			rgbaTextboxes[i] = context->create_widget_textline( Object::UIWidget_TextBox,
 				tX, tY, tWidth, tHeight, format, id );
-			rgbHandle = context->handle<ObjectType::UIWidget_TextBox>( rgbaTextboxes[i] );
+			rgbHandle = context->handle<Object::UIWidget_TextBox>( rgbaTextboxes[i] );
 			Assert( rgbHandle );
 		}
 
@@ -94,9 +94,9 @@ PROTECTED void init()
 		if( showHSV )
 		{
 			const int tY = ( 28 + 8 ) * showRGB;
-			hsvaTextboxes[i] = context->create_widget_textline( ObjectType::UIWidget_TextBox,
+			hsvaTextboxes[i] = context->create_widget_textline( Object::UIWidget_TextBox,
 				tX, tY, tWidth, tHeight, format, id );
-			hsvHandle = context->handle<ObjectType::UIWidget_TextBox>( hsvaTextboxes[i] );
+			hsvHandle = context->handle<Object::UIWidget_TextBox>( hsvaTextboxes[i] );
 			Assert( hsvHandle );
 		}
 		offset += tWidth;
@@ -108,11 +108,11 @@ PROTECTED void init()
 			{
 				rgbHandle->set_filter( Text::filter_integer );
 				rgbHandle->limitCharacters = 3;
-				rgbHandle->callbackOnInteract = []( UIContext &context, Object widget )
+				rgbHandle->callbackOnInteract = []( UIContext &context, ObjectInstance widget )
 					{
-						auto widgetHandle = context.handle<ObjectType::UIWidget_TextBox>( widget );
+						auto widgetHandle = context.handle<Object::UIWidget_TextBox>( widget );
 						Assert( widgetHandle );
-						auto parentHandle = context.handle<ObjectType::UIWidget_ColorPicker_TextBox>( widgetHandle->parent );
+						auto parentHandle = context.handle<Object::UIWidget_ColorPicker_TextBox>( widgetHandle->parent );
 						Assert( widgetHandle );
 						parentHandle->update_from_textbox_values( true );
 					};
@@ -122,11 +122,11 @@ PROTECTED void init()
 			{
 				hsvHandle->set_filter( Text::filter_integer );
 				hsvHandle->limitCharacters = 3;
-				hsvHandle->callbackOnInteract = []( UIContext &context, Object widget )
+				hsvHandle->callbackOnInteract = []( UIContext &context, ObjectInstance widget )
 					{
-						auto widgetHandle = context.handle<ObjectType::UIWidget_TextBox>( widget );
+						auto widgetHandle = context.handle<Object::UIWidget_TextBox>( widget );
 						Assert( widgetHandle );
-						auto parentHandle = context.handle<ObjectType::UIWidget_ColorPicker_TextBox>( widgetHandle->parent );
+						auto parentHandle = context.handle<Object::UIWidget_ColorPicker_TextBox>( widgetHandle->parent );
 						Assert( widgetHandle );
 						parentHandle->update_from_textbox_values( false );
 					};
@@ -139,11 +139,11 @@ PROTECTED void init()
 			{
 				rgbHandle->set_filter( Text::filter_hex );
 				rgbHandle->limitCharacters = 8;
-				rgbHandle->callbackOnInteract = []( UIContext &context, Object widget )
+				rgbHandle->callbackOnInteract = []( UIContext &context, ObjectInstance widget )
 					{
-						auto widgetHandle = context.handle<ObjectType::UIWidget_TextBox>( widget );
+						auto widgetHandle = context.handle<Object::UIWidget_TextBox>( widget );
 						Assert( widgetHandle );
-						auto parentHandle = context.handle<ObjectType::UIWidget_ColorPicker_TextBox>( widgetHandle->parent );
+						auto parentHandle = context.handle<Object::UIWidget_ColorPicker_TextBox>( widgetHandle->parent );
 						Assert( widgetHandle );
 						parentHandle->update_from_textbox_hex( true );
 					};
@@ -153,11 +153,11 @@ PROTECTED void init()
 			{
 				hsvHandle->set_filter( Text::filter_hex );
 				hsvHandle->limitCharacters = 8;
-				hsvHandle->callbackOnInteract = []( UIContext &context, Object widget )
+				hsvHandle->callbackOnInteract = []( UIContext &context, ObjectInstance widget )
 					{
-						auto widgetHandle = context.handle<ObjectType::UIWidget_TextBox>( widget );
+						auto widgetHandle = context.handle<Object::UIWidget_TextBox>( widget );
 						Assert( widgetHandle );
-						auto parentHandle = context.handle<ObjectType::UIWidget_ColorPicker_TextBox>( widgetHandle->parent );
+						auto parentHandle = context.handle<Object::UIWidget_ColorPicker_TextBox>( widgetHandle->parent );
 						Assert( widgetHandle );
 						parentHandle->update_from_textbox_hex( false );
 					};
@@ -211,9 +211,9 @@ PROTECTED void update( const Delta delta )
 			if( i % TEXTBOX_COUNT == TextBox_Hex && !showHex ) { continue; }
 			if( i % TEXTBOX_COUNT == 0 && activateNext ) { break; }
 
-			Object textbox = i < TEXTBOX_COUNT ?
+			ObjectInstance textbox = i < TEXTBOX_COUNT ?
 				rgbaTextboxes[i % TEXTBOX_COUNT] : hsvaTextboxes[i % TEXTBOX_COUNT];
-			auto textboxHandle = context->handle<ObjectType::UIWidget_TextBox>( textbox );
+			auto textboxHandle = context->handle<Object::UIWidget_TextBox>( textbox );
 			Assert( textboxHandle );
 
 			if( activateNext )
@@ -391,17 +391,17 @@ PROTECTED void update_textboxes()
 		if( i == TextBox_Alpha && !showAlpha ) { continue; }
 		if( i == TextBox_Hex && !showHex ) { continue; }
 
-		ObjectHandle<ObjectType::UIWidget_TextBox> rgbHandle { nullptr };
+		ObjectHandle<Object::UIWidget_TextBox> rgbHandle { nullptr };
 		if( showRGB )
 		{
-			rgbHandle = context->handle<ObjectType::UIWidget_TextBox>( rgbaTextboxes[i] );
+			rgbHandle = context->handle<Object::UIWidget_TextBox>( rgbaTextboxes[i] );
 			Assert( rgbHandle );
 		}
 
-		ObjectHandle<ObjectType::UIWidget_TextBox> hsvHandle { nullptr };
+		ObjectHandle<Object::UIWidget_TextBox> hsvHandle { nullptr };
 		if( showHSV )
 		{
-			hsvHandle = context->handle<ObjectType::UIWidget_TextBox>( hsvaTextboxes[i] );
+			hsvHandle = context->handle<Object::UIWidget_TextBox>( hsvaTextboxes[i] );
 			Assert( hsvHandle );
 		}
 
@@ -442,7 +442,7 @@ PROTECTED void update_textboxes()
 PUBLIC void update_from_textbox_values( const bool isRGBA )
 {
 	if( ( isRGBA && !showRGB ) || ( !isRGBA && !showHSV ) ) { return; }
-	const Object *textboxes = isRGBA ? rgbaTextboxes : hsvaTextboxes;
+	const ObjectInstance *textboxes = isRGBA ? rgbaTextboxes : hsvaTextboxes;
 
 	Color color;
 	char buffer[16];
@@ -450,7 +450,7 @@ PUBLIC void update_from_textbox_values( const bool isRGBA )
 	for( int i = 0; i < TextBox_Hex; i++ )
 	{
 		if( i == TextBox_Alpha && !showAlpha) { color.xyzw[i] = 255; break; }
-		auto handle = context->handle<ObjectType::UIWidget_TextBox>( textboxes[i] ); Assert( handle );
+		auto handle = context->handle<Object::UIWidget_TextBox>( textboxes[i] ); Assert( handle );
 		handle->get_string( buffer, sizeof( buffer ) );
 		const int value = atoi( buffer );
 		color.xyzw[i] = static_cast<u8>( clamp( value, 0, 255 ) );
@@ -466,12 +466,12 @@ PUBLIC void update_from_textbox_values( const bool isRGBA )
 PUBLIC void update_from_textbox_hex( const bool isRGBA )
 {
 	if( !showHex || ( isRGBA && !showRGB ) || ( !isRGBA && !showHSV ) ) { return; }
-	const Object *textboxes = isRGBA ? rgbaTextboxes : hsvaTextboxes;
+	const ObjectInstance *textboxes = isRGBA ? rgbaTextboxes : hsvaTextboxes;
 
 	Color color;
 	char buffer[16];
 
-	auto handle = context->handle<ObjectType::UIWidget_TextBox>( textboxes[TextBox_Hex] ); Assert( handle );
+	auto handle = context->handle<Object::UIWidget_TextBox>( textboxes[TextBox_Hex] ); Assert( handle );
 	handle->get_string( buffer, sizeof( buffer ) );
 	const usize length = strlen( buffer );
 

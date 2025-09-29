@@ -418,6 +418,10 @@ void BuilderCore::assets_gather()
 	Assets::dataAssets.gather( Build::pathEngine );
 	Assets::dataAssets.gather( Build::pathProject );
 
+	// Gather Textures
+	Assets::textures.gather( Build::pathEngine );
+	Assets::textures.gather( Build::pathProject );
+
 	// Gather Sprites
 	Assets::sprites.gather( Build::pathEngine );
 	Assets::sprites.gather( Build::pathProject );

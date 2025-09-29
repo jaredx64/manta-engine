@@ -1,8 +1,8 @@
 #include <manta/gfx.hpp>
 
-#include <config.hpp>
-#include <core/memory.hpp>
 #include <pipeline.generated.hpp>
+
+#include <core/memory.hpp>
 
 #include <manta/window.hpp>
 #include <manta/draw.hpp>
@@ -13,36 +13,13 @@ static inline void draw_call()
 {
 #if GRAPHICS_ENABLED
 	// TODO: Refactor this
-	Gfx::quad_batch_break(); // Break the quad batch
-	// TODO ... break any other batch?
+	Gfx::quad_batch_break();
+	// TODO: Break any other batch?
 #endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-namespace CoreGfx
-{
-	GfxState states[2];
-	bool flip = false;
-	bool rendering = false;
-
-	GfxShader shaders[CoreGfx::shaderCount];
-	GfxTexture2D textures[CoreAssets::textureCount];
-
-	GfxSwapChain swapchain;
-	GfxViewport viewport;
-
-	double_m44 matrixModel;
-	double_m44 matrixView;
-	double_m44 matrixViewInverse;
-	double_m44 matrixPerspective;
-	double_m44 matrixMVP;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 #if PROFILING_GFX
-#include <manta/draw.hpp>
 
 namespace Gfx
 {
@@ -86,6 +63,8 @@ static void format_integer( char *buffer, usize size, int num )
 	buffer[j] = '\0';
 }
 
+
+#include <manta/draw.hpp>
 void debug_overlay_gfx( const float x, const float y )
 {
 	float drawX = x;
@@ -93,6 +72,8 @@ void debug_overlay_gfx( const float x, const float y )
 	const GfxStatistics &stats = Gfx::stats;//Previous;
 
 	char buffer[32];
+
+	// State
 
 	draw_text_f( fnt_iosevka, 14, drawX, drawY, c_white,
 		"Draw Calls: %d", stats.frame.drawCalls );
@@ -116,6 +97,8 @@ void debug_overlay_gfx( const float x, const float y )
 		"Shader Binds: %d", stats.frame.shaderBinds );
 	drawY += 20.0f;
 
+	// Memory
+
 	drawY += 20.0f;
 	draw_text_f( fnt_iosevka, 14, drawX, drawY, c_yellow,
 		"GPU Memory Total: %.4f mb", MB( stats.total_memory() ) );
@@ -126,11 +109,7 @@ void debug_overlay_gfx( const float x, const float y )
 	drawY += 20.0f;
 
 	draw_text_f( fnt_iosevka, 14, drawX, drawY, c_white,
-		"  Textures: %.4f mb", MB( stats.gpuMemoryTextures ) );
-	drawY += 20.0f;
-
-	draw_text_f( fnt_iosevka, 14, drawX, drawY, c_white,
-		"  Render Targets: %.4f mb", MB( stats.gpuMemoryRenderTargets ) );
+		"  Shaders: %.4f mb", MB( stats.gpuMemoryShaders ) );
 	drawY += 20.0f;
 
 	draw_text_f( fnt_iosevka, 14, drawX, drawY, c_white,
@@ -146,21 +125,34 @@ void debug_overlay_gfx( const float x, const float y )
 	drawY += 20.0f;
 
 	draw_text_f( fnt_iosevka, 14, drawX, drawY, c_white,
-		"  Constant Buffers: %.4f mb", MB( stats.gpuMemoryUniformBuffers ) );
+		"  Uniform Buffers: %.4f mb", MB( stats.gpuMemoryUniformBuffers ) );
 	drawY += 20.0f;
 
 	draw_text_f( fnt_iosevka, 14, drawX, drawY, c_white,
-		"  Shader Programs: %.4f mb", MB( stats.gpuMemoryShaderPrograms ) );
-}
-#endif
+		"  Constant Buffers: %.4f mb", MB( stats.gpuMemoryConstantBuffers ) );
+	drawY += 20.0f;
 
+	draw_text_f( fnt_iosevka, 14, drawX, drawY, c_white,
+		"  Mutable Buffers: %.4f mb", MB( stats.gpuMemoryMutableBuffers ) );
+	drawY += 20.0f;
+
+	draw_text_f( fnt_iosevka, 14, drawX, drawY, c_white,
+		"  Textures: %.4f mb", MB( stats.gpuMemoryTextures ) );
+	drawY += 20.0f;
+
+	draw_text_f( fnt_iosevka, 14, drawX, drawY, c_white,
+		"  Render Targets: %.4f mb", MB( stats.gpuMemoryRenderTargets ) );
+	drawY += 20.0f;
+}
+
+#endif
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool CoreGfx::init()
 {
 #if GRAPHICS_ENABLED
 	// Initialize Backend
-	ErrorIf( !CoreGfx::rb_init(), "%s: Failed to initialize %s backend!", __FUNCTION__, BUILD_GRAPHICS );
+	ErrorIf( !CoreGfx::api_init(), "%s: Failed to initialize %s backend!", __FUNCTION__, BUILD_GRAPHICS );
 
 	// Initialize Textures
 	ErrorIf( !CoreGfx::init_textures(), "%s: Failed to initialize textures!", __FUNCTION__ );
@@ -169,14 +161,13 @@ bool CoreGfx::init()
 	ErrorIf( !CoreGfx::init_shaders(), "%s: Failed to initialize shaders!", __FUNCTION__ );
 
 	// Initialize Constant Buffers
- 	ErrorIf( !CoreGfx::rb_init_uniform_buffers(), "%s: Failed to initialize constant buffers!", __FUNCTION__ );
+ 	ErrorIf( !CoreGfx::api_init_uniform_buffers(), "%s: Failed to initialize constant buffers!", __FUNCTION__ );
 
 	// Initialize Quad Batch
 	ErrorIf( !CoreGfx::quadBatch.init( RENDER_QUAD_BATCH_SIZE ),
 		"%s: Failed to initialize default quad batch!", __FUNCTION__ );
 #endif
 
-	// Success
 	return true;
 }
 
@@ -188,7 +179,7 @@ bool CoreGfx::free()
 	ErrorIf( !CoreGfx::quadBatch.free(), "%s: Failed to free default quad batch!", __FUNCTION__ );
 
 	// Free Constant Buffers
-	ErrorIf( !CoreGfx::rb_free_uniform_buffers(), "%s: Failed to free shaders!", __FUNCTION__ );
+	ErrorIf( !CoreGfx::api_free_uniform_buffers(), "%s: Failed to free shaders!", __FUNCTION__ );
 
 	// Free Shaders
 	ErrorIf( !CoreGfx::free_shaders(), "%s: Failed to free shaders!", __FUNCTION__ );
@@ -197,10 +188,9 @@ bool CoreGfx::free()
 	ErrorIf( !CoreGfx::free_textures(), "%s: Failed to free textures!", __FUNCTION__ );
 
 	// Free Backend
-	ErrorIf( !CoreGfx::rb_free(), "%s: Failed to free %s backend!", __FUNCTION__, BUILD_GRAPHICS );
+	ErrorIf( !CoreGfx::api_free(), "%s: Failed to free %s backend!", __FUNCTION__, BUILD_GRAPHICS );
 #endif
 
-	// Success
 	return true;
 }
 
@@ -208,7 +198,6 @@ bool CoreGfx::free()
 bool CoreGfx::init_textures()
 {
 #if GRAPHICS_ENABLED
-	// Load Textures
 	for( u32 i = 0; i < CoreAssets::textureCount; i++ )
 	{
 		const Assets::TextureEntry &binTexture = Assets::texture( i );
@@ -219,7 +208,6 @@ bool CoreGfx::init_textures()
 	}
 #endif
 
-	// Success
 	return true;
 }
 
@@ -227,14 +215,12 @@ bool CoreGfx::init_textures()
 bool CoreGfx::free_textures()
 {
 #if GRAPHICS_ENABLED
-	// Free Textures
 	for( u32 i = 0; i < CoreAssets::textureCount; i++ )
 	{
 		CoreGfx::textures[i].free();
 	}
 #endif
 
-	// Success
 	return true;
 }
 
@@ -242,7 +228,6 @@ bool CoreGfx::free_textures()
 bool CoreGfx::init_shaders()
 {
 #if GRAPHICS_ENABLED
-	// Load Shaders
 	for( u32 i = 0; i < CoreGfx::shaderCount; i++ )
 	{
 		const ShaderEntry &shaderEntry = CoreGfx::shaderEntries[i];
@@ -250,7 +235,6 @@ bool CoreGfx::init_shaders()
 	}
 #endif
 
-	// Success
 	return true;
 }
 
@@ -258,15 +242,354 @@ bool CoreGfx::init_shaders()
 bool CoreGfx::free_shaders()
 {
 #if GRAPHICS_ENABLED
-	// Free Shaders
 	for( u32 i = 0; i < CoreGfx::shaderCount; i++ )
 	{
 		CoreGfx::shaders[i].free();
 	}
 #endif
 
-	// Success
 	return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Gfx::frame_begin()
+{
+#if GRAPHICS_ENABLED
+	// Reset State
+	CoreGfx::state_reset();
+
+	// Backend
+	CoreGfx::api_frame_begin();
+
+	// Quad Batch
+	CoreGfx::quadBatch.batch_begin();
+
+	// Reset Matrices
+	const double_m44 identity = double_m44_build_identity();
+	Gfx::set_matrix_model( identity );
+	Gfx::set_matrix_view( identity );
+	Gfx::set_matrix_perspective( identity );
+
+	// Start Rendering
+	CoreGfx::rendering = true;
+#endif
+}
+
+
+void Gfx::frame_end()
+{
+#if GRAPHICS_ENABLED
+	// Stop Rendering
+	CoreGfx::rendering = false;
+
+	// Quad Batch
+	CoreGfx::quadBatch.batch_end();
+
+	// Backend
+	CoreGfx::api_frame_end();
+
+	// Statistics
+#if PROFILING_GFX
+	memory_copy( &Gfx::statsPrevious, &Gfx::stats, sizeof( GfxStatistics ) );
+	Gfx::stats.frame = { };
+#endif
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+GfxSwapChain CoreGfx::swapchain;
+
+
+void Gfx::set_swapchain_size( const u16 width, const u16 height, const bool fullscreen )
+{
+#if GRAPHICS_ENABLED
+	CoreGfx::api_swapchain_resize( width, height, fullscreen );
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+GfxViewport CoreGfx::viewport;
+
+
+void Gfx::viewport_update()
+{
+#if GRAPHICS_ENABLED
+	// Update Viewport
+	const int viewportWidth = static_cast<int>( Window::width * Window::scale );
+	const int viewportHeight = static_cast<int>( Window::height * Window::scale );
+	CoreGfx::api_viewport_resize( viewportWidth, viewportHeight, Window::fullscreen );
+
+	// Resize Swapchain
+	CoreGfx::api_swapchain_resize( Window::width, Window::height, Window::fullscreen );
+#endif
+}
+
+
+void Gfx::set_viewport_size( const u16 width, const u16 height, const bool fullscreen )
+{
+#if GRAPHICS_ENABLED
+	CoreGfx::api_viewport_resize( width, height, fullscreen );
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Gfx::set_raster_state( const GfxRasterState &state )
+{
+#if GRAPHICS_ENABLED
+	// Raster state changes force a batch break
+	if( Gfx::state().raster == state ) { return; }
+	draw_call();
+	Gfx::state().raster = state;
+#endif
+}
+
+
+void Gfx::set_fill_mode( const GfxFillMode &mode )
+{
+#if GRAPHICS_ENABLED
+	GfxRasterState state = Gfx::state().raster;
+	state.fillMode = mode;
+	Gfx::set_raster_state( state );
+#endif
+}
+
+
+void Gfx::set_cull_mode( const GfxCullMode &mode )
+{
+#if GRAPHICS_ENABLED
+	GfxRasterState state = Gfx::state().raster;
+	state.cullMode = mode;
+	Gfx::set_raster_state( state );
+#endif
+}
+
+
+void Gfx::set_scissor( const int x1, const int y1, const int x2, const int y2 )
+{
+#if GRAPHICS_ENABLED
+	GfxRasterState state = Gfx::state().raster;
+	state.scissor = true;
+	state.scissorX1 = x1;
+	state.scissorY1 = y1;
+	state.scissorX2 = x2 > x1 ? x2 : x1;
+	state.scissorY2 = y2 > y1 ? y2 : y1;
+	Gfx::set_raster_state( state );
+#endif
+}
+
+
+void Gfx::set_scissor_nested( const int x1, const int y1, const int x2, const int y2 )
+{
+#if GRAPHICS_ENABLED
+	GfxRasterState state = Gfx::state().raster;
+	if( !state.scissor ) { Gfx::set_scissor( x1, y1, x2, y2 ); return; }
+	state.scissor = true;
+	state.scissorX1 = max( state.scissorX1, x1 );
+	state.scissorY1 = max( state.scissorY1, y1 );
+	state.scissorX2 = min( state.scissorX2, x2 );
+	state.scissorY2 = min( state.scissorY2, y2 );
+	Gfx::set_raster_state( state );
+#endif
+}
+
+
+void Gfx::reset_scissor()
+{
+#if GRAPHICS_ENABLED
+	GfxRasterState state = Gfx::state().raster;
+	state.scissor = false;
+	state.scissorX1 = 0;
+	state.scissorY1 = 0;
+	state.scissorX2 = 0;
+	state.scissorY2 = 0;
+	Gfx::set_raster_state( state );
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Gfx::set_sampler_state( const GfxSamplerState &state )
+{
+#if GRAPHICS_ENABLED
+	// Sampler state changes force a batch break
+	if( Gfx::state().sampler == state ) { return; }
+	draw_call();
+	Gfx::state().sampler = state;
+#endif
+}
+
+
+void Gfx::set_filtering_mode( const GfxFilteringMode &mode )
+{
+#if GRAPHICS_ENABLED
+	GfxSamplerState state = Gfx::state().sampler;
+	state.filterMode = mode;
+	Gfx::set_sampler_state( state );
+#endif
+}
+
+
+void Gfx::set_filtering_anisotropy( const int anisotropy )
+{
+#if GRAPHICS_ENABLED
+	GfxSamplerState state = Gfx::state().sampler;
+	state.anisotropy = clamp( anisotropy, 1, 16 );
+	Gfx::set_sampler_state( state );
+#endif
+}
+
+
+void Gfx::set_uv_wrap_mode( const GfxUVWrapMode &mode )
+{
+#if GRAPHICS_ENABLED
+	GfxSamplerState state = Gfx::state().sampler;
+	state.wrapMode = mode;
+	Gfx::set_sampler_state( state );
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Gfx::set_blend_state( const GfxBlendState &state )
+{
+#if GRAPHICS_ENABLED
+	// Blend state changes force a batch break
+	if( Gfx::state().blend == state ) { return; }
+	draw_call();
+	Gfx::state().blend = state;
+#endif
+}
+
+
+void Gfx::set_blend_enabled( const bool enabled )
+{
+#if GRAPHICS_ENABLED
+	GfxBlendState state = Gfx::state().blend;
+	state.blendEnable = enabled;
+	Gfx::set_blend_state( state );
+#endif
+}
+
+
+void Gfx::set_blend_mode_color( const GfxBlendFactor &srcFactor, const GfxBlendFactor &dstFactor,
+	const GfxBlendOperation &op )
+{
+#if GRAPHICS_ENABLED
+	GfxBlendState state = Gfx::state().blend;
+	state.srcFactorColor = srcFactor;
+	state.dstFactorColor = dstFactor;
+	state.blendOperationColor = op;
+	Gfx::set_blend_state( state );
+#endif
+}
+
+
+void Gfx::set_blend_mode_alpha( const GfxBlendFactor &srcFactor, const GfxBlendFactor &dstFactor,
+	const GfxBlendOperation &op )
+{
+#if GRAPHICS_ENABLED
+	GfxBlendState state = Gfx::state().blend;
+	state.srcFactorAlpha = srcFactor;
+	state.dstFactorAlpha = dstFactor;
+	state.blendOperationAlpha = op;
+	Gfx::set_blend_state( state );
+#endif
+}
+
+
+void Gfx::reset_blend_mode()
+{
+#if GRAPHICS_ENABLED
+	Gfx::reset_blend_mode_color();
+	Gfx::reset_blend_mode_alpha();
+#endif
+}
+
+
+void Gfx::reset_blend_mode_color()
+{
+#if GRAPHICS_ENABLED
+	Gfx::set_blend_mode_color( GfxBlendFactor_SRC_ALPHA, GfxBlendFactor_INV_SRC_ALPHA, GfxBlendOperation_ADD );
+#endif
+}
+
+
+void Gfx::reset_blend_mode_alpha()
+{
+#if GRAPHICS_ENABLED
+	Gfx::set_blend_mode_alpha( GfxBlendFactor_ONE, GfxBlendFactor_INV_SRC_ALPHA, GfxBlendOperation_ADD );
+#endif
+}
+
+
+void Gfx::set_color_write_mask( const GfxColorWriteFlag &mask )
+{
+#if GRAPHICS_ENABLED
+	GfxBlendState state = Gfx::state().blend;
+	state.colorWriteMask = mask;
+	Gfx::set_blend_state( state );
+#endif
+}
+
+
+void Gfx::clear_color( const Color color )
+{
+#if GRAPHICS_ENABLED
+	CoreGfx::api_clear_color( color );
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Gfx::set_depth_state( const GfxDepthState &state )
+{
+#if GRAPHICS_ENABLED
+	// Depth state changes force a batch break
+	if( Gfx::state().depth == state ) { return; }
+	draw_call();
+	Gfx::state().depth = state;
+#endif
+}
+
+
+void Gfx::set_depth_test_mode( const GfxDepthTestMode &mode )
+{
+#if GRAPHICS_ENABLED
+	GfxDepthState state = Gfx::state().depth;
+	state.depthTestMode = mode;
+	Gfx::set_depth_state( state );
+#endif
+}
+
+
+void Gfx::set_depth_write_mask( const GfxDepthWriteFlag &mask )
+{
+#if GRAPHICS_ENABLED
+	GfxDepthState state = Gfx::state().depth;
+	state.depthWriteMask = mask;
+	Gfx::set_depth_state( state );
+#endif
+}
+
+
+void Gfx::clear_depth( const float depth )
+{
+#if GRAPHICS_ENABLED
+	CoreGfx::api_clear_depth( depth );
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+namespace CoreGfx
+{
+	GfxState states[2];
+	bool flip = false;
+	bool rendering = false;
 }
 
 
@@ -298,25 +621,25 @@ void CoreGfx::state_apply( const bool dirty )
 
 	// Raster State
 	if( dirty || GFX_STATE_CHECK( current.raster != previous.raster ) )
-		{ CoreGfx::rb_set_raster_state( current.raster ); }
+		{ CoreGfx::api_set_raster_state( current.raster ); }
 
 	// Sampler State
 	if( dirty || GFX_STATE_CHECK( current.sampler != previous.sampler ) )
-		{ CoreGfx::rb_set_sampler_state( current.sampler ); }
+		{ CoreGfx::api_set_sampler_state( current.sampler ); }
 
 	// Blend State
 	if( dirty || GFX_STATE_CHECK( current.blend != previous.blend ) )
-		{ CoreGfx::rb_set_blend_state( current.blend ); }
+		{ CoreGfx::api_set_blend_state( current.blend ); }
 
 	// Depth State
 	if( dirty || GFX_STATE_CHECK( current.depth != previous.depth ) )
-		{ CoreGfx::rb_set_depth_state( current.depth ); }
+		{ CoreGfx::api_set_depth_state( current.depth ); }
 
 #if 0
 	// Texture 2D Binding
 	if( GFX_STATE_CHECK( current.textureResource[0] != previous.textureResource[0] &&
 	                     current.textureResource[0] != nullptr ) )
-		{ CoreGfx::rb_texture_2d_bind( current.textureResource[0], 0 ); }
+		{ CoreGfx::api_texture_2d_bind( current.textureResource[0], 0 ); }
 #endif
 
 	// Cache State
@@ -325,38 +648,523 @@ void CoreGfx::state_apply( const bool dirty )
 #endif
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-byte *CoreGfx::scratch_buffer( const usize size )
+namespace CoreGfx
+{
+	GfxShader shaders[CoreGfx::shaderCount];
+}
+
+
+void GfxShader::init( const u32 shaderID, const ShaderEntry &shaderEntry )
 {
 #if GRAPHICS_ENABLED
-	static byte *scratchData = nullptr;
-	static usize scratchSize = 0;
+	this->shaderID = shaderID;
+	ErrorIf( !CoreGfx::api_shader_init( resource, shaderID, shaderEntry ),
+		"Failed to init shader! (%u)", this->shaderID );
+#endif
+}
 
-	if( size == 0 )
+
+void GfxShader::free()
+{
+#if GRAPHICS_ENABLED
+	ErrorIf( !CoreGfx::api_shader_free( resource ),
+		"Failed to free shader! (%u)", this->shaderID );
+#endif
+}
+
+
+void GfxShader::bind()
+{
+#if GRAPHICS_ENABLED
+	if( Gfx::state().shader.resource != resource )
 	{
-		scratchSize = 0;
-		if( scratchData != nullptr ) { memory_free( scratchData ); }
-		scratchData = nullptr;
-		return scratchData;
+		draw_call(); // Shader changes force batch break
+		Gfx::state().shader.resource = resource;
+		Gfx::state().shader.shaderID = shaderID;
 	}
-	else
-	{
-		if( scratchData == nullptr )
-		{
-			scratchSize = size;
-			scratchData = reinterpret_cast<byte *>( memory_alloc( size ) );
-		}
-		else if( size > scratchSize )
-		{
-			scratchSize = size;
-			scratchData = reinterpret_cast<byte *>( memory_realloc( scratchData, scratchSize ) );
-		}
 
-		memory_set( scratchData, 0, scratchSize );
-		return scratchData;
+	ErrorIf( !CoreGfx::api_shader_bind( resource ),
+		"Failed to bind shader!" );
+	ErrorIf( !CoreGfx::api_shader_bind_uniform_buffers_vertex[shaderID](),
+		"Failed to bind vertex shader uniform buffers! (%u)", this->shaderID );
+	ErrorIf( !CoreGfx::api_shader_bind_uniform_buffers_fragment[shaderID](),
+		"Failed to bind fragment shader uniform buffers! (%u)", this->shaderID );
+	ErrorIf( !CoreGfx::api_shader_bind_uniform_buffers_compute[shaderID](),
+		"Failed to bind compute shader uniform buffers! (%u)", this->shaderID );
+#endif
+}
+
+
+void GfxShader::release()
+{
+#if GRAPHICS_ENABLED
+	CoreGfx::shaders[Shader::SHADER_DEFAULT].bind();
+#endif
+}
+
+
+void GfxShader::dispatch( const u32 x, const u32 y, const u32 z )
+{
+#if GRAPHICS_ENABLED
+	ErrorIf( !CoreGfx::api_shader_dispatch( resource, x, y, z ),
+		"Failed to dispatch compute shader!" );
+#endif
+}
+
+
+u32 Gfx::shader_current()
+{
+	return Gfx::state().shader.shaderID;
+}
+
+
+void Gfx::shader_bind( const Shader shader )
+{
+#if GRAPHICS_ENABLED
+	CoreGfx::shaders[shader].bind();
+#endif
+}
+
+
+void Gfx::shader_release()
+{
+#if GRAPHICS_ENABLED
+	CoreGfx::shaders[Shader::SHADER_DEFAULT].bind();
+#endif
+}
+
+
+void Gfx::shader_dispatch( const Shader shader, const u32 x, const u32 y, const u32 z )
+{
+#if GRAPHICS_ENABLED
+	CoreGfx::shaders[shader].dispatch( x, y, z );
+#endif
+}
+
+
+void Gfx::set_shader_globals( const CoreGfxUniformBuffer::ShaderGlobals_t &globals )
+{
+#if GRAPHICS_ENABLED
+	// Shader globals changes force a batch break
+	if( Gfx::state().shader.globals == globals ) { return; }
+	Gfx::state().shader.globals = globals;
+
+	draw_call();
+	globals.upload();
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// GfxVertexBuffer: gfx.hpp
+// GfxInstanceBuffer: gfx.hpp
+// GfxIndexBuffer: gfx.hpp
+// GfxUniformBuffer: gfx.hpp
+// GfxConstantBuffer: gfx.hpp
+// GfxMutableBuffer: gfx.hpp
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// TODO: GfxTexture1D
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+namespace CoreGfx
+{
+	GfxTexture2D textures[CoreAssets::textureCount];
+}
+
+
+void GfxTexture2D::init( void *data, const u16 width, const u16 height, const GfxColorFormat &format )
+{
+#if GRAPHICS_ENABLED
+	ErrorIf( !CoreGfx::api_texture_2d_init( resource, data, width, height, 1, format ),
+		"Failed to init GfxTexture2D!" );
+#endif
+}
+
+
+void GfxTexture2D::init( void *data, const u16 width, const u16 height, const u16 levels, const GfxColorFormat &format )
+{
+#if GRAPHICS_ENABLED
+	ErrorIf( levels == 0,
+		"Must have at least one mip level (highest resolution)" );
+	ErrorIf( !CoreGfx::api_texture_2d_init( resource, data, width, height, levels, format ),
+		"Failed to init GfxTexture2D!" );
+#endif
+}
+
+
+void GfxTexture2D::free()
+{
+#if GRAPHICS_ENABLED
+	if( resource == nullptr ) { return; }
+	ErrorIf( !CoreGfx::api_texture_2d_free( resource ),
+		"Failed to free GfxTexture2D!" );
+#endif
+}
+
+
+void GfxTexture2D::bind( const int slot ) const
+{
+#if GRAPHICS_ENABLED
+	if( Gfx::state().textureResource[slot] == resource ) { return; }
+
+	// Texture binding forces a batch break
+	draw_call();
+
+	Gfx::state().textureResource[slot] = resource;
+	ErrorIf( !CoreGfx::api_texture_2d_bind( resource, slot ),
+		"Failed to bind GfxTexture2D to slot %d!", slot );
+#endif
+}
+
+
+void GfxTexture2D::release() const
+{
+#if GRAPHICS_ENABLED
+	for( int slot = 0; slot < GFX_TEXTURE_SLOT_COUNT; slot++ )
+	{
+		if( Gfx::state().textureResource[slot] == resource )
+		{
+			Gfx::state().textureResource[slot] = nullptr;
+			ErrorIf( !CoreGfx::api_texture_2d_release( resource, slot ),
+				"Failed to release GfxTexture2D from slot %d!", slot );
+		}
 	}
 #endif
-	return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// TODO: GfxTexture2DArray
+// TODO: GfxTexture3D
+// TODO: GfxTexture3DArray
+// TODO: GfxTextureCube
+// TODO: GfxTextureCubeArray
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+static double_m44 RT_CACHE_MATRIX_MODEL;
+static double_m44 RT_CACHE_MATRIX_VIEW;
+static double_m44 RT_CACHE_MATRIX_PERSPECTIVE;
+static GfxViewport RT_CACHE_VIEWPORT;
+static GfxBlendState RT_CACHE_BLEND_STATE;
+
+
+void GfxRenderTarget2D::init( const u16 width, const u16 height, const GfxRenderTargetDescription &desc )
+{
+#if GRAPHICS_ENABLED
+	ErrorIf( !CoreGfx::api_render_target_2d_init( resource,
+		textureColor.resource, textureDepth.resource, width, height, desc ),
+		"Failed to init RenderTarget2D!" );
+
+	this->width = width;
+	this->height = height;
+	this->desc = desc;
+	this->slot = -1;
+#endif
+}
+
+
+void GfxRenderTarget2D::free()
+{
+#if GRAPHICS_ENABLED
+	if( resource == nullptr ) { return; }
+	ErrorIf( !CoreGfx::api_render_target_2d_free( resource, textureColor.resource, textureDepth.resource ),
+		"Failed to free RenderTarget2D!" );
+#endif
+}
+
+
+void GfxRenderTarget2D::resize( const u16 width, const u16 height )
+{
+#if GRAPHICS_ENABLED
+	ErrorIf( resource == nullptr, "Attempting to resize RenderTarget2D that does not exist!" );
+	free();
+	init( width, height, desc );
+#endif
+}
+
+
+void GfxRenderTarget2D::copy( GfxRenderTarget2D &source )
+{
+#if GRAPHICS_ENABLED
+	ErrorIf( resource == nullptr, "Attempting to copy GfxRenderTarget2D that does not exist!" );
+	ErrorIf( source.resource == nullptr, "Attempting to copy from GfxRenderTarget2D that does not exist!" );
+
+	const bool success = CoreGfx::api_render_target_2d_copy(
+		source.resource, source.textureColor.resource, source.textureDepth.resource,
+		resource, textureColor.resource, textureDepth.resource );
+
+	ErrorIf( !success, "Copy GfxRenderTarget2D failed!" );
+#endif
+}
+
+
+void GfxRenderTarget2D::copy_part( GfxRenderTarget2D &source, int srcX, int srcY, int dstX, int dstY, u16 w, u16 h )
+{
+#if GRAPHICS_ENABLED
+	ErrorIf( resource == nullptr, "Attempting to copy GfxRenderTarget2D that does not exist!" );
+	ErrorIf( source.resource == nullptr, "Attempting to copy from GfxRenderTarget2D that does not exist!" );
+
+	// Clamp destination coordinates to the destination surface
+	if( dstX < 0 ) { srcX -= dstX; w += dstX; w = max( 0, static_cast<int>( this->width ) ); }
+	const u16 dstX1 = static_cast<u16>( clamp( dstX, 0, static_cast<int>( this->width ) ) );
+	const u16 dstX2 = static_cast<u16>( clamp( dstX1 + w, 0, static_cast<int>( this->width ) ) );
+
+	if( dstY < 0 ) { srcY -= dstY; h += dstY; h = max( 0, static_cast<int>( this->height ) ); }
+	const u16 dstY1 = static_cast<u16>( clamp( dstY, 0, static_cast<int>( this->height ) ) );
+	const u16 dstY2 = static_cast<u16>( clamp( dstY1 + h, 0, static_cast<int>( this->height ) ) );
+
+	// Clamp source coorindates to the source surface
+	const u16 srcX1 = static_cast<u16>( clamp( srcX, 0, static_cast<int>( source.width ) ) );
+	const u16 srcX2 = static_cast<u16>( clamp( srcX1 + w, 0, static_cast<int>( source.width ) ) );
+	const u16 srcY1 = static_cast<u16>( clamp( srcY, 0, static_cast<int>( source.height ) ) );
+	const u16 srcY2 = static_cast<u16>( clamp( srcY1 + h, 0, static_cast<int>( source.height ) ) );
+
+	// Determine the true, clamped copy dimensions
+	const u16 copyWidth = static_cast<u16>( min( srcX2 - srcX1, dstX2 - dstX1 ) );
+	const u16 copyHeight = static_cast<u16>( min( srcY2 - srcY1, dstY2 - dstY1 ) );
+	if( copyWidth == 0 || copyHeight == 0 ) { return; } // Early exit if we're copying nothing
+
+	// Manual Depth Buffer Copying
+#if GRAPHICS_D3D11
+	if( this->textureDepth.resource && source.textureDepth.resource )
+	{
+		Gfx::shader_bind( Shader::SHADER_DEFAULT_COPY_DEPTH );
+		Gfx::set_depth_test_mode( GfxDepthTestMode_ALWAYS );
+		this->bind();
+		source.textureDepth.bind( 0 );
+		{
+			const u16 srcY1Inv = source.height - srcY1;
+
+			const u16 u1 =
+				static_cast<u16>( ( ( srcX1 ) / static_cast<float>( source.width ) ) * 0xFFFF );
+			const u16 v1 =
+				static_cast<u16>( ( ( srcY1 ) / static_cast<float>( source.height ) ) * 0xFFFF );
+			const u16 u2 =
+				static_cast<u16>( ( ( srcX1 + copyWidth ) / static_cast<float>( source.width ) ) * 0xFFFF );
+			const u16 v2 =
+				static_cast<u16>( ( ( srcY1 + copyHeight ) / static_cast<float>( source.height ) ) * 0xFFFF );
+
+			draw_quad_uv( dstX1, dstY1, dstX1 + copyWidth, dstY1 + copyHeight, u1, v1, u2, v2 );
+		}
+		source.textureDepth.release();
+		this->release();
+		Gfx::set_depth_test_mode( GfxDepthTestMode_NONE );
+		Gfx::shader_release();
+	}
+#endif
+
+	// Copy Part
+	const bool success = CoreGfx::api_render_target_2d_copy_part(
+		source.resource, source.textureColor.resource, source.textureDepth.resource,
+		resource, textureColor.resource, textureDepth.resource,
+		srcX1, srcY1, dstX1, dstY1, copyWidth, copyHeight );
+
+	ErrorIf( !success, "Copy GfxRenderTarget2D failed!" );
+#endif
+}
+
+
+void GfxRenderTarget2D::bind( const int slot )
+{
+#if GRAPHICS_ENABLED
+	AssertMsg( this->slot < 0, "%d", this->slot );
+
+	// Render target binding forces draw call
+	draw_call();
+
+	// Backend
+	ErrorIf( !CoreGfx::api_render_target_2d_bind( resource, slot ),
+		"Failed to bind RenderTarget2D!" );
+
+	if( slot == 0 )
+	{
+		// MVP Matrix
+		RT_CACHE_MATRIX_MODEL = Gfx::get_matrix_model();
+		Gfx::set_matrix_model( double_m44_build_identity() );
+		RT_CACHE_MATRIX_VIEW = Gfx::get_matrix_view();
+		Gfx::set_matrix_view( double_m44_build_identity() );
+		RT_CACHE_MATRIX_PERSPECTIVE = Gfx::get_matrix_perspective();
+		Gfx::set_matrix_perspective( double_m44_build_orthographic( 0.0, width, 0.0, height, 0.0, 1.0 ) );
+
+		// Viewport
+		RT_CACHE_VIEWPORT = CoreGfx::viewport;
+		Gfx::set_viewport_size( width, height, false );
+
+		// D3D11 needs to explicitly update depth test state here
+		CoreGfx::api_set_depth_state( Gfx::state().depth );
+
+		// Blend State
+		RT_CACHE_BLEND_STATE = Gfx::state().blend;
+		Gfx::set_blend_enabled( true );
+		Gfx::set_blend_mode_color( GfxBlendFactor_ONE, GfxBlendFactor_INV_SRC_ALPHA, GfxBlendOperation_ADD );
+
+		// Apply State
+		CoreGfx::state_apply();
+	}
+
+	// Set Slot
+	this->slot = slot;
+#endif
+}
+
+
+void GfxRenderTarget2D::release()
+{
+#if GRAPHICS_ENABLED
+	Assert( this->slot >= 0 );
+
+	// Render target releasing forces draw call
+	draw_call();
+
+	// Backend
+	ErrorIf( !CoreGfx::api_render_target_2d_release( this->resource, this->slot ),
+		"Failed to release RenderTarget2D!" );
+
+	if( this->slot == 0 )
+	{
+		// MVP Matrix
+		Gfx::set_matrix_model( RT_CACHE_MATRIX_MODEL );
+		Gfx::set_matrix_view( RT_CACHE_MATRIX_VIEW );
+		Gfx::set_matrix_perspective( RT_CACHE_MATRIX_PERSPECTIVE );
+
+		// Viewport
+		Gfx::set_viewport_size( RT_CACHE_VIEWPORT.width, RT_CACHE_VIEWPORT.height, RT_CACHE_VIEWPORT.fullscreen );
+
+		// Blend State
+		Gfx::set_blend_state( RT_CACHE_BLEND_STATE );
+
+		// Apply State
+		CoreGfx::state_apply();
+	}
+
+	// Reset slot
+	this->slot = -1;
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+namespace CoreGfx
+{
+	double_m44 matrixModel;
+	double_m44 matrixView;
+	double_m44 matrixPerspective;
+	double_m44 matrixMVP;
+}
+
+
+void CoreGfx::update_matrix_mvp()
+{
+#if GRAPHICS_ENABLED
+	CoreGfx::matrixMVP = double_m44_multiply( CoreGfx::matrixPerspective,
+		double_m44_multiply( CoreGfx::matrixView, CoreGfx::matrixModel ) );
+
+	auto &globals = GfxUniformBuffer::ShaderGlobals;
+	globals.matrixModel = float_m44_from_double_m44( CoreGfx::matrixModel );
+	globals.matrixView = float_m44_from_double_m44( CoreGfx::matrixView );
+	globals.matrixPerspective = float_m44_from_double_m44( CoreGfx::matrixPerspective );
+	globals.matrixMVP = float_m44_from_double_m44( CoreGfx::matrixMVP );
+
+	Gfx::set_shader_globals( globals );
+#endif
+};
+
+
+void Gfx::set_matrix_model( const double_m44 &matrix )
+{
+#if GRAPHICS_ENABLED
+	CoreGfx::matrixModel = matrix;
+	CoreGfx::update_matrix_mvp();
+#endif
+}
+
+
+void Gfx::set_matrix_view( const double_m44 &matrix )
+{
+#if GRAPHICS_ENABLED
+	CoreGfx::matrixView = matrix;
+	CoreGfx::update_matrix_mvp();
+#endif
+}
+
+
+void Gfx::set_matrix_perspective( const double_m44 &matrix )
+{
+#if GRAPHICS_ENABLED
+	CoreGfx::matrixPerspective = matrix;
+	CoreGfx::update_matrix_mvp();
+#endif
+}
+
+
+void Gfx::set_matrix_mvp( const double_m44 &matModel, const double_m44 &matView, const double_m44 &matPerspective )
+{
+#if GRAPHICS_ENABLED
+	CoreGfx::matrixModel = matModel;
+	CoreGfx::matrixView = matView;
+	CoreGfx::matrixPerspective = matPerspective;
+	CoreGfx::update_matrix_mvp();
+#endif
+}
+
+
+void Gfx::set_matrix_mvp_2d_orthographic( const double x, const double y, const double zoom, const double angle,
+	const double width, const double height, const double znear, const double zfar )
+{
+#if GRAPHICS_ENABLED
+	CoreGfx::matrixModel = double_m44_build_identity();
+	double_m44 matrixView = double_m44_build_rotation_z( angle * DEG2RAD );
+	matrixView = double_m44_multiply( double_m44_build_scaling( zoom, zoom, 1.0 ), matrixView );
+	matrixView = double_m44_multiply( double_m44_build_translation( -x, -y, 0.0 ), matrixView );
+	CoreGfx::matrixView = matrixView;
+	CoreGfx::matrixPerspective = double_m44_build_orthographic( 0.0, width, 0.0, height, znear, zfar );
+	CoreGfx::update_matrix_mvp();
+#endif
+}
+
+
+void Gfx::set_matrix_mvp_3d_perspective( const double fov, const double aspect, const double znear, const double zfar,
+	const double x, const double y, const double z, const double xto, const double yto,
+	const double zto, const double xup, const double yup, const double zup )
+{
+#if GRAPHICS_ENABLED
+	AssertMsg( znear > 0.0, "znear must be > 0.0f!" );
+	CoreGfx::matrixModel = double_m44_build_identity();
+	CoreGfx::matrixView = double_m44_build_lookat( x, y, z, xto, yto, zto, xup, yup, zup );
+	CoreGfx::matrixPerspective = double_m44_build_perspective( fov, aspect, znear, zfar );
+	CoreGfx::update_matrix_mvp();
+#endif
+}
+
+
+const double_m44 &Gfx::get_matrix_model()
+{
+	return CoreGfx::matrixModel;
+}
+
+
+const double_m44 &Gfx::get_matrix_view()
+{
+	return CoreGfx::matrixView;
+}
+
+
+const double_m44 &Gfx::get_matrix_perspective()
+{
+	return CoreGfx::matrixPerspective;
+}
+
+
+const double_m44 &Gfx::get_matrix_mvp()
+{
+	return CoreGfx::matrixMVP;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -705,10 +1513,7 @@ bool Gfx::mip_generate_chain_2d_alloc( void *data, const u16 width, const u16 he
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-namespace CoreGfx
-{
-	GfxQuadBatch<GfxVertex::BuiltinVertex> quadBatch;
-}
+GfxQuadBatch<GfxVertex::BuiltinVertex> CoreGfx::quadBatch;
 
 
 bool Gfx::quad_batch_break()
@@ -833,772 +1638,37 @@ void Gfx::quad_batch_write( const float x1, const float y1, const float x2, cons
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void GfxTexture2D::init( void *data, const u16 width, const u16 height, const GfxColorFormat &format )
+byte *CoreGfx::scratch_buffer( const usize size )
 {
 #if GRAPHICS_ENABLED
-	ErrorIf( !CoreGfx::rb_texture_2d_init( resource, data, width, height, 1, format ),
-		"Failed to init GfxTexture2D!" );
-#endif
-}
+	static byte *scratchData = nullptr;
+	static usize scratchSize = 0;
 
-
-void GfxTexture2D::init( void *data, const u16 width, const u16 height, const u16 levels, const GfxColorFormat &format )
-{
-#if GRAPHICS_ENABLED
-	ErrorIf( levels == 0,
-		"Must have at least one mip level (highest resolution)" );
-	ErrorIf( !CoreGfx::rb_texture_2d_init( resource, data, width, height, levels, format ),
-		"Failed to init GfxTexture2D!" );
-#endif
-}
-
-
-void GfxTexture2D::free()
-{
-#if GRAPHICS_ENABLED
-	if( resource == nullptr ) { return; }
-	ErrorIf( !CoreGfx::rb_texture_2d_free( resource ),
-		"Failed to free GfxTexture2D!" );
-#endif
-}
-
-
-void GfxTexture2D::bind( const int slot ) const
-{
-#if GRAPHICS_ENABLED
-	if( Gfx::state().textureResource[slot] == resource ) { return; }
-
-	// Texture binding forces a batch break
-	draw_call();
-
-	Gfx::state().textureResource[slot] = resource;
-	ErrorIf( !CoreGfx::rb_texture_2d_bind( resource, slot ),
-		"Failed to bind GfxTexture2D to slot %d!", slot );
-#endif
-}
-
-
-void GfxTexture2D::release() const
-{
-#if GRAPHICS_ENABLED
-	for( int slot = 0; slot < GFX_TEXTURE_SLOT_COUNT; slot++ )
+	if( size == 0 )
 	{
-		if( Gfx::state().textureResource[slot] == resource )
+		scratchSize = 0;
+		if( scratchData != nullptr ) { memory_free( scratchData ); }
+		scratchData = nullptr;
+		return scratchData;
+	}
+	else
+	{
+		if( scratchData == nullptr )
 		{
-			Gfx::state().textureResource[slot] = nullptr;
-			ErrorIf( !CoreGfx::rb_texture_2d_release( resource, slot ),
-				"Failed to release GfxTexture2D from slot %d!", slot );
+			scratchSize = size;
+			scratchData = reinterpret_cast<byte *>( memory_alloc( size ) );
 		}
-	}
-#endif
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-static double_m44 RT_CACHE_MATRIX_MODEL;
-static double_m44 RT_CACHE_MATRIX_VIEW;
-static double_m44 RT_CACHE_MATRIX_PERSPECTIVE;
-static GfxViewport RT_CACHE_VIEWPORT;
-static GfxBlendState RT_CACHE_BLEND_STATE;
-
-
-void GfxRenderTarget2D::init( const u16 width, const u16 height, const GfxRenderTargetDescription &desc )
-{
-#if GRAPHICS_ENABLED
-	ErrorIf( !CoreGfx::rb_render_target_2d_init( resource,
-		textureColor.resource, textureDepth.resource, width, height, desc ),
-		"Failed to init RenderTarget2D!" );
-
-	this->width = width;
-	this->height = height;
-	this->desc = desc;
-	this->slot = -1;
-#endif
-}
-
-
-void GfxRenderTarget2D::free()
-{
-#if GRAPHICS_ENABLED
-	if( resource == nullptr ) { return; }
-	ErrorIf( !CoreGfx::rb_render_target_2d_free( resource, textureColor.resource, textureDepth.resource ),
-		"Failed to free RenderTarget2D!" );
-#endif
-}
-
-
-void GfxRenderTarget2D::resize( const u16 width, const u16 height )
-{
-#if GRAPHICS_ENABLED
-	ErrorIf( resource == nullptr, "Attempting to resize RenderTarget2D that does not exist!" );
-	free();
-	init( width, height, desc );
-#endif
-}
-
-
-void GfxRenderTarget2D::copy( GfxRenderTarget2D &source )
-{
-#if GRAPHICS_ENABLED
-	ErrorIf( resource == nullptr, "Attempting to copy GfxRenderTarget2D that does not exist!" );
-	ErrorIf( source.resource == nullptr, "Attempting to copy from GfxRenderTarget2D that does not exist!" );
-
-	const bool success = CoreGfx::rb_render_target_2d_copy(
-		source.resource, source.textureColor.resource, source.textureDepth.resource,
-		resource, textureColor.resource, textureDepth.resource );
-
-	ErrorIf( !success, "Copy GfxRenderTarget2D failed!" );
-#endif
-}
-
-
-void GfxRenderTarget2D::copy_part( GfxRenderTarget2D &source, int srcX, int srcY, int dstX, int dstY, u16 w, u16 h )
-{
-#if GRAPHICS_ENABLED
-	ErrorIf( resource == nullptr, "Attempting to copy GfxRenderTarget2D that does not exist!" );
-	ErrorIf( source.resource == nullptr, "Attempting to copy from GfxRenderTarget2D that does not exist!" );
-
-	// Clamp destination coordinates to the destination surface
-	if( dstX < 0 ) { srcX -= dstX; w += dstX; w = max( 0, static_cast<int>( this->width ) ); }
-	const u16 dstX1 = static_cast<u16>( clamp( dstX, 0, static_cast<int>( this->width ) ) );
-	const u16 dstX2 = static_cast<u16>( clamp( dstX1 + w, 0, static_cast<int>( this->width ) ) );
-
-	if( dstY < 0 ) { srcY -= dstY; h += dstY; h = max( 0, static_cast<int>( this->height ) ); }
-	const u16 dstY1 = static_cast<u16>( clamp( dstY, 0, static_cast<int>( this->height ) ) );
-	const u16 dstY2 = static_cast<u16>( clamp( dstY1 + h, 0, static_cast<int>( this->height ) ) );
-
-	// Clamp source coorindates to the source surface
-	const u16 srcX1 = static_cast<u16>( clamp( srcX, 0, static_cast<int>( source.width ) ) );
-	const u16 srcX2 = static_cast<u16>( clamp( srcX1 + w, 0, static_cast<int>( source.width ) ) );
-	const u16 srcY1 = static_cast<u16>( clamp( srcY, 0, static_cast<int>( source.height ) ) );
-	const u16 srcY2 = static_cast<u16>( clamp( srcY1 + h, 0, static_cast<int>( source.height ) ) );
-
-	// Determine the true, clamped copy dimensions
-	const u16 copyWidth = static_cast<u16>( min( srcX2 - srcX1, dstX2 - dstX1 ) );
-	const u16 copyHeight = static_cast<u16>( min( srcY2 - srcY1, dstY2 - dstY1 ) );
-	if( copyWidth == 0 || copyHeight == 0 ) { return; } // Early exit if we're copying nothing
-
-	// Manual Depth Buffer Copying
-#if GRAPHICS_D3D11
-	if( this->textureDepth.resource && source.textureDepth.resource )
-	{
-		Gfx::shader_bind( Shader::SHADER_DEFAULT_COPY_DEPTH );
-		Gfx::set_depth_test_mode( GfxDepthTestMode_ALWAYS );
-		this->bind();
-		source.textureDepth.bind( 0 );
+		else if( size > scratchSize )
 		{
-			const u16 srcY1Inv = source.height - srcY1;
-
-			const u16 u1 =
-				static_cast<u16>( ( ( srcX1 ) / static_cast<float>( source.width ) ) * 0xFFFF );
-			const u16 v1 =
-				static_cast<u16>( ( ( srcY1 ) / static_cast<float>( source.height ) ) * 0xFFFF );
-			const u16 u2 =
-				static_cast<u16>( ( ( srcX1 + copyWidth ) / static_cast<float>( source.width ) ) * 0xFFFF );
-			const u16 v2 =
-				static_cast<u16>( ( ( srcY1 + copyHeight ) / static_cast<float>( source.height ) ) * 0xFFFF );
-
-			draw_quad_uv( dstX1, dstY1, dstX1 + copyWidth, dstY1 + copyHeight, u1, v1, u2, v2 );
+			scratchSize = size;
+			scratchData = reinterpret_cast<byte *>( memory_realloc( scratchData, scratchSize ) );
 		}
-		source.textureDepth.release();
-		this->release();
-		Gfx::set_depth_test_mode( GfxDepthTestMode_NONE );
-		Gfx::shader_release();
+
+		memory_set( scratchData, 0, scratchSize );
+		return scratchData;
 	}
 #endif
-
-	// Copy Part
-	const bool success = CoreGfx::rb_render_target_2d_copy_part(
-		source.resource, source.textureColor.resource, source.textureDepth.resource,
-		resource, textureColor.resource, textureDepth.resource,
-		srcX1, srcY1, dstX1, dstY1, copyWidth, copyHeight );
-
-	ErrorIf( !success, "Copy GfxRenderTarget2D failed!" );
-#endif
-}
-
-
-void GfxRenderTarget2D::bind( const int slot )
-{
-#if GRAPHICS_ENABLED
-	AssertMsg( this->slot < 0, "%d", this->slot );
-
-	// Render target binding forces draw call
-	draw_call();
-
-	// Backend
-	ErrorIf( !CoreGfx::rb_render_target_2d_bind( resource, slot ),
-		"Failed to bind RenderTarget2D!" );
-
-	if( slot == 0 )
-	{
-		// MVP Matrix
-		RT_CACHE_MATRIX_MODEL = Gfx::get_matrix_model();
-		Gfx::set_matrix_model( double_m44_build_identity() );
-		RT_CACHE_MATRIX_VIEW = Gfx::get_matrix_view();
-		Gfx::set_matrix_view( double_m44_build_identity() );
-		RT_CACHE_MATRIX_PERSPECTIVE = Gfx::get_matrix_perspective();
-		Gfx::set_matrix_perspective( double_m44_build_orthographic( 0.0, width, 0.0, height, 0.0, 1.0 ) );
-
-		// Viewport
-		RT_CACHE_VIEWPORT = CoreGfx::viewport;
-		Gfx::set_viewport_size( width, height, false );
-
-		// D3D11 needs to explicitly update depth test state here
-		CoreGfx::rb_set_depth_state( Gfx::state().depth );
-
-		// Blend State
-		RT_CACHE_BLEND_STATE = Gfx::state().blend;
-		Gfx::set_blend_enabled( true );
-		Gfx::set_blend_mode_color( GfxBlendFactor_ONE, GfxBlendFactor_INV_SRC_ALPHA, GfxBlendOperation_ADD );
-
-		// Apply State
-		CoreGfx::state_apply();
-	}
-
-	// Set Slot
-	this->slot = slot;
-#endif
-}
-
-
-void GfxRenderTarget2D::release()
-{
-#if GRAPHICS_ENABLED
-	Assert( this->slot >= 0 );
-
-	// Render target releasing forces draw call
-	draw_call();
-
-	// Backend
-	ErrorIf( !CoreGfx::rb_render_target_2d_release( this->resource, this->slot ),
-		"Failed to release RenderTarget2D!" );
-
-	if( this->slot == 0 )
-	{
-		// MVP Matrix
-		Gfx::set_matrix_model( RT_CACHE_MATRIX_MODEL );
-		Gfx::set_matrix_view( RT_CACHE_MATRIX_VIEW );
-		Gfx::set_matrix_perspective( RT_CACHE_MATRIX_PERSPECTIVE );
-
-		// Viewport
-		Gfx::set_viewport_size( RT_CACHE_VIEWPORT.width, RT_CACHE_VIEWPORT.height, RT_CACHE_VIEWPORT.fullscreen );
-
-		// Blend State
-		Gfx::set_blend_state( RT_CACHE_BLEND_STATE );
-
-		// Apply State
-		CoreGfx::state_apply();
-	}
-
-	// Reset slot
-	this->slot = -1;
-#endif
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void GfxShader::init( const u32 shaderID, const ShaderEntry &shaderEntry )
-{
-#if GRAPHICS_ENABLED
-	this->shaderID = shaderID;
-	ErrorIf( !CoreGfx::rb_shader_init( resource, shaderID, shaderEntry ),
-		"Failed to init shader! (%u)", this->shaderID );
-#endif
-}
-
-
-void GfxShader::free()
-{
-#if GRAPHICS_ENABLED
-	ErrorIf( !CoreGfx::rb_shader_free( resource ),
-		"Failed to free shader! (%u)", this->shaderID );
-#endif
-}
-
-
-void GfxShader::bind()
-{
-#if GRAPHICS_ENABLED
-	if( Gfx::state().shader.resource != resource )
-	{
-		draw_call(); // Shader changes force batch break
-		Gfx::state().shader.resource = resource;
-		Gfx::state().shader.shaderID = shaderID;
-	}
-
-	ErrorIf( !CoreGfx::rb_shader_bind( resource ),
-		"Failed to bind shader!" );
-	ErrorIf( !CoreGfx::rb_shader_bind_uniform_buffers_vertex[shaderID](),
-		"Failed to bind vertex shader uniform buffers! (%u)", this->shaderID );
-	ErrorIf( !CoreGfx::rb_shader_bind_uniform_buffers_fragment[shaderID](),
-		"Failed to bind fragment shader uniform buffers! (%u)", this->shaderID );
-	ErrorIf( !CoreGfx::rb_shader_bind_uniform_buffers_compute[shaderID](),
-		"Failed to bind compute shader uniform buffers! (%u)", this->shaderID );
-#endif
-}
-
-
-void GfxShader::release()
-{
-	CoreGfx::shaders[Shader::SHADER_DEFAULT].bind();
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void Gfx::viewport_update()
-{
-#if GRAPHICS_ENABLED
-	// Update Viewport
-	const int viewportWidth = static_cast<int>( Window::width * Window::scale );
-	const int viewportHeight = static_cast<int>( Window::height * Window::scale );
-	CoreGfx::rb_viewport_resize( viewportWidth, viewportHeight, Window::fullscreen );
-
-	// Resize Swapchain
-	CoreGfx::rb_swapchain_resize( Window::width, Window::height, Window::fullscreen );
-#endif
-}
-
-
-void Gfx::frame_begin()
-{
-#if GRAPHICS_ENABLED
-	// Reset State
-	CoreGfx::state_reset();
-
-	// Backend
-	CoreGfx::rb_frame_begin();
-
-	// Quad Batch
-	CoreGfx::quadBatch.batch_begin();
-
-	// Reset Matrices
-	const double_m44 identity = double_m44_build_identity();
-	Gfx::set_matrix_model( identity );
-	Gfx::set_matrix_view( identity );
-	Gfx::set_matrix_perspective( identity );
-
-	// Start Rendering
-	CoreGfx::rendering = true;
-#endif
-}
-
-
-void Gfx::frame_end()
-{
-#if GRAPHICS_ENABLED
-	// Stop Rendering
-	CoreGfx::rendering = false;
-
-	// Quad Batch
-	CoreGfx::quadBatch.batch_end();
-
-	// Backend
-	CoreGfx::rb_frame_end();
-
-	// Statistics
-#if PROFILING_GFX
-	memory_copy( &Gfx::statsPrevious, &Gfx::stats, sizeof( GfxStatistics ) );
-	Gfx::stats.frame = { };
-#endif
-#endif
-}
-
-
-void Gfx::clear_color( const Color color )
-{
-#if GRAPHICS_ENABLED
-	CoreGfx::rb_clear_color( color );
-#endif
-}
-
-
-void Gfx::clear_depth( const float depth )
-{
-#if GRAPHICS_ENABLED
-	CoreGfx::rb_clear_depth( depth );
-#endif
-}
-
-
-void Gfx::set_swapchain_size( const u16 width, const u16 height, const bool fullscreen )
-{
-#if GRAPHICS_ENABLED
-	CoreGfx::rb_swapchain_resize( width, height, fullscreen );
-#endif
-}
-
-
-void Gfx::set_viewport_size( const u16 width, const u16 height, const bool fullscreen )
-{
-#if GRAPHICS_ENABLED
-	CoreGfx::rb_viewport_resize( width, height, fullscreen );
-#endif
-}
-
-
-void Gfx::set_shader_globals( const CoreGfxUniformBuffer::ShaderGlobals_t &globals )
-{
-#if GRAPHICS_ENABLED
-	// Shader globals changes force a batch break
-	if( Gfx::state().shader.globals == globals ) { return; }
-	Gfx::state().shader.globals = globals;
-
-	draw_call();
-	globals.upload();
-#endif
-}
-
-
-static void update_matrix_mvp()
-{
-#if GRAPHICS_ENABLED
-	CoreGfx::matrixMVP = double_m44_multiply( CoreGfx::matrixPerspective,
-		double_m44_multiply( CoreGfx::matrixView, CoreGfx::matrixModel ) );
-
-	auto &globals = GfxUniformBuffer::ShaderGlobals;
-	globals.matrixModel = float_m44_from_double_m44( CoreGfx::matrixModel );
-	globals.matrixView = float_m44_from_double_m44( CoreGfx::matrixView );
-	globals.matrixPerspective = float_m44_from_double_m44( CoreGfx::matrixPerspective );
-	globals.matrixMVP = float_m44_from_double_m44( CoreGfx::matrixMVP );
-
-	Gfx::set_shader_globals( globals );
-#endif
-};
-
-
-void Gfx::set_matrix_model( const double_m44 &matrix )
-{
-#if GRAPHICS_ENABLED
-	CoreGfx::matrixModel = matrix;
-	update_matrix_mvp();
-#endif
-}
-
-
-void Gfx::set_matrix_view( const double_m44 &matrix )
-{
-#if GRAPHICS_ENABLED
-	CoreGfx::matrixView = matrix;
-	update_matrix_mvp();
-#endif
-}
-
-
-void Gfx::set_matrix_perspective( const double_m44 &matrix )
-{
-#if GRAPHICS_ENABLED
-	CoreGfx::matrixPerspective = matrix;
-	update_matrix_mvp();
-#endif
-}
-
-
-void Gfx::set_matrix_mvp( const double_m44 &matModel, const double_m44 &matView, const double_m44 &matPerspective )
-{
-#if GRAPHICS_ENABLED
-	CoreGfx::matrixModel = matModel;
-	CoreGfx::matrixView = matView;
-	CoreGfx::matrixPerspective = matPerspective;
-	update_matrix_mvp();
-#endif
-}
-
-
-void Gfx::set_matrix_mvp_2d_orthographic( const double x, const double y, const double zoom, const double angle,
-	const double width, const double height, const double znear, const double zfar )
-{
-#if GRAPHICS_ENABLED
-	CoreGfx::matrixModel = double_m44_build_identity();
-	double_m44 matrixView = double_m44_build_rotation_z( angle * DEG2RAD );
-	matrixView = double_m44_multiply( double_m44_build_scaling( zoom, zoom, 1.0 ), matrixView );
-	matrixView = double_m44_multiply( double_m44_build_translation( -x, -y, 0.0 ), matrixView );
-	CoreGfx::matrixView = matrixView;
-	CoreGfx::matrixPerspective = double_m44_build_orthographic( 0.0, width, 0.0, height, znear, zfar );
-	update_matrix_mvp();
-#endif
-}
-
-
-void Gfx::set_matrix_mvp_3d_perspective( const double fov, const double aspect, const double znear, const double zfar,
-	const double x, const double y, const double z, const double xto, const double yto,
-	const double zto, const double xup, const double yup, const double zup )
-{
-#if GRAPHICS_ENABLED
-	AssertMsg( znear > 0.0, "znear must be > 0.0f!" );
-	CoreGfx::matrixModel = double_m44_build_identity();
-	CoreGfx::matrixView = double_m44_build_lookat( x, y, z, xto, yto, zto, xup, yup, zup );
-	CoreGfx::matrixPerspective = double_m44_build_perspective( fov, aspect, znear, zfar );
-	update_matrix_mvp();
-#endif
-}
-
-
-const double_m44 &Gfx::get_matrix_model()
-{
-	return CoreGfx::matrixModel;
-}
-
-
-const double_m44 &Gfx::get_matrix_view()
-{
-	return CoreGfx::matrixView;
-}
-
-
-const double_m44 &Gfx::get_matrix_perspective()
-{
-	return CoreGfx::matrixPerspective;
-}
-
-
-const double_m44 &Gfx::get_matrix_mvp()
-{
-	return CoreGfx::matrixMVP;
-}
-
-
-void Gfx::set_raster_state( const GfxRasterState &state )
-{
-#if GRAPHICS_ENABLED
-	// Raster state changes force a batch break
-	if( Gfx::state().raster == state ) { return; }
-	draw_call();
-	Gfx::state().raster = state;
-#endif
-}
-
-
-void Gfx::set_fill_mode( const GfxFillMode &mode )
-{
-#if GRAPHICS_ENABLED
-	GfxRasterState state = Gfx::state().raster;
-	state.fillMode = mode;
-	Gfx::set_raster_state( state );
-#endif
-}
-
-
-void Gfx::set_cull_mode( const GfxCullMode &mode )
-{
-#if GRAPHICS_ENABLED
-	GfxRasterState state = Gfx::state().raster;
-	state.cullMode = mode;
-	Gfx::set_raster_state( state );
-#endif
-}
-
-
-void Gfx::set_scissor( const int x1, const int y1, const int x2, const int y2 )
-{
-#if GRAPHICS_ENABLED
-	GfxRasterState state = Gfx::state().raster;
-	state.scissor = true;
-	state.scissorX1 = x1;
-	state.scissorY1 = y1;
-	state.scissorX2 = x2 > x1 ? x2 : x1;
-	state.scissorY2 = y2 > y1 ? y2 : y1;
-	Gfx::set_raster_state( state );
-#endif
-}
-
-
-void Gfx::set_scissor_nested( const int x1, const int y1, const int x2, const int y2 )
-{
-#if GRAPHICS_ENABLED
-	GfxRasterState state = Gfx::state().raster;
-	if( !state.scissor ) { Gfx::set_scissor( x1, y1, x2, y2 ); return; }
-	state.scissor = true;
-	state.scissorX1 = max( state.scissorX1, x1 );
-	state.scissorY1 = max( state.scissorY1, y1 );
-	state.scissorX2 = min( state.scissorX2, x2 );
-	state.scissorY2 = min( state.scissorY2, y2 );
-	Gfx::set_raster_state( state );
-#endif
-}
-
-
-void Gfx::reset_scissor()
-{
-#if GRAPHICS_ENABLED
-	GfxRasterState state = Gfx::state().raster;
-	state.scissor = false;
-	state.scissorX1 = 0;
-	state.scissorY1 = 0;
-	state.scissorX2 = 0;
-	state.scissorY2 = 0;
-	Gfx::set_raster_state( state );
-#endif
-}
-
-
-void Gfx::set_sampler_state( const GfxSamplerState &state )
-{
-#if GRAPHICS_ENABLED
-	// Sampler state changes force a batch break
-	if( Gfx::state().sampler == state ) { return; }
-	draw_call();
-	Gfx::state().sampler = state;
-#endif
-}
-
-
-void Gfx::set_filtering_mode( const GfxFilteringMode &mode )
-{
-#if GRAPHICS_ENABLED
-	GfxSamplerState state = Gfx::state().sampler;
-	state.filterMode = mode;
-	Gfx::set_sampler_state( state );
-#endif
-}
-
-
-void Gfx::set_filtering_anisotropy( const int anisotropy )
-{
-#if GRAPHICS_ENABLED
-	GfxSamplerState state = Gfx::state().sampler;
-	state.anisotropy = clamp( anisotropy, 1, 16 );
-	Gfx::set_sampler_state( state );
-#endif
-}
-
-
-void Gfx::set_uv_wrap_mode( const GfxUVWrapMode &mode )
-{
-#if GRAPHICS_ENABLED
-	GfxSamplerState state = Gfx::state().sampler;
-	state.wrapMode = mode;
-	Gfx::set_sampler_state( state );
-#endif
-}
-
-
-void Gfx::set_blend_state( const GfxBlendState &state )
-{
-#if GRAPHICS_ENABLED
-	// Blend state changes force a batch break
-	if( Gfx::state().blend == state ) { return; }
-	draw_call();
-	Gfx::state().blend = state;
-#endif
-}
-
-
-void Gfx::set_blend_enabled( const bool enabled )
-{
-#if GRAPHICS_ENABLED
-	GfxBlendState state = Gfx::state().blend;
-	state.blendEnable = enabled;
-	Gfx::set_blend_state( state );
-#endif
-}
-
-
-void Gfx::set_blend_mode_color( const GfxBlendFactor &srcFactor, const GfxBlendFactor &dstFactor,
-	const GfxBlendOperation &op )
-{
-#if GRAPHICS_ENABLED
-	GfxBlendState state = Gfx::state().blend;
-	state.srcFactorColor = srcFactor;
-	state.dstFactorColor = dstFactor;
-	state.blendOperationColor = op;
-	Gfx::set_blend_state( state );
-#endif
-}
-
-
-void Gfx::set_blend_mode_alpha( const GfxBlendFactor &srcFactor, const GfxBlendFactor &dstFactor,
-	const GfxBlendOperation &op )
-{
-#if GRAPHICS_ENABLED
-	GfxBlendState state = Gfx::state().blend;
-	state.srcFactorAlpha = srcFactor;
-	state.dstFactorAlpha = dstFactor;
-	state.blendOperationAlpha = op;
-	Gfx::set_blend_state( state );
-#endif
-}
-
-
-void Gfx::reset_blend_mode()
-{
-#if GRAPHICS_ENABLED
-	Gfx::reset_blend_mode_color();
-	Gfx::reset_blend_mode_alpha();
-#endif
-}
-
-
-void Gfx::reset_blend_mode_color()
-{
-#if GRAPHICS_ENABLED
-	Gfx::set_blend_mode_color( GfxBlendFactor_SRC_ALPHA, GfxBlendFactor_INV_SRC_ALPHA, GfxBlendOperation_ADD );
-#endif
-}
-
-
-void Gfx::reset_blend_mode_alpha()
-{
-#if GRAPHICS_ENABLED
-	Gfx::set_blend_mode_alpha( GfxBlendFactor_ONE, GfxBlendFactor_INV_SRC_ALPHA, GfxBlendOperation_ADD );
-#endif
-}
-
-
-void Gfx::set_color_write_mask( const GfxColorWriteFlag &mask )
-{
-#if GRAPHICS_ENABLED
-	GfxBlendState state = Gfx::state().blend;
-	state.colorWriteMask = mask;
-	Gfx::set_blend_state( state );
-#endif
-}
-
-
-void Gfx::set_depth_state( const GfxDepthState &state )
-{
-#if GRAPHICS_ENABLED
-	// Depth state changes force a batch break
-	if( Gfx::state().depth == state ) { return; }
-	draw_call();
-	Gfx::state().depth = state;
-#endif
-}
-
-
-void Gfx::set_depth_test_mode( const GfxDepthTestMode &mode )
-{
-#if GRAPHICS_ENABLED
-	GfxDepthState state = Gfx::state().depth;
-	state.depthTestMode = mode;
-	Gfx::set_depth_state( state );
-#endif
-}
-
-
-void Gfx::set_depth_write_mask( const GfxDepthWriteFlag &mask )
-{
-#if GRAPHICS_ENABLED
-	GfxDepthState state = Gfx::state().depth;
-	state.depthWriteMask = mask;
-	Gfx::set_depth_state( state );
-#endif
-}
-
-
-void Gfx::shader_bind( const Shader shader )
-{
-#if GRAPHICS_ENABLED
-	CoreGfx::shaders[shader].bind();
-#endif
-}
-
-
-void Gfx::shader_release()
-{
-#if GRAPHICS_ENABLED
-	CoreGfx::shaders[Shader::SHADER_DEFAULT].bind();
-#endif
+	return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

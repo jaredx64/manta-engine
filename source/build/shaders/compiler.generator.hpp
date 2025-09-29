@@ -75,7 +75,9 @@ public:
 	virtual void generate_expression_ternary( NodeExpressionTernary *node );
 
 	virtual void generate_function_declaration( NodeFunctionDeclaration *node );
-	virtual void generate_function_declaration_main( NodeFunctionDeclaration *node );
+	virtual void generate_function_declaration_main_pipeline( NodeFunctionDeclaration *node );
+	virtual void generate_function_declaration_main_compute( NodeFunctionDeclaration *node );
+
 	virtual void generate_function_call( NodeFunctionCall *node );
 	virtual void generate_function_call_parameters( NodeFunctionCall *node );
 	virtual void generate_function_call_intrinsics( NodeFunctionCall *node );
@@ -116,7 +118,8 @@ public:
 	virtual void generate_stage( ShaderStage stage );
 
 	virtual void generate_function_declaration( NodeFunctionDeclaration *node );
-	virtual void generate_function_declaration_main( NodeFunctionDeclaration *node );
+	virtual void generate_function_declaration_main_pipeline( NodeFunctionDeclaration *node );
+	virtual void generate_function_declaration_main_compute( NodeFunctionDeclaration *node );
 
 	virtual void generate_expression_binary_dot( NodeExpressionBinary *node );
 
@@ -152,7 +155,8 @@ public:
 	virtual void generate_stage( ShaderStage stage );
 
 	virtual void generate_function_declaration( NodeFunctionDeclaration *node );
-	virtual void generate_function_declaration_main( NodeFunctionDeclaration *node );
+	virtual void generate_function_declaration_main_pipeline( NodeFunctionDeclaration *node );
+	virtual void generate_function_declaration_main_compute( NodeFunctionDeclaration *node );
 
 	virtual void generate_function_call_intrinsics( NodeFunctionCall *node );
 

@@ -1,6 +1,5 @@
 {
-	"name": "spr_asteroid",
-	"texture": "spr_asteroid.png",
+	"path": "spr_asteroid.png",
 	"atlas": "ui",
 
 	"count": 1,
