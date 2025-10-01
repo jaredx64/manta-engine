@@ -27,7 +27,7 @@ fragment_output FragmentOutput
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-uniform_buffer( 0 ) ShaderGlobals
+uniform_buffer( 0 ) PipelineUniforms
 {
 	float4x4 matrixModel;
 	float4x4 matrixView;
@@ -37,9 +37,9 @@ uniform_buffer( 0 ) ShaderGlobals
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void vertex_main( BuiltinVertexPositionColor In, VertexOutput Out, ShaderGlobals globals )
+void vertex_main( BuiltinVertexPositionColor In, VertexOutput Out, PipelineUniforms Pipeline )
 {
-	Out.position = mul( globals.matrixMVP, float4( In.position, 1.0 ) );
+	Out.position = mul( Pipeline.matrixMVP, float4( In.position, 1.0 ) );
 	Out.color = In.color;
 }
 

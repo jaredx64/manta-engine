@@ -638,7 +638,7 @@ struct GfxShaderState
 {
 	u32 shaderID = 0;
 	GfxShaderResource *resource = nullptr;
-	CoreGfxUniformBuffer::ShaderGlobals_t globals;
+	CoreGfxUniformBuffer::PipelineUniforms_t globals;
 
 	bool operator==( const GfxShaderState &other ) const
 	{
@@ -729,7 +729,7 @@ namespace Gfx
 
 	extern void shader_dispatch( const Shader shader, const u32 x, const u32 y, const u32 z );
 
-	extern void set_shader_globals( const CoreGfxUniformBuffer::ShaderGlobals_t &globals );
+	extern void set_shader_globals( const CoreGfxUniformBuffer::PipelineUniforms_t &globals );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

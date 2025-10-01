@@ -32,7 +32,7 @@ bool object_is_parent_of( const Object thisType, const Object otherType )
 	const u16 thisDepth = CoreObjects::TYPE_INHERITANCE_DEPTH[thisType];
 	if( CoreObjects::TYPE_INHERITANCE_DEPTH[otherType] <= thisDepth ) { return false; }
 
-	for( Object_t type = thisType + 1; type < otherType; type++ )
+	for( u16 type = thisType + 1; type < otherType; type++ )
 	{
 		if( CoreObjects::TYPE_INHERITANCE_DEPTH[type] <= thisDepth ) { return false; }
 	}
@@ -115,7 +115,7 @@ void ObjectInstance::Serialization::init()
 
 void ObjectInstance::Serialization::free()
 {
-	for( Object_t type = 0; type < CoreObjects::TYPE_COUNT; type++ ) { instances[type].free(); }
+	for( u16 type = 0; type < CoreObjects::TYPE_COUNT; type++ ) { instances[type].free(); }
 	context = nullptr;
 }
 
@@ -128,7 +128,7 @@ void ObjectInstance::Serialization::prepare( const ObjectContext &activeContext 
 	dirty = false;
 
 	// Generate instance table from objects
-	for( Object_t type = 0; type < CoreObjects::TYPE_COUNT; type++ )
+	for( u16 type = 0; type < CoreObjects::TYPE_COUNT; type++ )
 	{
 		// Initialize instance table
 		if( !CoreObjects::TYPE_SERIALIZED[type] ) { continue; }
@@ -213,7 +213,7 @@ void ObjectInstance::deserialize( Buffer &buffer, ObjectInstance &object )
 	if( serialized.hash == 0 ) { object = ObjectInstance { }; return; }
 
 	// Attempt resolve type from hash & deserialize
-	for( Object_t type = 0; type < CoreObjects::TYPE_COUNT; type++ )
+	for( u16 type = 0; type < CoreObjects::TYPE_COUNT; type++ )
 	{
 		if( CoreObjects::TYPE_HASH[type] == serialized.hash )
 		{
@@ -356,7 +356,7 @@ bool ObjectContext::grow()
 }
 
 
-u16 ObjectContext::new_bucket( const Object_t type )
+u16 ObjectContext::new_bucket( const u16 type )
 {
 	// Grow buffer?
 	if( current == capacity )
@@ -373,7 +373,7 @@ u16 ObjectContext::new_bucket( const Object_t type )
 }
 
 
-ObjectContext::ObjectBucket *ObjectContext::new_object( const Object_t type )
+ObjectContext::ObjectBucket *ObjectContext::new_object( const u16 type )
 {
 	// Validate type
 	if( TYPE_INVALID( category, type ) ) { return nullptr; }
@@ -515,7 +515,7 @@ bool ObjectContext::activate( ObjectInstance &instance, const bool setActive )
 void ObjectContext::activate_all( const bool setActive )
 {
 	MemoryAssert( buckets != nullptr );
-	for( Object_t type = 1; type < CoreObjects::CATEGORY_TYPE_COUNT[category]; type++ )
+	for( u16 type = 1; type < CoreObjects::CATEGORY_TYPE_COUNT[category]; type++ )
 	{
 		activate_all_type( type, setActive );
 	}
@@ -604,7 +604,7 @@ void ObjectContext::deserialize( Buffer &buffer, ObjectContext &context )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool ObjectContext::ObjectBucket::init( const Object_t type )
+bool ObjectContext::ObjectBucket::init( const u16 type )
 {
 	// State
 	this->type = type;

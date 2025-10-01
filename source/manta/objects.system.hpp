@@ -88,7 +88,7 @@ class ObjectInstance
 {
 public:
 	ObjectInstance() : alive{ 0 }, deactivated{ 0 }, type{ 0 }, generation{ 0 }, bucketID{ 0 }, index{ 0 } { }
-	ObjectInstance( const Object_t type, const u16 generation, const u16 bucket, const u16 index ) :
+	ObjectInstance( const u16 type, const u16 generation, const u16 bucket, const u16 index ) :
 		alive{ 0 }, deactivated{ 0 }, type{ type }, generation{ generation }, bucketID{ bucket }, index{ index } { }
 
 	u16 alive : 1;       // alive flag
@@ -250,7 +250,7 @@ private:
 
 		ObjectContext &context; // parent ObjectContext
 		byte *data = nullptr;   // data buffer pointer
-		Object_t type = 0;  // object type
+		u16 type = 0;           // object type
 		u16 bucketIDNext = 0;   // index of next ObjectBucket in ObjectContext
 		u16 bucketID = 0;       // index of this ObjectBucket in ObjectContext
 		u16 current = 0;        // current insertion index
@@ -265,7 +265,7 @@ private:
 		byte *get_object_pointer( const u16 index, const u16 generation ) const;
 		const ObjectInstance &get_object_id( const u16 index ) const;
 
-		bool init( const Object_t type );
+		bool init( const u16 type );
 		void free();
 		void clear();
 
@@ -277,7 +277,7 @@ private:
 	struct ObjectIterator
 	{
 		ObjectIterator( bool ( *find_object_ptr )( ObjectIterator &, const ObjectBucket *const, const u16 ),
-			const ObjectContext &context, Object_t type, bool polymorphic ) :
+			const ObjectContext &context, u16 type, bool polymorphic ) :
 			find_object_ptr{ find_object_ptr },
 			context{ context }, ptr{ nullptr }, type{ type }, polymorphic{ polymorphic }, index{ 0 },
 			bucketID{ CoreObjects::CATEGORY_TYPE_BUCKET[context.category][type] } { find_first(); } // begin() & end()
@@ -297,29 +297,29 @@ private:
 
 	struct ObjectIteratorActive : public ObjectIterator
 	{
-		ObjectIteratorActive( const ObjectContext &context, Object_t type, bool poly ) :
+		ObjectIteratorActive( const ObjectContext &context, u16 type, bool poly ) :
 			ObjectIterator{ &find_object_ptr, context, type, poly } { }
 		static bool find_object_ptr( ObjectIterator &itr, const ObjectBucket *const bucket, const u16 start );
 	};
 
 	struct ObjectIteratorAll : public ObjectIterator
 	{
-		ObjectIteratorAll( const ObjectContext &context, Object_t type, bool poly ) :
+		ObjectIteratorAll( const ObjectContext &context, u16 type, bool poly ) :
 			ObjectIterator{ &find_object_ptr, context, type, poly } { }
 		static bool find_object_ptr( ObjectIterator &itr, const ObjectBucket *const bucket, const u16 start );
 	};
 
 	bool grow();
 
-	u16 new_bucket( const Object_t type );
-	ObjectBucket *new_object( const Object_t type );
-	ObjectInstance create_object( const Object_t type );
+	u16 new_bucket( const u16 type );
+	ObjectBucket *new_object( const u16 type );
+	ObjectInstance create_object( const u16 type );
 
 public:
 	template <Object_t T> struct IteratorAll
 	{
 		IteratorAll() = delete;
-		IteratorAll( const ObjectContext &context, Object_t type, bool poly ) : itr{ context, type, poly } { }
+		IteratorAll( const ObjectContext &context, u16 type, bool poly ) : itr{ context, type, poly } { }
 		IteratorAll<T> begin() { return { itr.context, itr.type, static_cast<bool>( itr.polymorphic ) }; }
 		IteratorAll<T> end() { return { itr.context, 0, static_cast<bool>( itr.polymorphic ) }; }
 		bool operator!=( const IteratorAll<T> &other ) const { return itr.ptr != other.itr.ptr; }
@@ -337,7 +337,7 @@ public:
 	template <Object_t T> struct IteratorActive
 	{
 		IteratorActive() = delete;
-		IteratorActive( const ObjectContext &context, Object_t type, bool poly ) : itr{ context, type, poly } { }
+		IteratorActive( const ObjectContext &context, u16 type, bool poly ) : itr{ context, type, poly } { }
 		IteratorActive<T> begin() { return { itr.context, itr.type, static_cast<bool>( itr.polymorphic ) }; }
 		IteratorActive<T> end() { return { itr.context, 0, static_cast<bool>( itr.polymorphic ) }; }
 		bool operator!=( const IteratorActive<T> &other ) const { return itr.ptr != other.itr.ptr; }

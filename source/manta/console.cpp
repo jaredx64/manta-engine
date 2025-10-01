@@ -1902,7 +1902,7 @@ CommandHandle Console::command_init( const char *definition, const char *descrip
 	command.hidden = hidden;
 	for( int i = 0; i < PARAMETERS_MAX; i++ ) { command.paramDesc[i] = ""; }
 	CoreConsole::updateCandidates = true;
-	return command.handle ;
+	return command.handle;
 }
 
 

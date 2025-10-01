@@ -2,6 +2,7 @@
 
 #include <manta/gfx.hpp>
 #include <manta/matrix.hpp>
+#include <manta/draw.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -556,6 +557,101 @@ void frustum_draw( const FrustumDouble &frustum, const Color &color, const bool 
 void frustum_draw( const FrustumFloat &frustum, const Color &color, const bool wireframe )
 {
 	frustum_draw( frustum.corners, color, wireframe );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void draw_axis_3d( int x, int y, u16 width, u16 height, float_v3 forward, float_v3 up, const Color backgroundColor )
+{
+	// Initialize Vertices
+	GfxVertexBuffer<GfxVertex::BuiltinVertexPositionColor> vertexBuffer;
+	vertexBuffer.init( 36 * 3, GfxCPUAccessMode_WRITE_NO_OVERWRITE );
+	vertexBuffer.write_begin();
+	{
+		auto write_cube = [&]( float_v3 min, float_v3 max, u8_v4 color )
+		{
+			float_v3 verts[8] =
+			{
+				{ min.x, min.y, min.z },
+				{ max.x, min.y, min.z },
+				{ max.x, max.y, min.z },
+				{ min.x, max.y, min.z },
+				{ min.x, min.y, max.z },
+				{ max.x, min.y, max.z },
+				{ max.x, max.y, max.z },
+				{ min.x, max.y, max.z },
+			};
+
+			static const int idx[36] =
+			{
+				0, 1, 2, 2, 3, 0, // back
+				4, 5, 6, 6, 7, 4, // front
+				0, 4, 7, 7, 3, 0, // left
+				1, 5, 6, 6, 2, 1, // right
+				3, 2, 6, 6, 7, 3, // top
+				0, 1, 5, 5, 4, 0  // bottom
+			};
+
+			for( int i = 0; i < 36; i++ )
+			{
+				vertexBuffer.write( GfxVertex::BuiltinVertexPositionColor { verts[idx[i]], color } );
+			}
+		};
+
+		float t = 0.02f; // thickness
+		write_cube( float_v3 { 0.0f, -t, -t }, float_v3 { 1.0f, t, t }, u8_v4 { 255, 0, 0, 255 } ); // X
+		write_cube( float_v3 { -t, 0.0f, -t }, float_v3 { t, 1.0f, t }, u8_v4 { 0, 255, 0, 255 } ); // Y
+		write_cube( float_v3 { -t, -t, 0.0f }, float_v3 { t, t, 1.0f }, u8_v4 { 0, 0, 255, 255 } ); // Z
+	}
+	vertexBuffer.write_end();
+
+	// Initialize Render Target
+	GfxRenderTargetDescription rtDesc;
+	rtDesc.colorFormat = GfxColorFormat_R8G8B8A8_FLOAT;
+	rtDesc.depthFormat = GfxDepthFormat_R16_FLOAT;
+
+	GfxRenderTarget2D rt;
+	rt.init( width, height, rtDesc );
+
+	// Cache Gfx State
+	double_m44 CACHE_MATRIX_MODEL = Gfx::get_matrix_model();
+	double_m44 CACHE_MATRIX_VIEW = Gfx::get_matrix_view();
+	double_m44 CACHE_MATRIX_PERSPECTIVE = Gfx::get_matrix_perspective();
+	Shader CACHE_SHADER = Gfx::shader_current();
+
+	// Draw XYZ Gizmo
+	Gfx::shader_bind( Shader::SHADER_DEFAULT_RGB );
+	rt.bind();
+	{
+		Gfx::clear_color( backgroundColor );
+		Gfx::clear_depth();
+
+		Gfx::set_depth_test_mode( GfxDepthTestMode_LESS_EQUALS );
+		Gfx::set_cull_mode( GfxCullMode_NONE );
+
+		double_m44 matrixView = double_m44_build_lookat(
+			-forward.x * 4.0, -forward.y * 4.0, -forward.z * 4.0,
+			0.0, 0.0, 0.0, up.x, up.y, up.z );
+		double_m44 matrixProj = double_m44_build_perspective( 35.0, static_cast<double>( width ) / height, 0.1, 16.0 );
+		Gfx::set_matrix_mvp( double_m44_build_identity(), matrixView, matrixProj );
+
+		Gfx::draw_vertex_buffer( vertexBuffer );
+	}
+	rt.release();
+
+	// Restore GFX State
+	Gfx::set_matrix_mvp( CACHE_MATRIX_MODEL, CACHE_MATRIX_VIEW, CACHE_MATRIX_PERSPECTIVE );
+
+	// Draw Render Target
+	Gfx::shader_bind( Shader::SHADER_DEFAULT );
+	rt.textureColor.bind( 0 );
+	draw_quad_uv( x, y, x + width, y + height, 0x0000, 0x0000, 0xFFFF, 0xFFFF, c_white );
+	Gfx::quad_batch_break();
+	Gfx::shader_bind( CACHE_SHADER );
+
+	// Free Resources
+	rt.free();
+	vertexBuffer.free();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

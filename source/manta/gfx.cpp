@@ -744,7 +744,7 @@ void Gfx::shader_dispatch( const Shader shader, const u32 x, const u32 y, const 
 }
 
 
-void Gfx::set_shader_globals( const CoreGfxUniformBuffer::ShaderGlobals_t &globals )
+void Gfx::set_shader_globals( const CoreGfxUniformBuffer::PipelineUniforms_t &globals )
 {
 #if GRAPHICS_ENABLED
 	// Shader globals changes force a batch break
@@ -1066,7 +1066,7 @@ void CoreGfx::update_matrix_mvp()
 	CoreGfx::matrixMVP = double_m44_multiply( CoreGfx::matrixPerspective,
 		double_m44_multiply( CoreGfx::matrixView, CoreGfx::matrixModel ) );
 
-	auto &globals = GfxUniformBuffer::ShaderGlobals;
+	auto &globals = GfxUniformBuffer::PipelineUniforms;
 	globals.matrixModel = float_m44_from_double_m44( CoreGfx::matrixModel );
 	globals.matrixView = float_m44_from_double_m44( CoreGfx::matrixView );
 	globals.matrixPerspective = float_m44_from_double_m44( CoreGfx::matrixPerspective );

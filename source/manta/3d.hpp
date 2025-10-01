@@ -144,3 +144,8 @@ extern void frustum_draw( const FrustumDouble &frustum, const Color &color = c_r
 extern void frustum_draw( const FrustumFloat &frustum, const Color &color = c_red, const bool wireframe = true );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+extern void draw_axis_3d( int x, int y, u16 width, u16 height, float_v3 forward, float_v3 up,
+	const Color backgroundColor = Color { 0, 0, 0, 0 } );
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
