@@ -1,4 +1,4 @@
-## Note: This is an early fork of the engine for showcase purposes only!
+## Note: This is an early fork of the engine for showcase purposes only! Manta is a personal learning project not meant for open use. That said, the source is available here to browse as you please!
 
 # Engine Overview:
 
@@ -9,8 +9,6 @@ Manta is C++ game engine & build system currently under development designed to 
 - Provide a custom build system that prioritizes fast compile times and build caching
 - Employ build-time code generation for engine systems (boilerplate internals of object, asset, and render systems, etc.)
 - Have an “IDE-like” experience facilitated by a Visual Studio Code plugin (build + compile + run, debugging, project/workspace navigation, IntelliSense)
-
-Manta is a personal learning project not meant for open use. That said, the source is available here to browse as you please!
 
 # Showcase Projects
 
@@ -185,272 +183,6 @@ This may change in later versions of the engine, but for now it is structured th
 
 Anecdotally (on my machine) I can do a clean build + compile (no cache) of boot.exe, build.exe, and the game.exe in roughly 500ms (~100 translation units) with both MSVC and Clang++ on the "release" configuration.
 
-
-# Object System
-
-### I. Object Definitions
-Manta features a custom object system utilizing its own C++ "scripting language" object definition files, suffixed *.object*
-
-The goal is to make the authoring and maintenance of object code as straightforward as possible with minimal compromise on runtime performance.
-
-In short, *.object* files contain psuedo-C++ code that describe an "object" class (data members, functions, events, etc.). The *.object* files are parsed by the build tool and translated into engine-ready generated C++ header and source implementations.
-
-To aid with IntelliSense, *.object* files can optionally `#include <object_api.hpp>`
-
-`object_api.hpp` provides a reference to the available keywords of the "scripting" language and allows C++ IntelliSense to work with *.object* code without the need for a custom language server. You can view the available keywords in that file.
-
-Objects in this engine use a single-inheritence model. Objects can inherit/extend other objects by specifying the `PARENT( name )` keyword.
-
-This meets most needs for games that I create. Additionally, the data structure where object data is managed ensures sufficient locality for most gameplay needs: per-instance object data is allocated contiguously in memory within designated memory blocks for each object type.
-
-If I ever desire more performance (i.e., must guarantee the _best_ cache locality possible) I would question whether utilizing the object system is the right solution for the problem at hand.
-
-**Sample object definition code: (obj_rabbit.object)**
-```c++
-#include <object_api.hpp>
-
-HEADER_INCLUDES // Headers to go in objects.generated.hpp
-#include <manta/scene.hpp>
-
-SOURCE_INCLUDES // Headers to go in objects.generated.cpp
-#include <manta/draw.hpp>
-
-// Object
-OBJECT( obj_rabbit )
-PARENT( obj_animal ) // obj_rabbit extends obj_animal
-CATEGORY( OBJECT_CATEGORY_CREATURE )
-
-// Data
-PUBLIC float x = 0.0f;
-PUBLIC float y = 0.0f;
-PUBLIC float speed_x = 0.0f;
-PUBLIC float speed_y = 0.0f;
-PUBLIC float health = 100.0f;
-
-PRIVATE enum RabbitState
-{
-	RabbitState_Stand,
-	RabbitState_Walk,
-	...
-};
-
-PRIVATE RabbitState state = RabbitState_Stand;
-
-// Constructors
-CONSTRUCTOR( float spawnX, float spawnY )
-{
-	x = spawnX;
-	y = spawnY;
-}
-
-// Events & Functions
-EVENT_UPDATE
-{
-	// State Machine
-	switch( state )
-	{
-		// ...
-	}
-
-	// Health
-	if( health <= 0.0f )
-	{
-		process_death();
-	}
-}
-
-EVENT_RENDER
-{
-	draw_sprite( spr_rabbit, x, y );
-}
-
-PRIVATE void process_death()
-{
-	// Destroy ourselves
-	sceneObjects.destroy( id ); // sceneObjects from scene.hpp
-	return;
-}
-```
-
-**Generated C++ engine code:**
-<details>
-<summary><span style="color: yellow;">objects.generated.hpp</span></summary>
-
-```c++
-// ...
-
-__INTERNAL_OBJECT_SYSTEM_BEGIN
-class obj_rabbit_t : public obj_animal_t
-{
-_PUBLIC:
-	obj_rabbit_t() = default;
-	obj_rabbit_t( float spawnX, float spawnY );
-	float x = 0.0f;
-	float y = 0.0f;
-	float speed_x = 0.0f;
-	float speed_y = 0.0f;
-	float health = 100.0f;
-	virtual void EVENT_UPDATE( const Delta delta );
-	virtual void EVENT_RENDER( const Delta delta );
-_PRIVATE:
-	friend struct CoreObjects::OBJECT_ENCODER<Object::obj_rabbit>;
-	enum RabbitState
-	{
-		RabbitState_Stand,
-		RabbitState_Walk,
-	};
-	RabbitState state = RabbitState_Stand;
-	void process_death();
-};
-__INTERNAL_OBJECT_SYSTEM_END
-
-template <typename... Args> struct CoreObjects::ObjectConstructor<Object::obj_rabbit, Args...>
-{
-	static void construct( Args... args )
-	{
-		new ( CoreObjects::CONSTRUCTOR_BUFFER +
-		      CoreObjects::CONSTRUCTOR_BUFFER_OFFSET[Object::obj_rabbit] ) CoreObjects::obj_rabbit_t( args... );
-	}
-};
-
-template <> struct ObjectHandle<Object::obj_rabbit>
-{
-	CoreObjects::obj_rabbit_t *data = nullptr;
-	CoreObjects::obj_rabbit_t *operator->() const { Assert( data != nullptr ); return data; }
-	explicit operator bool() const { return data != nullptr; }
-	ObjectHandle( void *object ) { data = reinterpret_cast<CoreObjects::obj_rabbit_t *>( object ); }
-};
-
-// ... file continued
-```
-</details>
-
-<details>
-<summary><span style="color: yellow;">objects.generated.cpp</span></summary>
-
-```c++
-// ...
-
-template <> struct CoreObjects::OBJECT_ENCODER<Object::obj_rabbit>
-{
-	OBJECT_ENCODER( void *data ) : object{ *reinterpret_cast<obj_rabbit_t *>( data ) } { } obj_rabbit_t &object;
-};
-
-CoreObjects::obj_rabbit_t::obj_rabbit_t( float spawnX, float spawnY )
-{
-	x = spawnX;
-	y = spawnY;
-}
-
-void CoreObjects::obj_rabbit_t::EVENT_UPDATE( const Delta delta )
-{
-	CoreObjects::obj_animal_t::EVENT_UPDATE( delta );
-	// State Machine
-	switch( state )
-	{
-		// ...
-	}
-
-	// Health
-	if( health <= 0.0f )
-	{
-		process_death();
-	}
-}
-
-void CoreObjects::obj_rabbit_t::EVENT_RENDER( const Delta delta )
-{
-	CoreObjects::obj_animal_t::EVENT_RENDER( delta );
-	draw_sprite( spr_rabbit, x, y );
-}
-
-void CoreObjects::obj_rabbit_t::process_death()
-{
-	// Destroy ourselves
-	sceneObjects.destroy( id ); // sceneObjects from scene.hpp
-	return;
-}
-
-/// ... file continued
-```
-</details>
-
-### II. Object System / Gameplay Programming
-
-The object system works off three fundamental types:
-
-1. **ObjectContext**
-   - The data structure and interface for object creation, destruction, lookup, and iteration
-2. **ObjectInstance**
-   - A unique identifier for every instantiated object in an ObjectContext
-3. **ObjectHandle\<_Object_>**
-   - A handle to a specific object instance data
-
-In the generated code above, you may notice that the object class names are suffixed with **_t** and wrapped within an internal namespace. The reason for this is "raw" object types are not used directly in game code. Rather, object types in code are represented as __Object__ enums. This allows them to be stored in variables and passed as runtime function parameters.
-
-The table looks something like:
-```c++
-// objects.generated.hpp
-
-enum Object
-{
-	...
-	obj_animal,  // internal::obj_animal_t class
-	obj_rabbit,  // internal::obj_rabbit_t class
-	obj_chicken, // internal::obj_chicken_t class
-	...
-};
-```
-
-This allows for game code like:
-```c++
-const Object type = spawnRabbit ? Object::obj_rabbit : Object::obj_chicken;
-context.create( type ); // Create an obj_rabbit or obj_chicken
-```
-
-Here are some more examples:
-```c++
-#include <manta/objects.hpp> // Object system library
-
-// ObjectContext Initialization
-ObjectContext context;
-context.init(); // There can be multiple contexts in a program (ui, scene, etc.)
-
-// Object Creation
-ObjectInstance rabbit1 = context.create<Object::obj_rabbit>( 64.0f, 64.0f ); // Create with constructor parameters
-ObjectInstance rabbit2 = context.create( Object::obj_rabbit ); // Create with default parameters
-ObjectInstance animal1 = context.create( choose( Object::obj_chicken, Object::obj_rabbit ) ); // Creation of chicken OR rabbit (runtime randomness)
-
-// ObjectHandle Retrieval
-ObjectHandle<Object::obj_rabbit> rabbitHandle = rabbit1.handle<Object::obj_rabbit>( context ); // or: auto rabbitHandle = ...
-
-// ObjectHandle Validation (handle can be null if the Object does not exist)
-if( rabbitHandle )
-{
-	rabbitHandle->x = 0.0f;
-	rabbitHandle->y = 0.0f;
-}
-
-// Looping over all obj_rabbit instances
-for( auto rabbitHandle : context.objects<Object::obj_rabbit>() )
-{
-	rabbitHandle->x = 0.0f;
-	rabbitHandle->y = 0.0f;
-}
-
-// Looping over all obj_animal instances (includes obj_rabbits & obj_chicken)
-for( auto animalHandle : context.objects<Object::obj_animal>( true ) )
-{
-	animalHandle->x = 0.0f;
-	animalHandle->y = 0.0f;
-}
-
-// Object Destruction
-context.destroy( rabbit1 );
-
-// ObjectContext freeing
-context.free();
-```
 
 # Graphics System
 
@@ -849,6 +581,274 @@ GfxUniformBuffer::ExampleUniformBuffer.color = float_v4 { 1.0, 0.0, 0.0, 1.0 }; 
 GfxUniformBuffer::ExampleUniformBuffer.time = globalTime;
 GfxUniformBuffer::ExampleUniformBuffer.upload();
 ```
+
+
+# Object System
+
+### I. Object Definitions
+Manta features a custom object system utilizing its own C++ "scripting language" object definition files, suffixed *.object*
+
+The goal is to make the authoring and maintenance of object code as straightforward as possible with minimal compromise on runtime performance.
+
+In short, *.object* files contain psuedo-C++ code that describe an "object" class (data members, functions, events, etc.). The *.object* files are parsed by the build tool and translated into engine-ready generated C++ header and source implementations.
+
+To aid with IntelliSense, *.object* files can optionally `#include <object_api.hpp>`
+
+`object_api.hpp` provides a reference to the available keywords of the "scripting" language and allows C++ IntelliSense to work with *.object* code without the need for a custom language server. You can view the available keywords in that file.
+
+Objects in this engine use a single-inheritence model. Objects can inherit/extend other objects by specifying the `PARENT( name )` keyword.
+
+This meets most needs for games that I create. Additionally, the data structure where object data is managed ensures sufficient locality for most gameplay needs: per-instance object data is allocated contiguously in memory within designated memory blocks for each object type.
+
+If I ever desire more performance (i.e., must guarantee the _best_ cache locality possible) I would question whether utilizing the object system is the right solution for the problem at hand.
+
+**Sample object definition code: (obj_rabbit.object)**
+```c++
+#include <object_api.hpp>
+
+HEADER_INCLUDES // Headers to go in objects.generated.hpp
+#include <manta/scene.hpp>
+
+SOURCE_INCLUDES // Headers to go in objects.generated.cpp
+#include <manta/draw.hpp>
+
+// Object
+OBJECT( obj_rabbit )
+PARENT( obj_animal ) // obj_rabbit extends obj_animal
+CATEGORY( OBJECT_CATEGORY_CREATURE )
+
+// Data
+PUBLIC float x = 0.0f;
+PUBLIC float y = 0.0f;
+PUBLIC float speed_x = 0.0f;
+PUBLIC float speed_y = 0.0f;
+PUBLIC float health = 100.0f;
+
+PRIVATE enum RabbitState
+{
+	RabbitState_Stand,
+	RabbitState_Walk,
+	...
+};
+
+PRIVATE RabbitState state = RabbitState_Stand;
+
+// Constructors
+CONSTRUCTOR( float spawnX, float spawnY )
+{
+	x = spawnX;
+	y = spawnY;
+}
+
+// Events & Functions
+EVENT_UPDATE
+{
+	// State Machine
+	switch( state )
+	{
+		// ...
+	}
+
+	// Health
+	if( health <= 0.0f )
+	{
+		process_death();
+	}
+}
+
+EVENT_RENDER
+{
+	draw_sprite( spr_rabbit, x, y );
+}
+
+PRIVATE void process_death()
+{
+	// Destroy ourselves
+	sceneObjects.destroy( id ); // sceneObjects from scene.hpp
+	return;
+}
+```
+
+**Generated C++ engine code:**
+<details>
+<summary><span style="color: yellow;">objects.generated.hpp</span></summary>
+
+```c++
+// ...
+
+__INTERNAL_OBJECT_SYSTEM_BEGIN
+class obj_rabbit_t : public obj_animal_t
+{
+_PUBLIC:
+	obj_rabbit_t() = default;
+	obj_rabbit_t( float spawnX, float spawnY );
+	float x = 0.0f;
+	float y = 0.0f;
+	float speed_x = 0.0f;
+	float speed_y = 0.0f;
+	float health = 100.0f;
+	virtual void EVENT_UPDATE( const Delta delta );
+	virtual void EVENT_RENDER( const Delta delta );
+_PRIVATE:
+	friend struct CoreObjects::OBJECT_ENCODER<Object::obj_rabbit>;
+	enum RabbitState
+	{
+		RabbitState_Stand,
+		RabbitState_Walk,
+	};
+	RabbitState state = RabbitState_Stand;
+	void process_death();
+};
+__INTERNAL_OBJECT_SYSTEM_END
+
+template <typename... Args> struct CoreObjects::ObjectConstructor<Object::obj_rabbit, Args...>
+{
+	static void construct( Args... args )
+	{
+		new ( CoreObjects::CONSTRUCTOR_BUFFER +
+		      CoreObjects::CONSTRUCTOR_BUFFER_OFFSET[Object::obj_rabbit] ) CoreObjects::obj_rabbit_t( args... );
+	}
+};
+
+template <> struct ObjectHandle<Object::obj_rabbit>
+{
+	CoreObjects::obj_rabbit_t *data = nullptr;
+	CoreObjects::obj_rabbit_t *operator->() const { Assert( data != nullptr ); return data; }
+	explicit operator bool() const { return data != nullptr; }
+	ObjectHandle( void *object ) { data = reinterpret_cast<CoreObjects::obj_rabbit_t *>( object ); }
+};
+
+// ... file continued
+```
+</details>
+
+<details>
+<summary><span style="color: yellow;">objects.generated.cpp</span></summary>
+
+```c++
+// ...
+
+template <> struct CoreObjects::OBJECT_ENCODER<Object::obj_rabbit>
+{
+	OBJECT_ENCODER( void *data ) : object{ *reinterpret_cast<obj_rabbit_t *>( data ) } { } obj_rabbit_t &object;
+};
+
+CoreObjects::obj_rabbit_t::obj_rabbit_t( float spawnX, float spawnY )
+{
+	x = spawnX;
+	y = spawnY;
+}
+
+void CoreObjects::obj_rabbit_t::EVENT_UPDATE( const Delta delta )
+{
+	CoreObjects::obj_animal_t::EVENT_UPDATE( delta );
+	// State Machine
+	switch( state )
+	{
+		// ...
+	}
+
+	// Health
+	if( health <= 0.0f )
+	{
+		process_death();
+	}
+}
+
+void CoreObjects::obj_rabbit_t::EVENT_RENDER( const Delta delta )
+{
+	CoreObjects::obj_animal_t::EVENT_RENDER( delta );
+	draw_sprite( spr_rabbit, x, y );
+}
+
+void CoreObjects::obj_rabbit_t::process_death()
+{
+	// Destroy ourselves
+	sceneObjects.destroy( id ); // sceneObjects from scene.hpp
+	return;
+}
+
+/// ... file continued
+```
+</details>
+
+### II. Object System / Gameplay Programming
+
+The object system works off three fundamental types:
+
+1. **ObjectContext**
+   - The data structure and interface for object creation, destruction, lookup, and iteration
+2. **ObjectInstance**
+   - A unique identifier for every instantiated object in an ObjectContext
+3. **ObjectHandle\<_Object_>**
+   - A handle to a specific object instance data
+
+In the generated code above, you may notice that the object class names are suffixed with **_t** and wrapped within an internal namespace. The reason for this is "raw" object types are not used directly in game code. Rather, object types in code are represented as __Object__ enums. This allows them to be stored in variables and passed as runtime function parameters.
+
+The table looks something like:
+```c++
+// objects.generated.hpp
+
+enum Object
+{
+	...
+	obj_animal,  // internal::obj_animal_t class
+	obj_rabbit,  // internal::obj_rabbit_t class
+	obj_chicken, // internal::obj_chicken_t class
+	...
+};
+```
+
+This allows for game code like:
+```c++
+const Object type = spawnRabbit ? Object::obj_rabbit : Object::obj_chicken;
+context.create( type ); // Create an obj_rabbit or obj_chicken
+```
+
+Here are some more examples:
+```c++
+#include <manta/objects.hpp> // Object system library
+
+// ObjectContext Initialization
+ObjectContext context;
+context.init(); // There can be multiple contexts in a program (ui, scene, etc.)
+
+// Object Creation
+ObjectInstance rabbit1 = context.create<Object::obj_rabbit>( 64.0f, 64.0f ); // Create with constructor parameters
+ObjectInstance rabbit2 = context.create( Object::obj_rabbit ); // Create with default parameters
+ObjectInstance animal1 = context.create( choose( Object::obj_chicken, Object::obj_rabbit ) ); // Creation of chicken OR rabbit (runtime randomness)
+
+// ObjectHandle Retrieval
+ObjectHandle<Object::obj_rabbit> rabbitHandle = rabbit1.handle<Object::obj_rabbit>( context ); // or: auto rabbitHandle = ...
+
+// ObjectHandle Validation (handle can be null if the Object does not exist)
+if( rabbitHandle )
+{
+	rabbitHandle->x = 0.0f;
+	rabbitHandle->y = 0.0f;
+}
+
+// Looping over all obj_rabbit instances
+for( auto rabbitHandle : context.objects<Object::obj_rabbit>() )
+{
+	rabbitHandle->x = 0.0f;
+	rabbitHandle->y = 0.0f;
+}
+
+// Looping over all obj_animal instances (includes obj_rabbits & obj_chicken)
+for( auto animalHandle : context.objects<Object::obj_animal>( true ) )
+{
+	animalHandle->x = 0.0f;
+	animalHandle->y = 0.0f;
+}
+
+// Object Destruction
+context.destroy( rabbit1 );
+
+// ObjectContext freeing
+context.free();
+```
+
 
 # Future Roadmap
 
