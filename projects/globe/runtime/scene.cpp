@@ -151,25 +151,29 @@ void scene_draw_ui( const Delta delta )
 	lineWH = text_dimensions( fnt_iosevka, size, line );
 	draw_text( fnt_iosevka, size, Window::width - 8.0f - lineWH.x, 8.0f + 20.0 * 2, c_ltgray, line );
 
-	line = "Show Labels: L";
+	line = "Toggle Clouds: C";
 	lineWH = text_dimensions( fnt_iosevka, size, line );
 	draw_text( fnt_iosevka, size, Window::width - 8.0f - lineWH.x, 8.0f + 20.0 * 3, c_ltgray, line );
 
-	line = "Show Debug: F1";
+	line = "Show Labels: L";
 	lineWH = text_dimensions( fnt_iosevka, size, line );
 	draw_text( fnt_iosevka, size, Window::width - 8.0f - lineWH.x, 8.0f + 20.0 * 4, c_ltgray, line );
 
-	line = "Jump To: Left Mouse";
+	line = "Show Debug: F1";
 	lineWH = text_dimensions( fnt_iosevka, size, line );
 	draw_text( fnt_iosevka, size, Window::width - 8.0f - lineWH.x, 8.0f + 20.0 * 5, c_ltgray, line );
 
-	line = "Change Sun: Right Mouse";
+	line = "Jump To: Left Mouse";
 	lineWH = text_dimensions( fnt_iosevka, size, line );
 	draw_text( fnt_iosevka, size, Window::width - 8.0f - lineWH.x, 8.0f + 20.0 * 6, c_ltgray, line );
 
-	line = "Console: ~";
+	line = "Change Sun: Right Mouse";
 	lineWH = text_dimensions( fnt_iosevka, size, line );
 	draw_text( fnt_iosevka, size, Window::width - 8.0f - lineWH.x, 8.0f + 20.0 * 7, c_ltgray, line );
+
+	line = "Console: ~";
+	lineWH = text_dimensions( fnt_iosevka, size, line );
+	draw_text( fnt_iosevka, size, Window::width - 8.0f - lineWH.x, 8.0f + 20.0 * 8, c_ltgray, line );
 
 	draw_text_f( fnt_iosevka, 16, 8.0f, Window::height - 20, c_gray, "MANTA ENGINE DEMO PROJECT 2025" );
 	draw_text_f( fnt_iosevka, 16, 8.0f, 8.0f, c_white, "FPS: %d", Frame::fps );

@@ -236,32 +236,42 @@ void BuilderCore::build( int argc, char **argv )
 	if( codegen )
 	{
 		PrintLnColor( LOG_WHITE, "\nBuild Binary" );
-		Timer timer;
 
 		if( Build::buildBinary )
 		{
+			Timer timer;
+
 			objects_build();
 			shaders_build();
 			assets_build();
+
+			PrintLnColor( LOG_WHITE, TAB "Finished (%.3f ms)", timer.elapsed_ms() );
 		}
 		else
 		{
 			PrintColor( LOG_WHITE, TAB "Skipped... " );
 			PrintLnColor( LOG_GREEN, "clean" );
 		}
-
-		PrintLnColor( LOG_WHITE, TAB "Finished (%.3f ms)", timer.elapsed_ms() );
 	}
 
 	// Write Binary
 	if( build )
 	{
 		PrintLnColor( LOG_WHITE, "\nWrite Binary" );
-		Timer timer;
 
-		binary_write();
+		if( Build::buildBinary )
+		{
+			Timer timer;
 
-		PrintLnColor( LOG_WHITE, TAB "Finished (%.3f ms)", timer.elapsed_ms() );
+			binary_write();
+
+			PrintLnColor( LOG_WHITE, TAB "Finished (%.3f ms)", timer.elapsed_ms() );
+		}
+		else
+		{
+			PrintColor( LOG_WHITE, TAB "Skipped... " );
+			PrintLnColor( LOG_GREEN, "clean" );
+		}
 	}
 
 	// End
@@ -531,15 +541,13 @@ void BuilderCore::binary_cache_validate()
 	Build::buildBinary |= Gfx::cache.dirty;
 	Build::buildBinary |= Assets::cache.dirty;
 
-	PrintColor( LOG_WHITE, TAB "Build... " );
+	PrintColor( LOG_WHITE, TAB "Binary.. " );
 	PrintLnColor( Build::buildBinary ? LOG_RED : LOG_GREEN, Build::buildBinary ? "dirty" : "clean" );
 }
 
 
 void BuilderCore::binary_write()
 {
-	if( !Build::buildBinary ) { return; }
-
 	Build::header.append( "#pragma once\n\n" );
 	Build::header.append( COMMENT_BREAK "\n\n" );
 

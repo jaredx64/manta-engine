@@ -21,7 +21,7 @@ namespace View
 	double aspect;
 
 	double pitch = 10.0;
-	double yaw = 210.0;
+	double yaw = 250.0;
 	bool orbit = true;
 
 	double_v2 dimensions;
@@ -83,7 +83,7 @@ void view_controls( const Delta delta )
 	static double zoomVelocity = 0.0;
 	static double zoomVelocityTarget = 0.0;
 
-	const double a = Keyboard::check( vk_shift ) ? 4.0 : 1.0;
+	const double a = Keyboard::check( vk_shift ) ? 2.0 : 1.0;
 	pitchVelocityTarget = 0.0;
 	if( Keyboard::check( vk_w ) ) { View::orbit = false; View::targetting = false; pitchVelocityTarget = +30.0 * a; }
 	if( Keyboard::check( vk_s ) ) { View::orbit = false; View::targetting = false; pitchVelocityTarget = -30.0 * a; }
@@ -107,8 +107,8 @@ void view_controls( const Delta delta )
 
 	if( View::targetting )
 	{
-		View::yaw = lerp_angle_degrees( View::yaw, View::targetYaw, 3.0 * delta );
-		View::pitch = lerp( View::pitch, View::targetPitch, 3.0 * delta );
+		View::yaw = lerp_angle_degrees( View::yaw, View::targetYaw, 2.0 * delta );
+		View::pitch = lerp( View::pitch, View::targetPitch, 2.0 * delta );
 		if( abs( View::targetYaw - View::yaw ) < 0.02 && abs( View::targetPitch - View::pitch ) < 0.02 )
 		{
 			View::targetting = false;
@@ -147,7 +147,7 @@ void view_update( const Delta delta )
 	View::near = 100000.0;
 	View::far = R_EARTH_POLE * 4.0;
 
-	View::dimensions = double_v2 { Window::width * Window::scale, Window::height * Window::scale };
+	View::dimensions = double_v2 { Window::width, Window::height };
 	View::aspect = View::dimensions.x / View::dimensions.y;
 
 	View::matrixWorld = double_m44_build_identity();

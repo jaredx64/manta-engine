@@ -12,11 +12,11 @@ Manta is C++ game engine & build system currently under development designed to 
 
 # Showcase Projects
 
-Globe Renderer (https://www.youtube.com/watch?v=9XS6yB1-XLc)
+Globe Renderer (https://www.youtube.com/watch?v=0EJK37nCA-0)
 
 <sub>* Source included in repo: projects/globe (boot -project=globe)"</sub>
 
-[![Youtube Redirect](https://img.youtube.com/vi/9XS6yB1-XLc/0.jpg)](https://www.youtube.com/watch?v=9XS6yB1-XLc)
+[![Youtube Redirect](https://img.youtube.com/vi/0EJK37nCA-0/0.jpg)](https://www.youtube.com/watch?v=0EJK37nCA-0)
 
 
 

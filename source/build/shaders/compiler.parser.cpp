@@ -230,6 +230,7 @@ const Keyword KeywordNames[] =
 	{ "const",                  TokenType_Const },
 	{ "return",                 TokenType_Return },
 	{ "break",                  TokenType_Break },
+	{ "continue",               TokenType_Continue },
 	{ "switch",                 TokenType_Switch },
 	{ "case",                   TokenType_Case },
 	{ "default",                TokenType_Default },
@@ -1622,6 +1623,13 @@ Node *Parser::parse_statement()
 			return node;
 		}
 
+		case TokenType_Continue:
+		{
+			Node *node = parse_statement_continue();
+			expect_semicolon();
+			return node;
+		}
+
 		case TokenType_Discard:
 		{
 			Node *node = parse_statement_discard();
@@ -2091,6 +2099,13 @@ Node *Parser::parse_statement_switch()
 			}
 			break;
 
+			case TokenType_Continue:
+			{
+				current = ast.add( NodeStatementBlock( parse_statement_continue() ) );
+				expect_semicolon();
+			}
+			break;
+
 			default:
 			{
 				Error( "unexpected statement/expression in switch statement! %d", token.type );
@@ -2138,8 +2153,9 @@ Node *Parser::parse_statement_case()
 		block = parse_statement_block();
 		scanner.next();
 	}
-	else if( token.type == TokenType_Case    || token.type == TokenType_Break ||
-			 token.type == TokenType_Default || token.type == TokenType_Return )
+	else if( token.type == TokenType_Case || token.type == TokenType_Break ||
+		token.type == TokenType_Default || token.type == TokenType_Return ||
+		token.type == TokenType_Continue )
 	{
 		block = nullptr;
 	}
@@ -2175,8 +2191,9 @@ Node *Parser::parse_statement_default()
 		block = parse_statement_block();
 		scanner.next();
 	}
-	else if( token.type == TokenType_Case    || token.type == TokenType_Break ||
-			 token.type == TokenType_Default || token.type == TokenType_Return )
+	else if( token.type == TokenType_Case || token.type == TokenType_Break ||
+		token.type == TokenType_Default || token.type == TokenType_Return ||
+		token.type == TokenType_Continue )
 	{
 		block = nullptr;
 	}
@@ -2218,6 +2235,18 @@ Node *Parser::parse_statement_break()
 	// Success
 	scanner.next();
 	return ast.add( NodeStatementBreak() );
+}
+
+
+Node *Parser::parse_statement_continue()
+{
+	// Expect 'break'
+	Token token = scanner.current();
+	ErrorIf( token.type != TokenType_Continue, "unexpected token" );
+
+	// Success
+	scanner.next();
+	return ast.add( NodeStatementContinue() );
 }
 
 

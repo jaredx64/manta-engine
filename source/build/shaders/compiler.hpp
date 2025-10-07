@@ -107,6 +107,7 @@ enum_type( TokenType, int )
 	TokenType_Const,
 	TokenType_Return,
 	TokenType_Break,
+	TokenType_Continue,
 	TokenType_Switch,
 	TokenType_Case,
 	TokenType_Default,
@@ -570,6 +571,7 @@ enum_type( StatementType, u32 )
 	StatementType_Default,
 	StatementType_Return,
 	StatementType_Break,
+	StatementType_Continue,
 	StatementType_Discard,
 };
 
@@ -806,6 +808,16 @@ struct NodeStatementBreak : public NodeStatement
 	{
 		nodeType = NodeType_Statement;
 		statementType = StatementType_Break;
+	}
+};
+
+
+struct NodeStatementContinue : public NodeStatement
+{
+	NodeStatementContinue()
+	{
+		nodeType = NodeType_Statement;
+		statementType = StatementType_Continue;
 	}
 };
 

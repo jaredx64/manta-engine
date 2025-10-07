@@ -67,6 +67,7 @@ public:
 	virtual void generate_statement_default( NodeStatementDefault *node );
 	virtual void generate_statement_return( NodeStatementReturn *node );
 	virtual void generate_statement_break( NodeStatementBreak *node );
+	virtual void generate_statement_continue( NodeStatementContinue *node );
 	virtual void generate_statement_discard( NodeStatementDiscard *node );
 
 	virtual void generate_expression_unary( NodeExpressionUnary *node );

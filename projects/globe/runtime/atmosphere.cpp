@@ -1,6 +1,8 @@
 #include <atmosphere.hpp>
 
 #include <manta/geometry.hpp>
+#include <manta/input.hpp>
+#include <manta/console.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -18,6 +20,8 @@ namespace Atmosphere
 	GfxIndexBuffer indexBuffer;
 
 	double time = 0.0;
+	bool clouds = true;
+	int cloudsMip = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -49,6 +53,15 @@ static void generate_mesh_atmosphere( GfxVertexBuffer<GfxVertex::VertexAtmospher
 void atmosphere_init()
 {
 	generate_mesh_atmosphere( Atmosphere::vertexBuffer, Atmosphere::indexBuffer );
+
+	Console::command_init( "clouds_mip <level>", "Mip level to sample cloud data (larger = faster)",
+		CONSOLE_COMMAND_LAMBDA
+		{
+			Atmosphere::cloudsMip = Console::get_parameter_int( 0, Atmosphere::cloudsMip );
+			Atmosphere::cloudsMip = clamp( Atmosphere::cloudsMip, 0,
+				Assets::texture( Texture::tex_earth_light_height_cloud ).levels - 1 );
+			Console::Log( c_lime, "cloud_mip %d", Atmosphere::cloudsMip );
+		} );
 }
 
 
@@ -62,12 +75,13 @@ void atmosphere_free()
 void atmosphere_update( const Delta delta )
 {
 	Atmosphere::time = wrap( Atmosphere::time + delta * 0.005, 0.0, 1.0 );
+	if( Keyboard::check_pressed( vk_c ) ) { Atmosphere::clouds = !Atmosphere::clouds; }
 }
 
 
 void atmosphere_draw( const Delta delta )
 {
-	Gfx::shader_bind( Shader::sh_atmosphere );
+	Gfx::shader_bind( Atmosphere::clouds ? Shader::sh_atmosphere_clouds : Shader::sh_atmosphere );
 	Gfx::reset_blend_mode();
 	Gfx::set_cull_mode( GfxCullMode_BACK );
 	Gfx::clear_depth();
@@ -87,12 +101,15 @@ void atmosphere_draw( const Delta delta )
 		GfxUniformBuffer::UniformsAtmosphere.sun = Universe::sun;
 		GfxUniformBuffer::UniformsAtmosphere.time = Atmosphere::time;
 		GfxUniformBuffer::UniformsAtmosphere.viewport = View::dimensions;
+		GfxUniformBuffer::UniformsAtmosphere.cloudsMip = Atmosphere::cloudsMip;
 		GfxUniformBuffer::UniformsAtmosphere.upload();
 
 		CoreGfx::textures[Texture::tex_aurora].bind( 0 );
+		if( Atmosphere::clouds ) { CoreGfx::textures[Texture::tex_earth_light_height_cloud].bind( 1 ); }
 
 		Gfx::draw_vertex_buffer_indexed( Atmosphere::vertexBuffer, Atmosphere::indexBuffer );
 
+		if( Atmosphere::clouds ) { CoreGfx::textures[Texture::tex_earth_light_height_cloud].release(); }
 		CoreGfx::textures[Texture::tex_aurora].release();
 	}
 	Gfx::shader_release();

@@ -436,7 +436,7 @@ void GeneratorGLSL::generate_function_call_intrinsics( NodeFunctionCall *node )
 			static_assert( ARRAY_LENGTH( ddOperations ) == ( Intrinsic_DDyFine - Intrinsic_DDx + 1 ),
 				"Missing Intrinsic!" );
 
-			output.append( "dFdyFine" );
+			output.append( ddOperations[intrinsic - Intrinsic_DDx] );
 			generate_function_call_parameters( node );
 		}
 		return;

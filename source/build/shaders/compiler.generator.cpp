@@ -268,6 +268,12 @@ void Generator::generate_statement( NodeStatement *node )
 		}
 		break;
 
+		case StatementType_Continue:
+		{
+			generate_statement_continue( reinterpret_cast<NodeStatementContinue *>( node ) );
+		}
+		break;
+
 		case StatementType_Discard:
 		{
 			generate_statement_discard( reinterpret_cast<NodeStatementDiscard *>( node ) );
@@ -423,6 +429,12 @@ void Generator::generate_statement_return( NodeStatementReturn *node )
 void Generator::generate_statement_break( NodeStatementBreak *node )
 {
 	output.append( indent ).append( "break;\n" );
+}
+
+
+void Generator::generate_statement_continue( NodeStatementContinue *node )
+{
+	output.append( indent ).append( "continue;\n" );
 }
 
 

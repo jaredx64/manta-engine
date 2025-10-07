@@ -78,6 +78,7 @@ public:
 	Node *parse_statement_default();
 	Node *parse_statement_return();
 	Node *parse_statement_break();
+	Node *parse_statement_continue();
 	Node *parse_statement_discard();
 
 	Node *parse_structure();

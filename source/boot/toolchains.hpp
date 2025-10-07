@@ -14,7 +14,7 @@ struct Toolchain
 		if( strcmp( toolchain, "msvc" ) == 0 )
 		{
 			compilerName = "cl";
-			compilerFlags = "-c -showIncludes -nologo -std:c++20 -EHsc -DUNICODE -DCOMPILE_BUILD";
+			compilerFlags = "-c -O2 -showIncludes -nologo -std:c++20 -EHsc -DUNICODE -DCOMPILE_BUILD -DCOMPILE_ASSERTS";
 			compilerFlagsIncludes = "-I\"%s\" -I\"%s\" -I\"%s\"";
 			compilerFlagsWarnings = "-W4 -wd4100 -wd4101 -wd4189 -wd4201 -wd4244 -wd4456 -wd4458 -wd4459 -wd4505 -wd4702 -wd4996";
 			compilerOutput = "-Fo:";
@@ -32,7 +32,7 @@ struct Toolchain
 		// GNU
 		{
 			compilerName = "gcc";
-			compilerFlags = "-c -MD -MF $out.d -std=c++20 -fno-exceptions -DUNICODE -DCOMPILE_BUILD -I%s -I%s -I%s";
+			compilerFlags = "-c -O2 -MD -MF $out.d -std=c++20 -fno-exceptions -DUNICODE -DCOMPILE_BUILD -I%s -I%s -I%s";
 			compilerFlagsIncludes = "-I%s -I%s -I%s";
 			compilerFlagsWarnings = "-Wall -Wno-unused-variable -Wno-unused-function";
 			compilerOutput = "-o ";
@@ -50,7 +50,7 @@ struct Toolchain
 		// LLVM
 		{
 			compilerName = "clang";
-			compilerFlags = "-c -MD -MF $out.d -std=c++20 -fno-exceptions -DUNICODE -DCOMPILE_BUILD -I%s -I%s -I%s";
+			compilerFlags = "-c -O2 -MD -MF $out.d -std=c++20 -fno-exceptions -DUNICODE -DCOMPILE_BUILD -I%s -I%s -I%s";
 			compilerFlagsIncludes = "-I%s -I%s -I%s";
 			compilerFlagsWarnings = "-Wall -Wno-unused-variable -Wno-unused-function";
 			compilerOutput = "-o ";
@@ -86,7 +86,7 @@ struct Toolchain
 	const char *linkerPrefixLibrary;
 };
 
-////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 static void linkerflags_add_library( char *buffer, const usize size, const Toolchain &tc, const char *library )
 {

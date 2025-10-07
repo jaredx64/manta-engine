@@ -237,6 +237,12 @@ void Optimizer::optimize_statement( NodeStatement *node )
 		}
 		break;
 
+		case StatementType_Continue:
+		{
+			// Do nothing
+		}
+		break;
+
 		case StatementType_Discard:
 		{
 			// Do nothing

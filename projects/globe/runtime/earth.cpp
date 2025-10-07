@@ -112,13 +112,13 @@ void earth_draw( const Delta delta )
 		GfxUniformBuffer::UniformsGlobe.upload();
 
 		CoreGfx::textures[Texture::tex_earth_color].bind( 0 );
-		CoreGfx::textures[Texture::tex_earth_light].bind( 1 );
+		CoreGfx::textures[Texture::tex_earth_light_height_cloud].bind( 1 );
 		CoreGfx::textures[Texture::tex_debug_red].bind( 2 );
 
 		Gfx::draw_vertex_buffer_indexed( Earth::vertexBuffer, Earth::indexBuffer );
 
 		CoreGfx::textures[Texture::tex_debug_red].release();
-		CoreGfx::textures[Texture::tex_earth_light].release();
+		CoreGfx::textures[Texture::tex_earth_light_height_cloud].release();
 		CoreGfx::textures[Texture::tex_earth_color].release();
 	}
 	Gfx::shader_release();

@@ -58,8 +58,17 @@
 @implementation GameWindowDelegate
 - (BOOL)windowShouldClose:(NSWindow *)sender
 {
+	Debug::memoryLeakDetection = false;
 	[NSApp terminate: nil];
-	return NO;
+	return YES;
+}
+
+
+- (void)windowWillClose:(NSNotification *)notification
+{
+	Debug::memoryLeakDetection = false;
+	Engine::exit();
+	[NSApp terminate:nil];
 }
 
 
