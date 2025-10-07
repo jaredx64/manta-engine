@@ -46,7 +46,7 @@ namespace Assets
 {
 	struct TextureEntry
 	{
-		u32 offset;
+		usize offset;
 		u16 width;
 		u16 height;
 		u16 levels;
@@ -163,33 +163,7 @@ namespace Assets
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class Mesh; // u32
-
-namespace Assets
-{
-	struct MeshEntry
-	{
-		usize vertexBufferOffset;
-		usize vertexBufferSize;
-		usize vertexCount;
-		usize indexBufferOffset;
-		usize indexBufferSize;
-		usize indexCount;
-		float minX;
-		float minY;
-		float minZ;
-		float maxX;
-		float maxY;
-		float maxZ;
-	};
-
-	inline u32 mesh_count() { return CoreAssets::meshCount; }
-	extern const Assets::MeshEntry &mesh( Mesh mesh );
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-class Skeleton2D; // u32
+class Skeleton; // u32
 
 namespace Assets
 {
@@ -199,7 +173,7 @@ namespace Assets
 	};
 
 	inline u32 skeleton_2d_count() { return CoreAssets::skeleton2DCount; }
-	extern const Assets::Skeleton2DEntry &skeleton_2d( Skeleton2D skeleton2D );
+	extern const Assets::Skeleton2DEntry &skeleton_2d( Skeleton skeleton2D );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

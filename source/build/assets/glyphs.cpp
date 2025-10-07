@@ -8,29 +8,23 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-GlyphID Glyphs::make_new( Texture2DBuffer &&textureBuffer )
+GlyphID Glyphs::make_new( const Glyph &glyph )
 {
-	// Register Glyph and move ownership of 'textureBuffer'
 	AssertMsg( glyphs.size() < GLYPHID_MAX, "Exceeded max number of Glyphs" );
-	Glyph &glyph = glyphs.add( { static_cast<Texture2DBuffer &&>( textureBuffer ) } );
-
-	// Return GlyphID
+	glyphs.add( glyph );
 	return glyphs.size() - 1;
 }
 
 
-GlyphID Glyphs::make_new( const u16 width, const u16 height )
+GlyphID Glyphs::make_new( Glyph &&glyph )
 {
-	// Register Glyph and move ownership of new 'textureBuffer'
-	Texture2DBuffer textureBuffer { width, height };
-	Glyph &glyph = glyphs.add( { static_cast<Texture2DBuffer &&>( textureBuffer ) } );
-
-	// Return GlyphID
+	AssertMsg( glyphs.size() < GLYPHID_MAX, "Exceeded max number of Glyphs" );
+	glyphs.add( static_cast<Glyph &&>( glyph ) );
 	return glyphs.size() - 1;
 }
 
 
-void Glyphs::write()
+void Glyphs::build()
 {
 	Buffer &binary = Assets::binary;
 	String &header = Assets::header;
@@ -39,8 +33,15 @@ void Glyphs::write()
 
 	Timer timer;
 
-	// Binary - do nothing
-	// n/a
+	// Load
+	{
+		// ...
+	}
+
+	// Binary
+	{
+		// ...
+	}
 
 	// Header
 	{
@@ -90,7 +91,7 @@ void Glyphs::write()
 	if( verbose_output() )
 	{
 		const usize count = glyphs.size();
-		PrintColor( LOG_CYAN, "\t\tWrote %d glyph%s", count, count == 1 ? "" : "s" );
+		PrintColor( LOG_CYAN, TAB TAB "Wrote %d glyph%s", count, count == 1 ? "" : "s" );
 		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
 	}
 }

@@ -5,7 +5,7 @@
 #include <core/buffer.hpp>
 #include <core/string.hpp>
 
-#include <build/objloader.hpp>
+#include <build/cache.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -16,15 +16,13 @@ using SoundID = u32;
 
 struct Sound
 {
+	CacheID cacheID;
 	String path;
 	String name;
-
 	bool streamed;
 	bool compressed;
 	u8 numChannels;
-
-	byte *sampleData;
-	usize sampleDataSize;
+	Buffer sampleData;
 	usize sampleOffsetBytes;
 	usize sampleCountBytes;
 };
@@ -34,9 +32,10 @@ struct Sound
 struct Sounds
 {
 	SoundID make_new( const Sound &voice );
-	void gather( const char *path, const bool recurse = true );
-	void load( const char *path );
-	void write();
+
+	usize gather( const char *path, const bool recurse = true );
+	void process( const char *path );
+	void build();
 
 	Sound &operator[]( const u32 soundID ) { return sounds[soundID]; }
 

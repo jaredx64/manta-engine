@@ -117,7 +117,7 @@ static bool char_is_slash( const char c )
 		WIN32_FIND_DATAA findData;
 		HANDLE hFind;
 
-		char buffer[512];
+		char buffer[PATH_SIZE];
 		strjoin( buffer, path, SLASH, "*" );
 		if( ( hFind = FindFirstFileA( buffer, &findData ) ) == INVALID_HANDLE_VALUE ) { return false; }
 
@@ -128,17 +128,19 @@ static bool char_is_slash( const char c )
 				continue;
 			}
 
-			if( findData.dwFileAttributes == FILE_ATTRIBUTE_DIRECTORY && recurse )
+			if( ( findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) && recurse )
 			{
-				strjoin( buffer, path, SLASH, findData.cFileName );
-				directory_iterate( list, buffer, extension, recurse );
+				char subdir[PATH_SIZE];
+				strjoin( subdir, path, SLASH, findData.cFileName );
+				directory_iterate( list, subdir, extension, recurse );
 			}
 			else
 			{
 				// Filter extension
 				const int length = static_cast<int>( strlen( findData.cFileName ) );
 				const int extensionLength = static_cast<int>( strlen( extension ) );
-				if( length <= extensionLength || strcmp( findData.cFileName + length - extensionLength, extension ) )
+				if( length <= extensionLength ||
+					strcmp( findData.cFileName + length - extensionLength, extension ) )
 				{
 					continue;
 				}
@@ -146,8 +148,8 @@ static bool char_is_slash( const char c )
 				// Add FileInfo
 				FileInfo info;
 				strjoin( info.path, path, SLASH, findData.cFileName );
-				strncpy( info.name, findData.cFileName, sizeof( info.path ) - 1 );
-				info.name[sizeof( info.path ) - 1] = '\0';
+				strncpy( info.name, findData.cFileName, sizeof( info.name ) - 1 );
+				info.name[sizeof(info.name) - 1] = '\0';
 				info.time.time = findData.ftLastWriteTime;
 				list.add( info );
 			}
@@ -252,7 +254,8 @@ static bool char_is_slash( const char c )
 		#if PIPELINE_OS_MACOS
 		result->time = static_cast<u64>( file_stat.st_mtime );
 		#else
-		result->time = static_cast<u64>( file_stat.st_mtim.tv_sec ) * 1000000 + static_cast<u64>( file_stat.st_mtim.tv_nsec ) / 1000;
+		result->time = static_cast<u64>( file_stat.st_mtim.tv_sec ) * 1000000 +
+			static_cast<u64>( file_stat.st_mtim.tv_nsec ) / 1000;
 		#endif
 
 		return true;
@@ -356,9 +359,9 @@ static bool char_is_slash( const char c )
 			// Recurse Into Directories
 			if( entry->d_type == DT_DIR && recurse )
 			{
-				char buffer[512];
-				strjoin( buffer, path, SLASH, entry->d_name );
-				directory_iterate( list, buffer, extension, recurse );
+				char subdir[PATH_SIZE];
+				strjoin( subdir, path, SLASH, entry->d_name );
+				directory_iterate( list, subdir, extension, recurse );
 			}
 			// Add File
 			else
@@ -366,7 +369,8 @@ static bool char_is_slash( const char c )
 				// Filter extension
 				const int length = strlen( entry->d_name );
 				const int extensionLength = strlen( extension );
-				if( length <= extensionLength || strcmp( entry->d_name + length - extensionLength, extension ) != 0 )
+				if( length <= extensionLength ||
+					strcmp( entry->d_name + length - extensionLength, extension ) != 0 )
 				{
 					continue;
 				}
@@ -547,7 +551,8 @@ void path_get_directory( char *buffer, const usize size, const char *path )
 void path_get_filename( char *buffer, const usize size, const char *path )
 {
 	// Ensure valid strings
-	if( buffer == nullptr || path == nullptr ) { return; }
+	if( buffer == nullptr || path == nullptr || size == 0 ) { return; }
+	if( path[0] == '\0' ) { buffer[0] = '\0'; return; }
 
 	// Find the last slash
 	const char *lastSlash = nullptr;
@@ -632,35 +637,30 @@ void path_change_extension( char *buffer, usize size, const char *path, const ch
 }
 
 
-void path_remove_extension( char *path )
+void path_remove_extension( char *path, const usize size )
 {
-	// Ensure valid strings
-	if( path == nullptr ) { return; }
+	if( path == nullptr || size == 0 ) { return; }
 
-	char c;
-	char *extension = path;
+	char *extension = nullptr;
 
-	// Find the last '.'
-	while( ( c = *++path ) != '\0' )
+	for( usize i = 0; i < size && path[i] != '\0'; i++ )
 	{
-		if( c == '.' ) { extension = path; }
+		if( path[i] == '.' ) { extension = &path[i]; };
 	}
 
-	*extension = '\0';
+	if( extension != nullptr ) { *extension = '\0'; }
 }
 
 
-void path_remove_extensions( char *path )
+void path_remove_extensions( char *path, const usize size )
 {
-	// Ensure valid strings
-	if( path == nullptr ) { return; }
+	if( path == nullptr || size == 0 ) { return; }
 
-	char c;
+	char *extension = nullptr;
 
-	// Find the first '.'
-	while( ( c = *++path ) != '\0' )
+	for( usize i = 0; i < size && path[i] != '\0'; i++ )
 	{
-		if( c == '.' ) { *path = '\0'; return; }
+		if( path[i] == '.' ) { path[i] = '\0'; return; };
 	}
 }
 

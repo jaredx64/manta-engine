@@ -720,36 +720,10 @@ async function CommandDebugRuntime()
 }
 
 
-async function CommandRenderDoc()
+function CommandRenderDoc()
 {
-	// Build the project & wait for it to finish
-	var cmd = GetBootCommand() + " -run=0";
-	await CommandRunWait( { saveAll: true, command: cmd } );
-
-	try {
-		// Run project w/ RenderDoc
-		await child_process.execSync( `renderdoccmd capture -w -c capture ${PATH_PROJECT_EXECUTABLE}` );
-
-		// Replace '*.rdc' with your desired file extension or pattern
-		var captures = await GlobFiles( PATH_PROJECT_OUTPUT_RUNTIME, '*.rdc' );
-		if( captures && captures[0] )
-		{
-			// Run RenderDoc & delete captures
-			await child_process.execSync( `qrenderdoc ${captures[0]}` );
-			for( const capture of captures ) { await fs.rm( capture ); }
-		}
-	}
-	catch( error )
-	{
-		if( PlatformIsWindows() )
-		{
-			ShowMessage( `RenderDoc failed! Is it configured in the PATH system variable? (${error})` );
-		}
-		else
-		{
-			ShowMessage( `RenderDoc failed! Is it installed on the system? (${error})` );
-		}
-	}
+	var cmd = GetBootCommand() + " -run=2";
+	TerminalRunCommand( { saveAll: true, command: cmd } );
 }
 
 

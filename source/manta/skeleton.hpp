@@ -238,10 +238,10 @@ public:
 	void draw( const Delta delta, float x, float y, Color color, float depth = 0.0f );
 
 private:
-	friend class Skeleton;
+	friend class Skeleton2D;
 	friend class Attachment;
 
-	class Skeleton *skeleton = nullptr;
+	class Skeleton2D *skeleton = nullptr;
 	u32 id = U32_MAX;
 	u32 parent = U32_MAX;
 
@@ -266,7 +266,7 @@ private:
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class Skeleton
+class Skeleton2D
 {
 public:
 	bool init( SkeletonID type );

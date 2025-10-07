@@ -183,7 +183,7 @@ void Buffer::clear()
 }
 
 
-void Buffer::write( void *bytes, const usize size )
+usize Buffer::write( void *bytes, const usize size )
 {
 	// Grow memory
 	MemoryAssert( data != nullptr );
@@ -195,9 +195,46 @@ void Buffer::write( void *bytes, const usize size )
 
 	// Write element
 	ErrorIf( tell + size > capacity, "Buffer: write exceeded buffer capacity" );
+	const usize writeIndex = tell;
 	memory_copy( &data[tell], bytes, size );
 	tell += size;
 	current = tell > current ? tell : current;
+	return writeIndex;
+}
+
+
+usize Buffer::write_from_file( const char *path, const usize offset, const usize size )
+{
+	bool success = true;
+	usize writeIndex = USIZE_MAX;
+
+	// Grow memory
+	MemoryAssert( data != nullptr );
+	while( !fixed )
+	{
+		if( tell + size <= capacity ) { break; }
+		grow();
+	}
+
+	// Open file for reading
+	FILE *file = fopen( path, "rb" );
+	if( file == nullptr ) { return USIZE_MAX; }
+
+	// Seek to offset
+	if( fseek( file, static_cast<size_t>( offset ), SEEK_SET ) != 0 ) { success = false; goto cleanup; }
+
+	// Write element
+	ErrorIf( tell + size > capacity, "Buffer: write exceeded buffer capacity" );
+	writeIndex = tell;
+	if( fread( &data[writeIndex], size, 1, file ) < 1 ) { success = false; goto cleanup; }
+	tell += size;
+	current = tell > current ? tell : current;
+
+cleanup:
+	// Close file
+	if( fclose( file ) != 0 ) { success = false; }
+	if( success == false && data != nullptr ) { free(); }
+	return success ? writeIndex : USIZE_MAX;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

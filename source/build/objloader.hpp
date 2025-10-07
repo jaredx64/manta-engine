@@ -1,4 +1,8 @@
+// TODO: Deprecating this, build tool will not be responsible for parsing mesh data!
+
 #pragma once
+
+#if 0
 
 #include <core/types.hpp>
 
@@ -32,3 +36,4 @@ struct MeshObj
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#endif

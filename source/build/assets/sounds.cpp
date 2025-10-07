@@ -3,10 +3,20 @@
 #include <core/types.hpp>
 #include <core/debug.hpp>
 #include <core/list.hpp>
+#include <core/checksum.hpp>
 
 #include <build/build.hpp>
 #include <build/assets.hpp>
 #include <build/filesystem.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct CacheSound
+{
+	usize offset;
+	usize size;
+	u8 channels;
+};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -17,82 +27,67 @@ SoundID Sounds::make_new( const Sound &sound )
 }
 
 
-void Sounds::gather( const char *path, const bool recurse )
+usize Sounds::gather( const char *path, const bool recurse )
 {
-	// Gather & Load Sounds
-	Timer timer;
+	// Gather Sounds
 	List<FileInfo> files;
 	directory_iterate( files, path, ".wav", recurse );
 	directory_iterate( files, path, ".ogg", recurse );
-	for( FileInfo &fileInfo : files ) { load( fileInfo.path ); }
 
-	// Log
-	if( verbose_output() )
+	// Process Sounds
+	for( FileInfo &fileInfo : files )
 	{
-		const u32 count = files.size();
-		PrintColor( LOG_CYAN, TAB TAB "%u sound%s found in: %s", count, count == 1 ? "" : "s", path );
-		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+		Assets::cacheFileCount++;
+		process( fileInfo.path );
 	}
+
+	return files.size();
 }
 
 
-void Sounds::load( const char *path )
+void Sounds::process( const char *path )
 {
-	// Register Sound
-	Sound &sound = sounds.add( { } );
-	sound.path = path;
+	// Local Directory
+	static char pathDirectory[PATH_SIZE];
+	path_get_directory( pathDirectory, sizeof( pathDirectory ), path );
 
-	char buffer[PATH_SIZE];
-	path_get_filename( buffer, sizeof( buffer ), path );
-
-	String filepath = buffer;
-	sound.streamed = filepath.contains( ".stream" );
-	sound.compressed = filepath.contains( ".ogg" );
-	sound.name = filepath.substr( 0, filepath.find( "." ) );
-
-	// Build Cache
-	Assets::assetFileCount++;
-	if( !Build::cacheDirtyAssets )
+	// Register Definition File
+	AssetFile fileDefinition;
+	if( !asset_file_register( fileDefinition, path ) )
 	{
-		FileTime time;
-		file_time( path, &time );
-		Build::cacheDirtyAssets |= file_time_newer( time, Assets::timeCache );
+		Error( "Unable to locate sound file: %s", path );
+		return;
+	}
+	String filepath = fileDefinition.path;
+
+	const bool streamed = filepath.contains( ".stream" );
+	const bool compressed = filepath.contains( ".ogg" );
+
+	// Generate Cache ID
+	static char cacheIDBuffer[PATH_SIZE * 2];
+	memory_set( cacheIDBuffer, 0, sizeof( cacheIDBuffer ) );
+	snprintf( cacheIDBuffer, sizeof( cacheIDBuffer ), "sound %s|%llu",
+		fileDefinition.path, fileDefinition.time.as_u64() );
+	const CacheID cacheID = checksum_xcrc32( cacheIDBuffer, sizeof( cacheIDBuffer ), 0 );
+
+	// Check Cache
+	CacheSound cacheSound;
+	if( !Assets::cache.fetch( cacheID, cacheSound ) )
+	{
+		Assets::cache.dirty |= true; // Dirty Cache
 	}
 
-	// Read Sound File
-	Buffer file;
-	ErrorIf( !file.load( path ), "Failed to load sound file: %s", path );
-	const u32 riff = file.read<u32>();
-	const u32 riffSize = file.read<u32>();
-	const u32 riffType = file.read<u32>();
-	const u32 fmt = file.read<u32>();
-	const u32 fmtSize = file.read<u32>();
-	const u16 fmtType = file.read<u16>();
-	const u16 fmtChannels = file.read<u16>();
-	const u32 fmtSampleRate = file.read<u32>();
-	const u32 fmtAvgBytesPerSec = file.read<u32>();
-	const u16 fmtBlockAlign = file.read<u16>();
-	const u16 fmtBitsPerSample = file.read<u16>();
-	const u32 data = file.read<u32>();
-	const u32 dataSize = file.read<u32>();
-	ErrorIf( fmtSampleRate != 44100, "Sound: WAV format files must be 44.1khz! (%s)", path );
-	ErrorIf( fmtBitsPerSample != 16, "Sound: WAV format files must be 16-bit! (%s)", path );
-	ErrorIf( fmtBlockAlign != 2 * fmtChannels, "Sound: WAV format invalid! (%s)", path );
-
-	// Read Samples
-	sound.sampleData = reinterpret_cast<byte *>( memory_alloc( dataSize ) );
-	sound.sampleDataSize = dataSize;
-	sound.numChannels = fmtChannels;
-	void *wavData = file.read_bytes( dataSize );
-	ErrorIf( wavData == nullptr, "Sound: Failed to read samples (%s)", path );
-	memory_copy( sound.sampleData, wavData, dataSize );
-
-	// Free buffer
-	file.free();
+	// Register Sound
+	Sound &sound = sounds.add( Sound { } );
+	sound.cacheID = cacheID;
+	sound.path = fileDefinition.path;
+	sound.name = fileDefinition.name;
+	sound.streamed = streamed;
+	sound.compressed = compressed;
 }
 
 
-void Sounds::write()
+void Sounds::build()
 {
 	Buffer &binary = Assets::binary;
 	String &header = Assets::header;
@@ -105,32 +100,93 @@ void Sounds::write()
 	usize streamSampleDataSize;
 	Timer timer;
 
+	// Load
+	{
+		for( Sound &sound : sounds )
+		{
+			CacheSound cacheSound;
+			if( Assets::cache.fetch( sound.cacheID, cacheSound ) )
+			{
+				// Load from cached binary
+				sound.sampleData.write_from_file( Build::pathOutputRuntimeBinary,
+					Assets::cacheReadOffset + cacheSound.offset, cacheSound.size );
+				sound.numChannels = cacheSound.channels;
+				Assets::log_asset_cache( "Sound", sound.name.cstr() );
+			}
+			else
+			{
+				// Load from sound file
+				Buffer file;
+				ErrorIf( !file.load( sound.path ),
+					"Failed to load sound file: %s", sound.path.cstr() );
+				const u32 riff = file.read<u32>();
+				const u32 riffSize = file.read<u32>();
+				const u32 riffType = file.read<u32>();
+				const u32 fmt = file.read<u32>();
+				const u32 fmtSize = file.read<u32>();
+				const u16 fmtType = file.read<u16>();
+				const u16 fmtChannels = file.read<u16>();
+				const u32 fmtSampleRate = file.read<u32>();
+				const u32 fmtAvgBytesPerSec = file.read<u32>();
+				const u16 fmtBlockAlign = file.read<u16>();
+				const u16 fmtBitsPerSample = file.read<u16>();
+				const u32 data = file.read<u32>();
+				const u32 dataSize = file.read<u32>();
+				ErrorIf( fmtSampleRate != 44100,
+					"Sound: WAV format files must be 44.1khz! (%s)", sound.path.cstr() );
+				ErrorIf( fmtBitsPerSample != 16,
+					"Sound: WAV format files must be 16-bit! (%s)", sound.path.cstr() );
+				ErrorIf( fmtBlockAlign != 2 * fmtChannels,
+					"Sound: WAV format invalid! (%s)", sound.path.cstr() );
+
+				// Read Samples
+				sound.sampleData.write( file.read_bytes( dataSize ), dataSize );
+				sound.numChannels = fmtChannels;
+				Assets::log_asset_build( "Sound", sound.name.cstr() );
+			}
+		}
+	}
+
 	// Binary
 	{
-		voiceSampleDataOffset = binary.tell;
+		voiceSampleDataOffset = binary.size();
 		for( Sound &sound : sounds )
 		{
 			if( sound.streamed ) { continue; }
 
 			// Write Sound Sample Data
-			sound.sampleOffsetBytes = binary.tell - voiceSampleDataOffset;
-			sound.sampleCountBytes = sound.sampleDataSize;
-			binary.write( sound.sampleData, sound.sampleDataSize );
+			const usize binaryOffset = binary.write( sound.sampleData.data, sound.sampleData.size() );
+			sound.sampleOffsetBytes = binaryOffset - voiceSampleDataOffset;
+			sound.sampleCountBytes = sound.sampleData.size();
+
+			// Cache
+			CacheSound cacheSound;
+			cacheSound.offset = binaryOffset;
+			cacheSound.size = sound.sampleData.size();
+			cacheSound.channels = sound.numChannels;
+			Assets::cache.store( sound.cacheID, cacheSound );
 		}
-		voiceSampleDataSize = binary.tell - voiceSampleDataOffset;
+		voiceSampleDataSize = binary.size() - voiceSampleDataOffset;
 		ErrorIf( voiceSampleDataSize & 1, "Sounds: Sample data size is not even!" );
 
-		streamSampleDataOffset = binary.tell;
+		streamSampleDataOffset = binary.size();
 		for( Sound &sound : sounds )
 		{
 			if( !sound.streamed ) { continue; }
 
 			// Write Stream Sample Data
-			sound.sampleOffsetBytes = binary.tell - streamSampleDataOffset;
-			sound.sampleCountBytes = sound.sampleDataSize;
-			binary.write( sound.sampleData, sound.sampleDataSize );
+			const usize binaryOffset = binary.write( sound.sampleData.data, sound.sampleData.size() );
+			sound.sampleOffsetBytes = binaryOffset - streamSampleDataOffset;
+			sound.sampleCountBytes = sound.sampleData.size();
+
+			// Cache
+			CacheSound cacheSound;
+			cacheSound.offset = binaryOffset;
+			cacheSound.size = sound.sampleData.size();
+			cacheSound.channels = sound.numChannels;
+			Assets::cache.store( sound.cacheID, cacheSound );
 		}
-		streamSampleDataSize = binary.tell - streamSampleDataOffset;
+		streamSampleDataSize = binary.size() - streamSampleDataOffset;
 		ErrorIf( streamSampleDataSize & 1, "Streams: Sample data size is not even!" );
 	}
 
@@ -155,10 +211,14 @@ void Sounds::write()
 			"\textern const Assets::SoundEntry *sounds;\n" );
 
 		header.append( "\n" );
-		header.append( "\tconstexpr usize voiceSampleDataOffset = " ).append( voiceSampleDataOffset ).append( "ULL;\n" );
-		header.append( "\tconstexpr usize voiceSampleDataSize = " ).append( voiceSampleDataSize ).append( "ULL;\n" );
-		header.append( "\tconstexpr usize streamSampleDataOffset = " ).append( streamSampleDataOffset ).append( "ULL;\n" );
-		header.append( "\tconstexpr usize streamSampleDataSize = " ).append( streamSampleDataSize ).append( "ULL;\n" );
+		header.append( "\tconstexpr usize voiceSampleDataOffset = BINARY_OFFSET_ASSETS + " );
+		header.append( voiceSampleDataOffset ).append( "LLU;\n" );
+		header.append( "\tconstexpr usize voiceSampleDataSize = " );
+		header.append( voiceSampleDataSize ).append( "LLU;\n" );
+		header.append( "\tconstexpr usize streamSampleDataOffset = BINARY_OFFSET_ASSETS + " );
+		header.append( streamSampleDataOffset ).append( "LLU;\n" );
+		header.append( "\tconstexpr usize streamSampleDataSize = " );
+		header.append( streamSampleDataSize ).append( "LLU;\n" );
 		header.append( "}\n\n" );
 	}
 
@@ -176,7 +236,7 @@ void Sounds::write()
 			for( Sound &sound : sounds )
 			{
 				snprintf( buffer, PATH_SIZE,
-					"\t\t{ %d, %d, %d, %lluULL, %lluULL, DEBUG( \"%s\" ) },\n",
+					"\t\t{ %d, %d, %d, %lluLLU, %lluLLU, DEBUG( \"%s\" ) },\n",
 					sound.streamed,
 					sound.compressed,
 					sound.numChannels,
@@ -199,7 +259,7 @@ void Sounds::write()
 	if( verbose_output() )
 	{
 		const usize count = sounds.size();
-		PrintColor( LOG_CYAN, "\t\tWrote %d sound%s", count, count == 1 ? "" : "es" );
+		PrintColor( LOG_CYAN, TAB TAB "Wrote %d sound%s", count, count == 1 ? "" : "es" );
 		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
 	}
 }

@@ -210,7 +210,7 @@ public:
 	reverse_iterator rend() const { MemoryAssert( data != nullptr ); return reverse_iterator( &data[0] - 1 ); }
 
 public:
-	static void write( class Buffer &buffer, const String &string );
+	static usize write( class Buffer &buffer, const String &string );
 	static void read( class Buffer &buffer, String &string );
 	static void serialize( class Buffer &buffer, const String &string );
 	static void deserialize( class Buffer &buffer, String &string );

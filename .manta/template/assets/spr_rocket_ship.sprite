@@ -1,6 +1,6 @@
 {
 	"path": "spr_rocket_ship.png",
-	"atlas": "ui",
+	"atlas": "default",
 
 	"count": 1,
 	"xorigin": 20,

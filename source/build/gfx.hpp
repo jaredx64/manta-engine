@@ -7,6 +7,7 @@
 #include <core/hashmap.hpp>
 
 #include <build/build.hpp>
+#include <build/cache.hpp>
 #include <build/filesystem.hpp>
 #include <build/shaders/compiler.hpp>
 
@@ -57,8 +58,8 @@ struct Shader
 
 	// Shader Code
 	String outputs[SHADERSTAGE_COUNT];
-	u32 offset[SHADERSTAGE_COUNT];
-	u32 size[SHADERSTAGE_COUNT];
+	usize offset[SHADERSTAGE_COUNT];
+	usize size[SHADERSTAGE_COUNT];
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -117,10 +118,6 @@ namespace Gfx
 	extern String headerGfx;
 	extern String headerAPI;
 
-	// Cache
-	extern usize shaderFileCount;
-	extern FileTime timeCache;
-
 	// Shaders
 	extern List<FileInfo> shaderFiles;
 	extern List<Shader> shaders;
@@ -141,11 +138,15 @@ namespace Gfx
 	extern List<InstanceFormat> instanceFormats;
 	extern HashMap<u32, u32> instanceFormatCache;
 
+	// Binary
+	extern Buffer binary;
+
 	// Stages
 	extern void begin();
+	extern void end();
 	extern u32 gather( const char *path, const bool recurse );
 	extern void build();
-	extern void write();
+	extern void codegen();
 
 	// Backends
 	void write_header_api_opengl( String &header );
@@ -158,6 +159,14 @@ namespace Gfx
 	void write_source_api_metal( String &source );
 	void write_header_api_vulkan( String &header );
 	void write_source_api_vulkan( String &source );
+
+	// Cache
+	extern Cache cache;
+	extern usize cacheFileCount;
+	extern usize cacheReadOffset;
+	extern void cache_read( const char *path );
+	extern void cache_write( const char *path );
+	extern void cache_validate();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

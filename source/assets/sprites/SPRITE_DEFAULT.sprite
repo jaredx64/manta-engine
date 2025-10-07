@@ -1,6 +1,6 @@
 {
 	"path": "SPRITE_DEFAULT.png",
-	"atlas": "ui",
+	"atlas": "default",
 
 	"count": 1,
 	"xorigin": 0,

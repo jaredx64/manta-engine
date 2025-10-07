@@ -385,7 +385,7 @@ void Bone::draw( const Delta delta, float drawX, float drawY, Color drawColor, f
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Skeleton::init( SkeletonID type )
+bool Skeleton2D::init( SkeletonID type )
 {
 	Assert( type < numSkeletons );
 	this->type = type;
@@ -414,7 +414,7 @@ bool Skeleton::init( SkeletonID type )
 	return true;
 }
 
-bool Skeleton::free()
+bool Skeleton2D::free()
 {
 	// Free Memory
 	MemoryAssert( bones != nullptr );
@@ -423,7 +423,7 @@ bool Skeleton::free()
 	return true;
 }
 
-Bone &Skeleton::get_bone( const BoneID boneID )
+Bone &Skeleton2D::get_bone( const BoneID boneID )
 {
 	Assert( boneID < binSkeletons[type].boneCount );
 	MemoryAssert( bones != nullptr );
@@ -431,77 +431,77 @@ Bone &Skeleton::get_bone( const BoneID boneID )
 }
 
 
-bool Skeleton::animation_start( AnimationID animation, bool loop, float weight, float ease )
+bool Skeleton2D::animation_start( AnimationID animation, bool loop, float weight, float ease )
 {
 	MemoryAssert( bones != nullptr );
 	return bones[0].animation_start( animation, loop, weight, ease );
 }
 
 
-void Skeleton::animation_stop( AnimationID animation, bool ease )
+void Skeleton2D::animation_stop( AnimationID animation, bool ease )
 {
 	MemoryAssert( bones != nullptr );
 	bones[0].animation_stop( animation, ease );
 }
 
 
-void Skeleton::animation_stop_all()
+void Skeleton2D::animation_stop_all()
 {
 	MemoryAssert( bones != nullptr );
 	bones[0].animation_stop_all();
 }
 
 
-void Skeleton::animation_weight( AnimationID animation, float weight, float ease )
+void Skeleton2D::animation_weight( AnimationID animation, float weight, float ease )
 {
 	MemoryAssert( bones != nullptr );
 	bones[0].animation_weight( weight, ease );
 }
 
 
-void Skeleton::animation_speed( AnimationID animation, float speed )
+void Skeleton2D::animation_speed( AnimationID animation, float speed )
 {
 	MemoryAssert( bones != nullptr );
 	bones[0].animation_time( animation, speed );
 }
 
 
-void Skeleton::animation_time( AnimationID animation, float time )
+void Skeleton2D::animation_time( AnimationID animation, float time )
 {
 	MemoryAssert( bones != nullptr );
 	bones[0].animation_time( animation, time );
 }
 
 
-void Skeleton::set_color( const Color color )
+void Skeleton2D::set_color( const Color color )
 {
 	MemoryAssert( bones != nullptr );
 	bones[0].set_color( color );
 }
 
 
-void Skeleton::set_scale( const float scaleX, const float scaleY )
+void Skeleton2D::set_scale( const float scaleX, const float scaleY )
 {
 	MemoryAssert( bones != nullptr );
 	bones[0].set_scale( scaleX, scaleY );
 }
 
 
-void Skeleton::set_rotation( const float angle )
+void Skeleton2D::set_rotation( const float angle )
 {
 	MemoryAssert( bones != nullptr );
 	bones[0].set_rotation( angle );
 }
 
 
-void Skeleton::set_translation( const float x, const float y )
+void Skeleton2D::set_translation( const float x, const float y )
 {
 	MemoryAssert( bones != nullptr );
 	bones[0].set_translation( x, y );
 }
 
 
-void Skeleton::update( const Delta delta )
+void Skeleton2D::update( const Delta delta )
 {
 	MemoryAssert( bones != nullptr );
 	BinSkeleton &binSkeleton = binSkeletons[this->type];
@@ -515,7 +515,7 @@ void Skeleton::update( const Delta delta )
 }
 
 
-void Skeleton::draw( const Delta delta, float x, float y, Color color, float depth )
+void Skeleton2D::draw( const Delta delta, float x, float y, Color color, float depth )
 {
 	MemoryAssert( bones != nullptr );
 	BinSkeleton &binSkeleton = binSkeletons[this->type];

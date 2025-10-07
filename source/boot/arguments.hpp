@@ -106,7 +106,7 @@ struct Arguments
 
 		// Graphics
 		#if PIPELINE_OS_WINDOWS
-			parse_argument( argc, argv, "-gfx=", gfx, ARG_OPTIONAL, "opengl", "d3d11", "d3d12", "vulkan", "none" );
+			parse_argument( argc, argv, "-gfx=", gfx, ARG_OPTIONAL, "d3d11", "d3d12", "opengl", "vulkan", "none" );
 		#elif PIPELINE_OS_LINUX
 			parse_argument( argc, argv, "-gfx=", gfx, ARG_OPTIONAL, "opengl", "vulkan", "none" );
 		#elif PIPELINE_OS_MACOS

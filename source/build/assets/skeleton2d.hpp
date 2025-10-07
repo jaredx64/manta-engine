@@ -5,25 +5,31 @@
 #include <core/buffer.hpp>
 #include <core/string.hpp>
 
+#include <build/cache.hpp>
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct Skeleton
+struct Skeleton2D
 {
+	CacheID cacheID;
 	String name;
+	String path;
+	Buffer data;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 struct Skeleton2Ds
 {
-	void make_new( const Skeleton &skeleton );
-	void gather( const char *path, const bool recurse = true );
-	void load( const char *path );
-	void write();
+	void make_new( const Skeleton2D &skeleton );
 
-	Skeleton &operator[]( const u32 skeletonID ) { return skeletons[skeletonID]; }
+	usize gather( const char *path, const bool recurse = true );
+	void process( const char *path );
+	void build();
 
-	List<Skeleton> skeletons;
+	Skeleton2D &operator[]( const u32 skeletonID ) { return skeletons[skeletonID]; }
+
+	List<Skeleton2D> skeletons;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

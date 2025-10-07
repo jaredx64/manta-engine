@@ -6,6 +6,7 @@
 #include <core/string.hpp>
 #include <core/hashmap.hpp>
 
+#include <build/cache.hpp>
 #include <build/filesystem.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -233,47 +234,56 @@ struct ObjectFile
 namespace Objects
 {
 	// Output Paths
-	extern char pathSource[PATH_SIZE];
-	extern char pathHeader[PATH_SIZE];
+	extern char pathSourceObjects[PATH_SIZE];
+	extern char pathHeaderObjects[PATH_SIZE];
+	extern char pathHeaderSystem[PATH_SIZE];
 	extern char pathIntelliSense[PATH_SIZE];
-	extern FileTime timeCache;
 
 	// Output Contents
-	extern String intellisense;
 	extern String headerIncludes;
 	extern String sourceIncludes;
 	extern String header;
 	extern String source;
+	extern String system;
+	extern String intellisense;
 
 	// Object Files
 	extern List<ObjectFile> objectFiles;
 	extern List<ObjectFile *> objectFilesSorted;
-	extern usize objectFilesCount;
+
+	// Object Categories
 	extern HashMap<u32, String> objectTypes;
 	extern HashMap<u32, String> objectCategories;
 
+	// Stages
 	extern void begin();
-	extern void gather( const char *directory, const bool recurse );
+	extern void end();
+	extern usize gather( const char *directory, const bool recurse );
 	extern void parse();
-
 	extern void resolve();
 	extern void validate();
-	extern void generate();
-	extern void write();
+	extern void codegen();
 
 	extern void sort_objects( ObjectFile *object, u16 depth, List<ObjectFile *> &outList );
 
-	extern void generate_intellisense( String &output );
+	extern void codegen_intellisense( String &output );
 
-	extern void generate_header_system( String &output );
+	extern void codegen_header_system( String &output );
 	extern void generate_source_system( String &output );
 	extern void generate_source_system_category_types( String &output, const String &category );
 	extern u16 generate_source_system_category_types_mapped( String &output, const String &category );
 
-	extern void generate_header_objects( String &output );
-	extern void generate_source_objects( String &output );
+	extern void codegen_header_objects( String &output );
+	extern void codegen_source_objects( String &output );
 	extern void generate_source_objects_events( String &output );
 	extern String generate_source_objects_events_category( String &output, const u8 eventID, const String &category );
+
+	// Cache
+	extern Cache cache;
+	extern usize cacheFileCount;
+	extern void cache_read( const char *path );
+	extern void cache_write( const char *path );
+	extern void cache_validate();
 
 	// Override Error Macros
 	void ERROR_HANDLER_FUNCTION_DECL;

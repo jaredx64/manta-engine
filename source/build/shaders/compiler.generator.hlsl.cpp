@@ -340,6 +340,24 @@ void GeneratorHLSL::generate_stage( ShaderStage stage )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void GeneratorHLSL::generate_statement_for( NodeStatementFor *node )
+{
+	output.append( indent ).append( "[loop] for( " );
+	if( node->expr1 != nullptr ) { generate_node( node->expr1 ); }
+	output.append( "; " );
+	if( node->expr2 != nullptr ) { generate_node( node->expr2 ); } else { output.append( "true" ); }
+	output.append( ";" );
+	if( node->expr3 != nullptr ) { output.append( " " ); generate_node( node->expr3 ); }
+	output.append( " )\n" );
+
+	if( node->block != nullptr )
+	{
+		generate_node( node->block );
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void GeneratorHLSL::generate_function_declaration( NodeFunctionDeclaration *node )
 {
 	switch( node->functionType )

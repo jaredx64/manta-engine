@@ -43,11 +43,14 @@
 struct FileTime
 {
 #if PIPELINE_OS_WINDOWS
-	// Windows
-	FILETIME time;
+	FILETIME time = FILETIME { 0, 0 };
+	u64 as_u64() const
+	{
+		return ( static_cast<u64>( time.dwHighDateTime ) << 32 ) | static_cast<u64>( time.dwLowDateTime );
+	}
 #else
-	// POSIX
-	u64 time;
+	u64 time = 0;
+	u64 as_u64() const { return time; }
 #endif
 };
 
@@ -83,8 +86,8 @@ extern void path_get_filename( char *buffer, const usize size, const char *path 
 extern void path_get_extension( char *buffer, const usize size, const char *path );
 
 extern void path_change_extension( char *buffer, const usize size, const char *path, const char *extension );
-extern void path_remove_extension( char *path );
-extern void path_remove_extensions( char *path );
+extern void path_remove_extension( char *path, const usize size );
+extern void path_remove_extensions( char *path, const usize size );
 
 extern void swrite( const char *string, FILE *file );
 extern usize fsize( FILE *file );

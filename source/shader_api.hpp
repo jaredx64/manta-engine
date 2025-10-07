@@ -356,6 +356,7 @@ template <typename T> auto ddy_fine( T y );
 
 template <typename T, typename U> U mul( T x, U y );
 template <typename T> float length( T vector );
+template <typename T> T inverse( T matrix );
 template <typename T, typename U> float distance( T point1, U point2 );
 template <typename T, typename U> auto dot( T vector1, U vector2 );
 template <typename T, typename U> auto cross( T vector1, U vector2 );

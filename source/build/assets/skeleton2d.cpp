@@ -3,6 +3,8 @@
 #include <core/types.hpp>
 #include <core/debug.hpp>
 #include <core/list.hpp>
+#include <core/json.hpp>
+#include <core/checksum.hpp>
 
 #include <build/build.hpp>
 #include <build/assets.hpp>
@@ -11,56 +13,100 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Skeleton2Ds::make_new( const Skeleton &skeleton )
+struct CacheSkeleton2D
+{
+	usize offset;
+	usize size;
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Skeleton2Ds::make_new( const Skeleton2D &skeleton )
 {
 	skeletons.add( skeleton );
 }
 
 
-void Skeleton2Ds::gather( const char *path, const bool recurse )
+usize Skeleton2Ds::gather( const char *path, const bool recurse )
 {
-	// Gather & Load Skeletons
-	Timer timer;
+	// Gather Skeletons
 	List<FileInfo> files;
-	directory_iterate( files, path, ".spine", recurse );
-	for( FileInfo &fileInfo : files ) { load( fileInfo.path ); }
+	directory_iterate( files, path, ".skeleton2d", recurse );
 
-	// Log
-	if( verbose_output() )
+	// Process Skeletons
+	for( FileInfo &fileInfo : files )
 	{
-		const u32 count = files.size();
-		PrintColor( LOG_CYAN, TAB TAB "%u skeleton%s found in: %s", count, count == 1 ? "" : "es", path );
-		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+		Assets::cacheFileCount++;
+		process( fileInfo.path );
 	}
+
+	return files.size();
 }
 
 
-void Skeleton2Ds::load( const char *path )
+void Skeleton2Ds::process( const char *path )
 {
-	// Register Skeleton
-	Skeleton &skeleton = skeletons.add( { } );
+	// Local Directory
+	static char pathDirectory[PATH_SIZE];
+	path_get_directory( pathDirectory, sizeof( pathDirectory ), path );
 
-	// Build Cache
-	Assets::assetFileCount++;
-	if( !Build::cacheDirtyAssets )
+	// Register Definition File
+	AssetFile fileDefinition;
+	if( !asset_file_register( fileDefinition, path ) )
 	{
-		FileTime time;
-		file_time( path, &time );
-		Build::cacheDirtyAssets |= file_time_newer( time, Assets::timeCache );
+		Error( "Unable to locate skeleton2D file: %s", path );
+		return;
 	}
 
-	// Asset Name (extracted from <name>.asset)
-	char assetName[PATH_SIZE];
-	path_get_filename( assetName, sizeof( assetName ), path );
-	path_remove_extension( assetName );
-	skeleton.name = assetName;
+	// Open Definition JSON
+	String fileDefinitionContents;
+	if( !fileDefinitionContents.load( path ) )
+	{
+		Error( "Unable to open skeleton2d file: %s", path );
+		return;
+	}
+	JSON fileDefinitionJSON { fileDefinitionContents };
 
-	// Read Skeleton File
-	//ErrorIf( !skeleton.skeletonFile.load( path ), "Failed to load skeleton '%s'", path );
+	// Parse Definition JSON
+	static char pathSkeleton[PATH_SIZE];
+	String pathSkeletonRelative = fileDefinitionJSON.get_string( "path" );
+	ErrorIf( pathSkeletonRelative.length_bytes() == 0,
+		"Skeleton2D '%s' has an invalid path (required)", fileDefinition.name );
+	snprintf( pathSkeleton, sizeof( pathSkeleton ),
+		"%s" SLASH "%s", pathDirectory, pathSkeletonRelative.cstr() );
+
+	// Register Image File
+	AssetFile fileAsset;
+	if( !asset_file_register( fileAsset, pathSkeleton ) )
+	{
+		Error( "Skeleton2D '%s' - Unable to locate skeleton file: '%s'", fileDefinition.name, pathSkeleton );
+		return;
+	}
+
+	// Generate Cache ID
+	static char cacheIDBuffer[PATH_SIZE * 3];
+	memory_set( cacheIDBuffer, 0, sizeof( cacheIDBuffer ) );
+	snprintf( cacheIDBuffer, sizeof( cacheIDBuffer ), "skeleton2D %s|%llu|%s|%llu",
+		fileDefinition.path, fileDefinition.time.as_u64(),
+		fileAsset.path, fileAsset.time.as_u64() );
+	const CacheID cacheID = checksum_xcrc32( cacheIDBuffer, sizeof( cacheIDBuffer ), 0 );
+
+	// Check Cache
+	CacheSkeleton2D cacheSkeleton;
+	if( !Assets::cache.fetch( cacheID, cacheSkeleton ) )
+	{
+		Assets::cache.dirty |= true; // Dirty Cache
+	}
+
+	// Register Asset
+	Skeleton2D &asset = skeletons.add( Skeleton2D { } );
+	asset.cacheID = cacheID;
+	asset.name = fileDefinition.name;
+	asset.path = fileAsset.path;
 }
 
 
-void Skeleton2Ds::write()
+void Skeleton2Ds::build()
 {
 	Buffer &binary = Assets::binary;
 	String &header = Assets::header;
@@ -69,12 +115,29 @@ void Skeleton2Ds::write()
 
 	Timer timer;
 
-	// Binary - do nothing
+	// Load
 	{
-		for( Skeleton &skeleton : skeletons )
+		for( Skeleton2D &skeleton : skeletons )
 		{
-			// ...
+			CacheSkeleton2D cacheSkeleton;
+			if( Assets::cache.fetch( skeleton.cacheID, cacheSkeleton ) )
+			{
+				// Load from cached binary
+				skeleton.data.write_from_file( Build::pathOutputRuntimeBinary,
+					Assets::cacheReadOffset + cacheSkeleton.offset, cacheSkeleton.size );
+			}
+			else
+			{
+				// Load from data file
+				ErrorIf( !skeleton.data.load( skeleton.path ),
+					"Failed to load asset file: %s", skeleton.path.cstr() );
+			}
 		}
+	}
+
+	// Binary
+	{
+		// TODO: ...
 	}
 
 	// Header
@@ -83,8 +146,8 @@ void Skeleton2Ds::write()
 		assets_group( header );
 
 		// Enums
-		header.append( "enum_class_type\n(\n\tSkeleton2D, u32,\n\n" );
-		for( Skeleton &sk : skeletons ) { header.append( "\t" ).append( sk.name ).append( ",\n" ); }
+		header.append( "enum_class_type\n(\n\tSkeleton, u32,\n\n" );
+		for( Skeleton2D &sk : skeletons ) { header.append( "\t" ).append( sk.name ).append( ",\n" ); }
 		header.append( "\n\tNull = 0,\n" );
 		header.append( ");\n\n" );
 
@@ -111,7 +174,7 @@ void Skeleton2Ds::write()
 			char buffer[PATH_SIZE];
 			char name[PATH_SIZE];
 			source.append( "\tconst Assets::Skeleton2DEntry skeleton2Ds[skeleton2DCount] =\n\t{\n" );
-			for( Skeleton &skeleton : skeletons )
+			for( Skeleton2D &skeleton : skeletons )
 			{
 				path_get_filename( name, sizeof( name ), skeleton.name.cstr() );
 
@@ -134,7 +197,7 @@ void Skeleton2Ds::write()
 	if( verbose_output() )
 	{
 		const usize count = skeletons.size();
-		PrintColor( LOG_CYAN, "\t\tWrote %d skeleton2D%s", count, count == 1 ? "" : "s" );
+		PrintColor( LOG_CYAN, TAB TAB "Wrote %d skeleton2D%s", count, count == 1 ? "" : "s" );
 		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
 	}
 }

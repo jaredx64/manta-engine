@@ -13,6 +13,8 @@ extern float_m44 float_m44_transpose( const float_m44 &m );
 
 extern float_m44 float_m44_inverse( const float_m44 &m );
 
+extern float_m44 float_m44_inverse_row_major( const float_m44 &m );
+
 extern float_m44 float_m44_multiply( const float_m44 &a, const float_m44 &b );
 
 extern float_m44 float_m44_multiply_scalar( const float_m44 &a, const float scalar );

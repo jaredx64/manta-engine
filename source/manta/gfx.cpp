@@ -256,6 +256,9 @@ bool CoreGfx::free_shaders()
 void Gfx::frame_begin()
 {
 #if GRAPHICS_ENABLED
+	// Assert Rendering
+	AssertMsg( !CoreGfx::rendering, "Gfx::frame_begin() called without Gfx::frame_end()!" );
+
 	// Reset State
 	CoreGfx::state_reset();
 
@@ -280,6 +283,9 @@ void Gfx::frame_begin()
 void Gfx::frame_end()
 {
 #if GRAPHICS_ENABLED
+	// Assert Rendering
+	AssertMsg( CoreGfx::rendering, "Gfx::frame_end() called without Gfx::frame_begin()!" );
+
 	// Stop Rendering
 	CoreGfx::rendering = false;
 
@@ -744,7 +750,7 @@ void Gfx::shader_dispatch( const Shader shader, const u32 x, const u32 y, const 
 }
 
 
-void Gfx::set_shader_globals( const CoreGfxUniformBuffer::PipelineUniforms_t &globals )
+void Gfx::set_shader_globals( const CoreGfxUniformBuffer::UniformsPipeline_t &globals )
 {
 #if GRAPHICS_ENABLED
 	// Shader globals changes force a batch break
@@ -847,6 +853,7 @@ void GfxTexture2D::release() const
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+static GfxRenderTarget2DResource *RT_RESOURCE_BOUND[GFX_RENDER_TARGET_SLOT_COUNT] = { nullptr };
 
 static double_m44 RT_CACHE_MATRIX_MODEL;
 static double_m44 RT_CACHE_MATRIX_VIEW;
@@ -976,6 +983,10 @@ void GfxRenderTarget2D::bind( const int slot )
 #if GRAPHICS_ENABLED
 	AssertMsg( this->slot < 0, "%d", this->slot );
 
+	AssertMsg( RT_RESOURCE_BOUND[slot] == nullptr,
+		"Attempting to bind GfxRenderTarget2D when one is already bound!" );
+	RT_RESOURCE_BOUND[slot] = resource;
+
 	// Render target binding forces draw call
 	draw_call();
 
@@ -1020,6 +1031,10 @@ void GfxRenderTarget2D::release()
 #if GRAPHICS_ENABLED
 	Assert( this->slot >= 0 );
 
+	AssertMsg( RT_RESOURCE_BOUND[slot] == resource,
+		"Attempting to release GfxRenderTarget2D that is not bound!" );
+	RT_RESOURCE_BOUND[slot] = nullptr;
+
 	// Render target releasing forces draw call
 	draw_call();
 
@@ -1057,6 +1072,10 @@ namespace CoreGfx
 	double_m44 matrixView;
 	double_m44 matrixPerspective;
 	double_m44 matrixMVP;
+	double_m44 matrixModelInverse;
+	double_m44 matrixViewInverse;
+	double_m44 matrixPerspectiveInverse;
+	double_m44 matrixMVPInverse;
 }
 
 
@@ -1065,13 +1084,18 @@ void CoreGfx::update_matrix_mvp()
 #if GRAPHICS_ENABLED
 	CoreGfx::matrixMVP = double_m44_multiply( CoreGfx::matrixPerspective,
 		double_m44_multiply( CoreGfx::matrixView, CoreGfx::matrixModel ) );
+	CoreGfx::matrixMVPInverse = double_m44_multiply( CoreGfx::matrixModelInverse,
+		double_m44_multiply( CoreGfx::matrixViewInverse, CoreGfx::matrixPerspectiveInverse ) );
 
-	auto &globals = GfxUniformBuffer::PipelineUniforms;
+	auto &globals = GfxUniformBuffer::UniformsPipeline;
 	globals.matrixModel = float_m44_from_double_m44( CoreGfx::matrixModel );
 	globals.matrixView = float_m44_from_double_m44( CoreGfx::matrixView );
 	globals.matrixPerspective = float_m44_from_double_m44( CoreGfx::matrixPerspective );
 	globals.matrixMVP = float_m44_from_double_m44( CoreGfx::matrixMVP );
-
+	globals.matrixModelInverse = float_m44_from_double_m44( CoreGfx::matrixModelInverse );
+	globals.matrixViewInverse = float_m44_from_double_m44( CoreGfx::matrixViewInverse );
+	globals.matrixPerspectiveInverse = float_m44_from_double_m44( CoreGfx::matrixPerspectiveInverse );
+	globals.matrixMVPInverse = float_m44_from_double_m44( CoreGfx::matrixMVPInverse );
 	Gfx::set_shader_globals( globals );
 #endif
 };
@@ -1081,6 +1105,7 @@ void Gfx::set_matrix_model( const double_m44 &matrix )
 {
 #if GRAPHICS_ENABLED
 	CoreGfx::matrixModel = matrix;
+	CoreGfx::matrixModelInverse = double_m44_inverse( matrix );
 	CoreGfx::update_matrix_mvp();
 #endif
 }
@@ -1090,6 +1115,7 @@ void Gfx::set_matrix_view( const double_m44 &matrix )
 {
 #if GRAPHICS_ENABLED
 	CoreGfx::matrixView = matrix;
+	CoreGfx::matrixViewInverse = double_m44_inverse( matrix );
 	CoreGfx::update_matrix_mvp();
 #endif
 }
@@ -1099,6 +1125,7 @@ void Gfx::set_matrix_perspective( const double_m44 &matrix )
 {
 #if GRAPHICS_ENABLED
 	CoreGfx::matrixPerspective = matrix;
+	CoreGfx::matrixPerspectiveInverse = double_m44_inverse( matrix );
 	CoreGfx::update_matrix_mvp();
 #endif
 }
@@ -1108,8 +1135,11 @@ void Gfx::set_matrix_mvp( const double_m44 &matModel, const double_m44 &matView,
 {
 #if GRAPHICS_ENABLED
 	CoreGfx::matrixModel = matModel;
+	CoreGfx::matrixModelInverse = double_m44_inverse( matModel );
 	CoreGfx::matrixView = matView;
+	CoreGfx::matrixViewInverse = double_m44_inverse( matView );
 	CoreGfx::matrixPerspective = matPerspective;
+	CoreGfx::matrixPerspectiveInverse = double_m44_inverse( matPerspective );
 	CoreGfx::update_matrix_mvp();
 #endif
 }
@@ -1120,11 +1150,17 @@ void Gfx::set_matrix_mvp_2d_orthographic( const double x, const double y, const 
 {
 #if GRAPHICS_ENABLED
 	CoreGfx::matrixModel = double_m44_build_identity();
+	CoreGfx::matrixModelInverse = double_m44_inverse( CoreGfx::matrixModel );
+
 	double_m44 matrixView = double_m44_build_rotation_z( angle * DEG2RAD );
 	matrixView = double_m44_multiply( double_m44_build_scaling( zoom, zoom, 1.0 ), matrixView );
 	matrixView = double_m44_multiply( double_m44_build_translation( -x, -y, 0.0 ), matrixView );
 	CoreGfx::matrixView = matrixView;
+	CoreGfx::matrixViewInverse = double_m44_inverse( CoreGfx::matrixView );
+
 	CoreGfx::matrixPerspective = double_m44_build_orthographic( 0.0, width, 0.0, height, znear, zfar );
+	CoreGfx::matrixPerspectiveInverse = double_m44_inverse( CoreGfx::matrixPerspective );
+
 	CoreGfx::update_matrix_mvp();
 #endif
 }
@@ -1136,9 +1172,16 @@ void Gfx::set_matrix_mvp_3d_perspective( const double fov, const double aspect, 
 {
 #if GRAPHICS_ENABLED
 	AssertMsg( znear > 0.0, "znear must be > 0.0f!" );
+
 	CoreGfx::matrixModel = double_m44_build_identity();
+	CoreGfx::matrixModelInverse = double_m44_inverse( CoreGfx::matrixModel );
+
 	CoreGfx::matrixView = double_m44_build_lookat( x, y, z, xto, yto, zto, xup, yup, zup );
+	CoreGfx::matrixViewInverse = double_m44_inverse( CoreGfx::matrixView );
+
 	CoreGfx::matrixPerspective = double_m44_build_perspective( fov, aspect, znear, zfar );
+	CoreGfx::matrixPerspectiveInverse = double_m44_inverse( CoreGfx::matrixPerspective );
+
 	CoreGfx::update_matrix_mvp();
 #endif
 }
@@ -1163,6 +1206,30 @@ const double_m44 &Gfx::get_matrix_perspective()
 
 
 const double_m44 &Gfx::get_matrix_mvp()
+{
+	return CoreGfx::matrixMVP;
+}
+
+
+const double_m44 &Gfx::get_matrix_view_inverse()
+{
+	return CoreGfx::matrixView;
+}
+
+
+const double_m44 &Gfx::get_matrix_model_inverse()
+{
+	return CoreGfx::matrixModel;
+}
+
+
+const double_m44 &Gfx::get_matrix_perspective_inverse()
+{
+	return CoreGfx::matrixPerspective;
+}
+
+
+const double_m44 &Gfx::get_matrix_mvp_inverse()
 {
 	return CoreGfx::matrixMVP;
 }

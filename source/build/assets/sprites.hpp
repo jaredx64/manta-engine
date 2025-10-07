@@ -27,9 +27,10 @@ struct Sprite
 struct Sprites
 {
 	void make_new( const Sprite &sprite );
-	void gather( const char *path, const bool recurse = true );
-	void load( const char *path );
-	void write();
+
+	usize gather( const char *path, const bool recurse = true );
+	void process( const char *path );
+	void build();
 
 	Sprite &operator[]( const u32 spriteID ) { return sprites[spriteID]; }
 

@@ -3,8 +3,15 @@
 #include <config.hpp>
 #include <pipeline.hpp>
 
+#include <core/checksum.hpp>
+
 #include <build/assets.hpp>
 #include <build/shaders/compiler.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct CacheShader { usize dummy = 0LLU; };
+struct CacheGfx { usize fileCount = 0LLU; };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -21,10 +28,6 @@ namespace Gfx
 	String sourceGfx;
 	String headerAPI;
 	String sourceAPI;
-
-	// Cache
-	usize shaderFileCount = 0;
-	FileTime timeCache;
 
 	// Shaders
 	List<FileInfo> shaderFiles;
@@ -45,6 +48,14 @@ namespace Gfx
 	// Instance Structs
 	List<InstanceFormat> instanceFormats;
 	HashMap<u32, u32> instanceFormatCache;
+
+	// Cache
+	Cache cache;
+	usize cacheReadOffset = 0LLU;
+	usize cacheFileCount = 0LLU;
+
+	// Binary
+	Buffer binary;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -56,47 +67,42 @@ void Gfx::begin()
 	strjoin( pathSourceGfx, Build::pathOutput, SLASH "generated" SLASH "gfx.generated.cpp" );
 	strjoin( pathHeaderAPI, Build::pathOutput, SLASH "generated" SLASH "gfx.api.generated.hpp" );
 	strjoin( pathSourceAPI, Build::pathOutput, SLASH "generated" SLASH "gfx.api.generated.cpp" );
+}
 
-	// Cache
-	FileTime timeHeaderGfx;
-	if( !file_time( pathHeaderGfx, &timeHeaderGfx ) ) { Build::cacheDirtyShaders = true; return; }
-	FileTime timeSourceGfx;
-	if( !file_time( pathSourceGfx, &timeSourceGfx ) ) { Build::cacheDirtyShaders = true; return; }
-	FileTime timeHeaderAPI;
-	if( !file_time( pathHeaderAPI, &timeHeaderAPI ) ) { Build::cacheDirtyShaders = true; return; }
-	FileTime timeSourceAPI;
-	if( !file_time( pathSourceAPI, &timeSourceAPI ) ) { Build::cacheDirtyShaders = true; return; }
 
-	FileTime timeCacheGfx = file_time_newer( timeHeaderGfx, timeSourceGfx ) ? timeHeaderGfx : timeSourceGfx;
-	FileTime timeCacheAPI = file_time_newer( timeHeaderAPI, timeSourceAPI ) ? timeHeaderAPI : timeSourceAPI;
-	timeCache = file_time_newer( timeCacheGfx, timeCacheAPI ) ? timeCacheGfx : timeCacheAPI;
+void Gfx::end()
+{
+	// ...
 }
 
 
 u32 Gfx::gather( const char *path, const bool recurse )
 {
 	// Gather Shaders
-	Timer timer;
 	const usize start = shaderFiles.size();
 	directory_iterate( shaderFiles, path, ".shader", true );
 
 	// Check Cache
-	for( FileInfo &fileInfo : shaderFiles )
+	for( usize i = start; i < shaderFiles.size(); i++ )
 	{
-		if( Build::cacheDirtyShaders ) { break; }
-		FileTime timeShader;
-		file_time( fileInfo.path, &timeShader );
-		Build::cacheDirtyShaders |= file_time_newer( timeShader, timeCache );
+		FileInfo &file = shaderFiles[i];
+
+		static char cacheIDBuffer[PATH_SIZE * 2];
+		memory_set( cacheIDBuffer, 0, sizeof( cacheIDBuffer ) );
+		snprintf( cacheIDBuffer, sizeof( cacheIDBuffer ), "shader %s|%llu",
+			file.path, file.time.as_u64() );
+		const CacheID cacheID = checksum_xcrc32( cacheIDBuffer, sizeof( cacheIDBuffer ), 0 );
+
+		CacheShader cacheShader;
+		if( !Gfx::cache.dirty && !Gfx::cache.fetch( cacheID, cacheShader ) )
+		{
+			Gfx::cache.dirty |= true;
+		}
+		Gfx::cache.store( cacheID, cacheShader );
+		Gfx::cacheFileCount++;
 	}
 
-	// Log
-	const u32 shaderCount = shaderFiles.size() - start;
-	if( verbose_output() )
-	{
-		PrintColor( LOG_CYAN, TAB TAB "%u shader%s found in: %s", shaderCount, shaderCount == 1 ? "" : "s", path );
-		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
-	}
-	return shaderCount;
+	return shaderFiles.size() - start;
 }
 
 
@@ -119,58 +125,50 @@ void Gfx::build()
 		// Register
 		char shaderName[PATH_SIZE];
 		path_get_filename( shaderName, sizeof( shaderName ), fileInfo.path );
-		path_remove_extension( shaderName );
+		path_remove_extension( shaderName, sizeof( shaderName ) );
 
 		// Compile Shader
 		Shader &shader = Gfx::shaders.add( Shader { shaderName, shaderType } );
 		compile_shader( shader, fileInfo.path );
 	}
+
+	// Binary
+	for( Shader &shader : shaders )
+	{
+		// Write Vertex Shader
+		String &codeVertex = shader.outputs[ShaderStage_Vertex];
+		if( codeVertex.length_bytes() > 0 )
+		{
+			shader.size[ShaderStage_Vertex] = codeVertex.length_bytes();
+			const usize binaryOffset = Gfx::binary.write( codeVertex.data, shader.size[ShaderStage_Vertex] );
+			shader.offset[ShaderStage_Vertex] = binaryOffset;
+		}
+
+		// Write Fragment Shader
+		String &codeFragment = shader.outputs[ShaderStage_Fragment];
+		if( codeFragment.length_bytes() > 0 )
+		{
+			shader.size[ShaderStage_Fragment] = codeFragment.length_bytes();
+			const usize binaryOffset = Gfx::binary.write( codeFragment.data, shader.size[ShaderStage_Fragment] );
+			shader.offset[ShaderStage_Fragment] = binaryOffset;
+		}
+
+		// Write Compute Shader
+		String &codeCompute = shader.outputs[ShaderStage_Compute];
+		if( codeCompute.length_bytes() > 0 )
+		{
+			shader.size[ShaderStage_Compute] = codeCompute.length_bytes();
+			const usize binaryOffset = Gfx::binary.write( codeCompute.data, shader.size[ShaderStage_Compute] );
+			shader.offset[ShaderStage_Compute] = binaryOffset;
+		}
+	}
 }
 
 
-void Gfx::write()
+void Gfx::codegen()
 {
 	Buffer &binary = Assets::binary;
 	Timer timer;
-
-	// Binary
-	{
-		for( Shader &shader : shaders )
-		{
-			// Write Vertex Shader
-			String &codeVertex = shader.outputs[ShaderStage_Vertex];
- 			if( codeVertex.length_bytes() > 0 )
-			{
-				ErrorIf( binary.tell > U32_MAX, "Binary is too large for vertex shader!" );
-				shader.offset[ShaderStage_Vertex] = binary.tell;
-				ErrorIf( codeVertex.length_bytes() > U32_MAX, "Vertex shader is too large!" );
-				shader.size[ShaderStage_Vertex] = static_cast<u32>( codeVertex.length_bytes() );
-				binary.write( codeVertex.data, shader.size[ShaderStage_Vertex] );
-			}
-
-			// Write Fragment Shader
-			String &codeFragment = shader.outputs[ShaderStage_Fragment];
- 			if( codeFragment.length_bytes() > 0 )
-			{
-				ErrorIf( binary.tell >= U32_MAX, "Binary is too large for fragment shader!" );
-				shader.offset[ShaderStage_Fragment] = binary.tell;
-				ErrorIf( codeFragment.length_bytes() >= U32_MAX, "Fragment shader is too large!" );
-				shader.size[ShaderStage_Fragment] = static_cast<u32>( codeFragment.length_bytes() );
-				binary.write( codeFragment.data, shader.size[ShaderStage_Fragment] );
-			}
-
-			// Write Compute Shader
-			String &codeCompute = shader.outputs[ShaderStage_Compute];
- 			if( codeCompute.length_bytes() > 0 )
-			{
-				ErrorIf( binary.tell > U32_MAX, "Binary is too large for compute shader!" );
-				shader.offset[ShaderStage_Compute] = binary.tell;
-				ErrorIf( codeCompute.length_bytes() > U32_MAX, "Compute shader is too large!" );
-				shader.size[ShaderStage_Compute] = static_cast<u32>( codeCompute.length_bytes() );
-				binary.write( codeCompute.data, shader.size[ShaderStage_Compute] );
-			}
-		}
-	}
 
 	// Header (Gfx)
 	{
@@ -184,12 +182,12 @@ void Gfx::write()
 		{
 			assets_struct( header,
 				"ShaderEntry",
-				"u32 offsetVertex;",
-				"u32 sizeVertex;",
-				"u32 offsetFragment;",
-				"u32 sizeFragment;",
-				"u32 offsetCompute;",
-				"u32 sizeCompute;",
+				"usize offsetVertex;",
+				"usize sizeVertex;",
+				"usize offsetFragment;",
+				"usize sizeFragment;",
+				"usize offsetCompute;",
+				"usize sizeCompute;",
 				"u32 vertexFormat;",
 				"u32 instanceFormat;",
 				"const char *name;" );
@@ -235,7 +233,8 @@ void Gfx::write()
 			header.append( "\ttemplate <typename T> consteval u32 vertex_format_id() { return 0; }\n" );
 			for( VertexFormat &vertexFormat : Gfx::vertexFormats )
 			{
-				header.append( "\ttemplate <> consteval u32 vertex_format_id<GfxVertex::" ).append( vertexFormat.name );
+				header.append( "\ttemplate <> consteval u32 vertex_format_id<GfxVertex::" );
+				header.append( vertexFormat.name );
 				header.append( ">() { return " ).append( static_cast<int>( vertexFormat.id ) ).append( "; }\n" );
 			}
 			header.append( "}\n\n" );
@@ -247,8 +246,10 @@ void Gfx::write()
 			header.append( "\ttemplate <typename T> consteval u32 instance_format_id() { return 0; }\n" );
 			for( InstanceFormat &instanceFormat : Gfx::instanceFormats )
 			{
-				header.append( "\ttemplate <> consteval u32 instance_format_id<GfxInstance::" ).append( instanceFormat.name );
-				header.append( ">() { return " ).append( static_cast<int>( instanceFormat.id ) ).append( "; }\n" );
+				header.append( "\ttemplate <> consteval u32 instance_format_id<GfxInstance::" );
+				header.append( instanceFormat.name );
+				header.append( ">() { return " ).append( static_cast<int>( instanceFormat.id ) );
+				header.append( "; }\n" );
 			}
 			header.append( "}\n\n" );
 		}
@@ -310,6 +311,7 @@ void Gfx::write()
 	{
 		String &source = Gfx::sourceGfx;
 		source.append( "#include <gfx.generated.hpp>\n\n" );
+		source.append( "#include <binary.generated.hpp>\n\n" );
 		source.append( "#include <core/memory.hpp>\n\n" );
 		source.append( "#include <manta/gfx.hpp>\n\n" );
 
@@ -318,10 +320,12 @@ void Gfx::write()
 			source.append( "namespace CoreGfx\n{\n" );
 
 			char buffer[PATH_SIZE];
+			source.append( "#define OFFSET ( BINARY_OFFSET_GFX )\n" );
 			source.append( "\tconst ShaderEntry shaderEntries[shaderCount] =\n\t{\n" );
 			for( Shader &shader : shaders )
 			{
-				snprintf( buffer, PATH_SIZE, "\t\t{ %u, %u, %u, %u, %u, %u, %u, %u, \"%s\" },",
+				snprintf( buffer, PATH_SIZE,
+					"\t\t{ OFFSET + %llu, %llu, OFFSET + %llu, %llu, OFFSET + %llu, %llu, %u, %u, \"%s\" },",
 					shader.offset[ShaderStage_Vertex],
 					shader.size[ShaderStage_Vertex],
 					shader.offset[ShaderStage_Fragment],
@@ -752,6 +756,49 @@ void Gfx::write_source_api_vulkan( String &source )
 {
 	// TODO
 	Error( "Vulkan unsupported!" );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Gfx::cache_read( const char *path )
+{
+	Gfx::cache.dirty |= Build::cache.dirty;
+
+	// Graphics Cache
+	if( !Gfx::cache.dirty )
+	{
+		Gfx::cache.read( path );
+		Gfx::cache.dirty |= Gfx::cache.dirty;
+	}
+
+	// Codegen Cache
+	AssetFile codegen;
+	if( !asset_file_register( codegen, pathHeaderGfx ) ) { Gfx::cache.dirty = true; return; }
+	if( !asset_file_register( codegen, pathSourceGfx ) ) { Gfx::cache.dirty = true; return; }
+	if( !asset_file_register( codegen, pathHeaderAPI ) ) { Gfx::cache.dirty = true; return; }
+	if( !asset_file_register( codegen, pathSourceAPI ) ) { Gfx::cache.dirty = true; return; }
+}
+
+
+void Gfx::cache_write( const char *path )
+{
+	if( !Gfx::cache.dirty ) { return; }
+	Gfx::cache.write( path );
+}
+
+
+void Gfx::cache_validate()
+{
+	Gfx::cache.dirty |= Build::cache.dirty;
+
+	// Validate file count
+	CacheGfx cacheGfx;
+	if( !Gfx::cache.fetch( 0, cacheGfx ) ) { Gfx::cache.dirty |= true; }
+	Gfx::cache.dirty |= ( Gfx::cacheFileCount != cacheGfx.fileCount );
+
+	// Cache file count
+	cacheGfx.fileCount = Gfx::cacheFileCount;
+	Gfx::cache.store( 0, cacheGfx );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

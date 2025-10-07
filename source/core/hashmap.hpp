@@ -157,7 +157,7 @@ public:
 		MemoryAssert( deadslot == nullptr );
 		deadslot = reinterpret_cast<bool *>( memory_alloc( capacity * sizeof( bool ) ) );
 
-		// Initialize slots
+		// Initialize new slots
 		for( u32 i = 0; i < capacity; i++ )
 		{
 			deadslot[i] = false;

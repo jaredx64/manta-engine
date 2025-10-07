@@ -14,6 +14,8 @@ struct Texture
 {
 	Texture( String name ) : name( name ) { }
 
+	List<u32> cacheIDs; // Glyph dependencies
+
 	String name;
 	usize offset;
 	u16 width = 0;
@@ -22,8 +24,11 @@ struct Texture
 
 	bool atlasTexture = true;
 	bool generateMips = false;
+
 	List<GlyphID> glyphs;
-	GlyphID add_glyph( Texture2DBuffer &&textureBuffer );
+
+	GlyphID add_glyph( const Glyph &glyph );
+	GlyphID add_glyph( Glyph &&glyph );
 	void pack();
 };
 
@@ -34,11 +39,10 @@ using TextureID = u16;
 struct Textures
 {
 	TextureID make_new( String &name );
-	TextureID make_new( String &name, Texture2DBuffer &&textureBuffer );
 
-	void gather( const char *path, const bool recurse = true );
-	void load( const char *path );
-	void write();
+	usize gather( const char *path, const bool recurse = true );
+	void process( const char *path );
+	void build();
 
 	Texture &operator[]( const TextureID id ) { return textures[id]; }
 

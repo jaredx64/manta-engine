@@ -1,5 +1,7 @@
 #include <build/assets/sprites.hpp>
 
+#include <vendor/stb/stb_image.hpp>
+
 #include <core/types.hpp>
 #include <core/debug.hpp>
 #include <core/list.hpp>
@@ -10,6 +12,18 @@
 #include <build/assets/textures.hpp>
 #include <build/filesystem.hpp>
 
+// TODO: temporary
+#include <core/checksum.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct CacheSprite
+{
+	int imageWidth;
+	int imageHeight;
+	int imageChannels;
+};
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void Sprites::make_new( const Sprite &sprite )
@@ -18,111 +32,147 @@ void Sprites::make_new( const Sprite &sprite )
 }
 
 
-void Sprites::gather( const char *path, const bool recurse )
+usize Sprites::gather( const char *path, const bool recurse )
 {
-	// Gather & Load Sprites
-	Timer timer;
+	// Gather Sprites
 	List<FileInfo> files;
 	directory_iterate( files, path, ".sprite", recurse );
-	for( FileInfo &fileInfo : files ) { load( fileInfo.path ); }
 
-	// Log
-	if( verbose_output() )
+	// Process Sprites
+	for( FileInfo &fileInfo : files )
 	{
-		const u32 count = files.size();
-		PrintColor( LOG_CYAN, TAB TAB "%u sprite%s found in: %s", count, count == 1 ? "" : "s", path );
-		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+		Assets::cacheFileCount++;
+		process( fileInfo.path );
 	}
+
+	return files.size();
 }
 
 
-void Sprites::load( const char *path )
+void Sprites::process( const char *path )
 {
-	// Open sprite file
-	String spriteFile;
-	ErrorIf( !spriteFile.load( path ), "Unable to load sprite file: %s", path );
-	JSON spriteJSON { spriteFile };
+	// Local Directory
+	static char pathDirectory[PATH_SIZE];
+	path_get_directory( pathDirectory, sizeof( pathDirectory ), path );
 
-	// Build Cache
-	Assets::assetFileCount++;
-	if( !Build::cacheDirtyAssets )
+	// Register Definition File
+	AssetFile fileDefinition;
+	if( !asset_file_register( fileDefinition, path ) )
 	{
-		FileTime time;
-		file_time( path, &time );
-		Build::cacheDirtyAssets |= file_time_newer( time, Assets::timeCache );
+		Error( "Unable to locate sprite file: %s", path );
+		return;
 	}
 
-	// Sprite Name (extracted from <name>.sprite)
-	char spriteName[PATH_SIZE];
-	path_get_filename( spriteName, sizeof( spriteName ), path );
-	path_remove_extension( spriteName );
-	String name = spriteName;
-
-	// Read file (json)
-	String texturePath = spriteJSON.get_string( "path" );
-	ErrorIf( texturePath.length_bytes() == 0, "Sprite '%s' has an invalid path (required)", path );
-	String atlas = spriteJSON.get_string( "atlas" );
-	ErrorIf( atlas.length_bytes() == 0, "Sprite '%s' has an invalid atlas texture (required)", path );
-	atlas.insert( 0, "atlas_" );
-	int count = spriteJSON.get_int( "count", 1 );
-	ErrorIf( count < 1, "Sprite '%s' has an invalid count", path );
-	int xorigin = spriteJSON.get_int( "xorigin", 0 );
-	int yorigin = spriteJSON.get_int( "yorigin", 0 );
-
-	// Load texture (try relative path first)
-	char pathRelative[PATH_SIZE];
-	path_get_directory( pathRelative, sizeof( pathRelative ), path );
-	strappend( pathRelative, SLASH );
-	strappend( pathRelative, texturePath.cstr() );
-	Texture2DBuffer spriteTexture { pathRelative };
-	if( !spriteTexture )
+	// Open Definition JSON
+	String fileDefinitionContents;
+	if( !fileDefinitionContents.load( path ) )
 	{
-		// Relative path failed -- try absolute path
-		spriteTexture.load( texturePath.cstr() );
-		ErrorIf( !spriteTexture, "Unable to load texture for sprite %s (texture: %s)",
-			path, texturePath.cstr() );
+		Error( "Unable to open sprite file: %s", path );
+		return;
 	}
+	JSON fileDefinitionJSON { fileDefinitionContents };
+
+	// Parse Definition JSON
+	static char pathImage[PATH_SIZE];
+	String pathImageRelative = fileDefinitionJSON.get_string( "path" );
+	ErrorIf( pathImageRelative.length_bytes() == 0,
+		"Sprite '%s' has an invalid path (required)", fileDefinition.name );
+	snprintf( pathImage, sizeof( pathImage ),
+		"%s" SLASH "%s", pathDirectory, pathImageRelative.cstr() );
+
+	String atlasName = fileDefinitionJSON.get_string( "atlas", "default" );
+	ErrorIf( atlasName.length_bytes() == 0,
+		"Sprite '%s' has an invalid atlas (must not be null)", fileDefinition.name );
+	atlasName.insert( 0, "atlas_" );
+
+	int imageWidth = 0;
+	int imageHeight = 0;
+	int imageChannels = 0;
+	const int count = fileDefinitionJSON.get_int( "count", 1 );
+	ErrorIf( count < 1, "Sprite '%s' has an invalid count (must be >= 1)", fileDefinition.name );
+
+	const int xorigin = fileDefinitionJSON.get_int( "xorigin", 0 );
+	const int yorigin = fileDefinitionJSON.get_int( "yorigin", 0 );
+
+	// Register Image File
+	AssetFile fileImage;
+	if( !asset_file_register( fileImage, pathImage ) )
+	{
+		Error( "Sprite '%s' - Unable to locate image file: '%s'", fileDefinition.name, pathImage );
+		return;
+	}
+
+	// Generate Cache ID
+	static char cacheIDBuffer[PATH_SIZE * 3];
+	memory_set( cacheIDBuffer, 0, sizeof( cacheIDBuffer ) );
+	snprintf( cacheIDBuffer, sizeof( cacheIDBuffer ), "sprite %s|%llu|%s|%llu",
+		fileDefinition.path, fileDefinition.time.as_u64(),
+		fileImage.path, fileImage.time.as_u64() );
+	const CacheID cacheID = checksum_xcrc32( cacheIDBuffer, sizeof( cacheIDBuffer ), 0 );
+
+	// Check Cache
+	CacheSprite cacheSprite;
+	if( Assets::cache.fetch( cacheID, cacheSprite ) )
+	{
+		imageWidth = cacheSprite.imageWidth;
+		imageHeight = cacheSprite.imageHeight;
+		imageChannels = cacheSprite.imageChannels;
+	}
+	else
+	{
+		Assets::cache.dirty |= true; // Dirty Cache
+		stbi_info( fileImage.path, &imageWidth, &imageHeight, &imageChannels );
+	}
+
+	// Validate Image Dimensions
+	ErrorIf( imageWidth <= 0 || imageHeight <= 0 || imageChannels <= 0,
+		"Sprite '%s' has invalid dimensions: (w: %d, h: %d, c: %d)",
+		imageWidth, imageHeight, imageChannels );
+	ErrorIf( imageWidth > U16_MAX || imageHeight > U16_MAX || imageChannels > 4,
+		"Sprite '%s' has invalid dimensions: (w: %d, h: %d, c: %d)",
+		imageWidth, imageHeight, imageChannels );
 
 	// Register Sprite
-	Sprite sprite;
-	sprite.name = name;
-	sprite.count = count;
-	sprite.width = spriteTexture.width / count;
-	sprite.height = spriteTexture.height;
-	sprite.xorigin = xorigin;
-	sprite.yorigin = yorigin;
-
-	// Pack as atlas
-	sprite.textureID = Assets::textures.make_new( atlas );
+	Sprite &sprite = sprites.add( Sprite { } );
+	sprite.name = fileDefinition.name;
+	sprite.count = static_cast<u16>( count );
+	sprite.width = static_cast<u16>( imageWidth / count );
+	sprite.height = static_cast<u16>( imageHeight );
+	sprite.xorigin = static_cast<i16>( xorigin );
+	sprite.yorigin = static_cast<i16>( yorigin );
+	sprite.textureID = Assets::textures.make_new( atlasName );
 	sprite.glyphID = GLYPHID_MAX;
 
 	// Split sprite into individual glyphs
 	for( u16 i = 0; i < sprite.count; i++ )
 	{
-		Texture2DBuffer glyphTexture { sprite.width, sprite.height };
-
-		u16 glyphU1 = sprite.width * i;
-		u16 glyphV1 = 0;
-		u16 glyphU2 = glyphU1 + sprite.width;
-		u16 glyphV2 = sprite.height;
-
-		glyphTexture.splice( spriteTexture, glyphU1, glyphV1, glyphU2, glyphV2, 0, 0 );
+		Glyph glyph;
+#if 0
+		snprintf( cacheIDBuffer, sizeof( cacheIDBuffer ), "subimg %u|%u", cacheID, i );
+		glyph.cacheID = checksum_xcrc32( cacheIDBuffer, sizeof( cacheIDBuffer ), 0 );
+#else
+		glyph.cacheID = cacheID + i;
+#endif
+		glyph.imageX1 = sprite.width * i;
+		glyph.imageY1 = 0;
+		glyph.imageX2 = glyph.imageX1 + sprite.width;
+		glyph.imageY2 = sprite.height;
+		glyph.texturePath = pathImage;
 
 		Texture &texture = Assets::textures[sprite.textureID];
-		GlyphID glyphID = texture.add_glyph( static_cast<Texture2DBuffer &&>( glyphTexture ) );
+		GlyphID glyphID = texture.add_glyph( static_cast<Glyph &&>( glyph ) );
 		if( sprite.glyphID == GLYPHID_MAX ) { sprite.glyphID = glyphID; } // Store the first glyph only
 	}
 
-	// Free spriteTexture
-	ErrorIf( sprite.glyphID == GLYPHID_MAX, "Failed to split sprite glyphs!" );
-	spriteTexture.free();
-
-	// Register Sprite
-	sprites.add( sprite );
+	// Cache
+	cacheSprite.imageWidth = imageWidth;
+	cacheSprite.imageHeight = imageHeight;
+	cacheSprite.imageChannels = imageChannels;
+	Assets::cache.store( cacheID, cacheSprite );
 }
 
 
-void Sprites::write()
+void Sprites::build()
 {
 	Buffer &binary = Assets::binary;
 	String &header = Assets::header;
@@ -131,7 +181,12 @@ void Sprites::write()
 
 	Timer timer;
 
-	// Binary - do nothing
+	// Load
+	{
+		// ...
+	}
+
+	// Binary
 	{
 		// ...
 	}
@@ -198,7 +253,7 @@ void Sprites::write()
 	if( verbose_output() )
 	{
 		const usize count = sprites.size();
-		PrintColor( LOG_CYAN, "\t\tWrote %d sprite%s", count, count == 1 ? "" : "s" );
+		PrintColor( LOG_CYAN, TAB TAB "Wrote %d sprite%s", count, count == 1 ? "" : "s" );
 		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
 	}
 }

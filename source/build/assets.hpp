@@ -2,7 +2,9 @@
 
 #include <core/buffer.hpp>
 #include <core/string.hpp>
+#include <core/hashmap.hpp>
 
+#include <build/cache.hpp>
 #include <build/filesystem.hpp>
 
 #include <build/assets/data.hpp>
@@ -12,13 +14,25 @@
 #include <build/assets/materials.hpp>
 #include <build/assets/fonts.hpp>
 #include <build/assets/sounds.hpp>
-#include <build/assets/meshes.hpp>
 #include <build/assets/skeleton2d.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct CacheAssetsBinary
+{
+	usize offset;
+	usize size;
+};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 namespace Assets
 {
+	// Stages
+	extern void begin();
+	extern void end();
+	extern void codegen();
+
 	// Output Paths
 	extern char pathHeader[PATH_SIZE];
 	extern char pathSource[PATH_SIZE];
@@ -28,10 +42,6 @@ namespace Assets
 	extern String header;
 	extern Buffer binary;
 
-	// Cache
-	extern usize assetFileCount;
-	extern FileTime timeCache;
-
 	// Asset Types
 	extern DataAssets dataAssets;
 	extern Textures textures;
@@ -40,12 +50,36 @@ namespace Assets
 	extern Materials materials;
 	extern Fonts fonts;
 	extern Sounds sounds;
-	extern Meshes meshes;
 	extern Skeleton2Ds skeleton2Ds;
 
-	// Setup
-	extern void begin();
+	// Cache
+	extern Cache cache;
+	extern usize cacheReadOffset;
+	extern usize cacheFileCount;
+	extern void cache_read( const char *path );
+	extern void cache_write( const char *path );
+	extern void cache_validate();
+
+	// Logging
+	extern void log_asset_cache( const char *type, const char *name );
+	extern void log_asset_build( const char *type, const char *name );
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class AssetFile
+{
+public:
+	explicit operator bool() const { return exists; }
+
+public:
+	FileTime time;
+	char path[PATH_SIZE];
+	char name[PATH_SIZE];
+	bool exists = false;
+};
+
+extern bool asset_file_register( AssetFile &asset, const char *path );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

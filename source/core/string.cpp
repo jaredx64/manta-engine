@@ -727,11 +727,12 @@ const char *String::cstr() const
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void String::write( Buffer &buffer, const String &string )
+usize String::write( Buffer &buffer, const String &string )
 {
 	MemoryAssert( string.data != nullptr );
-	buffer.write<usize>( string.current + 1 );
+	const usize offset = buffer.write<usize>( string.current + 1 );
 	buffer.write( string.data, string.current + 1 );
+	return offset;
 }
 
 

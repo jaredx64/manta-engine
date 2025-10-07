@@ -1,12 +1,63 @@
 #include <build/assets/textures.hpp>
 
 #include <vendor/math.hpp>
+#include <vendor/stb/stb_image.hpp>
+
 #include <core/list.hpp>
 #include <core/json.hpp>
+#include <core/checksum.hpp>
 
 #include <build/build.hpp>
 #include <build/assets.hpp>
 #include <build/filesystem.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct CacheTextureEntry
+{
+	int width;
+	int height;
+	int channels;
+};
+
+
+struct CacheTextureBinary
+{
+	int width;
+	int height;
+	int channels;
+	int levels;
+	usize offset;
+	usize size;
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+static Texture2DBuffer resourceNull;
+static List<Texture2DBuffer> resourceList;
+static HashMap<u32, usize> resourceMap;
+
+Texture2DBuffer &resource_retrieve( const char *path )
+{
+	const u32 key = Hash::hash( path );
+	if( !resourceMap.contains( key ) )
+	{
+		Texture2DBuffer texture;
+		if( texture.load( path ) )
+		{
+			resourceMap.set( key, resourceList.size() );
+			return resourceList.add( static_cast<Texture2DBuffer &&>( texture ) );
+		}
+		else
+		{
+			return resourceNull;
+		}
+	}
+	else
+	{
+		return resourceList.at( resourceMap.get( key ) );
+	}
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -397,17 +448,20 @@ static bool mip_generate_chain_2d_alloc( void *data, const u16 width, const u16 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-GlyphID Texture::add_glyph( Texture2DBuffer &&textureBuffer )
+GlyphID Texture::add_glyph( const Glyph &glyph )
 {
-	// Error checking
-	AssertMsg( textureBuffer, "Trying to pack texture '%s' with invalid textureBuffer", name.cstr() );
-
-	// Make new Glyph and pass ownership of 'textureBuffer'
-	GlyphID glyphID = Assets::glyphs.make_new( static_cast<Texture2DBuffer &&>( textureBuffer ) );
-	Glyph &glyph = Assets::glyphs[glyphID];
+	cacheIDs.add( glyph.cacheID );
+	const GlyphID glyphID = Assets::glyphs.make_new( glyph );
 	glyphs.add( glyphID );
+	return glyphID;
+}
 
-	// Return GlyphID
+
+GlyphID Texture::add_glyph( Glyph &&glyph )
+{
+	cacheIDs.add( glyph.cacheID );
+	const GlyphID glyphID = Assets::glyphs.make_new( static_cast<Glyph &&>( glyph ) );
+	glyphs.add( glyphID );
 	return glyphID;
 }
 
@@ -484,23 +538,25 @@ void Texture::pack()
 	{
 		// Initialize list of "empty spaces"
 		List<Space> spaces;
-		spaces.add( { 0, 0, size, size } );
+		spaces.add( Space { 0, 0, size, size } );
 
 		// Loop over Glyphs6
 		for( GlyphID glyphID : glyphs )
 		{
 			Glyph &glyph = Assets::glyphs[glyphID];
+			const u16 glyphWidth = glyph.imageX2 - glyph.imageX1;
+			const u16 glyphHeight = glyph.imageY2 - glyph.imageY1;
 
 			// Loop over spaces back to front (smallest spaces are at the back of the list)
 			usize index = USIZE_MAX;
 			for( usize i = spaces.size(); i > 0; i-- )
 			{
-				Space &space = spaces[i-1];
-				if( space.w >= glyph.textureBuffer.width + padding * 2 &&
-					space.h >= glyph.textureBuffer.height + padding * 2 )
+				Space &space = spaces[i - 1];
+				if( space.w >= glyphWidth + padding * 2 &&
+					space.h >= glyphHeight + padding * 2 )
 				{
 					// Found a suitable space!
-					index = i-1;
+					index = i - 1;
 					break;
 				}
 			}
@@ -518,26 +574,32 @@ void Texture::pack()
 
 			// Found a space
 			Space &space = spaces[index];
-			glyph.x1 = space.x + padding;
-			glyph.y1 = space.y + padding;
-			glyph.x2 = glyph.x1 + glyph.textureBuffer.width;
-			glyph.y2 = glyph.y1 + glyph.textureBuffer.height;
+			glyph.atlasX1 = space.x + padding;
+			glyph.atlasY1 = space.y + padding;
+			glyph.atlasX2 = glyph.atlasX1 + glyphWidth;
+			glyph.atlasY2 = glyph.atlasY1 + glyphHeight;
 
-			glyph.u1 = static_cast<u16>( glyph.x1 / static_cast<float>( size ) * 65536.0f );
-			glyph.v1 = static_cast<u16>( glyph.y1 / static_cast<float>( size ) * 65536.0f );
-			glyph.u2 = static_cast<u16>( glyph.x2 / static_cast<float>( size ) * 65536.0f );
-			glyph.v2 = static_cast<u16>( glyph.y2 / static_cast<float>( size ) * 65536.0f );
+			glyph.u1 = static_cast<u16>( glyph.atlasX1 / static_cast<float>( size ) * 65536.0f );
+			glyph.v1 = static_cast<u16>( glyph.atlasY1 / static_cast<float>( size ) * 65536.0f );
+			glyph.u2 = static_cast<u16>( glyph.atlasX2 / static_cast<float>( size ) * 65536.0f );
+			glyph.v2 = static_cast<u16>( glyph.atlasY2 / static_cast<float>( size ) * 65536.0f );
 
 			// Split space
-			Space hSplit { space.x,
-			               space.y + glyph.textureBuffer.height + padding * 2,
-			               space.w,
-			               space.h - glyph.textureBuffer.height - padding * 2 };
+			Space hSplit
+			{
+				space.x,
+				space.y + glyphHeight + padding * 2,
+				space.w,
+				space.h - glyphHeight - padding * 2
+			};
 
-			Space vSplit { space.x + glyph.textureBuffer.width + padding * 2,
-			               space.y,
-			               space.w - glyph.textureBuffer.width - padding * 2,
-			               glyph.textureBuffer.height + padding * 2 };
+			Space vSplit
+			{
+				space.x + glyphWidth + padding * 2,
+				space.y,
+				space.w - glyphWidth - padding * 2,
+				glyphHeight + padding * 2
+			};
 
 			// Remove space (swap back entry with index)
 			spaces.remove_swap( index );
@@ -580,90 +642,119 @@ TextureID Textures::make_new( String &name )
 }
 
 
-TextureID Textures::make_new( String &name, Texture2DBuffer &&textureBuffer )
-{
-	// Make new Texture
-	Texture &texture = textures.add( { name } );
-	texture.width = textureBuffer.width;
-	texture.height = textureBuffer.height;
-	texture.add_glyph( static_cast<Texture2DBuffer &&>( textureBuffer ) );
-	return static_cast<TextureID>( textures.size() - 1 );
-}
-
-
-void Textures::gather( const char *path, const bool recurse )
+usize Textures::gather( const char *path, const bool recurse )
 {
 	// Gather & Load Textures
-	Timer timer;
 	List<FileInfo> files;
 	directory_iterate( files, path, ".texture", recurse );
-	for( FileInfo &fileInfo : files ) { load( fileInfo.path ); }
 
-	// Log
-	if( verbose_output() )
+	for( FileInfo &fileInfo : files )
 	{
-		const u32 count = files.size();
-		PrintColor( LOG_CYAN, TAB TAB "%u texture%s found in: %s", count, count == 1 ? "" : "s", path );
-		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+		Assets::cacheFileCount++;
+		process( fileInfo.path );
 	}
+
+	return files.size();
 }
 
 
-void Textures::load( const char *path )
+void Textures::process( const char *path )
 {
-	// Open material file
-	String textureFile;
-	ErrorIf( !textureFile.load( path ), "Unable to load texture file: %s", path );
-	JSON textureJSON { textureFile };
+	// Local Directory
+	static char pathDirectory[PATH_SIZE];
+	path_get_directory( pathDirectory, sizeof( pathDirectory ), path );
 
-	// Build Cache
-	Assets::assetFileCount++;
-	if( !Build::cacheDirtyAssets )
+	// Register Definition File
+	AssetFile fileDefinition;
+	if( !asset_file_register( fileDefinition, path ) )
 	{
-		FileTime time;
-		file_time( path, &time );
-		Build::cacheDirtyAssets |= file_time_newer( time, Assets::timeCache );
+		Error( "Unable to locate texture file: %s", path );
+		return;
 	}
 
-	// Texture Name (extracted from <name>.texture)
-	char textureName[PATH_SIZE];
-	path_get_filename( textureName, sizeof( textureName ), path );
-	path_remove_extension( textureName );
-	String name = textureName;
-
-	// Read file (json)
-	String texturePath = textureJSON.get_string( "path" );
-	ErrorIf( texturePath.length_bytes() == 0,
-		"Texture '%s' has an invalid path (required)", texturePath.cstr() );
-	bool generateMips = textureJSON.get_bool( "mips" );
-
-	// Load texture (try relative path first)
-	char pathRelative[PATH_SIZE];
-	path_get_directory( pathRelative, sizeof( pathRelative ), path );
-	strappend( pathRelative, SLASH );
-	strappend( pathRelative, texturePath.cstr() );
-	Texture2DBuffer textureBuffer { pathRelative };
-	if( !textureBuffer )
+	// Open Definition JSON
+	String fileDefinitionContents;
+	if( !fileDefinitionContents.load( path ) )
 	{
-		// Relative path failed -- try absolute path
-		textureBuffer.load( texturePath.cstr() );
-		if( !textureBuffer )
-		{
-			Error( "Unable to load file for texture: '%s' (path: %s)",
-				textureName, texturePath.cstr() );
-		}
+		Error( "Unable to open texture file: %s", path );
+		return;
+	}
+	JSON fileDefinitionJSON { fileDefinitionContents };
+
+	// Parse Definition JSON
+	static char pathImage[PATH_SIZE];
+	String pathImageRelative = fileDefinitionJSON.get_string( "path" );
+	ErrorIf( pathImageRelative.length_bytes() == 0,
+		"Texture '%s' has an invalid image path (required)", fileDefinition.name );
+	snprintf( pathImage, sizeof( pathImage ),
+		"%s" SLASH "%s", pathDirectory, pathImageRelative.cstr() );
+	bool generateMips = fileDefinitionJSON.get_bool( "mips" );
+
+	// Register Color Image File
+	AssetFile fileImageColor;
+	if( !asset_file_register( fileImageColor, pathImage ) )
+	{
+		Error( "Texture '%s' - Unable to locate image file: '%s'", fileDefinition.name, pathImage );
+		return;
 	}
 
-	// Register Texture
+	// Generate Cache ID
+	static char cacheIDBuffer[PATH_SIZE * 3];
+	memory_set( cacheIDBuffer, 0, sizeof( cacheIDBuffer ) );
+	snprintf( cacheIDBuffer, sizeof( cacheIDBuffer ), "texture %s|%llu|%s|%llu",
+		fileDefinition.path, fileDefinition.time.as_u64(),
+		fileImageColor.path, fileImageColor.time.as_u64() );
+	const CacheID cacheID = checksum_xcrc32( cacheIDBuffer, sizeof( cacheIDBuffer ), 0 );
+
+	// Check Cache
+	int width = 0;
+	int height = 0;
+	int channels = 0;
+	CacheTextureEntry cacheTexture;
+	if( Assets::cache.fetch( cacheID, cacheTexture ) )
+	{
+		width = cacheTexture.width;
+		height = cacheTexture.height;
+		channels = cacheTexture.channels;
+	}
+	else
+	{
+		Assets::cache.dirty |= true; // Dirty Cache
+		stbi_info( fileImageColor.path, &width, &height, &channels );
+	}
+
+	// Validate Image Dimensions
+	ErrorIf( width <= 0 || height <= 0 || channels <= 0,
+		"Texture '%s' has invalid dimensions: (w: %d, h: %d, c: %d)",
+		width, height, channels );
+	ErrorIf( width > U16_MAX || height > U16_MAX || channels > 4,
+		"Texture '%s' has invalid dimensions: (w: %d, h: %d, c: %d)",
+		width, height, channels );
+
+	String name = fileDefinition.name;
 	Texture &texture = textures[make_new( name )];
-	texture.name = textureName;
+	texture.name = name;
 	texture.atlasTexture = false;
 	texture.generateMips = generateMips;
-	texture.add_glyph( static_cast<Texture2DBuffer &&>( textureBuffer ) );
+
+	Glyph glyph;
+	glyph.cacheID = cacheID;
+	glyph.texturePath = pathImage;
+	glyph.imageX1 = static_cast<u16>( 0 );
+	glyph.imageY1 = static_cast<u16>( 0 );
+	glyph.imageX2 = static_cast<u16>( width );
+	glyph.imageY2 = static_cast<u16>( height );
+	texture.add_glyph( static_cast<Glyph &&>( glyph ) );
+
+	// Cache
+	cacheTexture.width = width;
+	cacheTexture.height = height;
+	cacheTexture.channels = channels;
+	Assets::cache.store( cacheID, cacheTexture );
 }
 
 
-void Textures::write()
+void Textures::build()
 {
 	Buffer &binary = Assets::binary;
 	String &header = Assets::header;
@@ -673,82 +764,155 @@ void Textures::write()
 	Timer timer;
 	usize sizeBytes = 0;
 
-	// Binary
+	// Load & Binary
 	{
 		for( Texture &texture : textures )
 		{
 			const u32 numGlyphs = texture.glyphs.size();
 			Assert( numGlyphs > 0 );
 
+			// Texture CacheID
+			const CacheID cacheID = checksum_xcrc32( reinterpret_cast<char *>( texture.cacheIDs.data ),
+				texture.cacheIDs.count() * sizeof( CacheID ), 0 );
+
 			// Atlas Texture
 			if( numGlyphs >= 1 && texture.atlasTexture )
 			{
-				// Pack Glyphs
+				// Pack Atlas
 				texture.pack();
 
-				// Initialize Texture2DBuffer
-				Texture2DBuffer textureBuffer { texture.width, texture.height };
-
-				for( GlyphID glyphID : texture.glyphs )
+				// If the atlas is unchanged, read from the previous binary
+				CacheTextureBinary cacheTextureBinary;
+				if( Assets::cache.fetch( cacheID, cacheTextureBinary ) )
 				{
-					Glyph &glyph = Assets::glyphs[glyphID];
-					textureBuffer.splice( glyph.textureBuffer,
-						0, 0, glyph.textureBuffer.width, glyph.textureBuffer.height,
-						glyph.x1, glyph.y1 );
+					// Read & Write Binary (Cached)
+					texture.levels = 1;
+					texture.offset = binary.write_from_file( Build::pathOutputRuntimeBinary,
+						Assets::cacheReadOffset + cacheTextureBinary.offset, cacheTextureBinary.size );
+
+					Assets::log_asset_cache( "Texture", texture.name.cstr() );
+					ErrorIf( texture.offset == USIZE_MAX, "Failed to read cached texture from binary!" );
+
+					// Cache
+					cacheTextureBinary.offset = texture.offset;
+					Assets::cache.store( cacheID, cacheTextureBinary );
 				}
+				else
+				{
+					// Generate Texture Binary
+					Texture2DBuffer textureBinary = Texture2DBuffer { texture.width, texture.height };
 
-				// Write Binary
-				texture.offset = binary.tell;
-				texture.levels = 1;
-				binary.write( textureBuffer.data, texture.width * texture.height * sizeof( rgba ) );
-				sizeBytes += texture.width * texture.height * sizeof( rgba );
+					for( GlyphID glyphID : texture.glyphs )
+					{
+						Glyph &glyph = Assets::glyphs[glyphID];
+						Texture2DBuffer &textureGlyph = glyph.textureBuffer.data != nullptr ?
+							glyph.textureBuffer : resource_retrieve( glyph.texturePath );
 
-				//char path[PATH_SIZE];
-				//strjoin( path, Build::pathOutput, SLASH "generated" SLASH, ( texture.name + "_atlas.png" ).cstr() );
-				//textureBuffer.save( path );
+						textureBinary.splice( textureGlyph,
+							glyph.imageX1, glyph.imageY1, glyph.imageX2, glyph.imageY2,
+							glyph.atlasX1, glyph.atlasY1 );
+					}
+
+				#if 0
+					char path[PATH_SIZE];
+					strjoin( path, Build::pathOutput, SLASH "generated" SLASH,
+						( texture.name + "_atlas.png" ).cstr() );
+					textureBuffer.save( path );
+				#endif
+
+					// Write Binary
+					texture.levels = 1;
+					const usize size = texture.width * texture.height * sizeof( rgba );
+					texture.offset = binary.write( textureBinary.data, size );
+					Assets::log_asset_build( "Texture", texture.name.cstr() );
+					sizeBytes += size;
+
+					// Cache
+					cacheTextureBinary.width = texture.width;
+					cacheTextureBinary.height = texture.height;
+					cacheTextureBinary.levels = texture.levels;
+					cacheTextureBinary.offset = texture.offset;
+					cacheTextureBinary.size = size;
+					Assets::cache.store( cacheID, cacheTextureBinary );
+				}
 			}
 			// Independent Texture
 			else if( numGlyphs == 1 )
 			{
-				Glyph &glyph = Assets::glyphs[texture.glyphs[0]];
-				texture.width = glyph.textureBuffer.width;
-				texture.height = glyph.textureBuffer.height;
-				texture.offset = binary.tell;
-
-				// Mipmapping
-				if( texture.generateMips )
+				// If the atlas is unchanged, read from the previous binary
+				CacheTextureBinary cacheTextureBinary;
+				if( Assets::cache.fetch( cacheID, cacheTextureBinary ) )
 				{
-					texture.levels = mip_level_count_2d( texture.width, texture.height );
-					Assert( texture.levels > 0 );
-					void *mip = nullptr;
-					usize size = 0;
+					// Read & Write Binary (Cached)
+					texture.width = cacheTextureBinary.width;
+					texture.height = cacheTextureBinary.height;
+					texture.levels = cacheTextureBinary.levels;
+					texture.offset = binary.write_from_file( Build::pathOutputRuntimeBinary,
+						Assets::cacheReadOffset + cacheTextureBinary.offset, cacheTextureBinary.size );
 
-					if( mip_generate_chain_2d_alloc( glyph.textureBuffer.data,
-							texture.width, texture.height, GfxColorFormat_R8G8B8A8_FLOAT, mip, size ) )
-					{
-						binary.write( mip, size );
-						sizeBytes += size;
-						memory_free( mip );
-					}
-					else
-					{
-						Error( "Failed to generate mips for texture: %s (%u x %u)",
-							texture.name.cstr(), texture.width, texture.height );
-					}
+					Assets::log_asset_cache( "Texture", texture.name.cstr() );
+					ErrorIf( texture.offset == USIZE_MAX, "Failed to read cached texture from binary!" );
+
+					// Cache
+					cacheTextureBinary.offset = texture.offset;
+					Assets::cache.store( cacheID, cacheTextureBinary );
 				}
 				else
-				// No mipmaps -- write file directly as is
 				{
-					texture.levels = 1;
-					binary.write( glyph.textureBuffer.data, texture.width * texture.height * sizeof( rgba ) );
-					sizeBytes += texture.width * texture.height * sizeof( rgba );
-				}
+					// Generate Texture Binary
+					Glyph &glyph = Assets::glyphs[texture.glyphs[0]];
+					Texture2DBuffer &textureBinary = glyph.textureBuffer.data != nullptr ?
+						glyph.textureBuffer : resource_retrieve( glyph.texturePath );
+
+					texture.width = textureBinary.width;
+					texture.height = textureBinary.height;
+					usize size = 0;
+
+					// Mipmapping
+					if( texture.generateMips )
+					{
+						texture.levels = mip_level_count_2d( texture.width, texture.height );
+						Assert( texture.levels > 0 );
+						void *mip = nullptr;
+
+						if( mip_generate_chain_2d_alloc( textureBinary.data,
+								texture.width, texture.height, GfxColorFormat_R8G8B8A8_FLOAT, mip, size ) )
+						{
+							texture.offset = binary.write( mip, size );
+							Assets::log_asset_build( "Texture", texture.name.cstr() );
+							sizeBytes += size;
+							memory_free( mip );
+						}
+						else
+						{
+							Error( "Failed to generate mips for texture: %s (%u x %u)",
+								texture.name.cstr(), texture.width, texture.height );
+						}
+					}
+					else
+					// No mipmaps -- write file directly as is
+					{
+						texture.levels = 1;
+						size = texture.width * texture.height * sizeof( rgba );
+						texture.offset = binary.write( textureBinary.data, size );
+						sizeBytes += size;
+					}
 
 				#if 0
 					char path[PATH_SIZE];
-					strjoin( path, Build::pathOutput, SLASH "generated" SLASH, ( texture.name + ".png" ).cstr() );
-					glyph.textureBuffer.save( path );
+					strjoin( path, Build::pathOutput, SLASH "generated" SLASH,
+						( texture.name + ".png" ).cstr() );
+					textureGlyph.save( path );
 				#endif
+
+					// Cache
+					cacheTextureBinary.width = texture.width;
+					cacheTextureBinary.height = texture.height;
+					cacheTextureBinary.levels = texture.levels;
+					cacheTextureBinary.offset = texture.offset;
+					cacheTextureBinary.size = size;
+					Assets::cache.store( cacheID, cacheTextureBinary );
+				}
 			}
 			else
 			{
@@ -794,7 +958,8 @@ void Textures::write()
 			char buffer[PATH_SIZE];
 			for( Texture &texture : textures )
 			{
-				snprintf( buffer, PATH_SIZE, "\t\t{ %lluULL, %u, %u, %u }, // %s\n",
+				snprintf( buffer, PATH_SIZE,
+					"\t\t{ BINARY_OFFSET_ASSETS + %lluLLU, %u, %u, %u }, // %s\n",
 					texture.offset,
 					texture.width,
 					texture.height,
@@ -816,7 +981,7 @@ void Textures::write()
 	if( verbose_output() )
 	{
 		const usize count = textures.size();
-		PrintColor( LOG_CYAN, "\t\tWrote %d texture%s - %.2f mb", count, count == 1 ? "" : "s", MB( sizeBytes ) );
+		PrintColor( LOG_CYAN, TAB TAB "Wrote %d texture%s", count, count == 1 ? "" : "s", MB( sizeBytes ) );
 		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
 	}
 }

@@ -21,9 +21,10 @@ struct Material
 struct Materials
 {
 	void make_new( const Material &material );
-	void gather( const char *path, const bool recurse = true );
-	void load( const char *path );
-	void write();
+
+	usize gather( const char *path, const bool recurse = true );
+	void process( const char *path );
+	void build();
 
 	Material &operator[]( const u32 materialID ) { return materials[materialID]; }
 

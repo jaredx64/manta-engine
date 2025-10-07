@@ -131,21 +131,41 @@ template <typename T> inline T lerp_delta( const T &value1, const T value2, cons
 
 inline float lerp_angle_degrees( float value1, float value2, float amount )
 {
-	value1 *= DEG2RAD_F;
-	value2 *= DEG2RAD_F;
-	float dtheta = value2 - value1;
-	if( dtheta > PI_F ) { value1 += 2.0f * PI_F; }
-	if( dtheta < -PI_F ) { value1 -= 2.0f * PI_F; }
-	return lerp( value1, value2, amount ) * RAD2DEG_F;
+	value1 = fmod( value1, 360.0f );
+	if( value1 < 0.0f ) { value1 += 360.0f; }
+
+	value2 = fmod( value2, 360.0f );
+	if( value2 < 0.0f ) { value2 += 360.0f; }
+
+	float diff = value2 - value1;
+	if( diff > 180.0f ) { diff -= 360.0f; } else
+	if( diff < -180.0f ) { diff += 360.0f; }
+
+	float result = value1 + diff * amount;
+	result = fmod( result, 360.0f );
+	if( result < 0.0f ) { result += 360.0f; }
+	return result;
 }
 
 
 inline float lerp_angle_radians( float value1, float value2, float amount )
 {
-	float dtheta = value2 - value1;
-	if( dtheta > PI_F ) { value1 += 2.0f * PI_F; }
-	if( dtheta < -PI_F ) { value1 -= 2.0f * PI_F; }
-	return lerp( value1, value2, amount ) * RAD2DEG_F;
+	const float PI_F_2 = PI_F * 2.0f;
+
+	value1 = fmod( value1, PI_F_2 );
+	if( value1 < 0.0f ) { value1 += PI_F_2; }
+
+	value2 = fmod( value2, PI_F_2 );
+	if( value2 < 0.0f ) { value2 += PI_F_2; }
+
+	float diff = value2 - value1;
+	if( diff > PI_F ) { diff -= PI_F_2; } else
+	if( diff < -PI_F ) { diff += PI_F_2; }
+
+	float result = value1 + diff * amount;
+	result = fmod( result, PI_F_2 );
+	if( result < 0.0f ) { result += PI_F_2; }
+	return result;
 }
 
 

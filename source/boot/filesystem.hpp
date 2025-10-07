@@ -246,7 +246,7 @@ inline bool directory_iterate( FileList &list, const char *path, const char *ext
 	HANDLE findFile;
 
 	// Find First File
-	char buffer[512];
+	char buffer[PATH_SIZE];
 	strjoin( buffer, path, SLASH, "*" );
 	if( ( findFile = FindFirstFileA( buffer, &findData ) ) == INVALID_HANDLE_VALUE ) { return false; }
 
@@ -256,10 +256,11 @@ inline bool directory_iterate( FileList &list, const char *path, const char *ext
 		if( findData.cFileName[0] == '.' ) { continue; }
 
 		// Recurse Into Directories
-		if( findData.dwFileAttributes == FILE_ATTRIBUTE_DIRECTORY && recurse )
+		if( ( findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) && recurse )
 		{
-			strjoin( buffer, path, SLASH, findData.cFileName );
-			directory_iterate( list, buffer, extension, recurse );
+			char subdir[PATH_SIZE];
+			strjoin( subdir, path, SLASH, findData.cFileName );
+			directory_iterate( list, subdir, extension, recurse );
 		}
 		// Add File
 		else
@@ -268,7 +269,8 @@ inline bool directory_iterate( FileList &list, const char *path, const char *ext
 			const int length = static_cast<int>( strlen( findData.cFileName ) );
 			const int extensionLength = strlen( extension );
 
-			if( length <= extensionLength || strcmp( findData.cFileName + length - extensionLength, extension ) )
+			if( length <= extensionLength ||
+				strcmp( findData.cFileName + length - extensionLength, extension ) )
 			{
 				continue;
 			}
@@ -394,9 +396,9 @@ inline bool directory_iterate( FileList &list, const char *path, const char *ext
 		// Recurse Into Directories
 		if( entry->d_type == DT_DIR && recurse )
 		{
-			char buffer[512];
-			strjoin( buffer, path, SLASH, entry->d_name );
-			directory_iterate( list, buffer, extension, recurse );
+			char subdir[PATH_SIZE];
+			strjoin( subdir, path, SLASH, entry->d_name );
+			directory_iterate( list, subdir, extension, recurse );
 		}
 		// Add File
 		else
@@ -405,7 +407,8 @@ inline bool directory_iterate( FileList &list, const char *path, const char *ext
 			const int length = strlen( entry->d_name );
 			const int extensionLength = strlen( extension );
 
-			if( length <= extensionLength || strcmp( entry->d_name + length - extensionLength, extension ) != 0 )
+			if( length <= extensionLength ||
+				strcmp( entry->d_name + length - extensionLength, extension ) != 0 )
 			{
 				continue;
 			}

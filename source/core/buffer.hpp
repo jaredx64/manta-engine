@@ -70,21 +70,21 @@ public:
 	bool shrink();
 	void clear();
 
-	void write( void *bytes, const usize size );
+	usize write( void *bytes, const usize size );
+	usize write_from_file( const char *path, const usize offset, const usize size );
 
-	template <typename T> void write( const T &element )
+	template <typename T> usize write( const T &element )
 	{
 		MemoryAssert( data != nullptr );
 		using Type = typename remove_reference<T>::type;
 
 		if constexpr ( Buffer::HasCustomWrite<Type>::value )
 		{
-			Type::write( *this, element );
+			return Type::write( *this, element );
 		}
 		else
 		{
 			// Align & grow memory
-			tell = ALIGN_TYPE_OFFSET( T, tell );
 			while( !fixed )
 			{
 				if( tell + sizeof( Type ) <= capacity ) { break; }
@@ -92,14 +92,16 @@ public:
 			}
 
 			// Write element
-			ErrorIf( tell + sizeof( Type ) > capacity, "Buffer: write exceeded buffer capacity" );
-			new ( reinterpret_cast<Type *>( &data[tell] ) ) Type( element );
+			const usize writeIndex = tell;
+			ErrorIf( writeIndex + sizeof( Type ) > capacity, "Buffer: write exceeded buffer capacity" );
+			new ( reinterpret_cast<Type *>( &data[writeIndex] ) ) Type( element );
 			tell += sizeof( Type );
 			current = tell > current ? tell : current;
+			return writeIndex;
 		}
 	}
 
-	template <typename T> void poke( usize offset, const T &element )
+	template <typename T> usize poke( usize offset, const T &element )
 	{
 		MemoryAssert( data != nullptr );
 		using Type = typename remove_reference<T>::type;
@@ -108,13 +110,13 @@ public:
 		{
 			const usize tellCache = tell;
 			seek_to( offset );
-			write<Type>( element );
+			const usize writeIndex = write<Type>( element );
 			seek_to( tellCache );
+			return writeIndex;
 		}
 		else
 		{
 			// Align & grow memory
-			offset = ALIGN_TYPE_OFFSET( T, offset );
 			while( !fixed )
 			{
 				if( offset + sizeof( Type ) <= capacity ) { break; }
@@ -122,8 +124,10 @@ public:
 			}
 
 			// Write element
-			ErrorIf( offset + sizeof( Type ) > capacity, "Buffer: poke exceeded buffer capacity" );
-			new ( reinterpret_cast<Type *>( &data[offset] ) ) Type( element );
+			const usize writeIndex = offset;
+			ErrorIf( writeIndex + sizeof( Type ) > capacity, "Buffer: poke exceeded buffer capacity" );
+			new ( reinterpret_cast<Type *>( &data[writeIndex] ) ) Type( element );
+			return writeIndex;
 		}
 	}
 
@@ -139,7 +143,6 @@ public:
 		else
 		{
 			using Type = typename remove_reference<T>::type;
-			tell = ALIGN_TYPE_OFFSET( T, tell );
 			ErrorIf( tell + sizeof( Type ) > current, "Buffer: read exceeded buffer capacity" );
 			element = *reinterpret_cast<Type *>( &data[tell] );
 			tell += sizeof( Type );
@@ -152,7 +155,6 @@ public:
 		               "Type has custom T::read(), must use buffer.read<T>( T &type ) syntax" );
 
 		MemoryAssert( data != nullptr );
-		tell = ALIGN_TYPE_OFFSET( T, tell );
 		ErrorIf( tell + sizeof( T ) > current, "Buffer: read exceeded buffer capacity" );
 		byte *element =  &data[tell];
 		tell += sizeof( T );
@@ -180,9 +182,8 @@ public:
 		}
 		else
 		{
-			const usize tellAligned = ALIGN_TYPE_OFFSET( T, tell );
-			ErrorIf( tellAligned + sizeof( Type ) > current, "Buffer: peek exceeded buffer capacity" );
-			element = *reinterpret_cast<Type *>( &data[tellAligned] );
+			ErrorIf( tell + sizeof( Type ) > current, "Buffer: peek exceeded buffer capacity" );
+			element = *reinterpret_cast<Type *>( &data[tell] );
 		}
 	}
 
@@ -191,16 +192,14 @@ public:
 		static_assert( !Buffer::HasCustomRead<T>::value,
 		               "Type has custom T::read(), must use buffer.peek<T>( T &type ) syntax" );
 		MemoryAssert( data != nullptr );
-		const usize tellAligned = ALIGN_TYPE_OFFSET( T, tell );
-		ErrorIf( tellAligned + sizeof( T ) > current, "Buffer: peek exceeded buffer capacity" );
-		return *reinterpret_cast<T *>( &data[tellAligned] );
+		ErrorIf( tell + sizeof( T ) > current, "Buffer: peek exceeded buffer capacity" );
+		return *reinterpret_cast<T *>( &data[tell] );
 	}
 
 	template <typename T> bool has_next() const
 	{
 		MemoryAssert( data != nullptr );
-		const usize tellAligned = ALIGN_TYPE_OFFSET( T, tell );
-		return tellAligned + sizeof( T ) <= current;
+		return tell + sizeof( T ) <= current;
 	}
 
 	void seek_start() { tell = 0; }
@@ -212,11 +211,11 @@ public:
 
 public:
 	byte *data = nullptr;
-	usize tell = 0;
+	usize tell = 0LLU;
 
 private:
-	usize capacity = 0;
-	usize current = 0;
+	usize capacity = 0LLU;
+	usize current = 0LLU;
 	bool fixed = false;
 };
 

@@ -1,14 +1,26 @@
 #include <build/assets/materials.hpp>
 
+#include <vendor/stb/stb_image.hpp>
+
 #include <core/list.hpp>
 #include <core/types.hpp>
 #include <core/debug.hpp>
 #include <core/json.hpp>
+#include <core/checksum.hpp>
 
 #include <build/build.hpp>
 #include <build/assets.hpp>
 #include <build/assets/textures.hpp>
 #include <build/filesystem.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct CacheMaterial
+{
+	int imageColorWidth;
+	int imageColorHeight;
+	int imageColorChannels;
+};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -18,79 +30,121 @@ void Materials::make_new( const Material &material )
 }
 
 
-void Materials::gather( const char *path, const bool recurse )
+usize Materials::gather( const char *path, const bool recurse )
 {
-	// Gather & Load Materials
-	Timer timer;
+	// Gather Materials
 	List<FileInfo> files;
 	directory_iterate( files, path, ".material", recurse );
-	for( FileInfo &fileInfo : files ) { load( fileInfo.path ); }
 
-	// Log
-	if( verbose_output() )
+	// Process Materials
+	for( FileInfo &fileInfo : files )
 	{
-		const u32 count = files.size();
-		PrintColor( LOG_CYAN, TAB TAB "%u material%s found in: %s", count, count == 1 ? "" : "s", path );
-		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+		Assets::cacheFileCount++;
+		process( fileInfo.path );
 	}
+
+	return files.size();
 }
 
 
-void Materials::load( const char *path )
+void Materials::process( const char *path )
 {
-	// Open material file
-	String materialFile;
-	ErrorIf( !materialFile.load( path ), "Unable to load material file: %s", path );
-	JSON materialJSON { materialFile };
+	// Local Directory
+	static char pathDirectory[PATH_SIZE];
+	path_get_directory( pathDirectory, sizeof( pathDirectory ), path );
 
-	// Build Cache
-	Assets::assetFileCount++;
-	if( !Build::cacheDirtyAssets )
+	// Register Definition File
+	AssetFile fileDefinition;
+	if( !asset_file_register( fileDefinition, path ) )
 	{
-		FileTime time;
-		file_time( path, &time );
-		Build::cacheDirtyAssets |= file_time_newer( time, Assets::timeCache );
+		Error( "Unable to locate material file: %s", path );
+		return;
 	}
 
-	// Material Name (extracted from <name>.material)
-	char materialName[PATH_SIZE];
-	path_get_filename( materialName, sizeof( materialName ), path );
-	path_remove_extension( materialName );
-	String name = materialName;
-
-	String colorTexture = materialJSON.get_string( "colorTexture" );
-	ErrorIf( colorTexture.length_bytes() == 0, "Material '%s' has an invalid color texture (required)", path );
-	//String normalTexture = materialJSON.GetString( "normalTexture" );
-	//ErrorIf( normalTexture.length() == 0, "Material '%s' has an invalid normal texture (required)", path );
-
-	// Load texture (try relative path first)
-	char pathRelative[PATH_SIZE];
-	path_get_directory( pathRelative, sizeof( pathRelative ), path );
-	strappend( pathRelative, SLASH );
-	strappend( pathRelative, colorTexture.cstr() );
-	Texture2DBuffer colorTextureBuffer { pathRelative };
-	if( !colorTextureBuffer )
+	// Open Definition JSON
+	String fileDefinitionContents;
+	if( !fileDefinitionContents.load( path ) )
 	{
-		// Relative path failed -- try absolute path
-		colorTextureBuffer.load( colorTexture.cstr() );
-		if( !colorTextureBuffer ) { Error( "Unable to load color texture for material %s (texture: %s)", path, colorTexture.cstr() ); }
+		Error( "Unable to open material file: %s", path );
+		return;
 	}
+	JSON fileDefinitionJSON { fileDefinitionContents };
+
+	// Parse Definition JSON
+	static char pathImageColor[PATH_SIZE];
+	String pathImageColorRelative = fileDefinitionJSON.get_string( "colorTexture" );
+	ErrorIf( pathImageColorRelative.length_bytes() == 0,
+		"Material '%s' has an invalid colorTexture path (required)", fileDefinition.name );
+	snprintf( pathImageColor, sizeof( pathImageColor ),
+		"%s" SLASH "%s", pathDirectory, pathImageColorRelative.cstr() );
+
+	// Register Color Image File
+	AssetFile fileImageColor;
+	if( !asset_file_register( fileImageColor, pathImageColor ) )
+	{
+		Error( "Material '%s' - Unable to locate colorTexture file: '%s'", fileDefinition.name, pathImageColor );
+		return;
+	}
+
+	// Generate Cache ID
+	static char cacheIDBuffer[PATH_SIZE * 3];
+	memory_set( cacheIDBuffer, 0, sizeof( cacheIDBuffer ) );
+	snprintf( cacheIDBuffer, sizeof( cacheIDBuffer ), "material %s|%llu|%s|%llu",
+		fileDefinition.path, fileDefinition.time.as_u64(),
+		fileImageColor.path, fileImageColor.time.as_u64() );
+	const CacheID cacheID = checksum_xcrc32( cacheIDBuffer, sizeof( cacheIDBuffer ), 0 );
+
+	// Check Cache
+	int imageColorWidth = 0;
+	int imageColorHeight = 0;
+	int imageColorChannels = 0;
+	CacheMaterial cacheMaterial;
+	if( Assets::cache.fetch( cacheID, cacheMaterial ) )
+	{
+		imageColorWidth = cacheMaterial.imageColorWidth;
+		imageColorHeight = cacheMaterial.imageColorHeight;
+		imageColorChannels = cacheMaterial.imageColorChannels;
+	}
+	else
+	{
+		Assets::cache.dirty |= true; // Dirty Cache
+		stbi_info( fileImageColor.path, &imageColorWidth, &imageColorHeight, &imageColorChannels );
+	}
+
+	// Validate Image Dimensions
+	ErrorIf( imageColorWidth <= 0 || imageColorHeight <= 0 || imageColorChannels <= 0,
+		"Material '%s' has invalid dimensions: (w: %d, h: %d, c: %d)",
+		imageColorWidth, imageColorHeight, imageColorChannels );
+	ErrorIf( imageColorWidth > U16_MAX || imageColorHeight > U16_MAX || imageColorChannels > 4,
+		"Material '%s' has invalid dimensions: (w: %d, h: %d, c: %d)",
+		imageColorWidth, imageColorHeight, imageColorChannels );
 
 	// Register Material
-	Material material;
-	material.name = name;
-	material.textureIDColor = Assets::textures.make_new( name );
+	Material &material = materials.add( Material { } );
+	material.name = fileDefinition.name;
+	material.textureIDColor = Assets::textures.make_new( material.name );
 	Texture &colorTextureAsset = Assets::textures[material.textureIDColor];
 	colorTextureAsset.atlasTexture = false;
 	colorTextureAsset.generateMips = true;
-	colorTextureAsset.add_glyph( static_cast<Texture2DBuffer &&>( colorTextureBuffer ) );
 
-	// Register Material
-	materials.add( material );
+	Glyph glyphColor;
+	glyphColor.cacheID = cacheID;
+	glyphColor.texturePath = pathImageColor;
+	glyphColor.imageX1 = static_cast<u16>( 0 );
+	glyphColor.imageY1 = static_cast<u16>( 0 );
+	glyphColor.imageX2 = static_cast<u16>( imageColorWidth );
+	glyphColor.imageY2 = static_cast<u16>( imageColorHeight );
+	colorTextureAsset.add_glyph( static_cast<Glyph &&>( glyphColor ) );
+
+	// Cache
+	cacheMaterial.imageColorWidth = imageColorWidth;
+	cacheMaterial.imageColorHeight = imageColorHeight;
+	cacheMaterial.imageColorChannels = imageColorChannels;
+	Assets::cache.store( cacheID, cacheMaterial );
 }
 
 
-void Materials::write()
+void Materials::build()
 {
 	Buffer &binary = Assets::binary;
 	String &header = Assets::header;
@@ -99,7 +153,12 @@ void Materials::write()
 
 	Timer timer;
 
-	// Binary - do nothing
+	// Load
+	{
+		// ...
+	}
+
+	// Binary
 	{
 		// ...
 	}
@@ -161,7 +220,7 @@ void Materials::write()
 	if( verbose_output() )
 	{
 		const usize count = materials.size();
-		PrintColor( LOG_CYAN, "\t\tWrote %d material%s", count, count == 1 ? "" : "s" );
+		PrintColor( LOG_CYAN, TAB TAB "Wrote %d material%s", count, count == 1 ? "" : "s" );
 		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
 	}
 }

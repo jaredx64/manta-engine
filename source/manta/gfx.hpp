@@ -638,7 +638,7 @@ struct GfxShaderState
 {
 	u32 shaderID = 0;
 	GfxShaderResource *resource = nullptr;
-	CoreGfxUniformBuffer::PipelineUniforms_t globals;
+	CoreGfxUniformBuffer::UniformsPipeline_t globals;
 
 	bool operator==( const GfxShaderState &other ) const
 	{
@@ -729,7 +729,7 @@ namespace Gfx
 
 	extern void shader_dispatch( const Shader shader, const u32 x, const u32 y, const u32 z );
 
-	extern void set_shader_globals( const CoreGfxUniformBuffer::PipelineUniforms_t &globals );
+	extern void set_shader_globals( const CoreGfxUniformBuffer::UniformsPipeline_t &globals );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1077,6 +1077,9 @@ public:
 	GfxTexture2D textureDepth;
 	u16 width, height;
 	int slot = -1;
+
+private:
+	static GfxRenderTarget2DResource *bound;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1259,6 +1262,10 @@ namespace CoreGfx
 	extern double_m44 matrixView;
 	extern double_m44 matrixPerspective;
 	extern double_m44 matrixMVP;
+	extern double_m44 matrixModelInverse;
+	extern double_m44 matrixViewInverse;
+	extern double_m44 matrixPerspectiveInverse;
+	extern double_m44 matrixMVPInverse;
 }
 
 
@@ -1291,12 +1298,14 @@ namespace Gfx
 		const double_m44 &matPerspective );
 
 	extern const double_m44 &get_matrix_model();
-
 	extern const double_m44 &get_matrix_view();
-
 	extern const double_m44 &get_matrix_perspective();
-
 	extern const double_m44 &get_matrix_mvp();
+
+	extern const double_m44 &get_matrix_model_inverse();
+	extern const double_m44 &get_matrix_view_inverse();
+	extern const double_m44 &get_matrix_perspective_inverse();
+	extern const double_m44 &get_matrix_mvp_inverse();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

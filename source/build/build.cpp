@@ -13,6 +13,25 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+struct CacheBinaryStage { usize offset; usize size; };
+
+enum_type( CACHE_BINARY_STAGE, CacheID )
+{
+	CACHE_BINARY_STAGE_OBJECTS = 0,
+	CACHE_BINARY_STAGE_GFX = 1,
+	CACHE_BINARY_STAGE_ASSETS = 2,
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+static void verbose_log_gather( const char *name, const usize count )
+{
+	if( !verbose_output() ) { return; }
+	PrintLnColor( LOG_CYAN, TAB TAB "%u %s%s found", count, name, count == 1 ? "" : "s" );
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 namespace Build
 {
 	// Paths
@@ -30,6 +49,10 @@ namespace Build
 	char pathOutputRuntimeExecutable[PATH_SIZE];
 	char pathOutputRuntimeBinary[PATH_SIZE];
 	char pathOutputBuildCache[PATH_SIZE];
+	char pathOutputBuildCacheBuild[PATH_SIZE];
+	char pathOutputBuildCacheObjects[PATH_SIZE];
+	char pathOutputBuildCacheGraphics[PATH_SIZE];
+	char pathOutputBuildCacheAssets[PATH_SIZE];
 
 	// Package
 	String packageName;
@@ -52,14 +75,9 @@ namespace Build
 	// Timer
 	Timer timer;
 
-	// Cache
-	bool cacheDirty = false;
-	bool cacheDirtyObjects = false;
-	bool cacheDirtyAssets = false;
-	bool cacheDirtyBinary = false;
-	bool cacheDirtyShaders = false;
-	Buffer cacheBufferPrevious;
-	Buffer cacheBufferCurrent;
+	// Binary
+	String header;
+	Buffer binary;
 
 	// Compile
 	List<Source> sources;
@@ -68,6 +86,10 @@ namespace Build
 #if PIPELINE_OS_WINDOWS
 	List<Source> rcs;
 #endif
+
+	// Cache
+	Cache cache;
+	bool buildBinary = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -80,15 +102,12 @@ void Build::compile_add_source( const char *pathSrc, const char *pathObj, const 
 }
 
 
-u32 Build::compile_add_sources( const char *directory, const bool recurse,
+usize Build::compile_add_sources( const char *directory, const bool recurse,
 	const char *extensionSrc, const char *extensionObj )
 {
-	// Gather sources files
-	Timer timer;
 	List<FileInfo> sourceFiles;
 	directory_iterate( sourceFiles, directory, extensionSrc, recurse ); // C++
 
-	// Add sources
 	static char pathObj[PATH_SIZE];
 	for( FileInfo &sourceFile : sourceFiles )
 	{
@@ -96,15 +115,7 @@ u32 Build::compile_add_sources( const char *directory, const bool recurse,
 		Build::compile_add_source( sourceFile.path, pathObj, extensionObj );
 	}
 
-	// Logging
-	const u32 sourcesCount = sourceFiles.size();
-	if( verbose_output() )
-	{
-		PrintColor( LOG_CYAN, TAB TAB "%u source%s found in: %s",
-			sourcesCount, sourcesCount == 1 ? "" : "s", directory );
-		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
-	}
-	return sourcesCount;
+	return sourceFiles.size();
 }
 
 
@@ -155,6 +166,10 @@ void BuilderCore::build( int argc, char **argv )
 		strjoin( Build::pathOutputRuntimeBinary, Build::pathOutputRuntime, SLASH,
 			Build::args.project, ".bin" );
 		strjoin( Build::pathOutputBuildCache, Build::pathOutputBuild, SLASH "build.cache" );
+		strjoin( Build::pathOutputBuildCacheBuild, Build::pathOutputBuild, SLASH "core.cache" );
+		strjoin( Build::pathOutputBuildCacheObjects, Build::pathOutputBuild, SLASH "objects.cache" );
+		strjoin( Build::pathOutputBuildCacheGraphics, Build::pathOutputBuild, SLASH "graphics.cache" );
+		strjoin( Build::pathOutputBuildCacheAssets, Build::pathOutputBuild, SLASH "assets.cache" );
 
 		// Load Package
 		package_load();
@@ -172,17 +187,28 @@ void BuilderCore::build( int argc, char **argv )
 	bool codegen = ( strcmp( Build::args.codegen, "1" ) == 0 );
 	bool build = ( strcmp( Build::args.build, "1" ) == 0 );
 	bool package = ( strcmp( Build::args.package, "1" ) == 0 );
-	bool run = ( strcmp( Build::args.run, "1" ) == 0 );
+	int run = atoi( Build::args.run );
+
+	// Begin
+	{
+		Build::begin();
+		Build::cache_read( Build::pathOutputBuildCacheBuild );
+
+		Objects::begin();
+		Objects::cache_read( Build::pathOutputBuildCacheObjects );
+
+		Gfx::begin();
+		Gfx::cache_read( Build::pathOutputBuildCacheGraphics );
+
+		Assets::begin();
+		Assets::cache_read( Build::pathOutputBuildCacheAssets );
+	}
 
 	// Gather
 	if( codegen )
 	{
 		PrintLnColor( LOG_WHITE, "\nGather Assets" );
 		Timer timer;
-
-		Objects::begin();
-		Gfx::begin();
-		Assets::begin();
 
 		objects_gather();
 		shaders_gather();
@@ -197,13 +223,11 @@ void BuilderCore::build( int argc, char **argv )
 		PrintLnColor( LOG_WHITE, "\nCheck Cache" );
 		Timer timer;
 
-		// TODO: A dirty cache currently forces everything to be rebuilt
-
-		build_cache();
-		objects_cache();
-		shaders_cache();
-		assets_cache();
-		binary_cache();
+		build_cache_validate();
+		objects_cache_validate();
+		shaders_cache_validate();
+		assets_cache_validate();
+		binary_cache_validate();
 
 		PrintLnColor( LOG_WHITE, TAB "Finished (%.3f ms)", timer.elapsed_ms() );
 	}
@@ -211,17 +235,20 @@ void BuilderCore::build( int argc, char **argv )
 	// Build
 	if( codegen )
 	{
-		PrintLnColor( LOG_WHITE, "\nBuild Assets" );
+		PrintLnColor( LOG_WHITE, "\nBuild Binary" );
 		Timer timer;
 
-		objects_parse();
-		objects_write();
-
-		shaders_build();
-		shaders_write();
-
-		assets_build();
-		assets_write();
+		if( Build::buildBinary )
+		{
+			objects_build();
+			shaders_build();
+			assets_build();
+		}
+		else
+		{
+			PrintColor( LOG_WHITE, TAB "Skipped... " );
+			PrintLnColor( LOG_GREEN, "clean" );
+		}
 
 		PrintLnColor( LOG_WHITE, TAB "Finished (%.3f ms)", timer.elapsed_ms() );
 	}
@@ -235,6 +262,21 @@ void BuilderCore::build( int argc, char **argv )
 		binary_write();
 
 		PrintLnColor( LOG_WHITE, TAB "Finished (%.3f ms)", timer.elapsed_ms() );
+	}
+
+	// End
+	{
+		Assets::end();
+		Assets::cache_write( Build::pathOutputBuildCacheAssets );
+
+		Gfx::end();
+		Gfx::cache_write( Build::pathOutputBuildCacheGraphics );
+
+		Objects::end();
+		Objects::cache_write( Build::pathOutputBuildCacheObjects );
+
+		Build::end();
+		Build::cache_write( Build::pathOutputBuildCacheBuild );
 	}
 
 	// Compile Executable
@@ -255,7 +297,6 @@ void BuilderCore::build( int argc, char **argv )
 	{
 		PrintColor( LOG_GREEN, "\nBuild Finished!" );
 		PrintLnColor( LOG_WHITE, " (%.3f s)", Build::timer.elapsed_s() );
-		Build::cacheBufferCurrent.save( Build::pathOutputBuildCache );
 	}
 
 	// Package
@@ -285,9 +326,11 @@ void BuilderCore::build( int argc, char **argv )
 	}
 
 	// Run Executable
-	if( run )
+	switch( run )
 	{
-		executable_run( argc, argv );
+		case 1: executable_run( argc, argv ); break; // Normal Run
+		case 2: executable_run_gpu_capture( argc, argv ); break; // GPU capture
+		default: break; // Build only
 	}
 }
 
@@ -299,288 +342,264 @@ void BuilderCore::parse_arguments( int argc, char **argv )
 	Build::tc.detect( Build::args );
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void BuilderCore::build_cache()
+void BuilderCore::build_cache_validate()
 {
-	Build::cacheDirty  = false;
-	Build::cacheDirty |= ( strcmp( Build::args.clean, "1" ) == 0 );
-	Build::cacheDirty |= ( !Build::cacheBufferPrevious.load( Build::pathOutputBuildCache, true ) );
-
-	PrintColor( LOG_WHITE, TAB "Build Cache... " );
-	PrintLnColor( Build::cacheDirty ? LOG_RED : LOG_GREEN, Build::cacheDirty ? "dirty" : "clean" );
+	Build::cache_validate();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void BuilderCore::objects_gather()
 {
-	PrintLnColor( LOG_WHITE, TAB "Gather Objects..." );
+	PrintLnColor( LOG_WHITE, TAB "Objects..." );
 	static char path[PATH_SIZE];
 
-	// Engine
-	strjoin( path, Build::pathEngine, SLASH "manta" );
-	Objects::gather( path, true );
-
-	// Project
-	strjoin( path, Build::pathProject, SLASH "runtime" );
-	Objects::gather( path, true );
+	usize numObjects = 0LLU;
+	strjoin( path, Build::pathEngine, SLASH "manta" ); // Engine
+	numObjects += Objects::gather( path, true );
+	strjoin( path, Build::pathProject, SLASH "runtime" ); // Project
+	numObjects += Objects::gather( path, true );
+	verbose_log_gather( "object", numObjects );
 }
 
 
-void BuilderCore::objects_cache()
+void BuilderCore::objects_cache_validate()
 {
-	Build::cacheDirtyObjects |= Build::cacheDirty ||
-		( Objects::objectFilesCount != Build::cacheBufferPrevious.read<usize>() );
-	Build::cacheDirty |= Build::cacheDirtyObjects;
-	Build::cacheBufferCurrent.write( Objects::objectFilesCount );
+	// If Build cache is dirty, Assets must also be dirty
+	Objects::cache_validate();
 
-	PrintColor( LOG_WHITE, TAB "Objects Cache... " );
-	PrintLnColor( Build::cacheDirtyObjects ? LOG_RED : LOG_GREEN, Build::cacheDirtyObjects ? "dirty" : "clean" );
+	PrintColor( LOG_WHITE, TAB "Objects... " );
+	PrintLnColor( Objects::cache.dirty ? LOG_RED : LOG_GREEN, Objects::cache.dirty ? "dirty" : "clean" );
 }
 
 
-void BuilderCore::objects_parse()
+void BuilderCore::objects_build()
 {
-	if( !Build::cacheDirty ) { return; }
-	PrintLnColor( LOG_WHITE, TAB "Parse Objects..." );
+	if( Objects::cache.dirty )
+	{
+		PrintLnColor( LOG_WHITE, TAB "Objects..." );
 
-	// Parse
-	Objects::parse();
-}
-
-
-void BuilderCore::objects_write()
-{
-	if( !Build::cacheDirty ) { return; }
-	PrintLnColor( LOG_WHITE, TAB "Write Objects..." );
-
-	// Resolve inheritance tree
-	Objects::resolve();
-
-	// Validate Objects
-	Objects::validate();
-
-	// Generate C++ files
-	Objects::generate();
-
-	// Write C++ files to disk
-	Objects::write();
+		Objects::parse();
+		Objects::resolve();
+		Objects::validate();
+		Objects::codegen();
+	}
+	else
+	{
+		PrintColor( LOG_WHITE, TAB "Objects... " );
+		PrintLnColor( LOG_MAGENTA, "cached" );
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void BuilderCore::shaders_gather()
 {
-	PrintLnColor( LOG_WHITE, TAB "Gather Shaders..." );
+	PrintLnColor( LOG_WHITE, TAB "Shaders..." );
 
-	// Gather Shaders
-	Gfx::gather( Build::pathEngine, true );
-	Gfx::gather( Build::pathProject, true );
+	usize numShaders = 0LLU;
+	numShaders += Gfx::gather( Build::pathEngine, true );
+	numShaders += Gfx::gather( Build::pathProject, true );
+	verbose_log_gather( "shader", numShaders );
 }
 
 
-void BuilderCore::shaders_cache()
+void BuilderCore::shaders_cache_validate()
 {
-	Build::cacheDirtyShaders |= Build::cacheDirty ||
-		( Gfx::shaderFileCount != Build::cacheBufferPrevious.read<usize>() );
-	Build::cacheDirty |= Build::cacheDirtyShaders;
-	Build::cacheBufferCurrent.write( Gfx::shaderFileCount );
+	// If Build cache is dirty, Assets must also be dirty
+	Gfx::cache_validate();
 
-	PrintColor( LOG_WHITE, TAB "Shaders Cache... " );
-	PrintLnColor( Build::cacheDirtyShaders ? LOG_RED : LOG_GREEN, Build::cacheDirtyShaders ? "dirty" : "clean" );
+	PrintColor( LOG_WHITE, TAB "Shaders... " );
+	PrintLnColor( Gfx::cache.dirty ? LOG_RED : LOG_GREEN, Gfx::cache.dirty ? "dirty" : "clean" );
 }
 
 
 void BuilderCore::shaders_build()
 {
-	if( !Build::cacheDirty ) { return; }
-	PrintLnColor( LOG_WHITE, TAB "Build Shaders..." );
+	CacheBinaryStage cacheStage;
+	const bool hasCachedStage = Build::cache.fetch( CACHE_BINARY_STAGE_GFX, cacheStage );
+	Gfx::cacheReadOffset = hasCachedStage ? cacheStage.offset : 0LLU;
 
-	Gfx::build();
-}
+	if( Gfx::cache.dirty || !hasCachedStage )
+	{
+		PrintLnColor( LOG_WHITE, TAB "Shaders... " );
 
+		Gfx::build();
+		Gfx::codegen();
+	}
+	else
+	{
+		PrintColor( LOG_WHITE, TAB "Shaders... " );
+		PrintLnColor( LOG_MAGENTA, "cached" );
 
-void BuilderCore::shaders_write()
-{
-	if( !Build::cacheDirty ) { return; }
-	PrintLnColor( LOG_WHITE, TAB "Write Shaders..." );
-
-	Gfx::write();
+		Gfx::binary.write_from_file( Build::pathOutputRuntimeBinary,
+			cacheStage.offset, cacheStage.size );
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void BuilderCore::assets_gather()
 {
-	PrintLnColor( LOG_WHITE, TAB "Gather Assets..." );
+	PrintLnColor( LOG_WHITE, TAB "Assets..." );
 
-	// Gather Binary Assets
-	Assets::dataAssets.gather( Build::pathEngine );
-	Assets::dataAssets.gather( Build::pathProject );
+	usize numAssets = 0LLU;
+	numAssets += Assets::dataAssets.gather( Build::pathEngine );
+	numAssets += Assets::dataAssets.gather( Build::pathProject );
+	verbose_log_gather( "asset", numAssets );
 
-	// Gather Textures
-	Assets::textures.gather( Build::pathEngine );
-	Assets::textures.gather( Build::pathProject );
+	usize numTextures = 0LLU;
+	numTextures += Assets::textures.gather( Build::pathEngine );
+	numTextures += Assets::textures.gather( Build::pathProject );
+	verbose_log_gather( "texture", numTextures );
 
-	// Gather Sprites
-	Assets::sprites.gather( Build::pathEngine );
-	Assets::sprites.gather( Build::pathProject );
+	usize numSprites = 0LLU;
+	numSprites += Assets::sprites.gather( Build::pathEngine );
+	numSprites += Assets::sprites.gather( Build::pathProject );
+	verbose_log_gather( "sprite", numSprites );
 
-	// Gather Materials
-	Assets::materials.gather( Build::pathEngine );
-	Assets::materials.gather( Build::pathProject );
+	usize numMaterials = 0LLU;
+	numMaterials += Assets::materials.gather( Build::pathEngine );
+	numMaterials += Assets::materials.gather( Build::pathProject );
+	verbose_log_gather( "material", numMaterials );
 
-	// Gather Fonts
-	Assets::fonts.gather( Build::pathEngine );
-	Assets::fonts.gather( Build::pathProject );
+	usize numFonts = 0LLU;
+	numFonts += Assets::fonts.gather( Build::pathEngine );
+	numFonts += Assets::fonts.gather( Build::pathProject );
+	verbose_log_gather( "font", numFonts );
 
-	// Gather Sounds
-	Assets::sounds.gather( Build::pathEngine );
-	Assets::sounds.gather( Build::pathProject );
+	usize numSounds = 0LLU;
+	numSounds += Assets::sounds.gather( Build::pathEngine );
+	numSounds += Assets::sounds.gather( Build::pathProject );
+	verbose_log_gather( "sound", numSounds );
 
-	// Gather Meshes
-	Assets::meshes.gather( Build::pathEngine );
-	Assets::meshes.gather( Build::pathProject );
-
-	// Gather Skeleton2Ds
-	Assets::skeleton2Ds.gather( Build::pathEngine );
-	Assets::skeleton2Ds.gather( Build::pathProject );
+	usize numSkeletons2D = 0LLU;
+	numSkeletons2D += Assets::skeleton2Ds.gather( Build::pathEngine );
+	numSkeletons2D += Assets::skeleton2Ds.gather( Build::pathProject );
+	verbose_log_gather( "skeleton", numSkeletons2D );
 }
 
 
-void BuilderCore::assets_cache()
+void BuilderCore::assets_cache_validate()
 {
-	Build::cacheDirtyAssets |= Build::cacheDirty ||
-		( Assets::assetFileCount != Build::cacheBufferPrevious.read<usize>() );
-	Build::cacheDirty |= Build::cacheDirtyAssets;
-	Build::cacheBufferCurrent.write( Assets::assetFileCount );
+	// If Build cache is dirty, Assets must also be dirty
+	Assets::cache_validate();
 
-	PrintColor( LOG_WHITE, TAB "Assets Cache... " );
-	PrintLnColor( Build::cacheDirtyAssets ? LOG_RED : LOG_GREEN, Build::cacheDirtyAssets ? "dirty" : "clean" );
+	PrintColor( LOG_WHITE, TAB "Assets... " );
+	PrintLnColor( Assets::cache.dirty ? LOG_RED : LOG_GREEN, Assets::cache.dirty ? "dirty" : "clean" );
 }
 
 
 void BuilderCore::assets_build()
 {
-	if( !Build::cacheDirty ) { return; }
-	PrintLnColor( LOG_WHITE, TAB "Build Assets..." );
+	CacheBinaryStage cacheStage;
+	const bool hasCachedStage = Build::cache.fetch( CACHE_BINARY_STAGE_ASSETS, cacheStage );
+	Assets::cacheReadOffset = hasCachedStage ? cacheStage.offset : 0LLU;
 
-	// Write Binary Assets
-	Assets::dataAssets.write();
-
-	// Write Textures
-	Assets::textures.write();
-
-	// Write Glyphs
-	Assets::glyphs.write();
-
-	// Write Sprites
-	Assets::sprites.write();
-
-	// Write Materials
-	Assets::materials.write();
-
-	// Write Fonts
-	Assets::fonts.write();
-
-	// Write Sounds
-	Assets::sounds.write();
-
-	// Write Meshes
-	Assets::meshes.write();
-
-	// Write Skeleton2Ds
-	Assets::skeleton2Ds.write();
-
-	Assets::header.append( COMMENT_BREAK "\n\n" );
-	Assets::source.append( COMMENT_BREAK "\n\n" );
-}
-
-
-void BuilderCore::assets_write()
-{
-	if( !Build::cacheDirty ) { return; }
-	PrintLnColor( LOG_WHITE, TAB "Write Assets..." );
-
-	// assets.generated.hpp
+	if( Assets::cache.dirty || !hasCachedStage )
 	{
-		if( verbose_output() ) { PrintColor( LOG_CYAN, TAB TAB "Write %s", Assets::pathHeader ); }
-		Timer timer;
+		PrintLnColor( LOG_WHITE, TAB "Assets... " );
 
-		// Begin header
-		String header;
-		header.append( "#pragma once\n\n" );
-		header.append( COMMENT_BREAK "\n\n" );
-		header.append( "/*\n" );
-		header.append( " * File generated by build.exe\n" );
-		header.append( " * Refer to: source/build/build.cpp (BuilderCore::assets_write)\n" );
-		header.append( " */\n" );
-		header.append( COMMENT_BREAK "\n\n" );
-		header.append( "#include <core/types.hpp>\n" );
-		header.append( "#include <core/debug.hpp>\n\n" );
-
-		// Append header
-		header.append( Assets::header );
-
-		// Save header
-		ErrorIf( !header.save( Assets::pathHeader ), "Failed to write '%s'", Assets::pathHeader );
-
-		if( verbose_output() ) { PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() ); }
+		Assets::dataAssets.build();
+		Assets::textures.build();
+		Assets::glyphs.build();
+		Assets::sprites.build();
+		Assets::materials.build();
+		Assets::fonts.build();
+		Assets::sounds.build();
+		Assets::skeleton2Ds.build();
+		Assets::codegen();
 	}
-
-	// assets.generated.cpp
+	else
 	{
-		if( verbose_output() ) { PrintColor( LOG_CYAN, TAB TAB "Write %s", Assets::pathSource ); }
-		Timer timer;
+		PrintColor( LOG_WHITE, TAB "Assets... " );
+		PrintLnColor( LOG_MAGENTA, "cached" );
 
-		// Begin source
-		String source;
-
-		source.append( COMMENT_BREAK "\n\n" );
-		source.append( "/*\n" );
-		source.append( " * File generated by build.exe\n" );
-		source.append( " * Refer to: source/build/build.cpp (BuilderCore::assets_write)\n" );
-		source.append( " */\n\n" );
-		source.append( COMMENT_BREAK "\n\n" );
-		source.append( "#include <manta/assets.hpp>\n" );
-		source.append( "#include <manta/fonts.hpp>\n\n" );
-		source.append( "#include <assets.generated.hpp>\n\n" );
-
-		// Append source
-		source.append( Assets::source );
-
-		// Save source
-		ErrorIf( !source.save( Assets::pathSource ), "Failed to write '%s'", Assets::pathSource );
-
-		if( verbose_output() ) { PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() ); }
+		Assets::binary.write_from_file( Build::pathOutputRuntimeBinary,
+			cacheStage.offset, cacheStage.size );
 	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void BuilderCore::binary_cache()
+void BuilderCore::binary_cache_validate()
 {
-	Build::cacheDirtyBinary |= Build::cacheDirty;
-	Build::cacheDirtyBinary |= ( Assets::binary.size() > 0 );
+	Build::buildBinary |= Build::cache.dirty;
+	Build::buildBinary |= Objects::cache.dirty;
+	Build::buildBinary |= Gfx::cache.dirty;
+	Build::buildBinary |= Assets::cache.dirty;
 
-	PrintColor( LOG_WHITE, TAB "Binary Cache... " );
-	PrintLnColor( Build::cacheDirtyBinary ? LOG_RED : LOG_GREEN, Build::cacheDirtyBinary ? "dirty" : "clean" );
+	PrintColor( LOG_WHITE, TAB "Build... " );
+	PrintLnColor( Build::buildBinary ? LOG_RED : LOG_GREEN, Build::buildBinary ? "dirty" : "clean" );
 }
 
 
 void BuilderCore::binary_write()
 {
-	if( !Build::cacheDirtyBinary ) { return; }
+	if( !Build::buildBinary ) { return; }
+
+	Build::header.append( "#pragma once\n\n" );
+	Build::header.append( COMMENT_BREAK "\n\n" );
+
+	// Objects
+	{
+		CacheBinaryStage cacheStage;
+		cacheStage.offset = 0;
+		cacheStage.size = 0;
+		// NOTE: Objects currently have no binary data, but this may change
+		Build::cache.store( CACHE_BINARY_STAGE_OBJECTS, cacheStage );
+
+		Build::header.append( "#define BINARY_OFFSET_OBJECTS ( " );
+		Build::header.append( cacheStage.offset ).append( "LLU )\n" );
+		Build::header.append( "#define BINARY_SIZE_OBJECTS ( " );
+		Build::header.append( cacheStage.size ).append( "LLU )\n\n" );
+	}
+
+	// Gfx
+	{
+		CacheBinaryStage cacheStage;
+		Assert( Gfx::binary.size() > 0 );
+		cacheStage.offset = Build::binary.write( Gfx::binary.data, Gfx::binary.size() );
+		cacheStage.size = Gfx::binary.size();
+		Build::cache.store( CACHE_BINARY_STAGE_GFX, cacheStage );
+
+		Build::header.append( "#define BINARY_OFFSET_GFX ( " );
+		Build::header.append( cacheStage.offset ).append( "LLU )\n" );
+		Build::header.append( "#define BINARY_SIZE_GFX ( " );
+		Build::header.append( cacheStage.size ).append( "LLU )\n\n" );
+	}
+
+	// Assets
+	{
+		CacheBinaryStage cacheStage;
+		Assert( Assets::binary.size() > 0 );
+		cacheStage.offset = Build::binary.write( Assets::binary.data, Assets::binary.size() );
+		cacheStage.size = Assets::binary.size();
+		Build::cache.store( CACHE_BINARY_STAGE_ASSETS, cacheStage );
+
+		Build::header.append( "#define BINARY_OFFSET_ASSETS ( " );
+		Build::header.append( cacheStage.offset ).append( "LLU )\n" );
+		Build::header.append( "#define BINARY_SIZE_ASSETS ( " );
+		Build::header.append( cacheStage.size ).append( "LLU )\n\n" );
+	}
 
 	// Log
 	PrintColor( LOG_WHITE, TAB "Writing Binary" );
-	PrintLnColor( LOG_CYAN, " (%.2f MB)", MB( Assets::binary.size() ) );
+	PrintLnColor( LOG_YELLOW, " (%.2f MB)", MB( Assets::binary.size() ) );
 	if( verbose_output() ) { PrintColor( LOG_CYAN, TAB TAB "Write %s", Build::pathOutputRuntimeBinary ); }
 	Timer timer;
 
-	// Write
-	ErrorIf( !Assets::binary.save( Build::pathOutputRuntimeBinary ),
+	// Binary
+	ErrorIf( !Build::binary.save( Build::pathOutputRuntimeBinary ),
 		"Failed to write binary (%s)", Build::pathOutputRuntimeBinary );
+
+	// Header
+	static char pathHeader[PATH_SIZE];
+	strjoin( pathHeader, Build::pathOutput, SLASH "generated" SLASH "binary.generated.hpp" );
+	Build::header.append( COMMENT_BREAK );
+	Build::header.save( pathHeader );
 
 	// Log
 	if( verbose_output() ) { PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() ); }
@@ -590,9 +609,12 @@ void BuilderCore::binary_write()
 
 void BuilderCore::compile_project()
 {
+	Timer timer;
+	usize numSources = 0LLU;
+
 	// Include Directories
 	{
-		Build::compile_add_include_directory( ".." SLASH ".." SLASH "runtime" ); // Project
+		Build::compile_add_include_directory( ".." SLASH ".." SLASH "runtime" );
 	}
 
 	// C++ Sources + Library Linkage
@@ -600,13 +622,23 @@ void BuilderCore::compile_project()
 		char path[PATH_SIZE];
 		PrintLnColor( LOG_WHITE, TAB "Gather Project Sources..." );
 		strjoin( path, Build::pathProject, SLASH "runtime" );
-		Build::compile_add_sources( path, true, ".cpp", Build::tc.linkerExtensionObj ); // Project
+		numSources += Build::compile_add_sources( path, true, ".cpp", Build::tc.linkerExtensionObj );
+	}
+
+	// Logging
+	if( verbose_output() )
+	{
+		PrintColor( LOG_CYAN, TAB TAB "%u source%s found in project", numSources, numSources == 1 ? "" : "s" );
+		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
 	}
 }
 
 
 void BuilderCore::compile_engine()
 {
+	Timer timer;
+	usize numSources = 0LLU;
+
 	// Include Directories
 	{
 		Build::compile_add_include_directory( ".." SLASH "generated" ); // Generated C++ files
@@ -621,29 +653,30 @@ void BuilderCore::compile_engine()
 
 		// root/projects/<project>/output/generated/*.cpp
 		strjoin( path, Build::pathOutput, SLASH "generated" );
-		Build::compile_add_sources( path, false, ".cpp", Build::tc.linkerExtensionObj );
+		numSources += Build::compile_add_sources( path, false, ".cpp", Build::tc.linkerExtensionObj );
 
 		// root/source/*.cpp
 		strjoin( path, Build::pathEngine );
-		Build::compile_add_sources( path, false, ".cpp", Build::tc.linkerExtensionObj );
+		numSources += Build::compile_add_sources( path, false, ".cpp", Build::tc.linkerExtensionObj );
 
 		// -r root/source/vendor/*.cpp
 		strjoin( path, Build::pathEngine, SLASH "vendor" );
-		Build::compile_add_sources( path, true, ".cpp", Build::tc.linkerExtensionObj );
+		numSources += Build::compile_add_sources( path, true, ".cpp", Build::tc.linkerExtensionObj );
 
 		// -r root/source/core/*.cpp
 		strjoin( path, Build::pathEngine, SLASH "core" );
-		Build::compile_add_sources( path, true, ".cpp", Build::tc.linkerExtensionObj );
+		numSources += Build::compile_add_sources( path, true, ".cpp", Build::tc.linkerExtensionObj );
 
 		// root/source/manta/*.cpp
 		strjoin( path, Build::pathEngine, SLASH "manta" );
-		Build::compile_add_sources( path, false, ".cpp", Build::tc.linkerExtensionObj );
+		numSources += Build::compile_add_sources( path, false, ".cpp", Build::tc.linkerExtensionObj );
 
 		// Backend Sources
 		{
 			// Audio | -r source/manta/backend/audio/*.cpp
 			strjoin( path, Build::pathEngine, SLASH "manta" SLASH "backend" SLASH "audio" SLASH, BACKEND_AUDIO );
 			count = Build::compile_add_sources( path, true, ".cpp", Build::tc.linkerExtensionObj );
+			numSources += count;
 			ErrorIf( !count, "No backend found for 'audio' (%s)", path );
 			if( OS_WINDOWS ) { Build::compile_add_library( "Ole32" ); }
 			if( OS_MACOS ) { Build::compile_add_library( "AudioToolbox" ); }
@@ -652,11 +685,13 @@ void BuilderCore::compile_engine()
 			// Filesystem | -r source/manta/backend/filesystem/*.cpp
 			strjoin( path, Build::pathEngine, SLASH "manta" SLASH "backend" SLASH "filesystem" SLASH, BACKEND_FILESYSTEM );
 			count = Build::compile_add_sources( path, true, ".cpp", Build::tc.linkerExtensionObj );
+			numSources += count;
 			ErrorIf( !count, "No backend found for 'filesystem' (%s)", path );
 
 			// Network | -r source/manta/backend/network/*.cpp
 			strjoin( path, Build::pathEngine, SLASH "manta" SLASH "backend" SLASH "network" SLASH, BACKEND_NETWORK );
 			count = Build::compile_add_sources( path, true, ".cpp", Build::tc.linkerExtensionObj );
+			numSources += count;
 			ErrorIf( !count, "No backend found for 'network' (%s)", path );
 			if( OS_WINDOWS ) { Build::compile_add_library( "ws2_32" ); }
 
@@ -664,6 +699,7 @@ void BuilderCore::compile_engine()
 			strjoin( path, Build::pathEngine, SLASH "manta" SLASH "backend" SLASH "gfx" SLASH, BACKEND_GRAPHICS );
 			count = Build::compile_add_sources( path, false, ".cpp", Build::tc.linkerExtensionObj ) +
 				Build::compile_add_sources( path, false, ".mm", Build::tc.linkerExtensionObj );
+			numSources += count;
 			ErrorIf( !count, "No backend found for 'gfx' (%s)", path );
 
 			if( GRAPHICS_OPENGL )
@@ -674,6 +710,7 @@ void BuilderCore::compile_engine()
 					strjoin( path, Build::pathEngine, SLASH "manta" SLASH "backend" SLASH "gfx" SLASH,
 						BACKEND_GRAPHICS, SLASH "wgl" );
 					count = Build::compile_add_sources( path, false, ".cpp", Build::tc.linkerExtensionObj );
+					numSources += count;
 					ErrorIf( !count, "No backend found for opengl 'wgl' (%s)", path );
 					Build::compile_add_library( "opengl32" );
 					Build::compile_add_library( "gdi32" );
@@ -684,6 +721,7 @@ void BuilderCore::compile_engine()
 					strjoin( path, Build::pathEngine, SLASH "manta" SLASH "backend" SLASH "gfx" SLASH,
 						BACKEND_GRAPHICS, SLASH "nsgl" );
 					count = Build::compile_add_sources( path, false, ".mm", Build::tc.linkerExtensionObj );
+					numSources += count;
 					ErrorIf( !count, "No backend found for opengl 'nsgl' (%s)", path );
 					Build::compile_add_library( "OpenGL" );
 				}
@@ -693,6 +731,7 @@ void BuilderCore::compile_engine()
 					strjoin( path, Build::pathEngine, SLASH "manta" SLASH "backend" SLASH "gfx" SLASH,
 						BACKEND_GRAPHICS, SLASH "glx" );
 					count = Build::compile_add_sources( path, false, ".cpp", Build::tc.linkerExtensionObj );
+					numSources += count;
 					ErrorIf( !count, "No backend found for opengl 'glx' (%s)", path );
 					Build::compile_add_library( "GL" );
 				}
@@ -730,22 +769,32 @@ void BuilderCore::compile_engine()
 			// Thread | -r source/manta/backend/thread/*.cpp
 			strjoin( path, Build::pathEngine, SLASH "manta" SLASH "backend" SLASH "thread" SLASH, BACKEND_THREAD );
 			count = Build::compile_add_sources( path, true, ".cpp", Build::tc.linkerExtensionObj );
+			numSources += count;
 			ErrorIf( !count, "No backend found for 'thread' (%s)", path );
 
 			// Time | -r source/manta/backend/time/*.cpp
 			strjoin( path, Build::pathEngine, SLASH "manta" SLASH "backend" SLASH "time" SLASH, BACKEND_TIMER );
 			count = Build::compile_add_sources( path, true, ".cpp", Build::tc.linkerExtensionObj );
+			numSources += count;
 			ErrorIf( !count, "No backend found for 'time' (%s)", path );
 			if( OS_WINDOWS ) { Build::compile_add_library( "winmm" ); }
 
 			// Window | -r source/manta/backend/window/*.cpp
 			strjoin( path, Build::pathEngine, SLASH "manta" SLASH "backend" SLASH "window" SLASH, BACKEND_WINDOW );
 			count = Build::compile_add_sources( path, true, OS_MACOS ? ".mm" : ".cpp", Build::tc.linkerExtensionObj );
+			numSources += count;
 			ErrorIf( !count, "No backend found for 'window' (%s)", path );
 			if( OS_WINDOWS ) { Build::compile_add_library( "user32" ); Build::compile_add_library( "Shell32" ); }
 			if( OS_MACOS ) { Build::compile_add_library( "Cocoa" ); }
 			if( OS_LINUX ) { Build::compile_add_library( "X11" ); }
 		}
+	}
+
+	// Logging
+	if( verbose_output() )
+	{
+		PrintColor( LOG_CYAN, TAB TAB "%u source%s found in engine", numSources, numSources == 1 ? "" : "s" );
+		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
 	}
 }
 
@@ -1150,11 +1199,93 @@ void BuilderCore::executable_run( int argc, char **argv )
 		Build::args.project, Build::tc.linkerExtensionExe, code );
 }
 
+
+void BuilderCore::executable_run_gpu_capture( int argc, char **argv )
+{
+#if PIPELINE_OS_WINDOWS
+	// RenderDoc needs full exe path, not relative path
+	auto get_absolute_path = [&]( const char *partial, char *buffer, usize size ) -> void
+	{
+		DWORD len = GetFullPathNameA( partial, size, buffer, nullptr );
+		if( len == 0 || len >= size ) { buffer[0] = '\0'; }
+	};
+	char pathAbsolute[PATH_SIZE];
+	get_absolute_path( Build::pathOutputRuntimeExecutable, pathAbsolute, PATH_SIZE );
+	strjoin( Build::commandRun, "renderdoccmd capture -w -c capture \"", pathAbsolute, "\"" );
+
+	// Launch with RenderDoc
+	PrintLnColor( LOG_MAGENTA, "\nLaunching RenderDoc!\n" TAB "'%s'\n", Build::commandRun );
+	int code = system( Build::commandRun );
+	PrintLnColor( code ? LOG_RED : LOG_WHITE, "\n%s%s terminated with code %d\n",
+		Build::args.project, Build::tc.linkerExtensionExe, code );
+
+	// Find captures
+	List<FileInfo> files;
+	directory_iterate( files, Build::pathOutputRuntime, ".rdc", false );
+
+	// Open first capture
+	if( files.count() > 0 )
+	{
+		char commandOpenCapture[PATH_SIZE];
+		strjoin( commandOpenCapture, "qrenderdoc \"", files[0].path, "\"" );
+		int code = system( commandOpenCapture );
+		if( code ) { PrintLnColor( LOG_RED, "Failed to open RenderDoc capture: %s", files[0].path ); }
+	}
+
+	// Delete captures
+	for( FileInfo &file : files ) { file_delete( file.path ); }
+
+#else
+	// GPU captures only supported on windows, pass through to run
+	PrintLn( "\n" ); Warning( "Failed to launch GPU capture (windows only)" );
+	executable_run( argc, argv );
+#endif
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool verbose_output()
 {
 	return strcmp( Build::args.verbose, "1" ) == 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Build::begin()
+{
+	// ...
+}
+
+
+void Build::end()
+{
+	// ...
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Build::cache_read( const char *path )
+{
+	Build::cache.dirty  = false;
+	Build::cache.dirty |= ( strcmp( Build::args.clean, "1" ) == 0 );
+
+	if( !Build::cache.dirty ) { Build::cache.read( path ); }
+
+	PrintColor( LOG_WHITE, TAB "Build Cache... " );
+	PrintLnColor( Build::cache.dirty ? LOG_RED : LOG_GREEN, Build::cache.dirty ? "dirty" : "clean" );
+}
+
+
+void Build::cache_write( const char *path )
+{
+	if( !Build::buildBinary ) { return; }
+	Build::cache.write( path );
+}
+
+
+void Build::cache_validate()
+{
+	// ...
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -5,19 +5,22 @@
 #include <core/buffer.hpp>
 #include <core/string.hpp>
 
+#include <build/cache.hpp>
 #include <build/textureio.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 struct Glyph
 {
-	Glyph( Texture2DBuffer &&textureBuffer ) :
-		textureBuffer( static_cast<Texture2DBuffer &&>( textureBuffer ) ),
-		x1( 0 ), y1( 0 ), x2( 0 ), y2( 0 ) { };
-
+	CacheID cacheID;
+	String texturePath;
 	Texture2DBuffer textureBuffer;
-	u16 x1, y1;
-	u16 x2, y2;
+
+	u16 atlasX1, atlasY1;
+	u16 atlasX2, atlasY2;
+
+	u16 imageX1, imageY1;
+	u16 imageX2, imageY2;
 
 	u16 u1, v1;
 	u16 u2, v2;
@@ -30,10 +33,10 @@ using GlyphID = u32;
 
 struct Glyphs
 {
-	GlyphID make_new( Texture2DBuffer &&textureBuffer );
-	GlyphID make_new( const u16 width, const u16 height );
+	GlyphID make_new( const Glyph &glyph );
+	GlyphID make_new( Glyph &&glyph );
 
-	void write();
+	void build();
 
 	Glyph &operator[]( const GlyphID id ) { return glyphs[id]; }
 

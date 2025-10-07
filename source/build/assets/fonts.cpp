@@ -6,6 +6,7 @@
 #include <core/types.hpp>
 #include <core/debug.hpp>
 #include <core/json.hpp>
+#include <core/checksum.hpp>
 
 #include <build/build.hpp>
 #include <build/assets.hpp>
@@ -14,109 +15,176 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Fonts::gather( const char *path, const bool recurse )
+struct CacheFont
 {
-	// Gather & Load fonts
-	Timer timer;
+	bool hasDefault;
+	bool hasItalic;
+	bool hasBold;
+	bool hasBoldItalic;
+};
+
+
+struct CacheTTF
+{
+	usize offset;
+	usize size;
+};
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+usize Fonts::gather( const char *path, const bool recurse )
+{
+	// Gather Fonts
 	List<FileInfo> files;
 	directory_iterate( files, path, ".font", recurse );
-	for( FileInfo &fileInfo : files ) { load( fileInfo.path ); }
 
-	// Log
-	if( verbose_output() )
+	// Process Fonts
+	for( FileInfo &fileInfo : files )
 	{
-		const u32 count = files.size();
-		PrintColor( LOG_CYAN, TAB TAB "%u font%s found in: %s", count, count == 1 ? "" : "s", path );
-		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+		Assets::cacheFileCount++;
+		process( fileInfo.path );
 	}
+
+	return files.size();
 }
 
 
-u16 Fonts::load_ttf( const char *pathFont, const char *pathTTF )
+void Fonts::process( const char *path )
 {
-	// Register TTF
-	const usize ttfIndex = ttfs.count();
-	ErrorIf( ttfIndex > U16_MAX, "Exceeded maximum number of TTFs!" );
-	TTF &ttf = ttfs.add( { } );
-	ttf.path = pathTTF;
+	// Local Directory
+	static char pathDirectory[PATH_SIZE];
+	path_get_directory( pathDirectory, sizeof( pathDirectory ), path );
 
-	// Load TTF (try relative path first)
-	char pathRelative[PATH_SIZE];
-	path_get_directory( pathRelative, sizeof( pathRelative ), pathFont );
-	strappend( pathRelative, SLASH ); strappend( pathRelative, pathTTF );
-	if( !ttf.buffer.load( pathRelative ) )
+	// Register Definition File
+	AssetFile fileDefinition;
+	if( !asset_file_register( fileDefinition, path ) )
 	{
-		// Relative path failed -- try absolute path
-		ErrorIf( !ttf.buffer.load( pathTTF ), "Failed to load font ttf: %s", pathFont );
+		Error( "Unable to locate font file: %s", path );
+		return;
 	}
 
-	// Return TTF index
-	return static_cast<u16>( ttfIndex );
-}
-
-
-static void load_license( Buffer &license, const char *pathFont, const char *pathLicense )
-{
-	// Load License (try relative path first)
-	char pathRelative[PATH_SIZE];
-	path_get_directory( pathRelative, sizeof( pathRelative ), pathFont );
-	strappend( pathRelative, SLASH ); strappend( pathRelative, pathLicense );
-	if( !license.load( pathRelative ) )
+	// Open Definition JSON
+	String fileDefinitionContents;
+	if( !fileDefinitionContents.load( path ) )
 	{
-		// Relative path failed -- try absolute path
-		ErrorIf( !license.load( pathLicense ), "Failed to load font license: %s", pathFont );
+		Error( "Unable to open font file: %s", path );
+		return;
 	}
-}
+	JSON fileDefinitionJSON { fileDefinitionContents };
 
-
-void Fonts::load( const char *path )
-{
-	// Open File
-	String file;
-	ErrorIf( !file.load( path ), "Unable to load font file: %s", path );
-	JSON fontJSON { file };
-
-	// Build Cache
-	Assets::assetFileCount++;
-	if( !Build::cacheDirtyAssets )
+	// Helper: Register TTF
+	auto register_ttf = [&]( const char type, const char *pathTTF, const CacheID cacheIDFont ) -> u16
 	{
-		FileTime time;
-		file_time( path, &time );
-		Build::cacheDirtyAssets |= file_time_newer( time, Assets::timeCache );
+		const usize ttfIndex = ttfs.count();
+		ErrorIf( ttfIndex >= U16_MAX, "Exceeded maximum number of TTFs!" );
+
+		static char cacheIDBuffer[PATH_SIZE * 2];
+		memory_set( cacheIDBuffer, 0, sizeof( cacheIDBuffer ) );
+		snprintf( cacheIDBuffer, sizeof( cacheIDBuffer ), "ttf_%c %s|%u", type, pathTTF, cacheIDFont );
+		const CacheID cacheID = checksum_xcrc32( cacheIDBuffer, sizeof( cacheIDBuffer ), 0 );
+
+		TTF &ttf = ttfs.add( TTF { } );
+		ttf.cacheID = cacheID;
+		ttf.path = pathTTF;
+
+		return static_cast<u16>( ttfIndex );
+	};
+
+	// Parse Definition JSON
+	AssetFile fileDefault;
+	static char pathDefault[PATH_SIZE];
+	String pathDefaultRelative = fileDefinitionJSON.get_string( "default" );
+	const bool hasDefault = !pathDefaultRelative.is_empty();
+	ErrorIf( !hasDefault, "Font '%s' has an invalid default path (required)", fileDefinition.name );
+	snprintf( pathDefault, sizeof( pathDefault ),
+		"%s" SLASH "%s", pathDirectory, pathDefaultRelative.cstr() );
+	ErrorIf( hasDefault && !asset_file_register( fileDefault, pathDefault ),
+		"Font '%s' - Unable to locate \"default\" file: '%s'",
+		fileDefinition.name, pathDefault );
+
+	AssetFile fileItalic;
+	static char pathItalic[PATH_SIZE];
+	String pathItalicRelative = fileDefinitionJSON.get_string( "italic" );
+	const bool hasItalic = !pathItalicRelative.is_empty();
+	snprintf( pathItalic, sizeof( pathItalic ),
+		"%s" SLASH "%s", pathDirectory, pathItalicRelative.cstr() );
+	ErrorIf( hasItalic && !asset_file_register( fileItalic, pathItalic ),
+		"Font '%s' - Unable to locate \"italic\" file: '%s'",
+		fileDefinition.name, pathItalic );
+
+	AssetFile fileBold;
+	static char pathBold[PATH_SIZE];
+	String pathBoldRelative = fileDefinitionJSON.get_string( "bold" );
+	const bool hasBold = !pathBoldRelative.is_empty();
+	snprintf( pathBold, sizeof( pathBold ),
+		"%s" SLASH "%s", pathDirectory, pathBoldRelative.cstr() );
+	ErrorIf( hasBold && !asset_file_register( fileBold, pathBold ),
+		"Font '%s' - Unable to locate \"bold\" file: '%s'",
+		fileDefinition.name, pathBold );
+
+	AssetFile fileBoldItalic;
+	static char pathBoldItalic[PATH_SIZE];
+	String pathBoldItalicRelative = fileDefinitionJSON.get_string( "bold_italic" );
+	const bool hasBoldItalic = !pathBoldItalicRelative.is_empty();
+	snprintf( pathBoldItalic, sizeof( pathBoldItalic ),
+		"%s" SLASH "%s", pathDirectory, pathBoldItalicRelative.cstr() );
+	ErrorIf( hasBoldItalic && !asset_file_register( fileBoldItalic, pathBoldItalic ),
+		"Font '%s' - Unable to locate \"bold_italic\" file: '%s'",
+		fileDefinition.name, pathBoldItalic );
+
+	AssetFile fileLicense;
+	static char pathLicense[PATH_SIZE];
+	String pathLicenseRelative = fileDefinitionJSON.get_string( "license" );
+	const bool hasLicense = !pathLicenseRelative.is_empty();
+	ErrorIf( !hasLicense, "Font '%s' has an invalid license (required)", fileDefinition.name );
+	snprintf( pathLicense, sizeof( pathLicense ),
+		"%s" SLASH "%s", pathDirectory, pathLicenseRelative.cstr() );
+	ErrorIf( hasLicense && !asset_file_register( fileLicense, pathLicense ),
+		"Font '%s' - Unable to locate \"license\" file: '%s'",
+		fileDefinition.name, pathLicense );
+	static char pathLicenseFilename[PATH_SIZE];
+	path_get_filename( pathLicenseFilename, sizeof( pathLicenseFilename ), pathLicenseRelative );
+
+	// Generate Cache ID
+	static char cacheIDBuffer[PATH_SIZE * 8];
+	memory_set( cacheIDBuffer, 0, sizeof( cacheIDBuffer ) );
+	snprintf( cacheIDBuffer, sizeof( cacheIDBuffer ),
+		"font %s|%llu %s|%llu %s|%llu %s|%llu %s|%llu %s|%llu",
+		fileDefinition.path, fileDefinition.time.as_u64(),
+		hasDefault ? fileDefault.path : "", fileDefault.time.as_u64(),
+		hasItalic ? fileItalic.path : "", fileItalic.time.as_u64(),
+		hasBold ? fileBold.path : "", fileBold.time.as_u64(),
+		hasBoldItalic ? fileBoldItalic.path : "", fileBoldItalic.time.as_u64(),
+		hasLicense ? fileLicense.path : "null", fileLicense.time.as_u64() );
+	const CacheID cacheID = checksum_xcrc32( cacheIDBuffer, sizeof( cacheIDBuffer ), 0 );
+
+	// Check Cache
+	CacheFont cacheFont;
+	if( !Assets::cache.fetch( cacheID, cacheFont ) )
+	{
+		Assets::cache.dirty |= true; // Dirty Cache
 	}
 
 	// Register Font
-	ErrorIf( fonts.count() >= U8_MAX, "Exceeded maximum number of fonts!" );
-	Font &font = fonts.add( { } );
-	font.path = path;
+	Font &font = fonts.add( Font { } );
+	font.name = fileDefinition.name;
+	font.ttfDefault = register_ttf( 'd', pathDefault, cacheID );
+	font.ttfItalic = hasItalic ? register_ttf( 'i', pathItalic, cacheID ) : font.ttfDefault;
+	font.ttfBold = hasBold ? register_ttf( 'b', pathBold, cacheID ) : font.ttfDefault;
+	font.ttfBoldItalic = hasBoldItalic ? register_ttf( 't', pathBoldItalic, cacheID ) : font.ttfDefault;
+	font.pathLicense = hasLicense ? pathLicense : "";
 
-	// Extract Font Name
-	char filename[PATH_SIZE];
-	path_get_filename( filename, sizeof( filename ), path );
-	String name = filename;
-	font.name = name.substr( 0, name.find( "." ) );
-
-	// Read file (json)
-	font.licensePath = fontJSON.get_string( "license" );
-	ErrorIf( font.licensePath.length_bytes() == 0, "Font '%s' has an invalid license (required)", path );
-	String ttfDefaultPath = fontJSON.get_string( "default" );
-	ErrorIf( ttfDefaultPath.length_bytes() == 0, "Font '%s' has an invalid default ttf (required)", path );
-	String ttfItalicPath = fontJSON.get_string( "italic" );
-	String ttfBoldPath = fontJSON.get_string( "bold" );
-	String ttfBoldItalicPath = fontJSON.get_string( "bold_italic" );
-
-	// Load License
-	load_license( font.licenseData, path, font.licensePath );
-
-	// Load TTFs
-	font.ttfDefault = load_ttf( path, ttfDefaultPath );
-	font.ttfItalic = ttfItalicPath ? load_ttf( path, ttfItalicPath ) : font.ttfDefault;
-	font.ttfBold = ttfBoldPath ? load_ttf( path, ttfBoldPath ) : font.ttfDefault;
-	font.ttfBoldItalic = ttfBoldItalicPath ? load_ttf( path, ttfBoldItalicPath ) : font.ttfBold;
+	// Cache
+	cacheFont.hasDefault = hasDefault;
+	cacheFont.hasItalic = hasItalic;
+	cacheFont.hasBold = hasBold;
+	cacheFont.hasBoldItalic = hasBoldItalic;
+	Assets::cache.store( cacheID, cacheFont );
 }
 
 
-void Fonts::write()
+void Fonts::build()
 {
 	Buffer &binary = Assets::binary;
 	String &header = Assets::header;
@@ -126,14 +194,51 @@ void Fonts::write()
 
 	Timer timer;
 
+	// Load
+	{
+		for( TTF &ttf : ttfs )
+		{
+			char path[PATH_SIZE];
+			path_get_filename( path, sizeof( path ), ttf.path.cstr() );
+
+			CacheTTF cacheTTF;
+			if( Assets::cache.fetch( ttf.cacheID, cacheTTF ) )
+			{
+				// Load TTF from cached binary
+				ttf.data.write_from_file( Build::pathOutputRuntimeBinary,
+					Assets::cacheReadOffset + cacheTTF.offset, cacheTTF.size );
+				Assets::log_asset_cache( "Font", path );
+			}
+			else
+			{
+				// Load TTF data from file
+				ErrorIf( !ttf.data.load( ttf.path ), "Failed to load ttf: %s", ttf.path.cstr() );
+				Assets::log_asset_build( "Font", path );
+			}
+		}
+
+		for( Font &font : fonts )
+		{
+			// Load license (Note: license file isn't cached)
+			ErrorIf( !font.dataLicense.load( font.pathLicense ),
+				"Font '%s' - failed to load license file: %s", font.name.cstr(), font.pathLicense.cstr() );
+		}
+	}
+
 	// Binary
 	{
 		for( TTF &ttf : ttfs )
 		{
-			ttf.size = ttf.buffer.size();
-			ErrorIf( ttf.size <= 0, "Invalid font ttf %s", ttf.path.cstr() );
-			ttf.offset = binary.tell;
-			binary.write( ttf.buffer.data, ttf.size );
+			// Binary
+			ErrorIf( ttf.data.size() <= 0, "Invalid font ttf %s %llu", ttf.path.cstr() );
+			ttf.offset = binary.write( ttf.data.data, ttf.data.size() );
+			ttf.size = ttf.data.size();
+
+			// Cache
+			CacheTTF cacheTTF;
+			cacheTTF.offset = ttf.offset;
+			cacheTTF.size = ttf.size;
+			Assets::cache.store( ttf.cacheID, cacheTTF );
 		}
 	}
 
@@ -181,7 +286,7 @@ void Fonts::write()
 			for( TTF &ttf : ttfs )
 			{
 				snprintf( buffer, PATH_SIZE,
-					"\t\t{ %lluULL, %lluULL },\n",
+					"\t\t{ BINARY_OFFSET_ASSETS + %lluLLU, %lluLLU },\n",
 					ttf.offset,
 					ttf.size );
 
@@ -222,18 +327,25 @@ void Fonts::write()
 
 	// Write Licenses
 	{
-		char pathLicense[PATH_SIZE];
+		static char pathLicenseFilename[PATH_SIZE];
+		static char pathLicenseOutput[PATH_SIZE];
+
 		for( Font &font : fonts )
 		{
-			strjoin_path( pathLicense, Build::pathOutputRuntimeLicenses, font.licensePath.cstr() );
-			ErrorIf( !font.licenseData.save( pathLicense ), "Failed to write font license: %s", pathLicense );
+			if( font.pathLicense.is_empty() ) { continue; }
+
+			path_get_filename( pathLicenseFilename, sizeof( pathLicenseFilename ), font.pathLicense );
+			strjoin_path( pathLicenseOutput, Build::pathOutputRuntimeLicenses, pathLicenseFilename );
+
+			ErrorIf( !font.dataLicense.save( pathLicenseOutput ),
+				"Font '%s' - failed to write font license: %s", font.name.cstr(), font.pathLicense.cstr() );
 		}
 	}
 
 	if( verbose_output() )
 	{
 		const usize count = fonts.size();
-		PrintColor( LOG_CYAN, "\t\tWrote %d font%s", count, count == 1 ? "" : "s" );
+		PrintColor( LOG_CYAN, TAB TAB "Wrote %d font%s", count, count == 1 ? "" : "s" );
 		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
 	}
 }

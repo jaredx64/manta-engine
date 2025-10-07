@@ -117,6 +117,8 @@ public:
 
 	virtual void generate_stage( ShaderStage stage );
 
+	virtual void generate_statement_for( NodeStatementFor *node );
+
 	virtual void generate_function_declaration( NodeFunctionDeclaration *node );
 	virtual void generate_function_declaration_main_pipeline( NodeFunctionDeclaration *node );
 	virtual void generate_function_declaration_main_compute( NodeFunctionDeclaration *node );

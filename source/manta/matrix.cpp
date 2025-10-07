@@ -86,24 +86,32 @@ bool float_m44_equal( const float_m44 &a, const float_m44 &b )
 
 float_m44 float_m44_transpose( const float_m44 &m )
 {
-	float_m44 r;
-	r[0x0] = m[0x0];
-	r[0x1] = m[0x4];
-	r[0x2] = m[0x8];
-	r[0x3] = m[0xC];
-	r[0x4] = m[0x1];
-	r[0x5] = m[0x5];
-	r[0x6] = m[0x9];
-	r[0x7] = m[0xD];
-	r[0x8] = m[0x2];
-	r[0x9] = m[0x6];
-	r[0xA] = m[0xA];
-	r[0xB] = m[0xE];
-	r[0xC] = m[0x3];
-	r[0xD] = m[0x7];
-	r[0xE] = m[0xB];
-	r[0xF] = m[0xF];
-	return r;
+    float_m44 r;
+    // Column 0 becomes row 0
+    r[0x0] = m[0x0];  // [0][0] stays
+    r[0x1] = m[0x4];  // [1][0] → [0][1]
+    r[0x2] = m[0x8];  // [2][0] → [0][2]
+    r[0x3] = m[0xC];  // [3][0] → [0][3]
+
+    // Column 1 becomes row 1
+    r[0x4] = m[0x1];  // [0][1] → [1][0]
+    r[0x5] = m[0x5];  // [1][1] stays
+    r[0x6] = m[0x9];  // [2][1] → [1][2]
+    r[0x7] = m[0xD];  // [3][1] → [1][3]
+
+    // Column 2 becomes row 2
+    r[0x8] = m[0x2];  // [0][2] → [2][0]
+    r[0x9] = m[0x6];  // [1][2] → [2][1]
+    r[0xA] = m[0xA];  // [2][2] stays
+    r[0xB] = m[0xE];  // [3][2] → [2][3]
+
+    // Column 3 becomes row 3
+    r[0xC] = m[0x3];  // [0][3] → [3][0]
+    r[0xD] = m[0x7];  // [1][3] → [3][1]
+    r[0xE] = m[0xB];  // [2][3] → [3][2]
+    r[0xF] = m[0xF];  // [3][3] stays
+
+    return r;
 }
 
 
@@ -236,6 +244,18 @@ float_m44 float_m44_inverse( const float_m44 &m )
 	det = 1.0f / det;
 	for( int i = 0; i < 16; i++ ) { r[i] = inv[i] * det; }
 	return r;
+}
+
+
+float_m44 float_m44_inverse_row_major(const float_m44 &m)
+{
+    float_m44 m_transposed = float_m44_transpose( m );
+
+    // Compute inverse (using your current code)
+    float_m44 inv = float_m44_inverse( m_transposed );
+
+    // Transpose result back
+    return float_m44_transpose( inv );
 }
 
 

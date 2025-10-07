@@ -1,6 +1,6 @@
 {
 	"path": "spr_asteroid.png",
-	"atlas": "ui",
+	"atlas": "default",
 
 	"count": 1,
 	"xorigin": 16,

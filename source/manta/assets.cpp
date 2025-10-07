@@ -21,6 +21,7 @@ bool CoreAssets::init()
 
 	// Open Binary
 	Assets::binary.open( Assets::binaryPath );
+	PrintLn( "%s", Assets::binaryPath );
 	ErrorReturnIf( !Assets::binary, false, "Assets: Failed to open binary file: %s", Assets::binaryPath );
 
 	// Success
@@ -103,15 +104,7 @@ const Assets::SoundEntry &Assets::sound( Sound sound )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const Assets::MeshEntry &Assets::mesh( Mesh mesh )
-{
-	Assert( mesh < CoreAssets::meshCount );
-	return CoreAssets::meshes[mesh];
-};
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-const Assets::Skeleton2DEntry &Assets::skeleton_2d( Skeleton2D skeleton2D )
+const Assets::Skeleton2DEntry &Assets::skeleton_2d( Skeleton skeleton2D )
 {
 	Assert( skeleton2D < CoreAssets::skeleton2DCount );
 	return CoreAssets::skeleton2Ds[skeleton2D];

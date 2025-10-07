@@ -27,17 +27,21 @@ fragment_output FragmentOutput
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-uniform_buffer( 0 ) PipelineUniforms
+uniform_buffer( 0 ) UniformsPipeline
 {
 	float4x4 matrixModel;
 	float4x4 matrixView;
 	float4x4 matrixPerspective;
 	float4x4 matrixMVP;
+	float4x4 matrixModelInverse;
+	float4x4 matrixViewInverse;
+	float4x4 matrixPerspectiveInverse;
+	float4x4 matrixMVPInverse;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void vertex_main( BuiltinVertexPositionColor In, VertexOutput Out, PipelineUniforms Pipeline )
+void vertex_main( BuiltinVertexPositionColor In, VertexOutput Out, UniformsPipeline Pipeline )
 {
 	Out.position = mul( Pipeline.matrixMVP, float4( In.position, 1.0 ) );
 	Out.color = In.color;

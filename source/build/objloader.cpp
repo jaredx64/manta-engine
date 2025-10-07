@@ -1,3 +1,6 @@
+// TODO: Deprecating this, build tool will not be responsible for parsing mesh data!
+
+#if 0
 #include <build/objloader.hpp>
 
 #include <config.hpp>
@@ -271,3 +274,4 @@ bool MeshObj::free()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#endif

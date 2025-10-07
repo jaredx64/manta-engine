@@ -9,3 +9,10 @@ extern u32 checksum_xcrc32( const char *buffer, usize size, u32 seed );
 extern u32 checksum_xcrc32( const char *buffer, const usize offset, int size, u32 seed );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#if 0
+extern u64 checksum_fnv1a64( const char *buffer, usize size, u32 seed );
+extern u64 checksum_fnv1a64( const char *buffer, const usize offset, int size, u32 seed );
+#endif
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

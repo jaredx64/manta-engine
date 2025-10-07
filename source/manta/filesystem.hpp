@@ -76,8 +76,8 @@ extern void path_get_filename( char *buffer, const usize size, const char *path 
 extern void path_get_extension( char *buffer, const usize size, const char *path );
 
 extern void path_change_extension( char *buffer, const usize size, const char *path, const char *extension );
-extern void path_remove_extension( char *path );
-extern void path_remove_extensions( char *path );
+extern void path_remove_extension( char *path, const usize size );
+extern void path_remove_extensions( char *path, const usize size );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

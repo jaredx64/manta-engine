@@ -5,6 +5,14 @@
 
 #include <core/hashmap.hpp>
 #include <core/math.hpp>
+#include <core/checksum.hpp>
+
+#include <build/assets.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct CacheObject { usize dummy = 0; };
+struct CacheObjects { usize fileCount = 0LLU; };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1510,7 +1518,6 @@ namespace Objects
 	char pathHeaderObjects[PATH_SIZE];
 	char pathHeaderSystem[PATH_SIZE];
 	char pathIntelliSense[PATH_SIZE];
-	FileTime timeCache;
 
 	// Output Contents
 	String headerIncludes;
@@ -1523,11 +1530,14 @@ namespace Objects
 	// Object Files
 	List<ObjectFile> objectFiles;
 	List<ObjectFile *> objectFilesSorted;
-	usize objectFilesCount = 0;
 
 	// Object Categories
 	HashMap<u32, String> objectTypes;
 	HashMap<u32, String> objectCategories;
+
+	// Cache
+	Cache cache;
+	usize cacheFileCount = 0LLU;
 }
 
 
@@ -1544,57 +1554,49 @@ void Objects::begin()
 	strjoin( pathHeaderObjects, Build::pathOutput, SLASH "generated" SLASH "objects.generated.hpp" );
 	strjoin( pathSourceObjects, Build::pathOutput, SLASH "generated" SLASH "objects.generated.cpp" );
 	strjoin( pathHeaderSystem, Build::pathOutput, SLASH "generated" SLASH "objects.system.generated.hpp" );
-
-	// Cache
-	FileTime timeIntelliSense;
-	if( !file_time( pathIntelliSense, &timeIntelliSense ) ) { Build::cacheDirtyObjects = true; return; }
-	FileTime timeHeaderObjects;
-	if( !file_time( pathHeaderObjects, &timeHeaderObjects ) ) { Build::cacheDirtyObjects = true; return; }
-	FileTime timeSourceObjects;
-	if( !file_time( pathSourceObjects, &timeSourceObjects ) ) { Build::cacheDirtyObjects = true; return; }
-	FileTime timeHeaderSystem;
-	if( !file_time( pathHeaderObjects, &timeHeaderSystem ) ) { Build::cacheDirtyObjects = true; return; }
-
-	timeCache = file_time_newer( timeIntelliSense, timeHeaderObjects ) ? timeIntelliSense : timeHeaderObjects;
-	timeCache = file_time_newer( timeCache, timeSourceObjects ) ? timeCache : timeSourceObjects;
-	timeCache = file_time_newer( timeCache, timeHeaderSystem ) ? timeCache : timeHeaderSystem;
 }
 
 
-void Objects::gather( const char *directory, const bool recurse )
+void Objects::end()
+{
+	// ...
+}
+
+
+usize Objects::gather( const char *directory, const bool recurse )
 {
 	// Iterate Directories
 	Timer timer;
 	List<FileInfo> objectFilesDisk;
 	directory_iterate( objectFilesDisk, directory, ".object", true );
 
-	// Add Objects
-	for( FileInfo &objectFile : objectFilesDisk )
+	for( FileInfo &file : objectFilesDisk )
 	{
-		// Check Cache
-		if( !Build::cacheDirtyObjects )
+		// Cache
+		static char cacheIDBuffer[PATH_SIZE * 2];
+		memory_set( cacheIDBuffer, 0, sizeof( cacheIDBuffer ) );
+		snprintf( cacheIDBuffer, sizeof( cacheIDBuffer ), "object %s|%llu",
+			file.path, file.time.as_u64() );
+		const CacheID cacheID = checksum_xcrc32( cacheIDBuffer, sizeof( cacheIDBuffer ), 0 );
+
+		CacheObject cacheObject;
+		if( !Objects::cache.dirty && !Objects::cache.fetch( cacheID, cacheObject ) )
 		{
-			FileTime timeObject;
-			file_time( objectFile.path, &timeObject );
-			Build::cacheDirtyObjects |= file_time_newer( timeObject, timeCache );
+			Objects::cache.dirty |= true;
 		}
+		Objects::cache.store( cacheID, cacheObject );
+		Objects::cacheFileCount++;
 
 		// Add Object
-		objectFiles.add( ObjectFile{ objectFile.path } );
+		objectFiles.add( ObjectFile { file.path } );
 	}
 
-	if( verbose_output() )
-	{
-		const usize objectCount = objectFilesDisk.size();
-		PrintColor( LOG_CYAN, TAB TAB "%u object%s found in: %s",objectCount, objectCount == 1 ? "" : "s", directory );
-		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
-	}
+	return objectFilesDisk.size();
 }
 
 
 void Objects::parse()
 {
-	// Parse Objects
 	for( ObjectFile &object : objectFiles ) { object.parse(); }
 }
 
@@ -1754,27 +1756,52 @@ void Objects::validate()
 }
 
 
-void Objects::generate()
+void Objects::codegen()
 {
 	// Generates C++ source & header contents including:
-	// - Class definitions and member function implementations for each object type
-	// - Boilerplate datastructures & functions necessary for the object system (manta/objects.hpp)
+	// 1.) Class definitions and member function implementations for each object type
+	// 2.) Boilerplate datastructures & functions necessary for the object system (manta/objects.hpp)
 
 	// IntelliSense
-	generate_intellisense( Objects::intellisense );
+	codegen_intellisense( Objects::intellisense );
+	{
+		if( verbose_output() ) { PrintColor( LOG_CYAN, TAB TAB "Write %s", pathIntelliSense ); }
+		Timer timer;
+		ErrorIf( !Objects::intellisense.save( pathIntelliSense ), "failed to write '%s'", pathIntelliSense );
+		if( verbose_output() ) { PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() ); }
+	}
 
 	// System Header
-	generate_header_system( Objects::system );
+	codegen_header_system( Objects::system );
+	{
+		if( verbose_output() ) { PrintColor( LOG_CYAN, TAB TAB "Write %s", pathHeaderSystem ); }
+		Timer timer;
+		ErrorIf( !Objects::system.save( pathHeaderSystem ), "failed to write '%s'", pathHeaderSystem );
+		if( verbose_output() ) { PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() ); }
+	}
 
 	// Objects Header
-	generate_header_objects( Objects::header );
+	codegen_header_objects( Objects::header );
+	{
+		if( verbose_output() ) { PrintColor( LOG_CYAN, TAB TAB "Write %s", pathHeaderObjects ); }
+		Timer timer;
+		ErrorIf( !Objects::header.save( pathHeaderObjects ), "failed to write '%s'", pathHeaderObjects );
+		if( verbose_output() ) { PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() ); }
+	}
 
 	// Objects Source
-	generate_source_objects( Objects::source );
+	codegen_source_objects( Objects::source );
+	{
+		if( verbose_output() ) { PrintColor( LOG_CYAN, TAB TAB "Write %s", pathSourceObjects ); }
+		Timer timer;
+		ErrorIf( !Objects::source.save( pathSourceObjects ), "failed to write '%s'", pathSourceObjects );
+		if( verbose_output() ) { PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() ); }
+	}
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Objects::generate_intellisense( String &output )
+void Objects::codegen_intellisense( String &output )
 {
 	if( verbose_output() ) { PrintColor( LOG_CYAN, TAB TAB "Generate output/generated/objects.generated.intellisense" ); }
 	Timer timer;
@@ -1830,7 +1857,7 @@ void Objects::generate_intellisense( String &output )
 }
 
 
-void Objects::generate_header_system( String &output )
+void Objects::codegen_header_system( String &output )
 {
 	// File Info
 	output.append( "#pragma once\n\n" );
@@ -2124,7 +2151,7 @@ void Objects::generate_source_system_category_types( String &output, const Strin
 }
 
 
-void Objects::generate_header_objects( String &output )
+void Objects::codegen_header_objects( String &output )
 {
 	// Log
 	if( verbose_output() ) { PrintColor( LOG_CYAN, TAB TAB "Generate output/generated/objects.generated.hpp" ); }
@@ -2186,7 +2213,7 @@ void Objects::generate_header_objects( String &output )
 }
 
 
-void Objects::generate_source_objects( String &output )
+void Objects::codegen_source_objects( String &output )
 {
 	// Log
 	if( verbose_output() ) { PrintColor( LOG_CYAN, TAB TAB "Generate output/generated/objects.generated.cpp" ); }
@@ -2332,40 +2359,46 @@ String Objects::generate_source_objects_events_category( String &output, const u
 	return "nullptr";
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Objects::write()
+void Objects::cache_read( const char *path )
 {
-	// Write IntelliSense
+	Objects::cache.dirty |= Build::cache.dirty;
+
+	// Graphics Cache
+	if( !Objects::cache.dirty )
 	{
-		if( verbose_output() ) { PrintColor( LOG_CYAN, TAB TAB "Write %s", pathIntelliSense ); }
-		Timer timer;
-		ErrorIf( !Objects::intellisense.save( pathIntelliSense ), "failed to write '%s'", pathIntelliSense );
-		if( verbose_output() ) { PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() ); }
+		Objects::cache.read( path );
+		Objects::cache.dirty |= Objects::cache.dirty;
 	}
 
-	// Write System Header
-	{
-		if( verbose_output() ) { PrintColor( LOG_CYAN, TAB TAB "Write %s", pathHeaderSystem ); }
-		Timer timer;
-		ErrorIf( !Objects::system.save( pathHeaderSystem ), "failed to write '%s'", pathHeaderSystem );
-		if( verbose_output() ) { PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() ); }
-	}
+	// Codegen Cache
+	AssetFile codegen;
+	if( !asset_file_register( codegen, pathIntelliSense ) ) { Objects::cache.dirty = true; return; }
+	if( !asset_file_register( codegen, pathHeaderObjects ) ) { Objects::cache.dirty = true; return; }
+	if( !asset_file_register( codegen, pathSourceObjects ) ) { Objects::cache.dirty = true; return; }
+	if( !asset_file_register( codegen, pathHeaderObjects ) ) { Objects::cache.dirty = true; return; }
+}
 
-	// Write Objects Header
-	{
-		if( verbose_output() ) { PrintColor( LOG_CYAN, TAB TAB "Write %s", pathHeaderObjects ); }
-		Timer timer;
-		ErrorIf( !Objects::header.save( pathHeaderObjects ), "failed to write '%s'", pathHeaderObjects );
-		if( verbose_output() ) { PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() ); }
-	}
 
-	// Write Objects Source
-	{
-		if( verbose_output() ) { PrintColor( LOG_CYAN, TAB TAB "Write %s", pathSourceObjects ); }
-		Timer timer;
-		ErrorIf( !Objects::source.save( pathSourceObjects ), "failed to write '%s'", pathSourceObjects );
-		if( verbose_output() ) { PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() ); }
-	}
+void Objects::cache_write( const char *path )
+{
+	Objects::cache.write( path );
+}
+
+
+void Objects::cache_validate()
+{
+	Objects::cache.dirty |= Build::cache.dirty;
+
+	// Validate file count
+	CacheObjects cacheObjects;
+	if( !Objects::cache.fetch( 0, cacheObjects ) ) { Objects::cache.dirty |= true; }
+	Objects::cache.dirty |= ( Objects::cacheFileCount != cacheObjects.fileCount );
+
+	// Cache file count
+	cacheObjects.fileCount = Objects::cacheFileCount;
+	Objects::cache.store( 0, cacheObjects );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

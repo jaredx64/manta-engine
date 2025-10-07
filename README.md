@@ -14,13 +14,16 @@ Manta is a personal learning project not meant for open use. That said, the sour
 
 # Showcase Projects
 
+Globe Renderer (https://www.youtube.com/watch?v=9XS6yB1-XLc)
+
+<sub>* Source included in repo: projects/globe (boot -project=globe)"</sub>
+[![Youtube Redirect](https://img.youtube.com/vi/9XS6yB1-XLc/0.jpg)](https://www.youtube.com/watch?v=9XS6yB1-XLc)
+
+
+
 Vitality (https://www.youtube.com/watch?v=y05wb1y-OQc) (Work in progress indie game)
 
 [![Youtube Redirect](https://img.youtube.com/vi/y05wb1y-OQc/0.jpg)](https://www.youtube.com/watch?v=y05wb1y-OQc)
-
-Voxel Renderer (https://www.youtube.com/watch?v=Q8Q8c5H9kaU)
-
-[![Youtube Redirect](https://img.youtube.com/vi/Q8Q8c5H9kaU/0.jpg)](https://www.youtube.com/watch?v=Q8Q8c5H9kaU)
 
 # Setup:
 
@@ -43,7 +46,7 @@ On Windows, you must add the path to ninja.exe to your system PATH environment v
 <summary><span>Windows</span></summary>
 
 ```
-boot.bat -project=asteroids
+boot.bat -project=globe
 ```
 Note: by default, boot.bat builds with MSVC (C++20). You can also pass `-toolchain=llvm` or `-toolchain=gnu` if you have LLVM or GNU installed.
 
@@ -56,7 +59,7 @@ If using MSVC, you may need to edit the generated `manta-engine\boot-vcvars64.tx
 
 ```
 chmod +x boot.sh
-./boot.sh -project=asteroids
+./boot.sh -project=globe
 ```
 Note: by default, boot.sh builds with LLVM. You can also pass `-toolchain=gnu`. You need either LLVM or GNU installed on the machine (C++20).
 
@@ -494,12 +497,16 @@ fragment_output FragmentOutput
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-uniform_buffer( 0 ) PipelineUniforms
+uniform_buffer( 0 ) UniformsPipeline
 {
 	float4x4 matrixModel;
 	float4x4 matrixView;
 	float4x4 matrixPerspective;
 	float4x4 matrixMVP;
+	float4x4 matrixModelInverse;
+	float4x4 matrixViewInverse;
+	float4x4 matrixPerspectiveInverse;
+	float4x4 matrixMVPInverse;
 };
 
 uniform_buffer( 1 ) ShadowUniforms
@@ -513,7 +520,7 @@ texture2D( 1, float ) textureShadowMap;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void vertex_main( BuiltinVertex In, VertexOutput Out, PipelineUniforms Pipeline, ShadowUniforms Uniforms )
+void vertex_main( BuiltinVertex In, VertexOutput Out, UniformsPipeline Pipeline, ShadowUniforms Uniforms )
 {
 	// Out Position/UV/Color
 	Out.position = mul( Pipeline.matrixMVP, float4( In.position, 1.0 ) );
@@ -572,12 +579,12 @@ struct t_VertexOutput
 	float4 v_color : COLOR0;
 };
 
-uniform_buffer t_PipelineUniforms : register( b0 )
+uniform_buffer t_UniformsPipeline : register( b0 )
 {
-	float4x4 t_PipelineUniforms_v_matrixModel;
-	float4x4 t_PipelineUniforms_v_matrixView;
-	float4x4 t_PipelineUniforms_v_matrixPerspective;
-	float4x4 t_PipelineUniforms_v_matrixMVP;
+	float4x4 t_UniformsPipeline_v_matrixModel;
+	float4x4 t_UniformsPipeline_v_matrixView;
+	float4x4 t_UniformsPipeline_v_matrixPerspective;
+	float4x4 t_UniformsPipeline_v_matrixMVP;
 };
 
 uniform_buffer t_ShadowUniforms : register( b1 )
@@ -588,10 +595,10 @@ uniform_buffer t_ShadowUniforms : register( b1 )
 
 void vs_main( in t_BuiltinVertex v_In, out t_VertexOutput v_Out )
 {
-	v_Out.v_position = mul( t_PipelineUniforms_v_matrixMVP, float4( v_In.v_position, 1.000000 ) );
+	v_Out.v_position = mul( t_UniformsPipeline_v_matrixMVP, float4( v_In.v_position, 1.000000 ) );
 	v_Out.v_uv = v_In.v_uv;
 	v_Out.v_color = v_In.v_color;
-	float4x4 v_matrixMVPShadows = mul( t_ShadowUniforms_v_matrixPerspectiveShadows, mul( t_ShadowUniforms_v_matrixViewShadows, t_PipelineUniforms_v_matrixModel ) );
+	float4x4 v_matrixMVPShadows = mul( t_ShadowUniforms_v_matrixPerspectiveShadows, mul( t_ShadowUniforms_v_matrixViewShadows, t_UniformsPipeline_v_matrixModel ) );
 	float4 v_positionShadows = mul( v_matrixMVPShadows, float4( v_In.v_position, 1.000000 ) );
 	float3 v_shadowUVs = float3( v_positionShadows.xyz / v_positionShadows.w );
 	v_Out.v_uvShadows = float3( v_shadowUVs.x * 0.500000 + 0.500000,
@@ -654,12 +661,12 @@ layout( location = 1 ) out vec2 pipelineIntermediate_v_uv;
 layout( location = 2 ) out vec3 pipelineIntermediate_v_uvShadows;
 layout( location = 3 ) out vec4 pipelineIntermediate_v_color;
 
-layout( std140 ) uniform t_PipelineUniforms
+layout( std140 ) uniform t_UniformsPipeline
 {
-	mat4 t_PipelineUniforms_v_matrixModel;
-	mat4 t_PipelineUniforms_v_matrixView;
-	mat4 t_PipelineUniforms_v_matrixPerspective;
-	mat4 t_PipelineUniforms_v_matrixMVP;
+	mat4 t_UniformsPipeline_v_matrixModel;
+	mat4 t_UniformsPipeline_v_matrixView;
+	mat4 t_UniformsPipeline_v_matrixPerspective;
+	mat4 t_UniformsPipeline_v_matrixMVP;
 };
 
 layout( std140 ) uniform t_ShadowUniforms
@@ -670,10 +677,10 @@ layout( std140 ) uniform t_ShadowUniforms
 
 void main()
 {
-	gl_Position = ( ( t_PipelineUniforms_v_matrixMVP ) * ( vec4( t_BuiltinVertex_v_position, 1.000000 ) ) );
+	gl_Position = ( ( t_UniformsPipeline_v_matrixMVP ) * ( vec4( t_BuiltinVertex_v_position, 1.000000 ) ) );
 	pipelineIntermediate_v_uv = t_BuiltinVertex_v_uv;
 	pipelineIntermediate_v_color = t_BuiltinVertex_v_color;
-	mat4 v_matrixMVPShadows = ( ( t_ShadowUniforms_v_matrixPerspectiveShadows ) * ( ( ( t_ShadowUniforms_v_matrixViewShadows ) * ( t_PipelineUniforms_v_matrixModel ) ) ) );
+	mat4 v_matrixMVPShadows = ( ( t_ShadowUniforms_v_matrixPerspectiveShadows ) * ( ( ( t_ShadowUniforms_v_matrixViewShadows ) * ( t_UniformsPipeline_v_matrixModel ) ) ) );
 	vec4 v_positionShadows = ( ( v_matrixMVPShadows ) * ( vec4( t_BuiltinVertex_v_position, 1.000000 ) ) );
 	vec3 v_shadowUVs = vec3( v_positionShadows.xyz / v_positionShadows.w );
 	pipelineIntermediate_v_uvShadows = vec3( v_shadowUVs.x * 0.500000 + 0.500000, 1.000000 - ( v_shadowUVs.y * 0.500000 + 0.500000 ), v_shadowUVs.z );

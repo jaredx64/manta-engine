@@ -89,3 +89,27 @@ u32 checksum_xcrc32( const char *buffer, const int offset, usize size, u32 seed 
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#if 0
+u64 checksum_fnv1a64( const char *buffer, usize size, u64 seed )
+{
+	u64 hash = seed ? seed : 14695981039346656037ULL; // FNV offset basis
+
+	while( size-- )
+	{
+		hash ^= static_cast<u8>( *buffer );
+		hash *= 1099511628211ULL; // FNV prime
+		buffer++;
+	}
+
+	return hash;
+}
+
+
+u64 checksum_fnv1a64( const char *buffer, const usize offset, int size, u32 seed )
+{
+	return checksum_fnv1a64( buffer + offset, size, seed );
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

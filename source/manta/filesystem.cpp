@@ -69,7 +69,8 @@ void path_get_directory( char *buffer, const usize size, const char *path )
 void path_get_filename( char *buffer, const usize size, const char *path )
 {
 	// Ensure valid strings
-	if( buffer == nullptr || path == nullptr ) { return; }
+	if( buffer == nullptr || path == nullptr || size == 0 ) { return; }
+	if( path[0] == '\0' ) { buffer[0] = '\0'; return; }
 
 	// Find the last slash
 	const char *lastSlash = nullptr;
@@ -154,35 +155,30 @@ void path_change_extension( char *buffer, usize size, const char *path, const ch
 }
 
 
-void path_remove_extension( char *path )
+void path_remove_extension( char *path, const usize size )
 {
-	// Ensure valid strings
-	if( path == nullptr ) { return; }
+	if( path == nullptr || size == 0 ) { return; }
 
-	char c;
-	char *extension = path;
+	char *extension = nullptr;
 
-	// Find the last '.'
-	while( ( c = *++path ) != '\0' )
+	for( usize i = 0; i < size && path[i] != '\0'; i++ )
 	{
-		if( c == '.' ) { extension = path; }
+		if( path[i] == '.' ) { extension = &path[i]; };
 	}
 
-	*extension = '\0';
+	if( extension != nullptr ) { *extension = '\0'; }
 }
 
 
-void path_remove_extensions( char *path )
+void path_remove_extensions( char *path, const usize size )
 {
-	// Ensure valid strings
-	if( path == nullptr ) { return; }
+	if( path == nullptr || size == 0 ) { return; }
 
-	char c;
+	char *extension = nullptr;
 
-	// Find the first '.'
-	while( ( c = *++path ) != '\0' )
+	for( usize i = 0; i < size && path[i] != '\0'; i++ )
 	{
-		if( c == '.' ) { *path = '\0'; return; }
+		if( path[i] == '.' ) { path[i] = '\0'; return; };
 	}
 }
 

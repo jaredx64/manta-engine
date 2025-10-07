@@ -5,18 +5,18 @@
 #include <core/buffer.hpp>
 #include <core/string.hpp>
 
+#include <build/cache.hpp>
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 struct DataAsset
 {
-	DataAsset( String name ) : name( name ) { }
-
+	CacheID cacheID;
+	String path;
 	String name;
+	Buffer data;
 	usize offset;
 	usize size;
-
-	String filePath;
-	Buffer fileData;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -24,9 +24,10 @@ struct DataAsset
 struct DataAssets
 {
 	void make_new( const DataAsset &asset );
-	void gather( const char *path, const bool recurse = true );
-	void load( const char *path );
-	void write();
+
+	usize gather( const char *path, const bool recurse = true );
+	void process( const char *path );
+	void build();
 
 	DataAsset &operator[]( const u32 dataAssetID ) { return dataAssets[dataAssetID]; }
 

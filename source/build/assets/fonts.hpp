@@ -5,14 +5,16 @@
 #include <core/buffer.hpp>
 #include <core/string.hpp>
 
+#include <build/cache.hpp>
 #include <build/assets/textures.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 struct TTF
 {
+	CacheID cacheID;
 	String path;
-	Buffer buffer;
+	Buffer data;
 	usize offset;
 	usize size;
 };
@@ -21,24 +23,20 @@ struct TTF
 struct Font
 {
 	String name;
-	String path;
-	String licensePath;
-	Buffer licenseData;
-
 	u16 ttfDefault;
 	u16 ttfItalic;
 	u16 ttfBold;
 	u16 ttfBoldItalic;
+	String pathLicense;
+	Buffer dataLicense;
 };
 
 
 struct Fonts
 {
-	void gather( const char *path, const bool recurse = true );
-	void load( const char *path );
-	void write();
-
-	u16 load_ttf( const char *pathFont, const char *pathTTF );
+	usize gather( const char *path, const bool recurse = true );
+	void process( const char *path );
+	void build();
 
 	Font &operator[]( const u32 fontID ) { return fonts[fontID]; }
 
