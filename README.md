@@ -113,8 +113,6 @@ If using the RenderDoc button, the path to the RenderDoc executable must be adde
 
 In general terms, `source/boot`, `source/build`, and `source/manta` are three separate programs with different requirements and goals.
 
-As an example, boot.exe and build.exe are less strict about memory allocations. The container implementations available to those programs are compiled with RAII memory allocation/freeing and implicit copy/move semantics. This is fine (and very convenient) for a build tool running on a developer machine, but is less ideal for game code with performance and memory budget constraints.
-
 
 # Project Structure:
 
