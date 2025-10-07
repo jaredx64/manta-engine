@@ -17,6 +17,7 @@ Manta is a personal learning project not meant for open use. That said, the sour
 Globe Renderer (https://www.youtube.com/watch?v=9XS6yB1-XLc)
 
 <sub>* Source included in repo: projects/globe (boot -project=globe)"</sub>
+
 [![Youtube Redirect](https://img.youtube.com/vi/9XS6yB1-XLc/0.jpg)](https://www.youtube.com/watch?v=9XS6yB1-XLc)
 
 
