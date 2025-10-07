@@ -1,0 +1,20 @@
+#pragma once
+
+#include <manta/gfx.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+namespace Universe
+{
+	extern GfxVertexBuffer<GfxVertex::BuiltinVertex> vertexBuffer;
+	extern GfxIndexBuffer indexBuffer;
+
+	extern float_v3 sun;
+};
+
+extern void universe_init();
+extern void universe_free();
+extern void universe_update( const Delta delta );
+extern void universe_draw( const Delta delta );
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
