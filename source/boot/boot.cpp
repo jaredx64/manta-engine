@@ -478,7 +478,10 @@ int main( int argc, char **argv )
 // Start Ninja
 
 	Print( "\n" );
-	strjoin( commandNinja, "ninja -C ", pathOutputBuild );
+	const char *ninja = ninja_path();
+
+	// Run Ninja
+	strjoin( commandNinja, ninja, " -C ", pathOutputBuild );
 	const int code = system( commandNinja );
 	if( code != 0 ) { Error( "ninja failed! Code: %d (%s)", code, commandNinja ); }
 

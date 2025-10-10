@@ -32,14 +32,12 @@ git clone https://github.com/jaredx64/manta-engine
 cd manta-engine
 ```
 
-### 2. Ninja Build
-You may need to install Ninja on your machine (and get the ninja-build extension in VS Code)
+Note: Manta uses Ninja for efficient compilation & linking (https://ninja-build.org/). The executables are included in the repository (`manta-engine\.manta\ninja-build`). If Ninja fails, it may need manual setup: https://github.com/ninja-build/ninja/releases
 
-Link: https://github.com/ninja-build/ninja/releases
+### 2. Building + Running Project:
 
-On Windows, you must add the path to ninja.exe to your system PATH environment variables.
-
-### 3. Building + Running Project:
+Building, compiling, and running is driven by invoking the `manta-engine\boot` script.
+Below are steps for each OS:
 
 <details>
 <summary><span>Windows</span></summary>
@@ -64,7 +62,7 @@ Note: by default, boot.sh builds with LLVM. You can also pass `-toolchain=gnu`. 
 
 </details>
 
-### 4. Manta VS Code Plugin (Optional)
+### 3. (Optional) Manta VS Code Plugin
 ```
 VS Code -> Extensions -> Install from VSIX -> manta-engine\.manta\vscmanta\output\vscmanta.vsix
 ```
@@ -84,52 +82,49 @@ VS Code -> Extensions -> Install from VSIX -> manta-engine\.manta\vscmanta\outpu
 
 Note: Source for plugin can be found at `manta-engine\.manta\vscmanta\extension.js`
 
-VSCManta is essentially a wrapper around explicit calls to boot.sh/bat. It scans the engine/project repository and generates build commands. It can also be bound to hotkeys in VS Code.
+VSCManta is essentially a wrapper around explicit calls to the `manta-engine\boot` script. It scans the engine & project repository and generates build commands. It can also be bound to hotkeys in VS Code.
 
+Windows Only: If using the RenderDoc button (`boot -run=2`), RenderDoc must be added to system PATH environment variables (e.g. `C:\Program Files\RenderDoc`)
 
+# Engine Repository Structure:
 
-
-If using the RenderDoc button, the path to the RenderDoc executable must be added to system PATH environment variables (Windows Only).
-
-# Repository Structure:
-
-1. .manta/
+1. `manta-engine\.manta\`
 	- Contains a "template" project and "vscmanta" VS Code plugin
-2. source/assets/
+2. `manta-engine\source\assets\`
 	- Built-in engine assets (default font, sprite, shader, etc.)
-3. source/boot/
-	- (`boot.exe`) Source files for the boostrap executable
-4. source/build/
-	- (`build.exe`) Source files for the manta build library
-5. source/manta/
-	- (`<project>.exe`) Source files for the manta runtime library
-5. source/core/
+3. `manta-engine\source\boot\` (boot.exe)
+	- Source files for the boostrap executable
+4. `manta-engine\source\build\` (build.exe)
+	- Source files for the build tool library
+5. `manta-engine\source\manta\` (project.exe - engine)
+	- Source files for the manta runtime library
+6. `manta-engine\source\core\`
 	- Source files shared between /build, /manta, and projects/*project*
-6. source/vendor/
+7. `manta-engine\source\vendor\*`
 	- Headers for external libraries and wrappers around C headers
 	- As a compile time optimization (for development builds), Manta supports a "USE_OFFICIAL_HEADERS" macro which (when false) uses trimmed C headers
-7. projects/...
+8. `manta-engine\projects\...` (project.exe - application)
 	- Location for project repositories (either copy template project here, or use VSCManta plugin to create a new project)
 
-In general terms, `source/boot`, `source/build`, and `source/manta` are three separate programs with different requirements and goals.
+In general terms, `source\boot`, `source\build`, and `source\manta` are separate programs that handle each stage of the pipeline: boot -> build -> runtime.
 
 
-# Project Structure:
+# Per-Project Repository Structure:
 
-1. projects/*project*/assets
+1. `manta-engine\projects\<project>\assets\`
 	- Assets for the project (*.font, *.sprite, *.shader, etc.)
 	- Asset files are typically JSON or raw data (i.e., a sprite is a .sprite (json) and a .png)
-2. projects/*project*/build
+2. `manta-engine\projects\<project>\build\`
 	- Project-specific sources for the build executable (implements main)
 	- See: *project*/build/build.cpp and *project*/build/build.hpp
 		- For project-specific build logic, create a class that extends 'BuilderCore' from "#include <build/build.hpp>" (engine build library) and override desired stages
-3. projects/*project*/runtime
+3. `manta-engine\projects\<project>\runtime\`
 	- Project-specific sources for the runtime executable (implements main)
 	- All game/project logic is programmed here. Manta library functions/systems can be accessed through "#include <manta/...>"
 	- Entry point typically fills out a "ProjectCallbacks' struct containing init(), free(), and update() functions for the project and calls Engine::main()
 		- See: .manta/template/runtime/main.cpp
 		- While this is not strictly required, it allows the engine to init, update, and free itself automatically
-4. projects/*project*/configs.json
+4. `manta-engine\projects\<project>\configs.json`
 	- Customizable compiler and linker flags for the runtime executable build (-config=debug, -config=release, -config=yourcustomconfig, etc.)
 
 
@@ -190,7 +185,7 @@ To seamlessly support multiple graphics backends without requiring duplicated sh
 
 Shader files are translated at build time into either GLSL, HLSL, or Metal (WIP) depending on the target graphics API. Boilerplate C++ code is also generated by the build tool from the shader files to assist with shader stage input layouts and resource bindings.
 
-The generated shader code (hlsl/glsl/metal) is written to `projects/<project>/output/generated/shaders/`, along with the associated graphics system C++ boilerplate in `projects/<project>/output/generated/gfx.generated.hpp`.
+The generated shader code (hlsl/glsl/metal) is written to `projects\<project>\output\generated\shaders\`, along with the associated graphics system C++ boilerplate in `projects\<project>\output\generated\gfx.generated.hpp`.
 
 In an editor, basic syntax highlighting and IntelliSense is possible by optionally including `#include <shader_api.hpp>` in the shader file. That header is compatible with a typical C++ language server and provides a reference to the features/keywords of the shader language.
 
@@ -594,7 +589,7 @@ To aid with IntelliSense, *.object* files can optionally `#include <object_api.h
 
 `object_api.hpp` provides a reference to the available keywords of the "scripting" language and allows C++ IntelliSense to work with *.object* code without the need for a custom language server. You can view the available keywords in that file.
 
-Objects in this engine use a single-inheritence model. Objects can inherit/extend other objects by specifying the `PARENT( name )` keyword.
+Objects use a single-inheritence model. Objects can inherit/extend other objects by specifying the `PARENT( name )` keyword.
 
 This meets most needs for games that I create. Additionally, the data structure where object data is managed ensures sufficient locality for most gameplay needs: per-instance object data is allocated contiguously in memory within designated memory blocks for each object type.
 
@@ -774,14 +769,16 @@ void CoreObjects::obj_rabbit_t::process_death()
 
 The object system works off three fundamental types:
 
-1. **ObjectContext**
-   - The data structure and interface for object creation, destruction, lookup, and iteration
-2. **ObjectInstance**
+1. `ObjectContext`
+   - A context for object creation, destruction, and handling. Implements the underlying datastructures and manages object lifetimes.
+2. `ObjectInstance`
    - A unique identifier for every instantiated object in an ObjectContext
-3. **ObjectHandle\<_Object_>**
-   - A handle to a specific object instance data
+3. `ObjectHandle<Object>`
+   - A handle to a specific object instance data (i.e., used like a pointer)
 
-In the generated code above, you may notice that the object class names are suffixed with **_t** and wrapped within an internal namespace. The reason for this is "raw" object types are not used directly in game code. Rather, object types in code are represented as __Object__ enums. This allows them to be stored in variables and passed as runtime function parameters.
+In the generated code above, you may notice that the object class names are suffixed with \***_t** and wrapped within an internal namespace.
+
+The reason for this is "raw" object types are not exposed directly in game code. Rather, object types are represented as __Object__ enums. This allows them to be stored in variables (integers) and manipulated at runtime.
 
 The table looks something like:
 ```c++

@@ -101,3 +101,65 @@ struct Toolchain
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+static const char *ninja_path()
+{
+	auto ninja_warning = [&]()
+	{
+		PrintLnColor( LOG_YELLOW, "\nWARNING:\n" );
+		PrintLnColor( LOG_YELLOW, "Ninja: unrecognized operating system or architecture!" );
+		PrintLnColor( LOG_YELLOW, "Attempting system installed ninja..." );
+		PrintLnColor( LOG_YELLOW, "If ninja fails, download: https://github.com/ninja-build/ninja/releases\n" );
+	};
+
+	// Windows
+	#if defined( _WIN32 ) || defined( _WIN64 )
+		#if defined( _M_X64 ) || defined( __x86_64__ ) || defined( __amd64__ )
+			// X64
+			return ".manta" SLASH "ninja-build" SLASH "windows_x64" SLASH "ninja.exe";
+		#elif defined(__aarch64__) || defined(_M_ARM64)
+			// ARM64
+			return ".manta" SLASH "ninja-build" SLASH "windows_arm64" SLASH "ninja.exe";
+		#else
+			// Unrecognized architecture: fallback ot system-installed ninja
+			ninja_warning();
+			return "ninja.exe";
+		#endif
+	#endif
+
+	// MacOS
+	#if defined( __APPLE__ ) && defined( __MACH__ )
+		#if defined( _M_X64 ) || defined( __x86_64__ ) || defined( __amd64__ )
+			// X64
+			return ".manta" SLASH "ninja-build" SLASH "macos" SLASH "ninja";
+		#elif defined( __aarch64__ ) || defined( _M_ARM64 )
+			// ARM64
+			return ".manta" SLASH "ninja-build" SLASH "macos" SLASH "ninja";
+		#else
+			// Unrecognized architecture: fallback ot system-installed ninja
+			ninja_warning();
+			return "ninja";
+		#endif
+	#endif
+
+	// Linux
+	#if defined( __linux__ )
+		#if defined( _M_X64 ) || defined( __x86_64__ ) || defined( __amd64__ )
+			// X64
+			return ".manta" SLASH "ninja-build" SLASH "linux_x64" SLASH "ninja";
+		#elif defined( __aarch64__ ) || defined( _M_ARM64 )
+			// ARM64
+			return ".manta" SLASH "ninja-build" SLASH "linux_arm64" SLASH "ninja";
+		#else
+			// Unrecognized architecture: fallback ot system-installed ninja
+			ninja_warning();
+			return "ninja";
+		#endif
+	#endif
+
+	// If reached, unknown OS: fallback to system-installed 'ninja'
+	ninja_warning();
+	return "ninja";
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

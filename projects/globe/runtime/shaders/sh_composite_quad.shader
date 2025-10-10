@@ -65,15 +65,7 @@ void vertex_main( VertexGrade In, VertexOutput Out, UniformsPipeline Pipeline )
 
 void fragment_main( FragmentInput In, FragmentOutput Out )
 {
-	float4 color = texture_sample_2d( texture, In.uv );
-#if 0
-	float contrast = 1.05;
-	color.rgb = ( color.rgb - 0.5 ) * contrast + 0.5;
-	float saturation = 1.05;
-	float luminance = dot( color.rgb, float3( 0.299, 0.587, 0.114 ) );
-	color.rgb = lerp( float3( luminance, luminance, luminance ), color.rgb, saturation );
-#endif
-	Out.color0 = color;
+	Out.color0 = texture_sample_2d( texture, In.uv );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

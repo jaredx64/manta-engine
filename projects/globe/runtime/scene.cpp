@@ -93,10 +93,13 @@ void scene_draw_3d( const Delta delta )
 		universe_draw( delta );
 
 		// Earth (Composite)
-		Gfx::shader_bind( Shader::SHADER_DEFAULT );
+		Gfx::shader_bind( Shader::sh_composite_quad );
 		Gfx::set_depth_test_mode( GfxDepthTestMode_NONE );
-		Gfx::set_matrix_mvp_2d_orthographic( 0.0, 0.0, 1.0, 0.0, Window::width, Window::height );
-		draw_render_target_2d( Scene::rtSceneMSAA, 0.0f, 0.0f );
+		{
+			Scene::rtSceneMSAA.textureColor.bind( 0 );
+			Gfx::draw_vertices( 4, GfxPrimitiveType_TriangleStrip );
+			Scene::rtSceneMSAA.textureColor.release();
+		}
 		Gfx::clear_depth();
 		Gfx::shader_release();
 
@@ -107,7 +110,7 @@ void scene_draw_3d( const Delta delta )
 	Scene::rtSceneComposite.release();
 
 	// Composite
-	Gfx::shader_bind( Shader::sh_grade );
+	Gfx::shader_bind( Shader::sh_composite_quad );
 	{
 		Scene::rtSceneComposite.textureColor.bind( 0 );
 		Gfx::draw_vertices( 4, GfxPrimitiveType_TriangleStrip );

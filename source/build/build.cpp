@@ -987,12 +987,12 @@ void BuilderCore::compile_run_ninja()
 
 	char path[PATH_SIZE];
 	strjoin( path, Build::pathOutput, SLASH "runtime" );
-	strjoin( Build::commandNinja, "ninja -C ", path );
+	const char *ninja = ninja_path();
+	strjoin( Build::commandNinja, ninja, " -C ", path );
 
 	// Run Ninja
 	if( verbose_output() ) { PrintLnColor( LOG_MAGENTA, TAB TAB "> %s", Build::commandNinja ); }
 	Print( "\n ");
-
 	ErrorIf( system( Build::commandNinja ) != 0, "Compile failed" );
 }
 
