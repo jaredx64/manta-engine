@@ -45,7 +45,7 @@ struct Toolchain
 			compilerName = "gcc";
 			compilerFlags = "-c -O2 -MD -MF $out.d -std=c++20 -fno-exceptions -DUNICODE -DCOMPILE_BUILD -I%s -I%s -I%s";
 			compilerFlagsIncludes = "-I%s -I%s -I%s";
-			compilerFlagsWarnings = "-Wall -Wno-unused-variable -Wno-unused-function";
+			compilerFlagsWarnings = "-Wall -Wno-unused-variable -Wno-unused-function -Wno-format-truncation";
 			compilerOutput = "-o ";
 
 			linkerName = "g++";

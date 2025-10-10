@@ -62,7 +62,7 @@ struct Toolchain
 			compilerName = "gcc";
 			compilerFlags = "-c -MD -MF $out.d -std=c++20 -fno-exceptions -DUNICODE -DCOMPILE_ENGINE";
 			compilerFlagsIncludes = "-I%s";
-			compilerFlagsWarnings = "-Wno-unused-variable -Wno-unused-function -Wno-unused-private-field -Wno-int-in-bool-context -Wno-unused-but-set-variable -Wno-delete-non-abstract-non-virtual-dtor";
+			compilerFlagsWarnings = "-Wno-unused-variable -Wno-unused-function -Wno-unused-private-field -Wno-int-in-bool-context -Wno-unused-but-set-variable -Wno-delete-non-abstract-non-virtual-dtor -Wno-format-truncation";
 			if( strcmp( args.architecture,   "x64" ) == 0 ) { compilerFlagsArchitecture = "-m64"; } else
 			if( strcmp( args.architecture, "arm64" ) == 0 ) { compilerFlagsArchitecture = "-march=armv8-a"; } else
 															{ Error( "Unsupported target architecture '%s' for compiler '%s'", args.architecture, args.toolchain ); }
