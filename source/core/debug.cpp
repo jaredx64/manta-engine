@@ -833,7 +833,7 @@ void Debug::console_enable_colors()
     SetConsoleMode( hOut, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING );
 }
 #else
-bool Debug::console_enable_colors()
+void Debug::console_enable_colors()
 {
 	// ...
 }
