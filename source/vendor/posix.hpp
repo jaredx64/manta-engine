@@ -111,6 +111,10 @@
 		long int __glibc_reserved[3];
 	};
 
+	#define st_atime st_atim.tv_sec
+	#define st_mtime st_mtim.tv_sec
+	#define st_ctime st_ctim.tv_sec
+
 	struct dirent
 	{
 		unsigned long int d_ino;

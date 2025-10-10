@@ -387,19 +387,32 @@ void BuilderCore::objects_cache_validate()
 
 void BuilderCore::objects_build()
 {
+	PrintLnColor( LOG_WHITE, TAB "Objects..." );
+	Timer timer;
+
 	if( Objects::cache.dirty )
 	{
-		PrintLnColor( LOG_WHITE, TAB "Objects..." );
-
 		Objects::parse();
 		Objects::resolve();
 		Objects::validate();
 		Objects::codegen();
+
+		if( !verbose_output() )
+		{
+			if( Objects::objectsBuilt > 0 )
+			{
+				PrintLnColor( LOG_RED, TAB TAB "%llu objects built", Objects::objectsBuilt );
+			}
+		}
+
+		const double elapsed = timer.elapsed_ms();
+		PrintLn( TAB TAB "Finished (%.3f ms)", elapsed );
 	}
 	else
 	{
-		PrintColor( LOG_WHITE, TAB "Objects... " );
-		PrintLnColor( LOG_MAGENTA, "cached" );
+		const double elapsed = timer.elapsed_ms();
+		PrintLnColor( LOG_MAGENTA, TAB TAB "Restored from cache" );
+		PrintLn( TAB TAB "Finished (%.3f ms)", elapsed );
 	}
 }
 
@@ -432,20 +445,33 @@ void BuilderCore::shaders_build()
 	const bool hasCachedStage = Build::cache.fetch( CACHE_BINARY_STAGE_GFX, cacheStage );
 	Gfx::cacheReadOffset = hasCachedStage ? cacheStage.offset : 0LLU;
 
+	PrintLnColor( LOG_WHITE, TAB "Shaders... " );
+	Timer timer;
+
 	if( Gfx::cache.dirty || !hasCachedStage )
 	{
-		PrintLnColor( LOG_WHITE, TAB "Shaders... " );
-
 		Gfx::build();
 		Gfx::codegen();
+
+		if( !verbose_output() )
+		{
+			if( Gfx::shadersBuilt > 0 )
+			{
+				PrintLnColor( LOG_RED, TAB TAB "%llu shaders built", Gfx::shadersBuilt );
+			}
+		}
+
+		const double elapsed = timer.elapsed_ms();
+		PrintLn( TAB TAB "Finished (%.3f ms)", elapsed );
 	}
 	else
 	{
-		PrintColor( LOG_WHITE, TAB "Shaders... " );
-		PrintLnColor( LOG_MAGENTA, "cached" );
-
 		Gfx::binary.write_from_file( Build::pathOutputRuntimeBinary,
 			cacheStage.offset, cacheStage.size );
+
+		const double elapsed = timer.elapsed_ms();
+		PrintLnColor( LOG_MAGENTA, TAB TAB "Restored from cache" );
+		PrintLn( TAB TAB "Finished (%.3f ms)", elapsed );
 	}
 }
 
@@ -508,10 +534,11 @@ void BuilderCore::assets_build()
 	const bool hasCachedStage = Build::cache.fetch( CACHE_BINARY_STAGE_ASSETS, cacheStage );
 	Assets::cacheReadOffset = hasCachedStage ? cacheStage.offset : 0LLU;
 
+	PrintLnColor( LOG_WHITE, TAB "Assets... " );
+	Timer timer;
+
 	if( Assets::cache.dirty || !hasCachedStage )
 	{
-		PrintLnColor( LOG_WHITE, TAB "Assets... " );
-
 		Assets::dataAssets.build();
 		Assets::textures.build();
 		Assets::glyphs.build();
@@ -521,14 +548,31 @@ void BuilderCore::assets_build()
 		Assets::sounds.build();
 		Assets::skeleton2Ds.build();
 		Assets::codegen();
+
+		if( !verbose_output() )
+		{
+			if( Assets::assetsBuilt > 0 )
+			{
+				PrintLnColor( LOG_RED, TAB TAB "%llu assets built", Assets::assetsBuilt );
+			}
+
+			if( Assets::assetsCached > 0 )
+			{
+				PrintLnColor( LOG_MAGENTA, TAB TAB "%llu assets cached", Assets::assetsCached );
+			}
+		}
+
+		const double elapsed = timer.elapsed_ms();
+		PrintLn( TAB TAB "Finished (%.3f ms)", elapsed );
 	}
 	else
 	{
-		PrintColor( LOG_WHITE, TAB "Assets... " );
-		PrintLnColor( LOG_MAGENTA, "cached" );
-
 		Assets::binary.write_from_file( Build::pathOutputRuntimeBinary,
 			cacheStage.offset, cacheStage.size );
+
+		const double elapsed = timer.elapsed_ms();
+		PrintLnColor( LOG_MAGENTA, TAB TAB "Restored from cache" );
+		PrintLn( TAB TAB "Finished (%.3f ms)", elapsed );
 	}
 }
 
@@ -596,7 +640,11 @@ void BuilderCore::binary_write()
 	// Log
 	PrintColor( LOG_WHITE, TAB "Writing Binary" );
 	PrintLnColor( LOG_YELLOW, " (%.2f MB)", MB( Assets::binary.size() ) );
-	if( verbose_output() ) { PrintColor( LOG_CYAN, TAB TAB "Write %s", Build::pathOutputRuntimeBinary ); }
+	if( verbose_output() )
+	{
+		PrintColor( LOG_WHITE, TAB TAB "Write " );
+		PrintColor( LOG_CYAN, "%s", Build::pathOutputRuntimeBinary );
+	}
 	Timer timer;
 
 	// Binary
@@ -610,7 +658,10 @@ void BuilderCore::binary_write()
 	Build::header.save( pathHeader );
 
 	// Log
-	if( verbose_output() ) { PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() ); }
+	if( verbose_output() )
+	{
+		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -818,7 +869,6 @@ void BuilderCore::compile_write_ninja()
 		strjoin_path( pathConfig, "projects", Build::args.project, "configs.json" );
 		ErrorIf( !configJSONContents.load( pathConfig ), "Failed to load configs file: %s\n", pathConfig );
 
-
 		// Read config.json
 		JSON configsJSON = JSON( configJSONContents ).object( Build::args.config )
 			.object( "compile" ).object( Build::args.toolchain );
@@ -922,7 +972,11 @@ void BuilderCore::compile_write_ninja()
 		char path[PATH_SIZE];
 		strjoin( path, Build::pathOutput, SLASH "runtime" SLASH "build.ninja" );
 		ErrorIf( !output.save( path ), "Failed to write %s", path );
-		if( verbose_output() ) { PrintLnColor( LOG_CYAN, TAB TAB "Wrote ninja to: %s", path ); }
+		if( verbose_output() )
+		{
+			PrintColor( LOG_WHITE, TAB TAB "Write " );
+			PrintLnColor( LOG_CYAN, "%s", path );
+		}
 	}
 }
 

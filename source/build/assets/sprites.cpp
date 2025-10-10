@@ -253,7 +253,7 @@ void Sprites::build()
 	if( verbose_output() )
 	{
 		const usize count = sprites.size();
-		PrintColor( LOG_CYAN, TAB TAB "Wrote %d sprite%s", count, count == 1 ? "" : "s" );
+		PrintColor( LOG_WHITE, TAB TAB "Wrote %d sprite%s", count, count == 1 ? "" : "s" );
 		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
 	}
 }

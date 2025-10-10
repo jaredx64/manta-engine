@@ -1,5 +1,5 @@
 {
-	"name": "Template",
+	"name": "Hello World (Manta Engine Demo)",
 	"company": "N/A",
 
 	"versionA": "1",
@@ -7,5 +7,5 @@
 	"versionC": "0",
 	"versionD": "0",
 
-	"icon": ""
+	"icon": "icon.png"
 }

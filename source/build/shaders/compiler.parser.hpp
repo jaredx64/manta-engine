@@ -18,14 +18,13 @@ class Token
 {
 public:
 	Token() = default;
-	Token( TokenType type ) : type { type } { }
 	Token( TokenType type, StringView name ) : type{ type }, name{ name } { }
-	Token( TokenType type, double number ) : type{ type }, number{ number } { }
-	Token( TokenType type, u64 integer ) : type{ type }, integer{ integer } { }
+	Token( TokenType type, double number, StringView name ) : type{ type }, name{ name }, number{ number } { }
+	Token( TokenType type, u64 integer, StringView name ) : type{ type }, name{ name }, integer{ integer } { }
 
 public:
-	u32 position = 0;
-	u32 start = 0;
+	usize position = 0;
+	usize start = 0;
 	u32 line = 0;
 
 	TokenType type = TokenType_Null;
@@ -39,18 +38,38 @@ public:
 class Scanner
 {
 public:
-	void init( const char *buffer ) { this->buffer = buffer; }
+	void init( const char *buffer )
+	{
+		this->buffer = buffer;
+		this->position = 0LLU;
+		stack.clear();
+	}
+
+	void init( const char *buffer, const usize offset )
+	{
+		this->buffer = buffer;
+		this->position = offset;
+		stack.clear();
+	}
+
 	bool consume( char c );
 	void skip_whitespace();
 
-	Token next();
+	Token next( const bool skipWhitespace = true );
 	Token back();
 	Token current();
 
 public:
+	enum_type( ScannerMode, int )
+	{
+		ScannerMode_Compiler,
+		ScannerMode_Preprocessor,
+	};
+
 	const char *buffer;
 	List<Token> stack;
-	u32 position = 0;
+	ScannerMode mode = ScannerMode_Compiler;
+	usize position = 0LLU;
 	u32 line = 1;
 };
 
@@ -88,7 +107,7 @@ public:
 
 	Node *parse_function_declaration();
 	Node *parse_function_declaration_main( FunctionType functionType, const char *functionName,
-	                                       TokenType inToken, TokenType outToken );
+		TokenType inToken, TokenType outToken );
 
 	// https://en.cppreference.com/w/c/language/operator_precedence
 	Node *parse_assignment();             // Lowest Precedence

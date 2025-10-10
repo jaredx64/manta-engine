@@ -34,7 +34,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static bool char_is_slash( const char c )
+inline bool char_is_slash( const char c )
 {
 	return ( c == '\\' || c == '/' );
 }
@@ -65,7 +65,7 @@ inline void path_change_extension( char *buffer, const usize size, const char *p
 	// Copy the portion of the path before the last dot
 	usize length = lastDot - path;
 	if( length >= size ) { length = size - 1; }
-	strncpy( buffer, path, length );
+	memmove( buffer, path, length );
 	buffer[length] = '\0';
 
 	// Append the new extension
@@ -296,15 +296,19 @@ inline bool directory_iterate( FileList &list, const char *path, const char *ext
 inline bool file_time( const char *path, FileTime *result )
 {
 	struct stat file_stat;
-	int file = open( path, O_RDONLY);
+	int file = open( path, O_RDONLY );
 	if( file == -1 ) { return false; }
-	if( fstat( file, &file_stat ) == -1 ) { return false; }
+	if( fstat( file, &file_stat ) == -1 ) { close( file ); return false; }
+	close( file );
 
-	#if PIPELINE_OS_MACOS
+#if PIPELINE_OS_MACOS
+	// Use st_mtime (seconds). st_birthtime is not reliably portable.
 	result->time = static_cast<u64>( file_stat.st_mtime );
-	#else
-	result->time = static_cast<u64>( file_stat.st_mtim.tv_sec ) * 1000000 + static_cast<u64>( file_stat.st_mtim.tv_nsec ) / 1000;
-	#endif
+#else
+	// Use st_mtim (nanoseconds precision)
+	result->time = static_cast<u64>( file_stat.st_mtim.tv_sec ) * 1000000 +
+		static_cast<u64>( file_stat.st_mtim.tv_nsec ) / 1000;
+#endif
 
 	return true;
 }
@@ -416,7 +420,7 @@ inline bool directory_iterate( FileList &list, const char *path, const char *ext
 			// Add FileInfo
 			FileInfo &info = list.push();
 			strjoin( info.path, path, SLASH, entry->d_name );
-			file_time( path, &info.time );
+			file_time( info.path, &info.time );
 		}
 	} while ( ( entry = readdir( dir ) ) != nullptr );
 

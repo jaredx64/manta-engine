@@ -147,7 +147,7 @@ void path_change_extension( char *buffer, usize size, const char *path, const ch
 	// Copy the portion of the path before the last dot
 	usize length = lastDot - path;
 	if( length >= size ) { length = size - 1; }
-	strncpy( buffer, path, length );
+	memmove( buffer, path, length );
 	buffer[length] = '\0';
 
 	// Append the new extension

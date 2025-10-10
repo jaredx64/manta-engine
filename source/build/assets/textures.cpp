@@ -981,7 +981,7 @@ void Textures::build()
 	if( verbose_output() )
 	{
 		const usize count = textures.size();
-		PrintColor( LOG_CYAN, TAB TAB "Wrote %d texture%s", count, count == 1 ? "" : "s", MB( sizeBytes ) );
+		PrintColor( LOG_WHITE, TAB TAB "Wrote %d texture%s", count, count == 1 ? "" : "s", MB( sizeBytes ) );
 		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
 	}
 }

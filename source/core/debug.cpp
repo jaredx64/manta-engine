@@ -818,4 +818,25 @@ bool Debug::print_callstack( const int skip, const char *prefix, const char *cal
 	return false;
 #endif
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#if PIPELINE_OS_WINDOWS
+#include <vendor/windows.hpp>
+
+void Debug::console_enable_colors()
+{
+	// TODO: Temp fix for Windows cmd.exe not supporting colored text
+    HANDLE hOut = GetStdHandle( STD_OUTPUT_HANDLE );
+    DWORD mode = 0;
+    GetConsoleMode( hOut, &mode );
+    SetConsoleMode( hOut, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING );
+}
+#else
+bool Debug::console_enable_colors()
+{
+	// ...
+}
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

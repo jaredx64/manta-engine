@@ -61,6 +61,8 @@ namespace Assets
 	extern void cache_validate();
 
 	// Logging
+	extern usize assetsBuilt;
+	extern usize assetsCached;
 	extern void log_asset_cache( const char *type, const char *name );
 	extern void log_asset_build( const char *type, const char *name );
 }

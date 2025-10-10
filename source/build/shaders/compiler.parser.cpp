@@ -222,70 +222,89 @@ static_assert( ARRAY_LENGTH( TextureTypeNames ) == TEXTURETYPE_COUNT, "Missing T
 
 const Keyword KeywordNames[] =
 {
-	{ "in",                     TokenType_In },
-	{ "out",                    TokenType_Out },
-	{ "inout",                  TokenType_InOut },
-	{ "true",                   TokenType_True },
-	{ "false",                  TokenType_False },
-	{ "const",                  TokenType_Const },
-	{ "return",                 TokenType_Return },
-	{ "break",                  TokenType_Break },
-	{ "continue",               TokenType_Continue },
-	{ "switch",                 TokenType_Switch },
-	{ "case",                   TokenType_Case },
-	{ "default",                TokenType_Default },
-	{ "discard",                TokenType_Discard },
-	{ "if",                     TokenType_If },
-	{ "else",                   TokenType_Else },
-	{ "while",                  TokenType_While },
-	{ "do",                     TokenType_Do },
-	{ "for",                    TokenType_For },
-	{ "struct",                 TokenType_Struct },
-	{ "shared_struct",          TokenType_SharedStruct },
-	{ "uniform_buffer",         TokenType_UniformBuffer },
-	{ "constant_buffer",        TokenType_ConstantBuffer },
-	{ "mutable_buffer",         TokenType_MutableBuffer },
-	{ "instance_input",         TokenType_InstanceInput },
-	{ "vertex_input",           TokenType_VertexInput },
-	{ "vertex_output",          TokenType_VertexOutput },
-	{ "fragment_input",         TokenType_FragmentInput },
-	{ "fragment_output",        TokenType_FragmentOutput },
-	{ "compute_input",          TokenType_ComputeInput },
-	{ "compute_output",         TokenType_ComputeOutput },
-	{ "texture1D",              TokenType_Texture1D },
-	{ "texture1DArray",         TokenType_Texture1DArray },
-	{ "texture2D",              TokenType_Texture2D },
-	{ "texture2DArray",         TokenType_Texture2DArray },
-	{ "texture3D",              TokenType_Texture3D },
-	{ "textureCube",            TokenType_TextureCube },
-	{ "textureCubeArray",       TokenType_TextureCubeArray },
-	{ "target",                 TokenType_Target },
-	{ "semantic",               TokenType_Semantic },
-	{ "POSITION",               TokenType_POSITION },
-	{ "TEXCOORD",               TokenType_TEXCOORD },
-	{ "NORMAL",                 TokenType_NORMAL },
-	{ "DEPTH",                  TokenType_DEPTH },
-	{ "COLOR",                  TokenType_COLOR },
-	{ "BINORMAL",               TokenType_BINORMAL },
-	{ "TANGENT",                TokenType_TANGENT },
-	{ "INSTANCE",               TokenType_INSTANCE },
-	{ "format",                 TokenType_InputFormat },
-	{ "UNORM8",                 TokenType_UNORM8 },
-	{ "UNORM16",                TokenType_UNORM16 },
-	{ "UNORM32",                TokenType_UNORM32 },
-	{ "SNORM8",                 TokenType_SNORM8 },
-	{ "SNORM16",                TokenType_SNORM16 },
-	{ "SNORM32",                TokenType_SNORM32 },
-	{ "UINT8",                  TokenType_UINT8 },
-	{ "UINT16",                 TokenType_UINT16 },
-	{ "UINT32",                 TokenType_UINT32 },
-	{ "SINT8",                  TokenType_SINT8 },
-	{ "SINT16",                 TokenType_SINT16 },
-	{ "SINT32",                 TokenType_SINT32 },
-	{ "FLOAT16",                TokenType_FLOAT16 },
-	{ "FLOAT32",                TokenType_FLOAT32 },
+	{ "in", TokenType_In },
+	{ "out", TokenType_Out },
+	{ "inout", TokenType_InOut },
+	{ "true", TokenType_True },
+	{ "false", TokenType_False },
+	{ "const", TokenType_Const },
+	{ "return", TokenType_Return },
+	{ "break", TokenType_Break },
+	{ "continue", TokenType_Continue },
+	{ "switch", TokenType_Switch },
+	{ "case", TokenType_Case },
+	{ "default", TokenType_Default },
+	{ "discard", TokenType_Discard },
+	{ "if", TokenType_If },
+	{ "else", TokenType_Else },
+	{ "while", TokenType_While },
+	{ "do", TokenType_Do },
+	{ "for", TokenType_For },
+	{ "struct", TokenType_Struct },
+	{ "shared_struct", TokenType_SharedStruct },
+	{ "uniform_buffer", TokenType_UniformBuffer },
+	{ "constant_buffer", TokenType_ConstantBuffer },
+	{ "mutable_buffer", TokenType_MutableBuffer },
+	{ "instance_input", TokenType_InstanceInput },
+	{ "vertex_input", TokenType_VertexInput },
+	{ "vertex_output", TokenType_VertexOutput },
+	{ "fragment_input", TokenType_FragmentInput },
+	{ "fragment_output", TokenType_FragmentOutput },
+	{ "compute_input", TokenType_ComputeInput },
+	{ "compute_output", TokenType_ComputeOutput },
+	{ "texture1D", TokenType_Texture1D },
+	{ "texture1DArray", TokenType_Texture1DArray },
+	{ "texture2D", TokenType_Texture2D },
+	{ "texture2DArray", TokenType_Texture2DArray },
+	{ "texture3D", TokenType_Texture3D },
+	{ "textureCube", TokenType_TextureCube },
+	{ "textureCubeArray", TokenType_TextureCubeArray },
+	{ "target", TokenType_Target },
+	{ "semantic", TokenType_Semantic },
+	{ "POSITION", TokenType_POSITION },
+	{ "TEXCOORD", TokenType_TEXCOORD },
+	{ "NORMAL", TokenType_NORMAL },
+	{ "DEPTH", TokenType_DEPTH },
+	{ "COLOR", TokenType_COLOR },
+	{ "BINORMAL", TokenType_BINORMAL },
+	{ "TANGENT", TokenType_TANGENT },
+	{ "INSTANCE", TokenType_INSTANCE },
+	{ "format", TokenType_InputFormat },
+	{ "UNORM8", TokenType_UNORM8 },
+	{ "UNORM16", TokenType_UNORM16 },
+	{ "UNORM32", TokenType_UNORM32 },
+	{ "SNORM8", TokenType_SNORM8 },
+	{ "SNORM16", TokenType_SNORM16 },
+	{ "SNORM32", TokenType_SNORM32 },
+	{ "UINT8", TokenType_UINT8 },
+	{ "UINT16", TokenType_UINT16 },
+	{ "UINT32", TokenType_UINT32 },
+	{ "SINT8", TokenType_SINT8 },
+	{ "SINT16", TokenType_SINT16 },
+	{ "SINT32", TokenType_SINT32 },
+	{ "FLOAT16", TokenType_FLOAT16 },
+	{ "FLOAT32", TokenType_FLOAT32 },
 };
 static_assert( ARRAY_LENGTH( KeywordNames ) == TOKENTYPE_KEYWORD_COUNT, "Missing Keyword TokenType!" );
+
+
+const Directive DirectiveNames[] =
+{
+	{ "#include", TokenType_Directive_Include },
+	{ "#define", TokenType_Directive_Define },
+	{ "#undef", TokenType_Directive_Undefine },
+	{ "#if", TokenType_Directive_If },
+	{ "#ifdef", TokenType_Directive_IfDefined },
+	{ "#ifndef", TokenType_Directive_IfUndefined },
+	{ "#else",  TokenType_Directive_Else },
+	{ "#elif", TokenType_Directive_ElseIf },
+	{ "#endif", TokenType_Directive_EndIf },
+	{ "#pragma", TokenType_Directive_Pragma },
+	{ "once", TokenType_Directive_Once },
+	{ "defined", TokenType_Directive_Defined },
+	{ "undefined", TokenType_Directive_Undefined },
+};
+static_assert( ARRAY_LENGTH( DirectiveNames ) == TOKENTYPE_DIRECTIVE_COUNT, "Missing Directive TokenType!" );
 
 
 const char *SwizzleTypeNames[] =
@@ -325,13 +344,13 @@ void Scanner::skip_whitespace()
 		{
 			case ' ':
 			case '\t':
-			case '\r':
 				position++;
 			break;
 
+			case '\r':
 			case '\n':
-				position++;
 				line++;
+				position++;
 			break;
 
 			default: return;
@@ -388,13 +407,34 @@ static TokenType get_keyword( const char *buffer, const u32 length )
 }
 
 
-Token Scanner::next()
+static TokenType get_directive( const char *buffer, const u32 length )
+{
+	const u32 directiveCount = sizeof( DirectiveNames ) / sizeof( DirectiveNames[0] );
+	for( u32 i = 0; i < directiveCount; i++ )
+	{
+		const Directive &directive = DirectiveNames[i];
+		if( strlen( directive.key ) != length ) { continue; }
+		if( strncmp( buffer, directive.key, length ) == 0 )
+		{
+			// Token Found
+			return directive.token;
+		}
+	}
+
+	return TokenType_Error;
+}
+
+
+Token Scanner::next( const bool skipWhitespace )
 {
 	Token token;
-	#define RETURN_TOKEN(x) token = x; goto success;
+	#define RETURN_TOKEN_NAME(...) \
+		token = Token { __VA_ARGS__ }; goto success;
+	#define RETURN_TOKEN(...) \
+		token = Token { __VA_ARGS__, StringView { &buffer[start], position - start } }; goto success;
 
-	skip_whitespace();
-	u32 start = position;
+	if( skipWhitespace ) { skip_whitespace(); }
+	usize start = position;
 
 	const char c = buffer[position++];
 	switch( c )
@@ -403,78 +443,103 @@ Token Scanner::next()
 		case '\0':
 		{
 			position--;
-			RETURN_TOKEN( Token( TokenType_EndOfFile ) );
+			RETURN_TOKEN( TokenType_EndOfFile );
 		}
 
+		// Whitespace
+		case '\r':
+		case '\n': { RETURN_TOKEN( TokenType_Newline ); }
+		case ' ': { RETURN_TOKEN( TokenType_Space ); }
+		case '\t': { RETURN_TOKEN( TokenType_Tab ); }
+
 		// Single Character
-		case '(': { RETURN_TOKEN( Token( TokenType_LParen ) ); }
-		case ')': { RETURN_TOKEN( Token( TokenType_RParen ) ); }
-		case '{': { RETURN_TOKEN( Token( TokenType_LCurly ) ); }
-		case '}': { RETURN_TOKEN( Token( TokenType_RCurly ) ); }
-		case '[': { RETURN_TOKEN( Token( TokenType_LBrack ) ); }
-		case ']': { RETURN_TOKEN( Token( TokenType_RBrack ) ); }
-		case '.': { RETURN_TOKEN( Token( TokenType_Dot ) ); }
-		case ',': { RETURN_TOKEN( Token( TokenType_Comma ) ); }
-		case ':': { RETURN_TOKEN( Token( TokenType_Colon ) ); }
-		case ';': { RETURN_TOKEN( Token( TokenType_Semicolon ) ); }
-		case '~': { RETURN_TOKEN( Token( TokenType_BitNot ) ); }
-		case '?': { RETURN_TOKEN( Token( TokenType_Question ) ); }
+		case '(': { RETURN_TOKEN( TokenType_LParen ); }
+		case ')': { RETURN_TOKEN( TokenType_RParen ); }
+		case '{': { RETURN_TOKEN( TokenType_LCurly ); }
+		case '}': { RETURN_TOKEN( TokenType_RCurly ); }
+		case '[': { RETURN_TOKEN( TokenType_LBrack ); }
+		case ']': { RETURN_TOKEN( TokenType_RBrack ); }
+		case '.': { RETURN_TOKEN( TokenType_Dot ); }
+		case ',': { RETURN_TOKEN( TokenType_Comma ); }
+		case ':': { RETURN_TOKEN( TokenType_Colon ); }
+		case ';': { RETURN_TOKEN( TokenType_Semicolon ); }
+		case '~': { RETURN_TOKEN( TokenType_BitNot ); }
+		case '?': { RETURN_TOKEN( TokenType_Question ); }
+		case '\"': { RETURN_TOKEN( TokenType_Quote ); }
+		case '\\': { RETURN_TOKEN( TokenType_Escape ); }
 
 		// Double Character
+		case '_':
+		{
+			if( consume( '=' ) ) { RETURN_TOKEN( TokenType_Equals ); }
+			RETURN_TOKEN( TokenType_Assign );
+		}
+
 		case '=':
 		{
-			RETURN_TOKEN( Token( consume( '=' ) ? TokenType_Equals : TokenType_Assign ) );
+			if( consume( '=' ) ) { RETURN_TOKEN( TokenType_Equals ); }
+			RETURN_TOKEN( TokenType_Assign );
 		}
 
 		case '!':
 		{
-			RETURN_TOKEN( Token( consume( '=' ) ? TokenType_NotEquals : TokenType_Bang ) );
+			if( consume( '=' ) ) { RETURN_TOKEN( TokenType_NotEquals ); }
+			RETURN_TOKEN( TokenType_Bang );
 		}
 
 		case '+':
 		{
-			RETURN_TOKEN( Token( consume( '=' ) ?
-				TokenType_PlusAssign : ( consume( '+' ) ? TokenType_PlusPlus : TokenType_Plus ) ) );
+			if( consume( '=' ) ) { RETURN_TOKEN( TokenType_PlusAssign ); }
+			if( consume( '+' ) ) { RETURN_TOKEN( TokenType_PlusPlus ); }
+			RETURN_TOKEN( TokenType_Plus );
 		}
 
 		case '-':
 		{
-			RETURN_TOKEN( Token( consume( '=' ) ?
-				TokenType_MinusAssign : ( consume( '-' ) ? TokenType_MinusMinus : TokenType_Minus ) ) );
+			if( consume( '=' ) ) { RETURN_TOKEN( TokenType_MinusAssign ); }
+			if( consume( '-' ) ) { RETURN_TOKEN( TokenType_MinusMinus ); }
+			RETURN_TOKEN( TokenType_Minus );
 		}
 
 		case '*':
 		{
-			RETURN_TOKEN( Token( consume( '=' ) ? TokenType_StarAssign : TokenType_Star ) );
+			if( consume( '=' ) ) { RETURN_TOKEN( TokenType_StarAssign ); }
+			if( consume( '/' ) ) { RETURN_TOKEN( TokenType_CommentEnd ); }
+			RETURN_TOKEN( TokenType_Star );
 		}
 
 		case '/':
 		{
-			RETURN_TOKEN( Token( consume( '=' ) ? TokenType_SlashAssign : TokenType_Slash ) );
+			if( consume( '=' ) ) { RETURN_TOKEN( TokenType_SlashAssign ); }
+			if( consume( '/' ) ) { RETURN_TOKEN( TokenType_CommentLine ); }
+			if( consume( '*' ) ) { RETURN_TOKEN( TokenType_CommentStart ); }
+			RETURN_TOKEN( TokenType_Slash );
 		}
 
 		case '%':
 		{
-			RETURN_TOKEN( Token( consume( '=' ) ? TokenType_ModAssign : TokenType_Mod ) );
+			if( consume( '=' ) ) { RETURN_TOKEN( TokenType_ModAssign ); }
+			RETURN_TOKEN( TokenType_Mod );
 		}
 
 		case '^':
 		{
-			RETURN_TOKEN( Token( consume( '=' ) ? TokenType_BitXorAssign : TokenType_BitXor ) );
+			if( consume( '=' ) ) { RETURN_TOKEN( TokenType_BitXorAssign ); }
+			RETURN_TOKEN( TokenType_BitXor );
 		}
 
 		case '|':
 		{
-			if( consume( '=' ) ) { RETURN_TOKEN( Token( TokenType_BitOrAssign ) ); }
-			if( consume( '|' ) ) { RETURN_TOKEN( Token( TokenType_Or ) ); }
-			RETURN_TOKEN( { TokenType_BitOr } );
+			if( consume( '=' ) ) { RETURN_TOKEN( TokenType_BitOrAssign ); }
+			if( consume( '|' ) ) { RETURN_TOKEN( TokenType_Or ); }
+			RETURN_TOKEN( TokenType_BitOr );
 		}
 
 		case '&':
 		{
-			if( consume( '=' ) ) { RETURN_TOKEN( Token( TokenType_BitAndAssign ) ); }
-			if( consume( '&' ) ) { RETURN_TOKEN( Token( TokenType_And ) ); }
-			RETURN_TOKEN( { TokenType_BitAnd } );
+			if( consume( '=' ) ) { RETURN_TOKEN( TokenType_BitAndAssign ); }
+			if( consume( '&' ) ) { RETURN_TOKEN( TokenType_And ); }
+			RETURN_TOKEN( TokenType_BitAnd );
 		}
 
 		// Triple Character
@@ -482,40 +547,44 @@ Token Scanner::next()
 		{
 			if( consume( '<' ) )
 			{
-				RETURN_TOKEN( Token( consume( '=' ) ? TokenType_BitShiftLeftAssign : TokenType_BitShiftLeft ) );
+				if( consume( '=' ) ) { RETURN_TOKEN( TokenType_BitShiftLeftAssign ); }
+				RETURN_TOKEN( TokenType_BitShiftLeft );
 			}
-			RETURN_TOKEN( Token( consume( '=' ) ? TokenType_LessThanEquals : TokenType_LessThan ) );
+
+			if( consume( '=' ) ) { RETURN_TOKEN( TokenType_LessThanEquals ); }
+			RETURN_TOKEN( TokenType_LessThan );
 		}
 
 		case '>':
 		{
 			if( consume( '>' ) )
 			{
-				RETURN_TOKEN( Token( consume( '=' ) ? TokenType_BitShiftRightAssign : TokenType_BitShiftRight ) );
+				if( consume( '=' ) ) { RETURN_TOKEN( TokenType_BitShiftRightAssign ); }
+				RETURN_TOKEN( TokenType_BitShiftRight );
 			}
-			RETURN_TOKEN( Token( consume( '=' ) ? TokenType_GreaterThanEquals : TokenType_GreaterThan ) );
+
+			if( consume( '=' ) ) { RETURN_TOKEN( TokenType_GreaterThanEquals ); }
+			RETURN_TOKEN( TokenType_GreaterThan );
 		}
 
 		// Other
 		default:
 		{
-			// Identifier
-			if( is_letter( c ) || c == '_' )
+			// Directives / Identifiers
+			const bool preprocessing = ( mode == ScannerMode_Preprocessor );
+			if( is_letter( c ) || c == '_' || ( preprocessing && c == '#' ) )
 			{
 				while( ( buffer[position] != '\0' ) &&
-					   ( is_digit( buffer[position] ) || is_letter( buffer[position] ) || buffer[position] == '_' ) )
+					( is_digit( buffer[position] ) || is_letter( buffer[position] ) || buffer[position] == '_' ) )
 				{
 					position++;
 				}
 
-				const TokenType keyword = get_keyword( &buffer[start], position - start );
+				TokenType keyword = get_keyword( &buffer[start], position - start );
+				if( keyword < 0 && preprocessing ) { keyword = get_directive( &buffer[start], position - start ); }
 
-				if( keyword >= 0 )
-				{
-					RETURN_TOKEN( Token( keyword ) );
-				}
-
-				RETURN_TOKEN( Token( TokenType_Identifier, StringView{ &buffer[start], position - start } ) );
+				if( keyword >= 0 ) { RETURN_TOKEN( keyword ); }
+				RETURN_TOKEN_NAME( TokenType_Identifier, StringView { &buffer[start], position - start } );
 			}
 
 			// Numbers
@@ -532,12 +601,12 @@ Token Scanner::next()
 				{
 					if( buffer[position] == '.' )
 					{
-						if( seenDot ) { RETURN_TOKEN( Token( TokenType_Error ) ); }
+						if( seenDot ) { RETURN_TOKEN( TokenType_Error ); }
 						seenDot = true;
 					}
 					else if( buffer[position] == 'x' )
 					{
-						if( seenHex ) { RETURN_TOKEN( Token( TokenType_Error ) ); }
+						if( seenHex ) { RETURN_TOKEN( TokenType_Error ); }
 						seenHex = true;
 					}
 
@@ -548,7 +617,7 @@ Token Scanner::next()
 				char number[64];
 				if( position - start >= sizeof( number ) - 1 )
 				{
-					RETURN_TOKEN( Token( TokenType_Error ) );
+					RETURN_TOKEN( TokenType_Error );
 				}
 				strncpy( number, &buffer[start], position - start );
 				number[position - start] = '\0';
@@ -556,23 +625,23 @@ Token Scanner::next()
 				if( seenDot )
 				{
 					// Floating Point
-					RETURN_TOKEN( Token( TokenType_Number, atof( number ) ) );
+					RETURN_TOKEN( TokenType_Number, atof( number ) );
 				}
 				else if( seenHex )
 				{
 					// Hex
 					const u64 hexInteger = strtoull( number + 2, nullptr, 16 );
-					RETURN_TOKEN( Token( TokenType_Integer, hexInteger ) );
+					RETURN_TOKEN( TokenType_Integer, hexInteger );
 				}
 				else
 				{
 					// Integer
-					RETURN_TOKEN( Token( TokenType_Integer, static_cast<u64>( atoll( number ) ) ) );
+					RETURN_TOKEN( TokenType_Integer, static_cast<u64>( atoll( number ) ) );
 				}
 			}
 
 			// Error: Unknown token?
-			RETURN_TOKEN( Token( TokenType_Error ) );
+			RETURN_TOKEN( TokenType_Error );
 		}
 	}
 
@@ -587,7 +656,7 @@ success:
 
 Token Scanner::back()
 {
-	if( stack.size() == 0 ) { return Token( TokenType_Error ); }
+	if( stack.size() == 0 ) { return Token { TokenType_Error, StringView { } }; }
 	stack.remove( stack.size() - 1 );
 
 	Token token = stack[stack.size() - 1];
@@ -599,7 +668,7 @@ Token Scanner::back()
 
 Token Scanner::current()
 {
-	if( stack.size() == 0 ) { return Token( TokenType_Error ); }
+	if( stack.size() == 0 ) { return Token { TokenType_Error, StringView { } }; }
 	return stack[stack.size() - 1];
 }
 
@@ -927,12 +996,14 @@ bool Parser::parse( const char *string )
 	// Initialize
 	init();
 	scanner.init( string );
+	scanner.mode = Scanner::ScannerMode_Compiler;
 
 	// Parse Definitions
 	for( ;; )
 	{
 		Token token = scanner.next();
-		ErrorIf( token.type == TokenType_Error, "unknown token" );
+		ErrorIf( token.type == TokenType_Error, "unknown token '%.*s'",
+			token.name.length, token.name.data  );
 		if( token.type == TokenType_EndOfFile ) { break; }
 
 		// Program-level Tokens
@@ -2706,7 +2777,6 @@ Node *Parser::parse_assignment()
 		}
 	}
 
-	// No Assignment
 	return node;
 }
 
@@ -2728,7 +2798,6 @@ Node *Parser::parse_ternary_condition()
 		return ast.add( NodeExpressionTernary( ExpressionTernaryType_Conditional, node, expr2, expr3 ) );
 	}
 
-	// No ternary condition
 	return node;
 }
 
@@ -2737,13 +2806,12 @@ Node *Parser::parse_logical_or()
 {
 	Node *node = parse_logical_and();
 
-	if( scanner.current().type == TokenType_Or )
+	while( scanner.current().type == TokenType_Or )
 	{
 		scanner.next();
-		return ast.add( NodeExpressionBinary( ExpressionBinaryType_Or, node, parse_logical_or() ) );
+		node = ast.add( NodeExpressionBinary( ExpressionBinaryType_Or, node, parse_logical_and() ) );
 	}
 
-	// No logical or
 	return node;
 }
 
@@ -2752,13 +2820,13 @@ Node *Parser::parse_logical_and()
 {
 	Node *node = parse_bitwise_or();
 
-	if( scanner.current().type == TokenType_And )
+	while( scanner.current().type == TokenType_And )
 	{
 		scanner.next();
-		return ast.add( NodeExpressionBinary( ExpressionBinaryType_And, node, parse_logical_and() ) );
+		node = ast.add( NodeExpressionBinary( ExpressionBinaryType_And, node,
+			parse_bitwise_or() ) );
 	}
 
-	// No logical and
 	return node;
 }
 
@@ -2767,13 +2835,13 @@ Node *Parser::parse_bitwise_or()
 {
 	Node *node = parse_bitwise_xor();
 
-	if( scanner.current().type == TokenType_BitOr )
+	while( scanner.current().type == TokenType_BitOr )
 	{
 		scanner.next();
-		return ast.add( NodeExpressionBinary( ExpressionBinaryType_BitOr, node, parse_bitwise_or() ) );
+		node = ast.add( NodeExpressionBinary( ExpressionBinaryType_BitOr, node,
+			parse_bitwise_xor() ) );
 	}
 
-	// No bitwise or
 	return node;
 }
 
@@ -2782,13 +2850,13 @@ Node *Parser::parse_bitwise_xor()
 {
 	Node *node = parse_bitwise_and();
 
-	if( scanner.current().type == TokenType_BitXor )
+	while( scanner.current().type == TokenType_BitXor )
 	{
 		scanner.next();
-		return ast.add( NodeExpressionBinary( ExpressionBinaryType_BitXor, node, parse_bitwise_xor() ) );
+		node = ast.add( NodeExpressionBinary( ExpressionBinaryType_BitXor, node,
+			parse_bitwise_and() ) );
 	}
 
-	// No bitwise xor
 	return node;
 }
 
@@ -2797,13 +2865,13 @@ Node *Parser::parse_bitwise_and()
 {
 	Node *node = parse_equality();
 
-	if( scanner.current().type == TokenType_BitAnd )
+	while( scanner.current().type == TokenType_BitAnd )
 	{
 		scanner.next();
-		return ast.add( NodeExpressionBinary( ExpressionBinaryType_BitAnd, node, parse_bitwise_and() ) );
+		node = ast.add( NodeExpressionBinary( ExpressionBinaryType_BitAnd, node,
+			parse_equality() ) );
 	}
 
-	// No bitwise and
 	return node;
 }
 
@@ -2812,22 +2880,17 @@ Node *Parser::parse_equality()
 {
 	Node *node = parse_comparison();
 
-	switch( scanner.current().type )
+	while( scanner.current().type == TokenType_Equals ||
+		scanner.current().type == TokenType_NotEquals )
 	{
-		case TokenType_Equals:
-		{
-			scanner.next();
-			return ast.add( NodeExpressionBinary( ExpressionBinaryType_Equals, node, parse_equality() ) );
-		}
+		TokenType type = scanner.current().type;
+		scanner.next();
 
-		case TokenType_NotEquals:
-		{
-			scanner.next();
-			return ast.add( NodeExpressionBinary( ExpressionBinaryType_NotEquals, node, parse_equality() ) );
-		}
+		node = ast.add( NodeExpressionBinary(
+			type == TokenType_Equals ? ExpressionBinaryType_Equals : ExpressionBinaryType_NotEquals,
+			node, parse_comparison() ) );
 	}
 
-	// No equality
 	return node;
 }
 
@@ -2836,34 +2899,27 @@ Node *Parser::parse_comparison()
 {
 	Node *node = parse_bitwise_shift();
 
-	switch( scanner.current().type )
+	while( scanner.current().type == TokenType_GreaterThan ||
+		scanner.current().type == TokenType_GreaterThanEquals ||
+		scanner.current().type == TokenType_LessThan ||
+		scanner.current().type == TokenType_LessThanEquals )
 	{
-		case TokenType_GreaterThan:
+		TokenType tokenType = scanner.current().type;
+		scanner.next();
+
+		ExpressionBinaryType binaryExpressionType;
+		switch( tokenType )
 		{
-			scanner.next();
-			return ast.add( NodeExpressionBinary( ExpressionBinaryType_Greater, node, parse_comparison() ) );
+			default:
+			case TokenType_GreaterThan: binaryExpressionType = ExpressionBinaryType_Greater; break;
+			case TokenType_GreaterThanEquals: binaryExpressionType = ExpressionBinaryType_GreaterEquals; break;
+			case TokenType_LessThan: binaryExpressionType = ExpressionBinaryType_Less; break;
+			case TokenType_LessThanEquals: binaryExpressionType = ExpressionBinaryType_LessEquals; break;
 		}
 
-		case TokenType_GreaterThanEquals:
-		{
-			scanner.next();
-			return ast.add( NodeExpressionBinary( ExpressionBinaryType_GreaterEquals, node, parse_comparison() ) );
-		}
-
-		case TokenType_LessThan:
-		{
-			scanner.next();
-			return ast.add( NodeExpressionBinary( ExpressionBinaryType_Less, node, parse_comparison() ) );
-		}
-
-		case TokenType_LessThanEquals:
-		{
-			scanner.next();
-			return ast.add( NodeExpressionBinary( ExpressionBinaryType_LessEquals, node, parse_comparison() ) );
-		}
+		node = ast.add( NodeExpressionBinary( binaryExpressionType, node, parse_bitwise_shift() ) );
 	}
 
-	// No comparison
 	return node;
 }
 
@@ -2872,22 +2928,17 @@ Node *Parser::parse_bitwise_shift()
 {
 	Node *node = parse_add_sub();
 
-	switch( scanner.current().type )
+	while( scanner.current().type == TokenType_BitShiftLeft ||
+		scanner.current().type == TokenType_BitShiftRight )
 	{
-		case TokenType_BitShiftLeft:
-		{
-			scanner.next();
-			return ast.add( NodeExpressionBinary( ExpressionBinaryType_BitShiftLeft, node, parse_bitwise_shift() ) );
-		}
+		TokenType type = scanner.current().type;
+		scanner.next();
 
-		case TokenType_BitShiftRight:
-		{
-			scanner.next();
-			return ast.add( NodeExpressionBinary( ExpressionBinaryType_BitShiftRight, node, parse_bitwise_shift() ) );
-		}
+		node = ast.add( NodeExpressionBinary(
+			type == TokenType_BitShiftLeft ? ExpressionBinaryType_BitShiftLeft : ExpressionBinaryType_BitShiftRight,
+			node, parse_add_sub() ) );
 	}
 
-	// No bitshift
 	return node;
 }
 
@@ -2896,22 +2947,17 @@ Node *Parser::parse_add_sub()
 {
 	Node *node = parse_mul_div_mod();
 
-	switch( scanner.current().type )
+	while( scanner.current().type == TokenType_Plus ||
+		scanner.current().type == TokenType_Minus )
 	{
-		case TokenType_Plus:
-		{
-			scanner.next();
-			return ast.add( NodeExpressionBinary( ExpressionBinaryType_Add, node, parse_add_sub() ) );
-		}
+		TokenType type = scanner.current().type;
+		scanner.next();
 
-		case TokenType_Minus:
-		{
-			scanner.next();
-			return ast.add( NodeExpressionBinary( ExpressionBinaryType_Sub, node, parse_add_sub() ) );
-		}
+		node = ast.add( NodeExpressionBinary(
+			type == TokenType_Plus ? ExpressionBinaryType_Add : ExpressionBinaryType_Sub,
+			node, parse_mul_div_mod() ) );
 	}
 
-	// No add or sub
 	return node;
 }
 
@@ -2920,28 +2966,25 @@ Node *Parser::parse_mul_div_mod()
 {
 	Node *node = parse_prefix_operators();
 
-	switch( scanner.current().type )
+	while( scanner.current().type == TokenType_Star ||
+		scanner.current().type == TokenType_Slash ||
+		scanner.current().type == TokenType_Mod )
 	{
-		case TokenType_Star:
+		TokenType tokenType = scanner.current().type;
+		scanner.next();
+
+		ExpressionBinaryType binaryExpressionType;
+		switch( tokenType )
 		{
-			scanner.next();
-			return ast.add( NodeExpressionBinary( ExpressionBinaryType_Mul, node, parse_mul_div_mod() ) );
+			default:
+			case TokenType_Star: binaryExpressionType = ExpressionBinaryType_Mul; break;
+			case TokenType_Slash: binaryExpressionType = ExpressionBinaryType_Div; break;
+			case TokenType_Mod: binaryExpressionType = ExpressionBinaryType_Mod; break;
 		}
 
-		case TokenType_Slash:
-		{
-			scanner.next();
-			return ast.add( NodeExpressionBinary( ExpressionBinaryType_Div, node, parse_mul_div_mod() ) );
-		}
-
-		case TokenType_Mod:
-		{
-			scanner.next();
-			return ast.add( NodeExpressionBinary( ExpressionBinaryType_Mod, node, parse_mul_div_mod() ) );
-		}
+		node = ast.add( NodeExpressionBinary( binaryExpressionType, node, parse_prefix_operators() ) );
 	}
 
-	// No mul, div, or mod
 	return node;
 }
 
@@ -3203,7 +3246,7 @@ Node *Parser::parse_fundamental()
 
 		default:
 		{
-			Error( "unexpected symbol (token: %u)", token.type );
+			Error( "unexpected symbol (token: %d)", token.type );
 		}
 		break;
 	}
@@ -3250,7 +3293,7 @@ void Parser::ERROR_HANDLER_FUNCTION_DECL
 	PrintColor( LOG_RED, "\n    %s:%u\n", path, scanner.current().line );
 
 	// Print Line
-	u32 linePosition;
+	u32 linePosition = 0;
 	String errorLine = line_string( scanner, scanner.current().line, linePosition );
 	u32 spacePosition = scanner.current().start - linePosition;
 	String spaces = "";

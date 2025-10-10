@@ -54,6 +54,9 @@ namespace Gfx
 	usize cacheReadOffset = 0LLU;
 	usize cacheFileCount = 0LLU;
 
+	// Logging
+	usize shadersBuilt = 0LLU;
+
 	// Binary
 	Buffer binary;
 }
@@ -91,6 +94,7 @@ u32 Gfx::gather( const char *path, const bool recurse )
 		memory_set( cacheIDBuffer, 0, sizeof( cacheIDBuffer ) );
 		snprintf( cacheIDBuffer, sizeof( cacheIDBuffer ), "shader %s|%llu",
 			file.path, file.time.as_u64() );
+
 		const CacheID cacheID = checksum_xcrc32( cacheIDBuffer, sizeof( cacheIDBuffer ), 0 );
 
 		CacheShader cacheShader;
@@ -129,7 +133,21 @@ void Gfx::build()
 
 		// Compile Shader
 		Shader &shader = Gfx::shaders.add( Shader { shaderName, shaderType } );
+
+		Timer timer;
+		if( verbose_output() )
+		{
+			PrintColor( LOG_WHITE, TAB TAB "Compile " );
+			PrintColor( LOG_CYAN, "%s", fileInfo.name );
+		}
+
 		compile_shader( shader, fileInfo.path );
+		Gfx::shadersBuilt++;
+
+		if( verbose_output() )
+		{
+			PrintLnColor( LOG_WHITE, " (%.2f ms)", timer.elapsed_ms() );
+		}
 	}
 
 	// Binary
@@ -507,7 +525,7 @@ void Gfx::codegen()
 	if( verbose_output() )
 	{
 		const usize count = shaders.size();
-		PrintColor( LOG_CYAN, TAB TAB "Wrote %d shaders%s", count, count == 1 ? "s" : "" );
+		PrintColor( LOG_WHITE, TAB TAB "Wrote %d shaders%s", count, count == 1 ? "s" : "" );
 		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
 	}
 }

@@ -59,6 +59,8 @@ namespace Debug
 	extern bool snprint_callstack( char *buffer, const unsigned int size, int skip = 0,
 		const char *prefix = "", const char *caller = "" );
 	extern bool print_callstack( int skip = 0, const char *prefix = "", const char *caller = "" );
+
+	extern void console_enable_colors();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

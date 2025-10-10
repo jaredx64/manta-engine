@@ -2,6 +2,7 @@
 #include <build/shaders/compiler.parser.hpp>
 #include <build/shaders/compiler.optimizer.hpp>
 #include <build/shaders/compiler.generator.hpp>
+#include <build/shaders/compiler.preprocessor.hpp>
 
 #include <build/build.hpp>
 #include <build/filesystem.hpp>
@@ -12,7 +13,6 @@
 void compile_shader( Shader &shader, const char *path )
 {
 	// Setup
-	Timer profiler;
 	char filename[PATH_SIZE];
 	char filenameOutput[PATH_SIZE];
 	char pathInput[PATH_SIZE];
@@ -45,6 +45,20 @@ void compile_shader( Shader &shader, const char *path )
 	}
 
 	// Preprocessor
+#if 1
+	static const char *pipelineMacros[1];
+	switch( shader.type )
+	{
+		case ShaderType_HLSL: pipelineMacros[0] = "SHADER_HLSL"; break;
+		case ShaderType_GLSL: pipelineMacros[0] = "SHADER_GLSL"; break;
+		case ShaderType_METAL: pipelineMacros[0] = "SHADER_METAL"; break;
+		default: pipelineMacros[0] = ""; break;
+	}
+
+	String file;
+	preprocess_shader( pathInput, file, pipelineMacros, 1 );
+#else
+	// Invoke Official C Preprocessor
 	String file;
 	{
 		const bool useMSVC = strcmp( Build::args.toolchain, "msvc" ) == 0;
@@ -85,23 +99,28 @@ void compile_shader( Shader &shader, const char *path )
 		if( useMSVC )
 		{
 			// MSVC Preprocessor
-			strjoin( commandPreprocessor, "cl -nologo /EP /I\"", pathAPI , "\" /TP ", pipelineDefines, " ", pathInput, " > ", pathPreprocessed );
+			strjoin( commandPreprocessor, "cl -nologo /EP /I\"", pathAPI, "\" /TP ",
+				pipelineDefines, " ", pathInput, " > ", pathPreprocessed );
 		}
 		else if( useGNU )
 		{
 			// GCC Preprocessor
-			strjoin( commandPreprocessor, "gcc -E -P -I", pathAPI , " ", pipelineDefines, " -x c ", pathInput, " > ", pathPreprocessed );
+			strjoin( commandPreprocessor, "gcc -E -P -I", pathAPI, " ", pipelineDefines,
+				" -x c ", pathInput, " > ", pathPreprocessed );
 		}
 		else if( useLLVM )
 		{
 			// Clang Preprocessor
-			strjoin( commandPreprocessor, "gcc -E -P -I", pathAPI , " ", pipelineDefines , " -x c ", pathInput, " > ", pathPreprocessed );
+			strjoin( commandPreprocessor, "gcc -E -P -I", pathAPI, " ", pipelineDefines,
+				" -x c ", pathInput, " > ", pathPreprocessed );
 		}
 
 		const int errorCode = system( commandPreprocessor );
 		ErrorIf( errorCode != 0, "Failed to preprocess shader '%s'", pathAPI );
-		ErrorIf( !file.load( pathPreprocessed ), "Failed to load preprocessed shader code '%s'", pathPreprocessed );
+		ErrorIf( !file.load( pathPreprocessed ),
+			"Failed to load preprocessed shader code '%s'", pathPreprocessed );
 	}
+#endif
 
 	// Parse
 	ShaderCompiler::Parser parser { shader, pathPreprocessed };
@@ -159,7 +178,7 @@ void compile_shader( Shader &shader, const char *path )
 
 	// Write
 	{
-	#if COMPILE_DEBUG
+#if COMPILE_DEBUG && 0
 		String output = "";
 		output.append( COMMENT_BREAK );
 		for( ShaderStage stage = 0; stage < SHADERSTAGE_COUNT; stage++ )
@@ -170,12 +189,7 @@ void compile_shader( Shader &shader, const char *path )
 			output.append( COMMENT_BREAK );
 		}
 		output.save( pathOutput );
-	#endif
-	}
-
-	// Finished
-	{
-		//PrintLnColor( LOG_GREEN, "Finished: %.3f ms", profiler.elapsed_ms() );
+#endif
 	}
 }
 
@@ -184,35 +198,47 @@ namespace ShaderCompiler
 {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define NODE_BUFFER_CAPACITY_BYTES ( 1024 * 256 ) // 0.25 KB
+#define NODE_BUFFER_CAPACITY_BYTES ( 1024 * 1024 ) // 1 MB
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void NodeBuffer::init()
 {
-	// Init Page
 	grow();
 }
 
 
 void NodeBuffer::free()
 {
-	// Free Pages
 	for( byte *page : pages )
 	{
 		Assert( page != nullptr );
 		memory_free( page );
 	}
+
+	data = nullptr;
+	current = 0LLU;
+	capacity = 0LLU;
+}
+
+
+void NodeBuffer::clear()
+{
+	free();
+	pages.clear();
+	grow();
 }
 
 
 void NodeBuffer::grow()
 {
-	// Allocate New Page
+	// NodeBuffer allocates new memory in 'pages' to avoid calling realloc (which can to invalidate pointers)
 	data = reinterpret_cast<byte *>( memory_alloc( NODE_BUFFER_CAPACITY_BYTES ) );
-	pages.add( data );
-	current = 0;
 	capacity = NODE_BUFFER_CAPACITY_BYTES;
+	current = 0LLU;
+
+	// Ownership of the memory block is stored in the pages list
+	pages.add( data );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

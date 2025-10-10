@@ -13,6 +13,7 @@ struct Toolchain
 		// MSVC
 		if( strcmp( toolchain, "msvc" ) == 0 )
 		{
+#if 0
 			compilerName = "cl";
 			compilerFlags = "-c -O2 -showIncludes -nologo -std:c++20 -EHsc -DUNICODE -DCOMPILE_BUILD -DCOMPILE_ASSERTS";
 			compilerFlagsIncludes = "-I\"%s\" -I\"%s\" -I\"%s\"";
@@ -22,7 +23,17 @@ struct Toolchain
 			linkerName = "link";
 			linkerFlags = "-nologo -DEBUG ";
 			linkerOutput = "-out:";
-
+#else
+			// ASAN
+			compilerName = "cl";
+			compilerFlags = "-c -fsanitize=address -Od -Z7 -showIncludes -nologo -std:c++20 -EHsc -DUNICODE -DCOMPILE_BUILD -DCOMPILE_ASSERTS";
+			compilerFlagsIncludes = "-I\"%s\" -I\"%s\" -I\"%s\"";
+			compilerFlagsWarnings = "-W4 -wd4100 -wd4101 -wd4189 -wd4201 -wd4244 -wd4456 -wd4458 -wd4459 -wd4505 -wd4702 -wd4996";
+			compilerOutput = "-Fo:";
+			linkerName = "link";
+			linkerFlags = "-nologo -DEBUG ";
+			linkerOutput = "-out:";
+#endif
 			linkerExtensionExe = PIPELINE_OS_WINDOWS ? ".exe" : "";
 			linkerExtensionObj = ".obj";
 			linkerExtensionLibrary = ".lib";

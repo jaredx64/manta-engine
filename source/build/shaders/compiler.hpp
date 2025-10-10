@@ -8,8 +8,11 @@
 
 #define GFX_OUTPUT_STRUCTURE_SIZES true
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 extern void compile_shader( struct Shader &shader, const char *path );
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 namespace ShaderCompiler
 {
@@ -31,7 +34,10 @@ enum_type( TokenType, int )
 	TokenType_Null = 0,
 
 	// Single Character
-	TokenType_LParen = 0,          // (
+	TokenType_Newline = 0,         //
+	TokenType_Space,               //
+	TokenType_Tab,                 //
+	TokenType_LParen,              // (
 	TokenType_RParen,              // )
 	TokenType_LCurly,              // {
 	TokenType_RCurly,              // }
@@ -43,6 +49,8 @@ enum_type( TokenType, int )
 	TokenType_Semicolon,           // ;
 	TokenType_BitNot,              // ~
 	TokenType_Question,            // ?
+	TokenType_Quote,               // "
+	TokenType_Escape,              // backslash
 
 	// Double Character
 	TokenType_Assign,              // =
@@ -69,6 +77,9 @@ enum_type( TokenType, int )
 	TokenType_BitAnd,              // &
 	TokenType_BitAndAssign,        // &=
 	TokenType_And,                 // &&
+	TokenType_CommentLine,         // //
+	TokenType_CommentStart,        // /*
+	TokenType_CommentEnd,          // */
 
 	// Triple Character
 	TokenType_LessThan,            // <
@@ -97,7 +108,7 @@ enum_type( TokenType, int )
 	Primitive_ComputeInput,
 	Primitive_ComputeOutput,
 
-	// Keywords
+	// Built-in Keywords
 	TOKENTYPE_KEYWORD_FIRST,
 	TokenType_In = TOKENTYPE_KEYWORD_FIRST,
 	TokenType_Out,
@@ -163,6 +174,24 @@ enum_type( TokenType, int )
 	TokenType_FLOAT32,
 	TOKENTYPE_KEYWORD_LAST,
 	TOKENTYPE_KEYWORD_COUNT = TOKENTYPE_KEYWORD_LAST - TOKENTYPE_KEYWORD_FIRST,
+
+	// Preprocessor Directives
+	TOKENTYPE_DIRECTIVE_FIRST = TOKENTYPE_KEYWORD_LAST,
+	TokenType_Directive_Include = TOKENTYPE_DIRECTIVE_FIRST, // #include
+	TokenType_Directive_Define,                              // #define
+	TokenType_Directive_Undefine,                            // #undef
+	TokenType_Directive_If,                                  // #if
+	TokenType_Directive_IfDefined,                           // #ifdef
+	TokenType_Directive_IfUndefined,                         // #ifndef
+	TokenType_Directive_Else,                                // #else
+	TokenType_Directive_ElseIf,                              // #elif
+	TokenType_Directive_EndIf,                               // #endif
+	TokenType_Directive_Pragma,                              // #pragma
+	TokenType_Directive_Once,                                // once
+	TokenType_Directive_Defined,                             // defined
+	TokenType_Directive_Undefined,                           // undefined
+	TOKENTYPE_DIRECTIVE_LAST,
+	TOKENTYPE_DIRECTIVE_COUNT = TOKENTYPE_DIRECTIVE_LAST - TOKENTYPE_DIRECTIVE_FIRST,
 };
 
 
@@ -420,6 +449,15 @@ struct Keyword
 extern const Keyword KeywordNames[];
 
 
+struct Directive
+{
+	const char *key;
+	TokenType token;
+};
+
+extern const Directive DirectiveNames[];
+
+
 extern const char *SwizzleTypeNames[];
 
 using SwizzleID = u32;
@@ -509,10 +547,10 @@ struct NodeBuffer
 
 	void init();
 	void free();
+	void clear();
 	void grow();
 
-	template <typename T>
-	Node *add( const T node )
+	template <typename T> Node *add( const T node )
 	{
 		// Exceeded current memory block size?
 		if( current + sizeof( T ) >= capacity ) { grow(); }

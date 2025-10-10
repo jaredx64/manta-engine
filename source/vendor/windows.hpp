@@ -13,6 +13,8 @@
 #else
 	#include <vendor/vendor.hpp>
 
+	#define ENABLE_VIRTUAL_TERMINAL_PROCESSING  0x0004
+
 	#define T3XT(x) L##x
 	#define TEXT(x) T3XT(x)
 	#define CALLBACK STD_CALL
@@ -586,4 +588,8 @@
 	extern "C" DLL_IMPORT BOOL STD_CALL GlobalUnlock(HGLOBAL);
 	extern "C" DLL_IMPORT HGLOBAL STD_CALL GlobalFree(HGLOBAL);
 	extern "C" DLL_IMPORT HGLOBAL STD_CALL GlobalAlloc(UINT, SIZE_T);
+
+	// conesoleapi.h
+	extern "C" DLL_IMPORT BOOL STD_CALL GetConsoleMode(HANDLE hConsoleHandle, DWORD *lpMode);
+	extern "C" DLL_IMPORT BOOL STD_CALL SetConsoleMode(HANDLE hConsoleHandle, DWORD dwMode);
 #endif

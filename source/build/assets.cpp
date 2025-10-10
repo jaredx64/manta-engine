@@ -35,6 +35,10 @@ namespace Assets
 	Cache cache;
 	usize cacheReadOffset = 0LLU;
 	usize cacheFileCount = 0LLU;
+
+	// Logging
+	usize assetsBuilt = 0LLU;
+	usize assetsCached = 0LLU;
 }
 
 
@@ -56,7 +60,11 @@ void Assets::codegen()
 {
 	// Header (assets.generated.hpp)
 	{
-		if( verbose_output() ) { PrintColor( LOG_CYAN, TAB TAB "Write %s", Assets::pathHeader ); }
+		if( verbose_output() )
+		{
+			PrintColor( LOG_WHITE, TAB TAB "Write " );
+			PrintColor( LOG_CYAN, "%s", Assets::pathHeader );
+		}
 		Timer timer;
 
 		// Begin header
@@ -79,12 +87,19 @@ void Assets::codegen()
 		// Save header
 		ErrorIf( !header.save( Assets::pathHeader ), "Failed to write '%s'", Assets::pathHeader );
 
-		if( verbose_output() ) { PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() ); }
+		if( verbose_output() )
+		{
+			PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+		}
 	}
 
 	// Source (assets.generated.cpp)
 	{
-		if( verbose_output() ) { PrintColor( LOG_CYAN, TAB TAB "Write %s", Assets::pathSource ); }
+		if( verbose_output() )
+		{
+			PrintColor( LOG_WHITE, TAB TAB "Write " );
+			PrintColor( LOG_CYAN, "%s", Assets::pathSource );
+		}
 		Timer timer;
 
 		// Begin source
@@ -108,7 +123,10 @@ void Assets::codegen()
 		// Save source
 		ErrorIf( !source.save( Assets::pathSource ), "Failed to write '%s'", Assets::pathSource );
 
-		if( verbose_output() ) { PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() ); }
+		if( verbose_output() )
+		{
+			PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+		}
 	}
 }
 
@@ -120,13 +138,13 @@ bool asset_file_register( AssetFile &asset, const char *path )
 	if( !file_time( path, &asset.time ) ) { asset.exists = false; return false; }
 
 	// Store path
-	strncpy( asset.path, path, sizeof( asset.path ) - 1 );
+	snprintf( asset.path, sizeof( asset.path ), "%s", path );
 
 	// Extract file name (no extension)
 	char name[PATH_SIZE];
 	path_get_filename( name, sizeof( name ), path );
 	path_remove_extensions( name, sizeof( name ) );
-	strncpy( asset.name, name, sizeof( asset.name ) - 1 );
+	snprintf( asset.name, sizeof( asset.name ), "%s", name );
 
 	asset.exists = true;
 	return true;
@@ -175,6 +193,7 @@ void Assets::cache_validate()
 
 void Assets::log_asset_cache( const char *type, const char *name )
 {
+	assetsCached++;
 	if( !verbose_output() ) { return; }
 	PrintLnColor( LOG_MAGENTA, TAB TAB "%s '%s' cached", type, name );
 }
@@ -182,6 +201,8 @@ void Assets::log_asset_cache( const char *type, const char *name )
 
 void Assets::log_asset_build( const char *type, const char *name )
 {
+	assetsBuilt++;
+	if( !verbose_output() ) { return; }
 	PrintLnColor( LOG_RED, TAB TAB "%s '%s' built", type, name );
 }
 

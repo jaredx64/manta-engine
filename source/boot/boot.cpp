@@ -49,6 +49,7 @@ int main( int argc, char **argv )
 	Toolchain tc { args.toolchain };
 
 	// Print Args
+	Debug::console_enable_colors();
 	PrintColor( LOG_YELLOW, "\n>" );
 	const u32 exeArgsCount = args.verbose_output() ? argc : 1;
 	for( int i = 0; i < exeArgsCount; i++ ) { PrintColor( LOG_YELLOW, " %s", argv[i] ); }

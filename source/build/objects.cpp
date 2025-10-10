@@ -1125,7 +1125,12 @@ void ObjectFile::parse()
 	}
 
 	// Console
-	if( verbose_output() ) { PrintColor( LOG_CYAN, TAB TAB "Parse %s", path.length_bytes() == 0 ? "DEFAULT" : path.cstr() ); }
+	if( verbose_output() )
+	{
+		PrintColor( LOG_WHITE, TAB TAB "Parse " );
+		PrintColor( LOG_CYAN, "%s", path.length_bytes() == 0 ? "DEFAULT" : path.cstr() );
+	}
+
 	Timer timer;
 	{
 		// Parse Keywords
@@ -1137,7 +1142,11 @@ void ObjectFile::parse()
 		// Write Keywords
 		parse_keywords_code( buffer );
 	}
-	if( verbose_output() ) { PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() ); }
+
+	if( verbose_output() )
+	{
+		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+	}
 }
 
 
@@ -1538,6 +1547,9 @@ namespace Objects
 	// Cache
 	Cache cache;
 	usize cacheFileCount = 0LLU;
+
+	// Logging
+	usize objectsBuilt = 0LLU;
 }
 
 
@@ -1597,13 +1609,17 @@ usize Objects::gather( const char *directory, const bool recurse )
 
 void Objects::parse()
 {
-	for( ObjectFile &object : objectFiles ) { object.parse(); }
+	for( ObjectFile &object : objectFiles ) { object.parse(); Objects::objectsBuilt++; }
 }
 
 
 void Objects::resolve()
 {
-	if( verbose_output() ) { PrintColor( LOG_CYAN, TAB TAB "Resolve Inheritance" ); }
+	if( verbose_output() )
+	{
+		PrintColor( LOG_WHITE, TAB TAB "Resolve Inheritance" );
+	}
+
 	Timer timer;
 
 	// Resolve object dependencies (build inheritance N-tree)
@@ -1706,7 +1722,10 @@ void Objects::resolve()
 	}
 
 	// Log
-	if( verbose_output() ) { PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() ); }
+	if( verbose_output() )
+	{
+		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+	}
 };
 
 
@@ -1765,37 +1784,73 @@ void Objects::codegen()
 	// IntelliSense
 	codegen_intellisense( Objects::intellisense );
 	{
-		if( verbose_output() ) { PrintColor( LOG_CYAN, TAB TAB "Write %s", pathIntelliSense ); }
+		if( verbose_output() )
+		{
+			PrintColor( LOG_WHITE, TAB TAB "Write " );
+			PrintColor( LOG_CYAN, "%s", pathIntelliSense );
+		}
+
 		Timer timer;
 		ErrorIf( !Objects::intellisense.save( pathIntelliSense ), "failed to write '%s'", pathIntelliSense );
-		if( verbose_output() ) { PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() ); }
+
+		if( verbose_output() )
+		{
+			PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+		}
 	}
 
 	// System Header
 	codegen_header_system( Objects::system );
 	{
-		if( verbose_output() ) { PrintColor( LOG_CYAN, TAB TAB "Write %s", pathHeaderSystem ); }
+		if( verbose_output() )
+		{
+			PrintColor( LOG_WHITE, TAB TAB "Write " );
+			PrintColor( LOG_CYAN, "%s", pathHeaderSystem );
+		}
+
 		Timer timer;
 		ErrorIf( !Objects::system.save( pathHeaderSystem ), "failed to write '%s'", pathHeaderSystem );
-		if( verbose_output() ) { PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() ); }
+
+		if( verbose_output() )
+		{
+			PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+		}
 	}
 
 	// Objects Header
 	codegen_header_objects( Objects::header );
 	{
-		if( verbose_output() ) { PrintColor( LOG_CYAN, TAB TAB "Write %s", pathHeaderObjects ); }
+		if( verbose_output() )
+		{
+			PrintColor( LOG_WHITE, TAB TAB "Write " );
+			PrintColor( LOG_CYAN, "%s", pathHeaderObjects );
+		}
+
 		Timer timer;
 		ErrorIf( !Objects::header.save( pathHeaderObjects ), "failed to write '%s'", pathHeaderObjects );
-		if( verbose_output() ) { PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() ); }
+
+		if( verbose_output() )
+		{
+			PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+		}
 	}
 
 	// Objects Source
 	codegen_source_objects( Objects::source );
 	{
-		if( verbose_output() ) { PrintColor( LOG_CYAN, TAB TAB "Write %s", pathSourceObjects ); }
+		if( verbose_output() )
+		{
+			PrintColor( LOG_WHITE, TAB TAB "Write " );
+			PrintColor( LOG_CYAN, "%s", pathSourceObjects );
+		}
+
 		Timer timer;
 		ErrorIf( !Objects::source.save( pathSourceObjects ), "failed to write '%s'", pathSourceObjects );
-		if( verbose_output() ) { PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() ); }
+
+		if( verbose_output() )
+		{
+			PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+		}
 	}
 }
 
@@ -1803,7 +1858,12 @@ void Objects::codegen()
 
 void Objects::codegen_intellisense( String &output )
 {
-	if( verbose_output() ) { PrintColor( LOG_CYAN, TAB TAB "Generate output/generated/objects.generated.intellisense" ); }
+	if( verbose_output() )
+	{
+		PrintColor( LOG_WHITE, TAB TAB "Generate " );
+		PrintColor( LOG_CYAN, "output/generated/objects.generated.intellisense" );
+	}
+
 	Timer timer;
 
 	// File Info
@@ -1853,7 +1913,10 @@ void Objects::codegen_intellisense( String &output )
 	output.append( COMMENT_BREAK );
 
 	// Logging
-	if( verbose_output() ) { PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() ); }
+	if( verbose_output() )
+	{
+		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+	}
 }
 
 
@@ -2154,7 +2217,11 @@ void Objects::generate_source_system_category_types( String &output, const Strin
 void Objects::codegen_header_objects( String &output )
 {
 	// Log
-	if( verbose_output() ) { PrintColor( LOG_CYAN, TAB TAB "Generate output/generated/objects.generated.hpp" ); }
+	if( verbose_output() )
+	{
+		PrintColor( LOG_WHITE, TAB TAB "Generate " );
+		PrintColor( LOG_CYAN, "output/generated/objects.generated.hpp" );
+	}
 	Timer timer;
 
 	// #pragma once
@@ -2209,14 +2276,21 @@ void Objects::codegen_header_objects( String &output )
 	output.append( COMMENT_BREAK );
 
 	// Logging
-	if( verbose_output() ) { PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() ); }
+	if( verbose_output() )
+	{
+		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+	}
 }
 
 
 void Objects::codegen_source_objects( String &output )
 {
 	// Log
-	if( verbose_output() ) { PrintColor( LOG_CYAN, TAB TAB "Generate output/generated/objects.generated.cpp" ); }
+	if( verbose_output() )
+	{
+		PrintColor( LOG_WHITE, TAB TAB "Generate " );
+		PrintColor( LOG_CYAN, "output/generated/objects.generated.cpp" );
+	}
 	Timer timer;
 
 	// File Info
@@ -2268,7 +2342,10 @@ void Objects::codegen_source_objects( String &output )
 	output.append( COMMENT_BREAK );
 
 	// Logging
-	if( verbose_output() ) { PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() ); }
+	if( verbose_output() )
+	{
+		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+	}
 };
 
 

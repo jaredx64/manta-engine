@@ -167,6 +167,9 @@ namespace Gfx
 	extern void cache_read( const char *path );
 	extern void cache_write( const char *path );
 	extern void cache_validate();
+
+	// Logging
+	extern usize shadersBuilt;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

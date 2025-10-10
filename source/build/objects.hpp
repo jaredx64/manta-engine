@@ -285,6 +285,9 @@ namespace Objects
 	extern void cache_write( const char *path );
 	extern void cache_validate();
 
+	// Logging
+	extern usize objectsBuilt;
+
 	// Override Error Macros
 	void ERROR_HANDLER_FUNCTION_DECL;
 }

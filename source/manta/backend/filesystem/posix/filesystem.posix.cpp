@@ -7,16 +7,19 @@
 bool file_time( const char *path, FileTime *result )
 {
 	struct stat file_stat;
-	int file = open( path, O_RDONLY);
+	int file = open( path, O_RDONLY );
 	if( file == -1 ) { return false; }
-	if( fstat( file, &file_stat ) == -1 ) { return false; }
+	if( fstat( file, &file_stat ) == -1 ) { close( file ); return false; }
+	close( file );
 
-	#if PIPELINE_OS_MACOS
+#if PIPELINE_OS_MACOS
+	// Use st_mtime (seconds). st_birthtime is not reliably portable.
 	result->time = static_cast<u64>( file_stat.st_mtime );
-	#else
+#else
+	// Use st_mtim (nanoseconds precision)
 	result->time = static_cast<u64>( file_stat.st_mtim.tv_sec ) * 1000000 +
 		static_cast<u64>( file_stat.st_mtim.tv_nsec ) / 1000;
-	#endif
+#endif
 
 	return true;
 }

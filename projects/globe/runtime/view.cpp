@@ -91,8 +91,10 @@ void view_controls( const Delta delta )
 	if( Keyboard::check( vk_a ) ) { View::orbit = false; View::targetting = false; yawVelocityTarget = +20.0 * a; }
 	if( Keyboard::check( vk_d ) ) { View::orbit = false; View::targetting = false; yawVelocityTarget = -20.0 * a; }
 	zoomVelocityTarget = 0.0;
-	if( Keyboard::check( vk_e ) || Mouse::check_wheel_down() ) { zoomVelocityTarget = -15.0 * a; }
-	if( Keyboard::check( vk_q ) || Mouse::check_wheel_up() ) { zoomVelocityTarget = +15.0 * a; }
+	if( Keyboard::check( vk_e ) ) { zoomVelocityTarget = -15.0 * a; }
+	if( Keyboard::check( vk_q ) ) { zoomVelocityTarget = +15.0 * a; }
+	if( Mouse::check_wheel_up() ) { zoomVelocityTarget = -100.0 * a; zoomVelocity = zoomVelocityTarget; }
+	if( Mouse::check_wheel_down() ) { zoomVelocityTarget = +100.0 * a; zoomVelocity = zoomVelocityTarget; }
 	if( Keyboard::check_pressed( vk_space ) ) { View::targetting = false; View::orbit = !View::orbit; }
 	if( View::orbit ) { yawVelocityTarget = 4.0 * a; }
 

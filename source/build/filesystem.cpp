@@ -249,14 +249,17 @@ static bool char_is_slash( const char c )
 		struct stat file_stat;
 		int file = open( path, O_RDONLY );
 		if( file == -1 ) { return false; }
-		if( fstat( file, &file_stat ) == -1 ) { return false; }
+		if( fstat( file, &file_stat ) == -1 ) { close( file ); return false; }
+		close( file );
 
-		#if PIPELINE_OS_MACOS
+	#if PIPELINE_OS_MACOS
+		// Use st_mtime (seconds). st_birthtime is not reliably portable.
 		result->time = static_cast<u64>( file_stat.st_mtime );
-		#else
+	#else
+		// Use st_mtim (nanoseconds precision)
 		result->time = static_cast<u64>( file_stat.st_mtim.tv_sec ) * 1000000 +
 			static_cast<u64>( file_stat.st_mtim.tv_nsec ) / 1000;
-		#endif
+	#endif
 
 		return true;
 	}
@@ -380,7 +383,7 @@ static bool char_is_slash( const char c )
 				strjoin( info.path, path, SLASH, entry->d_name );
 				strncpy( info.name, entry->d_name, sizeof( info.name ) - 1 );
 				info.name[sizeof( info.name ) - 1] = '\0';
-				file_time( path, &info.time );
+				file_time( info.path, &info.time );
 				list.add( info );
 			}
 		} while ( ( entry = readdir( dir ) ) != nullptr );
@@ -629,7 +632,7 @@ void path_change_extension( char *buffer, usize size, const char *path, const ch
 	// Copy the portion of the path before the last dot
 	usize length = lastDot - path;
 	if( length >= size ) { length = size - 1; }
-	strncpy( buffer, path, length );
+	memmove( buffer, path, length );
 	buffer[length] = '\0';
 
 	// Append the new extension
