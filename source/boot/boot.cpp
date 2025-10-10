@@ -137,7 +137,6 @@ int main( int argc, char **argv )
 	PrintColor( LOG_WHITE, "Boot Cache... " );
 	PrintLnColor( cacheDirty ? LOG_RED : LOG_GREEN, cacheDirty ? "dirty" : "clean" );
 
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Output Directories
 
@@ -153,7 +152,6 @@ int main( int argc, char **argv )
 	directory_create( pathOutputBuild );
 	directory_create( pathOutputGenerated );
 	directory_create( pathOutputRuntime );
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Write Core Defines (output/generated/pipeline.generated.hpp)
@@ -235,7 +233,6 @@ int main( int argc, char **argv )
 		swrite( "\n", file );
 		ErrorIf( fclose( file ) != 0, "Failed to close file '%s'", pathOutputGeneratedConfig );
 	}
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Gather Source Files
@@ -473,18 +470,22 @@ int main( int argc, char **argv )
 	swrite( "\n", file );
 	ErrorIf( fclose( file ) != 0, "Failed to close file '%s'", pathOutputBuildNinja );
 
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Start Ninja
 
 	Print( "\n" );
 	const char *ninja = ninja_path();
 
+	// Linux/MacOS: chmod +x <ninja>
+#if defined( __linux__ ) || ( defined( __APPLE__ ) && defined( __MACH__ ) )
+	char chmod[PATH_SIZE]; snprintf( chmod, sizeof( chmod ), "chmod +x %s", ninja );
+	system( chmod );
+#endif
+
 	// Run Ninja
 	strjoin( commandNinja, ninja, " -C ", pathOutputBuild );
 	const int code = system( commandNinja );
 	if( code != 0 ) { Error( "ninja failed! Code: %d (%s)", code, commandNinja ); }
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Check dirty build.exe
@@ -498,12 +499,10 @@ int main( int argc, char **argv )
 		file_delete( pathOutputBuildCache );
 	}
 
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Save Cache
 
 	PipelineCache::save( args, pathOutputBootCache );
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Start build.exe
@@ -515,7 +514,6 @@ int main( int argc, char **argv )
 		strappend( commandRun, argv[i] );
 	}
 	if( system( commandRun ) != 0 ) { return 1; }
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Success

@@ -988,9 +988,15 @@ void BuilderCore::compile_run_ninja()
 	char path[PATH_SIZE];
 	strjoin( path, Build::pathOutput, SLASH "runtime" );
 	const char *ninja = ninja_path();
-	strjoin( Build::commandNinja, ninja, " -C ", path );
+
+	// Linux/MacOS: chmod +x <ninja>
+#if defined( __linux__ ) || ( defined( __APPLE__ ) && defined( __MACH__ ) )
+	char chmod[PATH_SIZE]; snprintf( chmod, sizeof( chmod ), "chmod +x %s", ninja );
+	system( chmod );
+#endif
 
 	// Run Ninja
+	strjoin( Build::commandNinja, ninja, " -C ", path );
 	if( verbose_output() ) { PrintLnColor( LOG_MAGENTA, TAB TAB "> %s", Build::commandNinja ); }
 	Print( "\n ");
 	ErrorIf( system( Build::commandNinja ) != 0, "Compile failed" );
