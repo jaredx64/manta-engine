@@ -1505,10 +1505,13 @@ class GfxRenderPass
 public:
 	void set_target( const int slot, const GfxRenderTarget &target );
 	void set_name( const char *name );
+	void set_name_f( const char *name, ... );
 
 public:
 	GfxRenderTargetResource *targets[GFX_RENDER_TARGET_SLOT_COUNT] = { nullptr };
-	const char *name = "";
+#if COMPILE_DEBUG
+	char name[128] = { '\0' };
+#endif
 };
 
 

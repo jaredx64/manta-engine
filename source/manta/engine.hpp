@@ -9,11 +9,10 @@
 class ProjectCallbacks
 {
 public:
-	ProjectCallbacks( bool ( *init )( int, char ** ),
-	                  bool ( *free )(),
-	                  void ( *update )( const Delta ) ) : callback_init{ init },
-	                                                      callback_free{ free },
-	                                                      callback_update{ update } { }
+	ProjectCallbacks( bool ( *init )( int, char ** ), bool ( *free )(), void ( *update )( const Delta ) ) :
+		callback_init{ init },
+		callback_free{ free },
+		callback_update{ update } { }
 
 	bool init( int argc, char **argv ) const
 	{
@@ -32,8 +31,8 @@ public:
 	}
 
 private:
-	bool ( *callback_init )( int, char ** );  // bool init( int argc, char **argv );
-	bool ( *callback_free )();                // bool free();
+	bool ( *callback_init )( int, char ** ); // bool init( int argc, char **argv );
+	bool ( *callback_free )(); // bool free();
 	void ( *callback_update )( const Delta ); // void update( Delta delta );
 };
 

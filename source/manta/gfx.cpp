@@ -1105,16 +1105,22 @@ void GfxRenderTarget::copy_part( GfxRenderTarget &source,
 #if GRAPHICS_D3D11
 	if( this->textureDepth.resource && source.textureDepth.resource )
 	{
+		const u16 dstWidth = this->width;
+		const u16 dstHeight = this->height;
+
 		GfxRenderPass pass;
-		pass.set_name( "GfxRenderTarget::copy_part" );
+		pass.set_name_f( "%s%s", __FUNCTION__, " - Depth" );
 		pass.set_target( 0, *this );
 		Gfx::render_pass_begin( pass );
 		{
 			GfxRenderCommand cmd;
 			cmd.set_shader( Shader::SHADER_DEFAULT_COPY_DEPTH );
 			cmd.depth_set_function( GfxDepthFunction_ALWAYS );
+			cmd.depth_set_write( GfxDepthWrite_ALL );
 			Gfx::render_command_execute( cmd, [=]()
 				{
+					Gfx::set_matrix_mvp_2d_orthographic( 0.0, 0.0, 1.0, 0.0, dstWidth, dstHeight );
+
 					Gfx::bind_texture( 0, source.textureDepth );
 
 					const u16 srcY1Inv = source.height - srcY1;
@@ -1127,8 +1133,7 @@ void GfxRenderTarget::copy_part( GfxRenderTarget &source,
 					const u16 v2 = static_cast<u16>( ( ( srcY1 + copyHeight ) /
 						static_cast<float>( source.height ) ) * 0xFFFF );
 
-					draw_quad_uv( dstX1, dstY1, dstX1 + copyWidth, dstY1 + copyHeight,
-						u1, v1, u2, v2 );
+					draw_quad_uv( dstX1, dstY1, dstX1 + copyWidth, dstY1 + copyHeight, u1, v1, u2, v2 );
 				} );
 		}
 		Gfx::render_pass_end( pass );
@@ -1391,7 +1396,20 @@ void GfxRenderPass::set_name( const char *name )
 {
 #if GRAPHICS_ENABLED
 #if COMPILE_DEBUG
-	this->name = name;
+	snprintf( this->name, sizeof( this->name ), "%s", name );
+#endif
+#endif
+}
+
+
+void GfxRenderPass::set_name_f( const char *name, ... )
+{
+#if GRAPHICS_ENABLED
+#if COMPILE_DEBUG
+	va_list args;
+	va_start( args, name );
+	vsnprintf( this->name, sizeof( this->name ), name, args );
+	va_end( args );
 #endif
 #endif
 }

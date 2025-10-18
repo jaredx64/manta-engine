@@ -618,13 +618,7 @@ static bool apply_pipeline_state_depth( const GfxPipelineDescription &state )
 	if( dirty || state.depthFunction != stateCurrent.depthFunction )
 	{
 		const bool enabled = state.depthFunction != GfxDepthFunction_NONE;
-	#if !SWAPCHAIN_DEPTH_ENABLED
-		// NOTE: When on the default swapchain FBO, we must ensure depth testing is disabled
-		// otherwise OpenGL can automatically create a swapchain depth attachment;
-		glSetEnabled( GL_DEPTH_TEST, isDefaultTargetActive ? false : enabled );
-	#else
 		glSetEnabled( GL_DEPTH_TEST, enabled );
-	#endif
 	}
 
 	if( dirty || state.depthFunction != stateCurrent.depthFunction )
@@ -697,10 +691,15 @@ static void render_target_2d_resolve_msaa( GfxRenderTargetResource *const resour
 	if( resource->desc.depthFormat != GfxDepthFormat_NONE ) { flags |= GL_DEPTH_BUFFER_BIT; }
 	if( resource->desc.depthFormat == GfxDepthFormat_R24_UINT_G8_UINT ) { flags |= GL_STENCIL_BUFFER_BIT; }
 
+	GLint fboReadPrevious, fboDrawPrevious;
+	glGetIntegerv( GL_READ_FRAMEBUFFER_BINDING, &fboReadPrevious );
+	glGetIntegerv( GL_DRAW_FRAMEBUFFER_BINDING, &fboDrawPrevious );
 	nglBindFramebuffer( GL_READ_FRAMEBUFFER, resource->fboMS );
 	nglBindFramebuffer( GL_DRAW_FRAMEBUFFER, resource->fboSS );
 	nglBlitFramebuffer( 0, 0, resource->width, resource->height, 0, 0,
 		resource->width, resource->height, flags, GL_NEAREST );
+	nglBindFramebuffer( GL_READ_FRAMEBUFFER, fboReadPrevious );
+	nglBindFramebuffer( GL_DRAW_FRAMEBUFFER, fboDrawPrevious );
 }
 
 
@@ -2166,6 +2165,8 @@ bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 	}
 
 	// FBO (Single-Sample)
+	GLint fboPrevious;
+	glGetIntegerv( GL_FRAMEBUFFER_BINDING, &fboPrevious );
 	nglGenFramebuffers( 1, &resource->fboSS );
 	nglBindFramebuffer( GL_FRAMEBUFFER, resource->fboSS );
 	{
@@ -2190,11 +2191,12 @@ bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 			ErrorReturnMsg( false, "%s: failed to create framebuffer", __FUNCTION__ );
 		}
 	}
-	nglBindFramebuffer( GL_FRAMEBUFFER, 0 );
+	nglBindFramebuffer( GL_FRAMEBUFFER, fboPrevious );
 
 	// FBO (Multi-Sample)
 	if( desc.sampleCount > 1 )
 	{
+		glGetIntegerv( GL_FRAMEBUFFER_BINDING, &fboPrevious );
 		nglGenFramebuffers( 1, &resource->fboMS );
 		nglBindFramebuffer( GL_FRAMEBUFFER, resource->fboMS );
 		{
@@ -2221,7 +2223,7 @@ bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 				ErrorReturnMsg( false, "%s: failed to create framebuffer", __FUNCTION__ );
 			}
 		}
-		nglBindFramebuffer( GL_FRAMEBUFFER, 0 );
+		nglBindFramebuffer( GL_FRAMEBUFFER, fboPrevious );
 	}
 
 	PROFILE_GFX( Gfx::stats.gpuMemoryRenderTargets += resource->size );
@@ -2287,6 +2289,9 @@ bool CoreGfx::api_render_target_copy(
 
 	if( flags )
 	{
+		GLint fboReadPrevious, fboDrawPrevious;
+		glGetIntegerv( GL_READ_FRAMEBUFFER_BINDING, &fboReadPrevious );
+		glGetIntegerv( GL_DRAW_FRAMEBUFFER_BINDING, &fboDrawPrevious );
 		nglBindFramebuffer( GL_READ_FRAMEBUFFER, srcResource->fboSS );
 		nglBindFramebuffer( GL_DRAW_FRAMEBUFFER, dstResource->fboSS );
 		nglBlitFramebuffer(
@@ -2299,7 +2304,8 @@ bool CoreGfx::api_render_target_copy(
 			static_cast<GLint>( dstResource->width ),
 			static_cast<GLint>( dstResource->height ),
 			flags, GL_NEAREST );
-		nglBindFramebuffer( GL_FRAMEBUFFER, 0 );
+		nglBindFramebuffer( GL_READ_FRAMEBUFFER, fboReadPrevious );
+		nglBindFramebuffer( GL_DRAW_FRAMEBUFFER, fboDrawPrevious );
 	}
 
 	return true;
@@ -2335,6 +2341,9 @@ bool CoreGfx::api_render_target_copy_part(
 
 	if( flags )
 	{
+		GLint fboReadPrevious, fboDrawPrevious;
+		glGetIntegerv( GL_READ_FRAMEBUFFER_BINDING, &fboReadPrevious );
+		glGetIntegerv( GL_DRAW_FRAMEBUFFER_BINDING, &fboDrawPrevious );
 		nglBindFramebuffer( GL_READ_FRAMEBUFFER, srcResource->fboSS );
 		nglBindFramebuffer( GL_DRAW_FRAMEBUFFER, dstResource->fboSS );
 		nglBlitFramebuffer(
@@ -2347,7 +2356,8 @@ bool CoreGfx::api_render_target_copy_part(
 			static_cast<GLint>( dstX + width ),
 			static_cast<GLint>( dstYInv ),
 			flags, GL_NEAREST );
-		nglBindFramebuffer( GL_FRAMEBUFFER, 0 );
+		nglBindFramebuffer( GL_READ_FRAMEBUFFER, fboReadPrevious );
+		nglBindFramebuffer( GL_DRAW_FRAMEBUFFER, fboDrawPrevious );
 	}
 
 	return true;
@@ -2372,13 +2382,11 @@ bool CoreGfx::api_render_target_buffer_read_color( GfxRenderTargetResource *&res
 	Assert( sizeSource <= size );
 	Assert( buffer != nullptr );
 
-	// Cache FBO
-	GLint fboPrevious, readBufferPrevious;
-	glGetIntegerv( GL_READ_FRAMEBUFFER_BINDING, &fboPrevious );
-	glGetIntegerv( GL_READ_BUFFER, &readBufferPrevious );
-
-	// Bind FBO
+	GLint fboReadPrevious;
+	glGetIntegerv( GL_READ_FRAMEBUFFER_BINDING, &fboReadPrevious );
 	nglBindFramebuffer( GL_READ_FRAMEBUFFER, resource->fboSS );
+	GLint bufferReadPrevious;
+	glGetIntegerv( GL_READ_BUFFER, &bufferReadPrevious );
 	glReadBuffer( GL_COLOR_ATTACHMENT0 );
 
 	// Bind PBO
@@ -2406,13 +2414,10 @@ bool CoreGfx::api_render_target_buffer_read_color( GfxRenderTargetResource *&res
 	memory_copy( buffer, data, size );
 #endif
 
-	// Unmap PBO
 	nglUnmapBuffer( GL_PIXEL_PACK_BUFFER );
 	nglBindBuffer( GL_PIXEL_PACK_BUFFER, 0 );
-
-	// Unbind FBO
-	nglBindFramebuffer( GL_READ_FRAMEBUFFER, fboPrevious );
-	glReadBuffer( readBufferPrevious );
+	nglBindFramebuffer( GL_READ_FRAMEBUFFER, fboReadPrevious );
+	glReadBuffer( bufferReadPrevious );
 
 	return true;
 }

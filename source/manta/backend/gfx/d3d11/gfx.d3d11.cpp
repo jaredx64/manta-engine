@@ -1310,7 +1310,7 @@ bool CoreGfx::api_scissor_set_state( const GfxStateScissor &state )
 	const bool dirty = BITFLAG_IS_SET( CoreGfx::state.dirtyFlags, GfxStateDirtyFlag_SCISSOR );
 	if( !dirty && state == CoreGfx::state.scissor ) { return true; }
 
-	if( apply_state_scissor( state ) ) { return false; }
+	if( !apply_state_scissor( state ) ) { return false; }
 
 	// D3D11: Scissor state requires updating the raster state, so we force it here too
 	BITFLAG_SET( CoreGfx::state.dirtyFlags, GfxStateDirtyFlag_RASTER );

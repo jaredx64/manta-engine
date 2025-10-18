@@ -8,14 +8,14 @@
 
 #include <manta/assets.hpp>
 #include <manta/time.hpp>
+#include <manta/thread.hpp>
 #include <manta/window.hpp>
 #include <manta/gfx.hpp>
+#include <manta/console.hpp>
 #include <manta/audio.hpp>
 #include <manta/objects.hpp>
 #include <manta/fonts.hpp>
 #include <manta/ui.hpp>
-#include <manta/console.hpp>
-#include <manta/thread.hpp>
 
 #include <manta/text.hpp>
 #include <manta/input.hpp>
@@ -29,73 +29,33 @@ namespace Engine
 {
 	static bool init( int argc, char **argv )
 	{
-		// Assets
 		ErrorReturnIf( !CoreAssets::init(), false, "Engine: failed to initialize assets" );
-
-		// Time
 		ErrorReturnIf( !CoreTime::init(), false, "Engine: failed to initialize timer" );
-
-		// Thread
 		ErrorReturnIf( !CoreThread::init(), false, "Engine: failed to initialize thread" );
-
-		// Window
 		ErrorReturnIf( !CoreWindow::init(), false, "Engine: failed to initialize window" );
-
-		// Graphics
 		ErrorReturnIf( !CoreGfx::init(), false, "Engine: failed to initialize graphics system" );
-
-		// Console
 		ErrorReturnIf( !CoreConsole::init(), false, "Engine: failed to initialize console system" );
-
-		// Audio
 		ErrorReturnIf( !CoreAudio::init(), false, "Engine: failed to initialize audio system" );
-
-		// Objects
 		ErrorReturnIf( !CoreObjects::init(), false, "Engine: failed to initialize object system" );
-
-		// Fonts
 		ErrorReturnIf( !CoreFonts::init(), false, "Engine: failed to initialize font system" );
-
-		// UI
 		ErrorReturnIf( !CoreUI::init(), false, "Engine: failed to initialize UI system" );
 
-		// Success
 		return true;
 	}
 
 	static bool free()
 	{
-		// UI
 		ErrorReturnIf( !CoreUI::free(), false, "Engine: failed to free UI system" );
-
-		// Fonts
 		ErrorReturnIf( !CoreFonts::free(), false, "Engine: failed to free font system" );
-
-		// Objects
 		ErrorReturnIf( !CoreObjects::free(), false, "Engine: failed to free object system" );
-
-		// Console
 		ErrorReturnIf( !CoreConsole::free(), false, "Engine: failed to free console system" );
-
-		// Graphics
 		ErrorReturnIf( !CoreGfx::free(), false, "Engine: failed to free graphics system" );
-
-		// Audio
 		ErrorReturnIf( !CoreAudio::free(), false, "Engine: failed to free audio system" );
-
-		// Window
 		ErrorReturnIf( !CoreWindow::free(), false, "Engine: failed to free window" );
-
-		// Thread
 		ErrorReturnIf( !CoreThread::free(), false, "Engine: failed to free thread" );
-
-		// Time
 		ErrorReturnIf( !CoreTime::free(), false, "Engine: failed to free timer" );
-
-		// Assets
 		ErrorReturnIf( !CoreAssets::free(), false, "Engine: failed to free assets" );
 
-		// Success
 		return true;
 	}
 }
@@ -135,14 +95,11 @@ namespace Engine
 				{
 					// Pre-Engine
 					{
-						// Keyboard & Mouse
 						Keyboard::update( Frame::delta );
 						Mouse::update( Frame::delta );
 
-						// Window
 						Window::update( Frame::delta );
 
-						// Keyboard & Mouse
 						Keyboard::reset_active();
 						Mouse::reset_active();
 					}
@@ -154,7 +111,6 @@ namespace Engine
 
 					// Post-Engine
 					{
-						// Text Editor
 						TextEditor::listen();
 					}
 

@@ -911,8 +911,29 @@ void BuilderCore::compile_write_ninja()
 
 #if PIPELINE_OS_WINDOWS
 		// Rule RC
-		output.append( "rule rc\n" );
-		output.append( "  command = windres --input \"$in\" --output \"$out\" --output-format=coff -F pe-x86-64\n\n" );
+		bool rcDetected = true;
+		if( strcmp( Build::args.toolchain, "msvc" ) == 0 )
+		{
+			output.append( "rule rc\n" );
+			output.append( "  command = rc /nologo /fo \"$out\" \"$in\"\n" );
+			output.append( "  description = RC $in\n\n" );
+		}
+		else if( strcmp( Build::args.toolchain, "llvm" ) == 0 )
+		{
+			output.append( "rule rc\n" );
+			output.append( "  command = llvm-rc /nologo /fo \"$out\" \"$in\"\n" );
+			output.append( "  description = LLVM-RC $in\n\n" );
+		}
+		else if( strcmp( Build::args.toolchain, "gnu" ) == 0 )
+		{
+			output.append( "rule rc\n" );
+			output.append( "  command = windres --input \"$in\" --output \"$out\" --output-format=coff -F pe-x86-64\n" );
+			output.append( "  description = WINDRES $in\n\n" );
+		}
+		else
+		{
+			rcDetected = false;
+		}
 #endif
 
 		// Rule Link
@@ -950,11 +971,14 @@ void BuilderCore::compile_write_ninja()
 
 #if PIPELINE_OS_WINDOWS
 		// Package RC
-		output.append( "build " );
-		output.append( Build::packageRC.objPath );
-		output.append( ": rc .." SLASH ".." SLASH ".." SLASH ".." SLASH );
-		output.append( Build::packageRC.srcPath );
-		output.append( "\n\n" );
+		if( rcDetected )
+		{
+			output.append( "build " );
+			output.append( Build::packageRC.objPath );
+			output.append( ": rc .." SLASH ".." SLASH ".." SLASH ".." SLASH );
+			output.append( Build::packageRC.srcPath );
+			output.append( "\n\n" );
+		}
 #endif
 
 		// Build Exe
@@ -964,7 +988,10 @@ void BuilderCore::compile_write_ninja()
 		output.append( ": link" );
 		for( Source &source : Build::sources ) { output.append( " " ).append( source.objPath ); }
 #if PIPELINE_OS_WINDOWS
-		output.append( " " ).append( Build::packageRC.objPath );
+		if( rcDetected )
+		{
+			output.append( " " ).append( Build::packageRC.objPath );
+		}
 #endif
 		output.append( "\n" );
 
