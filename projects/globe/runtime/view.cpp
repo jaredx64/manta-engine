@@ -109,7 +109,7 @@ void view_controls( const Delta delta )
 
 	if( View::targetting )
 	{
-		View::yaw = lerp_angle_degrees( View::yaw, View::targetYaw, 2.0 * delta );
+		View::yaw = lerp_degrees( View::yaw, View::targetYaw, 2.0 * delta );
 		View::pitch = lerp( View::pitch, View::targetPitch, 2.0 * delta );
 		if( abs( View::targetYaw - View::yaw ) < 0.02 && abs( View::targetPitch - View::pitch ) < 0.02 )
 		{

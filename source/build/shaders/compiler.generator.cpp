@@ -1154,7 +1154,7 @@ bool Generator::generate_structure_gfx_uniform_buffer( NodeStruct *node )
 
 	source.append( "\n\tvoid ").append( uniformBuffer.name ).append( "_t::upload() const\n\t{\n" );
 	source.append( "\t#if GRAPHICS_ENABLED\n" );
-	source.append( "\t\tauto *&resource = CoreGfx::gfxUniformBufferResources[" );
+	source.append( "\t\tauto *&resource = CoreGfx::uniformBuffers[" );
 	source.append( static_cast<int>( uniformBuffer.id ) ).append( "];\n" );
 	source.append( "\t\tCoreGfx::api_uniform_buffer_write_begin( resource );\n" );
 	source.append( "\t\tCoreGfx::api_uniform_buffer_write( resource, this );\n" );

@@ -190,8 +190,8 @@ public:
 		deadslot = nullptr;
 
 		// Reset state
-		capacity = 0;
-		size = 0;
+		capacity = 0LLU;
+		size = 0LLU;
 		null.~V();
 	}
 

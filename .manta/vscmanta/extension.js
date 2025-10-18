@@ -622,13 +622,14 @@ function GetBootCommand()
 	var bootCommand = "";
 	if( PlatformIsWindows() )
 	{
+		bootCommand += "cmd /c \"";
 		bootCommand += "cls & ";
 		bootCommand += PATH_BOOT_SCRIPT;
+		bootCommand += "\"";
 	}
 	else if ( PlatformIsLinux() || PlatformIsMacOS() )
 	{
 		bootCommand += "clear; chmod +x ";
-		//bootCommand += WORKSPACE_IS_PROJECT ? "../../boot.sh; ../../boot.sh" : "./boot.sh; ./boot.sh";
 		bootCommand += PATH_BOOT_SCRIPT;
 		bootCommand += "; ";
 		bootCommand += PATH_BOOT_SCRIPT;
@@ -738,7 +739,7 @@ function CommandClean()
 			"cls",
 			`if exist ${outputPath} rmdir ${outputPath} /s /q`,
 		];
-		cleanCommand = cleanCommand.join( " & " );
+		cleanCommand = "cmd /c \"" + cleanCommand.join( " & " ) + "\"";
 	}
 	else
 	{

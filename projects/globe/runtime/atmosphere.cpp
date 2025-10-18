@@ -81,38 +81,37 @@ void atmosphere_update( const Delta delta )
 
 void atmosphere_draw( const Delta delta )
 {
-	Gfx::shader_bind( Atmosphere::clouds ? Shader::sh_atmosphere_clouds : Shader::sh_atmosphere );
-	Gfx::reset_blend_mode();
-	Gfx::set_cull_mode( GfxCullMode_BACK );
-	Gfx::clear_depth();
-	Gfx::set_depth_test_mode( GfxDepthFormat_NONE );
-	{
-		double_m44 matrixWorld = double_m44_build_identity();
-		const double radius = R_EARTH_POLE + R_ATMOSPHERE;
-		const double_m44 matrixScale = double_m44_build_scaling( radius, radius, radius );
-		matrixWorld = double_m44_multiply( matrixScale, matrixWorld );
-		Gfx::set_matrix_mvp( matrixWorld, View::matrixView, View::matrixPerspective );
+	const Shader shader = Atmosphere::clouds ? Shader::sh_atmosphere_clouds : Shader::sh_atmosphere;
 
-		GfxUniformBuffer::UniformsAtmosphere.matrixLookInverse = float_m44_inverse( View::matrixLook );
-		GfxUniformBuffer::UniformsAtmosphere.eye = View::position;
-		GfxUniformBuffer::UniformsAtmosphere.near = static_cast<float>( View::near );
-		GfxUniformBuffer::UniformsAtmosphere.forward = View::forward;
-		GfxUniformBuffer::UniformsAtmosphere.far = static_cast<float>( View::far );
-		GfxUniformBuffer::UniformsAtmosphere.sun = Universe::sun;
-		GfxUniformBuffer::UniformsAtmosphere.time = Atmosphere::time;
-		GfxUniformBuffer::UniformsAtmosphere.viewport = View::dimensions;
-		GfxUniformBuffer::UniformsAtmosphere.cloudsMip = Atmosphere::cloudsMip;
-		GfxUniformBuffer::UniformsAtmosphere.upload();
+	GfxRenderCommand cmd;
+	cmd.set_shader( shader );
+	cmd.raster_set_cull_mode( GfxRasterCullMode_BACK );
+	cmd.depth_set_function( GfxDepthFunction_NONE );
+	cmd.depth_set_write( GfxDepthWrite_NONE );
+	Gfx::render_command_execute( cmd, GfxWorkCapture
+		{
+			double_m44 matrixWorld = double_m44_build_identity();
+			const double radius = R_EARTH_POLE + R_ATMOSPHERE;
+			const double_m44 matrixScale = double_m44_build_scaling( radius, radius, radius );
+			matrixWorld = double_m44_multiply( matrixScale, matrixWorld );
+			Gfx::set_matrix_mvp( matrixWorld, View::matrixView, View::matrixPerspective );
 
-		CoreGfx::textures[Texture::tex_aurora].bind( 0 );
-		if( Atmosphere::clouds ) { CoreGfx::textures[Texture::tex_earth_light_height_cloud].bind( 1 ); }
+			GfxUniformBuffer::UniformsAtmosphere.matrixLookInverse = float_m44_inverse( View::matrixLook );
+			GfxUniformBuffer::UniformsAtmosphere.eye = View::position;
+			GfxUniformBuffer::UniformsAtmosphere.near = static_cast<float>( View::near );
+			GfxUniformBuffer::UniformsAtmosphere.forward = View::forward;
+			GfxUniformBuffer::UniformsAtmosphere.far = static_cast<float>( View::far );
+			GfxUniformBuffer::UniformsAtmosphere.sun = Universe::sun;
+			GfxUniformBuffer::UniformsAtmosphere.time = Atmosphere::time;
+			GfxUniformBuffer::UniformsAtmosphere.viewport = View::dimensions;
+			GfxUniformBuffer::UniformsAtmosphere.cloudsMip = Atmosphere::cloudsMip;
+			GfxUniformBuffer::UniformsAtmosphere.upload();
 
-		Gfx::draw_vertex_buffer_indexed( Atmosphere::vertexBuffer, Atmosphere::indexBuffer );
+			Gfx::bind_texture( 0, Texture::tex_aurora );
+			if( Atmosphere::clouds ) { Gfx::bind_texture( 1, Texture::tex_earth_light_height_cloud ); }
 
-		if( Atmosphere::clouds ) { CoreGfx::textures[Texture::tex_earth_light_height_cloud].release(); }
-		CoreGfx::textures[Texture::tex_aurora].release();
-	}
-	Gfx::shader_release();
+			Gfx::draw_vertex_buffer_indexed( Atmosphere::vertexBuffer, Atmosphere::indexBuffer );
+		} );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

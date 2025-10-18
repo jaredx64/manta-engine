@@ -6,7 +6,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class GfxRenderTarget2D;
+class GfxRenderTarget;
 class Command;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -69,7 +69,7 @@ namespace CoreConsole
 	public:
 		static constexpr int STATIC_DVARS_MAX = 1024;
 		DVarDeferred dvars[STATIC_DVARS_MAX];
-		usize current = 0;
+		usize current = 0LLU;
 		bool defer = true;
 	};
 
@@ -84,7 +84,7 @@ namespace CoreConsole
 		DVar( bool scoped, float *variable, const char *definition, const char *description );
 		DVar( bool scoped, double *variable, const char *definition, const char *description );
 		DVar( bool scoped, Color *variable, const char *definition, const char *description );
-		DVar( bool scoped, class GfxRenderTarget2D *variable, const char *definition, const char *description );
+		DVar( bool scoped, class GfxRenderTarget *variable, const char *definition, const char *description );
 	public:
 		void *payload = nullptr;
 	};

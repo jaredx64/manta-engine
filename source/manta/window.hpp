@@ -42,6 +42,7 @@ namespace Window
 
 	extern void set_size( const int width, const int height );
 	extern void set_fullscreen( bool enabled );
+	extern void show_cursor( const bool enabled );
 	extern void set_caption( const char *caption );
 
 	extern bool set_clipboard( const char *buffer );

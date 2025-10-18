@@ -1,8 +1,9 @@
 #include <labels.hpp>
 
+#include <core/math.hpp>
+
 #include <manta/window.hpp>
 #include <manta/draw.hpp>
-#include <manta/vector.hpp>
 #include <manta/3d.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

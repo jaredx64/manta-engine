@@ -774,6 +774,15 @@
 		virtual HRESULT STD_CALL FinishCommandList(BOOL, ID3D11CommandList **) = 0;
 	};
 
+	MIDL_INTERFACE ID3DUserDefinedAnnotation : IUnknown
+    {
+    public:
+        virtual INT STD_CALL BeginEvent(LPCWSTR) = 0;
+        virtual INT STD_CALL EndEvent(void) = 0;
+        virtual void STD_CALL SetMarker(LPCWSTR Name) = 0;
+        virtual BOOL STD_CALL GetStatus( void) = 0;
+    };
+
 	MIDL_INTERFACE ID3D11Resource : ID3D11DeviceChild
 	{
 		virtual void STD_CALL GetType(D3D11_RESOURCE_DIMENSION *) = 0;
@@ -835,6 +844,11 @@
 	MIDL_INTERFACE ID3D11BlendState : ID3D11DeviceChild
 	{
 		virtual void STD_CALL GetDesc(D3D11_BLEND_DESC *) = 0;
+	};
+
+	MIDL_INTERFACE ID3D11DepthStencilState : ID3D11DeviceChild
+	{
+		virtual void STD_CALL GetDesc(D3D11_DEPTH_STENCIL_DESC *) = 0;
 	};
 
 	MIDL_INTERFACE ID3D11DepthStencilView : ID3D11View

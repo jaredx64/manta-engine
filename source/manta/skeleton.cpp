@@ -38,15 +38,15 @@ constexpr u16 ANIMATION_KEYFRAMES = 8;
 
 float Animation::get_value( const Timeline timeline ) const
 {
-	const BinAnimation &binAnimation = binAnimations[index];
-	if( binAnimation.keyframeCount[timeline] == 0 ) { return 0.0f; }
+	const AnimationEntry &animationEntry = animationEntries[index];
+	if( animationEntry.keyframeCount[timeline] == 0 ) { return 0.0f; }
 
-	const int keyframeCurrent = static_cast<int>( time * binAnimation.keyframeCount[timeline] );
-	const u32 indexCurrent = binAnimation.keyframeFirst[timeline] + keyframeCurrent;
+	const int keyframeCurrent = static_cast<int>( time * animationEntry.keyframeCount[timeline] );
+	const u32 indexCurrent = animationEntry.keyframeFirst[timeline] + keyframeCurrent;
 	const BinKeyframe &frameCurrent = binKeyframes[indexCurrent];
 
-	const int keyframeNext = ( ( keyframeCurrent + 1 ) % binAnimation.keyframeCount[timeline] );
-	const u32 indexNext = binAnimation.keyframeFirst[timeline] + keyframeNext;
+	const int keyframeNext = ( ( keyframeCurrent + 1 ) % animationEntry.keyframeCount[timeline] );
+	const u32 indexNext = animationEntry.keyframeFirst[timeline] + keyframeNext;
 	const BinKeyframe &frameNext = binKeyframes[indexNext];
 
 	const float a = time - frameCurrent.time + ( time < frameCurrent.time ) * 1.0f;
@@ -59,29 +59,29 @@ float Animation::get_value( const Timeline timeline ) const
 
 float Animation::get_rotation( const Timeline timeline ) const
 {
-	const BinAnimation &binAnimation = binAnimations[index];
-	if( binAnimation.keyframeCount[timeline] == 0 ) { return 0.0f; }
+	const AnimationEntry &animationEntry = animationEntries[index];
+	if( animationEntry.keyframeCount[timeline] == 0 ) { return 0.0f; }
 
-	const int keyframeCurr = static_cast<int>( time * binAnimation.keyframeCount[timeline] );
-	const u32 indexCurr = binAnimation.keyframeFirst[timeline] + keyframeCurr;
+	const int keyframeCurr = static_cast<int>( time * animationEntry.keyframeCount[timeline] );
+	const u32 indexCurr = animationEntry.keyframeFirst[timeline] + keyframeCurr;
 	const BinKeyframe &frameCurr = binKeyframes[indexCurr];
 
-	const int keyframeNext = ( ( keyframeCurr + 1 ) % binAnimation.keyframeCount[timeline] );
-	const u32 indexNext = binAnimation.keyframeFirst[timeline] + keyframeNext;
+	const int keyframeNext = ( ( keyframeCurr + 1 ) % animationEntry.keyframeCount[timeline] );
+	const u32 indexNext = animationEntry.keyframeFirst[timeline] + keyframeNext;
 	const BinKeyframe &frameNext = binKeyframes[indexNext];
 
 	const float a = time - frameCurr.time + ( time < frameCurr.time ) * 1.0f;
 	const float b = frameNext.time - frameCurr.time + ( frameNext.time < frameCurr.time ) * 1.0f;
 	const float progress = a / b;
 
-	return lerp_angle_degrees( frameCurr.value, frameNext.value, progress );
+	return lerp_degrees( frameCurr.value, frameNext.value, progress );
 }
 
 
 void Animation::update( const Delta delta )
 {
-	const BinAnimation &binAnimation = binAnimations[index];
-	const Delta dt = ( delta * speed ) / binAnimation.duration;// * ANIMATION_SPEED * speed;
+	const AnimationEntry &animationEntry = animationEntries[index];
+	const Delta dt = ( delta * speed ) / animationEntry.duration;// * ANIMATION_SPEED * speed;
 
 	time += static_cast<float>( dt );
 
@@ -278,17 +278,17 @@ float Bone::get_translation_y() const
 }
 
 
-void Bone::update( const BinBone &binBone, const Delta delta )
+void Bone::update( const BoneEntry &boneEntry, const Delta delta )
 {
 	// Fetch Parent
-	const bool hasParent = ( binBone.parent != U32_MAX );
-	const float parentX = ( hasParent ? skeleton->bones[binBone.parent].x : 0.0f );
-	const float parentY = ( hasParent ? skeleton->bones[binBone.parent].y : 0.0f );
-	const float parentLength = ( hasParent ? skeleton->bones[binBone.parent].length : 0.0f );
-	const float parentScaleX = ( hasParent ? skeleton->bones[binBone.parent].scaleX : 1.0f );
-	const float parentScaleY = ( hasParent ? skeleton->bones[binBone.parent].scaleY : 1.0f );
-	const float parentRotation = ( hasParent ? skeleton->bones[binBone.parent].rotation : 0.0f );
-	const Color parentColor = ( hasParent ? skeleton->bones[binBone.parent].color : c_white );
+	const bool hasParent = ( boneEntry.parent != U32_MAX );
+	const float parentX = ( hasParent ? skeleton->bones[boneEntry.parent].x : 0.0f );
+	const float parentY = ( hasParent ? skeleton->bones[boneEntry.parent].y : 0.0f );
+	const float parentLength = ( hasParent ? skeleton->bones[boneEntry.parent].length : 0.0f );
+	const float parentScaleX = ( hasParent ? skeleton->bones[boneEntry.parent].scaleX : 1.0f );
+	const float parentScaleY = ( hasParent ? skeleton->bones[boneEntry.parent].scaleY : 1.0f );
+	const float parentRotation = ( hasParent ? skeleton->bones[boneEntry.parent].rotation : 0.0f );
+	const Color parentColor = ( hasParent ? skeleton->bones[boneEntry.parent].color : c_white );
 
 	float animRotation = 0.0f;
 	float animRotX = 0.0f;
@@ -339,12 +339,12 @@ void Bone::update( const BinBone &binBone, const Delta delta )
 	}
 
 	// Scale
-	scaleX = customScaleX * binBone.scaleX * animScaleX * parentScaleX;
-	scaleY = customScaleY * binBone.scaleY * animScaleY * parentScaleY;
+	scaleX = customScaleX * boneEntry.scaleX * animScaleX * parentScaleX;
+	scaleY = customScaleY * boneEntry.scaleY * animScaleY * parentScaleY;
 
 	// Translation
-	const float localX = binBone.x + animX;
-	const float localY = binBone.y + animY;
+	const float localX = boneEntry.x + animX;
+	const float localY = boneEntry.y + animY;
 	const float cosParent = cosf( parentRotation * DEG2RAD_F );
     const float sinParent = sinf( parentRotation * DEG2RAD_F );
 	x = ( parentX + lengthdir_x( parentLength * parentScaleX, parentRotation ) ) +
@@ -353,7 +353,7 @@ void Bone::update( const BinBone &binBone, const Delta delta )
 		( localX * scaleY * sinParent + localY * scaleY * cosParent );
 
 	// Rotation
-	rotation = customRotation + binBone.rotation + animRotation + parentRotation;
+	rotation = customRotation + boneEntry.rotation + animRotation + parentRotation;
 
 	// Color
 	color = color * customColor * parentColor;
@@ -389,22 +389,22 @@ bool Skeleton2D::init( SkeletonID type )
 {
 	Assert( type < numSkeletons );
 	this->type = type;
-	BinSkeleton &binSkeleton = binSkeletons[this->type];
+	SkeletonEntry &skeletonEntry = skeletonEntries[this->type];
 
 	// Allocate Memory
 	MemoryAssert( bones == nullptr );
-	bones = reinterpret_cast<Bone *>( memory_alloc( binSkeleton.boneCount * sizeof( Bone ) ) );
+	bones = reinterpret_cast<Bone *>( memory_alloc( skeletonEntry.boneCount * sizeof( Bone ) ) );
 
 	// Setup Bones
-	for( u32 i = 0; i < binSkeleton.boneCount; i++ )
+	for( u32 i = 0; i < skeletonEntry.boneCount; i++ )
 	{
 		new ( &bones[i] ) Bone();
 		Bone &bone = bones[i];
 		bone.skeleton = this;
 		bone.id = i;
 
-		const BinBone &binBone = binBones[binSkeleton.boneFirst + i];
-		bone.length = binBone.length;
+		const BoneEntry &boneEntry = boneEntries[skeletonEntry.boneFirst + i];
+		bone.length = boneEntry.length;
 		bone.customScaleX = 1.0f;
 		bone.customScaleY = 1.0f;
 		bone.color = c_white;
@@ -425,7 +425,7 @@ bool Skeleton2D::free()
 
 Bone &Skeleton2D::get_bone( const BoneID boneID )
 {
-	Assert( boneID < binSkeletons[type].boneCount );
+	Assert( boneID < skeletonEntries[type].boneCount );
 	MemoryAssert( bones != nullptr );
 	return bones[boneID];
 }
@@ -504,13 +504,13 @@ void Skeleton2D::set_translation( const float x, const float y )
 void Skeleton2D::update( const Delta delta )
 {
 	MemoryAssert( bones != nullptr );
-	BinSkeleton &binSkeleton = binSkeletons[this->type];
+	SkeletonEntry &skeletonEntry = skeletonEntries[this->type];
 
-	for( u32 i = 0; i < binSkeleton.boneCount; i++ )
+	for( u32 i = 0; i < skeletonEntry.boneCount; i++ )
 	{
-		const BinBone &binBone = binBones[binSkeleton.boneFirst + i];
+		const BoneEntry &boneEntry = boneEntries[skeletonEntry.boneFirst + i];
 		Bone &bone = bones[i];
-		bones[i].update( binBone, delta );
+		bones[i].update( boneEntry, delta );
 	}
 }
 
@@ -518,9 +518,9 @@ void Skeleton2D::update( const Delta delta )
 void Skeleton2D::draw( const Delta delta, float x, float y, Color color, float depth )
 {
 	MemoryAssert( bones != nullptr );
-	BinSkeleton &binSkeleton = binSkeletons[this->type];
+	SkeletonEntry &skeletonEntry = skeletonEntries[this->type];
 
-	for( u32 i = 0; i < binSkeleton.boneCount; i++ )
+	for( u32 i = 0; i < skeletonEntry.boneCount; i++ )
 	{
 		bones[i].draw( delta, x, y, color, depth );
 	}

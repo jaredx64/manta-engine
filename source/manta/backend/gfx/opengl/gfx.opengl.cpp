@@ -5,7 +5,6 @@
 
 #include <core/traits.hpp>
 #include <core/memory.hpp>
-#include <core/list.hpp>
 #include <core/hashmap.hpp>
 #include <core/checksum.hpp>
 #include <core/math.hpp>
@@ -21,95 +20,122 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define GL_NULL ( 0 )
-
-static bool OpenGLErrorDetected = false;
-#define CHECK_ERROR(msg,...) \
-	{ \
-		int error = glGetError(); \
-		if( error != GL_NO_ERROR && !OpenGLErrorDetected ) \
-		{ \
-			OpenGLErrorDetected = true; \
-			Error( msg " (%d)\n", error, __VA_ARGS__ ); \
-		} \
-	}
-
-static bool GL_ERROR()
+static void glSetEnabled( GLenum cap, const bool enable )
 {
-	return ( glGetError() != GL_NO_ERROR );
+	if( enable ) { glEnable( cap ); return; }
+	glDisable( cap );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static GfxShaderResource *boundShaderResource = nullptr;
+static bool OPENGL_ERROR()
+{
+	return ( glGetError() != GL_NO_ERROR );
+}
 
-static HashMap<u32, GLuint> uniformBufferUniformBlockIndices;
-static HashMap<u32, GLint> texture2DUniformLocations;
+static bool OPENGL_ERROR_DETECTED = false;
+#define OPENGL_CHECK_ERROR(msg,...) \
+	{ \
+		GLenum error = glGetError(); \
+		if( error != GL_NO_ERROR && !OPENGL_ERROR_DETECTED ) \
+		{ \
+			OPENGL_ERROR_DETECTED = true; \
+			Error( msg " (%u)\n", error, __VA_ARGS__ ); \
+		} \
+	}
 
-#define GFX_RENDER_TARGET_SLOT_COUNT ( 8 )
-static GLuint RT_FBO = 0;
-static GLuint RT_TEXTURE_COLOR[GFX_RENDER_TARGET_SLOT_COUNT];
-static GLuint RT_TEXTURE_COLOR_TYPE[GFX_RENDER_TARGET_SLOT_COUNT];
-static GLuint RT_TEXTURE_DEPTH = 0;
-static GLuint RT_TEXTURE_DEPTH_TYPE = GL_TEXTURE_2D;
+#if COMPILE_DEBUG
+struct ErrorChecker
+{
+	const char *function = "";
 
-static GLuint RT_CACHE_TARGET_FBO; // HACK: change this?
-static GLuint RT_CACHE_TARGET_TEXTURE_COLOR; // HACK: change this?
-static GLuint RT_CACHE_TARGET_TEXTURE_DEPTH; // HACK: change this?
+	ErrorChecker( const char *func )
+	{
+		function = func;
+		GLenum error = glGetError();
+		if( error != GL_NO_ERROR )
+		{
+			char message[1024];
+			snprintf( message, sizeof( message ), "OpenGL State Error: %u\n    > begin scope: %s",
+				error, function );
+			Error( "%s", message );
+		}
+	}
 
-static bool FILTER_MODE_MIPMAPPING = false;
+	~ErrorChecker()
+	{
+		GLenum error = glGetError();
+		if( error != GL_NO_ERROR )
+		{
+			char message[1024];
+			snprintf( message, sizeof( message ), "OpenGL State Error: %u\n    > end scope: %s",
+				error, function );
+			Error( "%s", message );
+		}
+	}
+};
+#define OPENGL_CHECK_ERRORS_SCOPE ErrorChecker __errorChecker { __FUNCTION__ };
+#else
+	#define OPENGL_CHECK_ERRORS_SCOPE
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// OpenGL Backend State
 
-struct OpenGLColorFormat
-{
-	OpenGLColorFormat( const GLenum format, const GLenum formatInternal, const GLenum formatType ) :
-		format{ format }, formatInternal{ formatInternal }, formatType{ formatType } { }
+static GLuint stateBoundFBO = 0U;
+static GLuint stateBoundColorTextures[GFX_RENDER_TARGET_SLOT_COUNT] = { 0U };
+static GLuint stateBoundColorTypes[GFX_RENDER_TARGET_SLOT_COUNT] = { 0U };
+static GLuint stateBoundDepthTexture = 0U;
+static GLuint stateBoundDepthType = GL_TEXTURE_2D;
+static GfxRenderTargetResource *stateBoundTargetResources[GFX_RENDER_TARGET_SLOT_COUNT] = { nullptr };
 
-	GLenum format, formatInternal, formatType;
-};
+static GLuint drawCallVAOEmpty = 0U;
 
+static bool isDefaultTargetActive = true;
+static bool isFilterModeMipmapping = false;
 
+static HashMap<u32, GLuint> uniformBufferUniformBlockIndices;
+static HashMap<u32, GLint> uniformLocationsTexture;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// OpenGL Enums
+
+struct OpenGLColorFormat { GLenum format, formatInternal, formatType; };
 static const OpenGLColorFormat OpenGLColorFormats[] =
 {
-	{ GL_RGBA,         GL_RGBA8,    GL_UNSIGNED_BYTE },           // GfxColorFormat_NONE
-	{ GL_RGBA,         GL_RGBA8,    GL_UNSIGNED_BYTE },           // GfxColorFormat_R8G8B8A8_FLOAT
-	{ GL_RGBA_INTEGER, GL_RGBA8UI,  GL_UNSIGNED_BYTE },           // GfxColorFormat_R8G8B8A8_UINT
-	{ GL_RGBA,         GL_RGB10_A2, GL_UNSIGNED_INT_10_10_10_2 }, // GfxColorFormat_R10G10B10A2_FLOAT
-	{ GL_RED,          GL_R8,       GL_UNSIGNED_BYTE },           // GfxColorFormat_R8
-	{ GL_RG,           GL_RG8,      GL_UNSIGNED_BYTE },           // GfxColorFormat_R8G8
-	{ GL_RED,          GL_R16UI,    GL_UNSIGNED_SHORT },          // GfxColorFormat_R16
-	{ GL_RED,          GL_R16F,     GL_FLOAT },                   // GfxColorFormat_R16_FLOAT
-	{ GL_RG,           GL_RG16UI,   GL_UNSIGNED_SHORT },          // GfxColorFormat_R16G16
-	{ GL_RG,           GL_RG16F,    GL_FLOAT },                   // GfxColorFormat_R16G16F_FLOAT
-	{ GL_RGBA,         GL_RGBA16F,  GL_FLOAT },                   // GfxColorFormat_R16G16B16A16_FLOAT
-	{ GL_RGBA,         GL_RGBA16UI, GL_UNSIGNED_INT },            // GfxColorFormat_R16G16B16A16_UINT
-	{ GL_RED,          GL_R32F,     GL_FLOAT },                   // GfxColorFormat_R32_FLOAT
-	{ GL_RG,           GL_RG32F,    GL_FLOAT },                   // GfxColorFormat_R32G32_FLOAT
-	{ GL_RGBA,         GL_RGBA32F,  GL_FLOAT },                   // GfxColorFormat_R32G32B32A32_FLOAT
-	{ GL_RGBA_INTEGER, GL_RGBA32UI, GL_UNSIGNED_INT },            // GfxColorFormat_R32G32B32A32_UINT
+	{ GL_RGBA, GL_RGBA8, GL_UNSIGNED_BYTE },              // GfxColorFormat_NONE
+	{ GL_RGBA, GL_RGBA8, GL_UNSIGNED_BYTE },              // GfxColorFormat_R8G8B8A8_FLOAT
+	{ GL_RGBA_INTEGER, GL_RGBA8UI,    },                  // GfxColorFormat_R8G8B8A8_UINT
+	{ GL_RGBA, GL_RGB10_A2, GL_UNSIGNED_INT_10_10_10_2 }, // GfxColorFormat_R10G10B10A2_FLOAT
+	{ GL_RED, GL_R8, GL_UNSIGNED_BYTE },                  // GfxColorFormat_R8
+	{ GL_RG, GL_RG8, GL_UNSIGNED_BYTE },                  // GfxColorFormat_R8G8
+	{ GL_RED, GL_R16UI, GL_UNSIGNED_SHORT },              // GfxColorFormat_R16
+	{ GL_RED, GL_R16F, GL_FLOAT },                        // GfxColorFormat_R16_FLOAT
+	{ GL_RG, GL_RG16UI, GL_UNSIGNED_SHORT },              // GfxColorFormat_R16G16
+	{ GL_RG, GL_RG16F, GL_FLOAT },                        // GfxColorFormat_R16G16F_FLOAT
+	{ GL_RGBA, GL_RGBA16F, GL_FLOAT },                    // GfxColorFormat_R16G16B16A16_FLOAT
+	{ GL_RGBA, GL_RGBA16UI, GL_UNSIGNED_INT },            // GfxColorFormat_R16G16B16A16_UINT
+	{ GL_RED, GL_R32F, GL_FLOAT },                        // GfxColorFormat_R32_FLOAT
+	{ GL_RG, GL_RG32F, GL_FLOAT },                        // GfxColorFormat_R32G32_FLOAT
+	{ GL_RGBA, GL_RGBA32F, GL_FLOAT },                    // GfxColorFormat_R32G32B32A32_FLOAT
+	{ GL_RGBA_INTEGER, GL_RGBA32UI, GL_UNSIGNED_INT },    // GfxColorFormat_R32G32B32A32_UINT
 };
-static_assert( ARRAY_LENGTH( OpenGLColorFormats ) == GFXCOLORFORMAT_COUNT, "Missing GfxColorFormat!" );
+static_assert( ARRAY_LENGTH( OpenGLColorFormats ) == GFXCOLORFORMAT_COUNT,
+	"Missing GfxColorFormat!" );
 
 
-struct OpenGLDepthStencilFormat
-{
-	OpenGLDepthStencilFormat( const GLenum format, const GLenum formatInternal, const GLenum formatType ) :
-		format{ format }, formatInternal{ formatInternal }, formatType{ formatType } { }
-
-	GLenum format, formatInternal, formatType;
-};
-
+struct OpenGLDepthStencilFormat { GLenum format, formatInternal, formatType; };
 static const OpenGLDepthStencilFormat OpenGLDepthStencilFormats[] =
 {
-    { GL_NONE,                 GL_NONE,               GL_NONE },               // GfxDepthFormat_NONE
-    { GL_DEPTH_COMPONENT,      GL_DEPTH_COMPONENT16,  GL_UNSIGNED_SHORT },     // GfxDepthFormat_R16_FLOAT
-    { GL_DEPTH_COMPONENT,      GL_DEPTH_COMPONENT16,  GL_UNSIGNED_SHORT },     // GfxDepthFormat_R16_UINT
-    { GL_DEPTH_COMPONENT,      GL_DEPTH_COMPONENT32F, GL_FLOAT },              // GfxDepthFormat_R32_FLOAT
-    { GL_DEPTH_COMPONENT,      GL_DEPTH_COMPONENT32F, GL_UNSIGNED_INT },       // GfxDepthFormat_R32_UINT
-    { GL_DEPTH_STENCIL,        GL_DEPTH24_STENCIL8,   GL_UNSIGNED_INT_24_8 },  // GfxDepthFormat_R24_UINT_G8_UINT
+	{ GL_NONE, GL_NONE, GL_NONE },                                    // GfxDepthFormat_NONE
+	{ GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT16, GL_UNSIGNED_SHORT },  // GfxDepthFormat_R16_FLOAT
+	{ GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT16, GL_UNSIGNED_SHORT },  // GfxDepthFormat_R16_UINT
+	{ GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT32F, GL_FLOAT },          // GfxDepthFormat_R32_FLOAT
+	{ GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT32F, GL_UNSIGNED_INT },   // GfxDepthFormat_R32_UINT
+	{ GL_DEPTH_STENCIL, GL_DEPTH24_STENCIL8, GL_UNSIGNED_INT_24_8 },  // GfxDepthFormat_R24_UINT_G8_UINT
 };
-static_assert( ARRAY_LENGTH( OpenGLDepthStencilFormats ) == GFXDEPTHFORMAT_COUNT, "Missing GfxDepthFormat!" );
+static_assert( ARRAY_LENGTH( OpenGLDepthStencilFormats ) == GFXDEPTHFORMAT_COUNT,
+	"Missing GfxDepthFormat!" );
 
 
 static const GLenum OpenGLPrimitiveTypes[] =
@@ -120,42 +146,47 @@ static const GLenum OpenGLPrimitiveTypes[] =
 	GL_LINE_STRIP,     // GfxPrimitiveType_LineStrip
 	GL_POINTS,         // GfxPrimitiveType_PointList
 };
-static_assert( ARRAY_LENGTH( OpenGLPrimitiveTypes ) == GFXPRIMITIVETYPE_COUNT, "Missing GfxPrimitiveType!" );
+static_assert( ARRAY_LENGTH( OpenGLPrimitiveTypes ) == GFXPRIMITIVETYPE_COUNT,
+	"Missing GfxPrimitiveType!" );
 
 
 static const GLenum OpenGLFillModes[] =
 {
-	GL_FILL, // GfxFillMode_SOLID
-	GL_LINE, // GfxFillMode_WIREFRAME
+	GL_FILL, // GfxRasterFillMode_SOLID
+	GL_LINE, // GfxRasterFillMode_WIREFRAME
 };
-static_assert( ARRAY_LENGTH( OpenGLFillModes ) == GFXFILLMODE_COUNT, "Missing GfxFillMode!" );
+static_assert( ARRAY_LENGTH( OpenGLFillModes ) == GFXRASTERFILLMODE_COUNT,
+	"Missing GfxRasterFillMode!" );
 
 
 static const GLenum OpenGLCullModes[] =
 {
-	GL_FRONT_AND_BACK, // GfxCullMode_NONE
-	GL_FRONT,          // GfxCullMode_FRONT
-	GL_BACK,           // GfxCullMode_BACK
+	GL_FRONT_AND_BACK, // GfxRasterCullMode_NONE
+	GL_FRONT,          // GfxRasterCullMode_FRONT
+	GL_BACK,           // GfxRasterCullMode_BACK
 };
-static_assert( ARRAY_LENGTH( OpenGLCullModes ) == GFXCULLMODE_COUNT, "Missing GfxCullMode!" );
+static_assert( ARRAY_LENGTH( OpenGLCullModes ) == GFXRASTERCULLMODE_COUNT,
+	"Missing GfxRasterCullMode!" );
 
 
 static const GLint OpenGLFilteringModes[][2] =
 {
-	{ GL_NEAREST, GL_NEAREST_MIPMAP_LINEAR }, // GfxFilteringMode_NEAREST
-	{ GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR },   // GfxFilteringMode_LINEAR
-	{ GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR },   // GfxFilteringMode_ANISOTROPIC TODO: Support anisotrophic
+	{ GL_NEAREST, GL_NEAREST_MIPMAP_LINEAR }, // GfxSamplerFilteringMode_NEAREST
+	{ GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR },   // GfxSamplerFilteringMode_LINEAR
+	{ GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR },   // GfxSamplerFilteringMode_ANISOTROPIC (TODO: Support anisotrophic)
 };
-static_assert( ARRAY_LENGTH( OpenGLFilteringModes ) == GFXFILTERINGMODE_COUNT, "Missing GfxFilteringMode!" );
+static_assert( ARRAY_LENGTH( OpenGLFilteringModes ) == GFXSAMPLERFILTERINGMODE_COUNT,
+	"Missing GfxSamplerFilteringMode!" );
 
 
 static const GLint OpenGLUVWrapModes[] =
 {
-	GL_REPEAT,          // GfxUVWrapMode_WRAP
-	GL_MIRRORED_REPEAT, // GfxUVWrapMode_MIRROR
-	GL_CLAMP_TO_EDGE,   // GfxUVWrapMode_CLAMP
+	GL_REPEAT,          // GfxSamplerWrapMode_WRAP
+	GL_MIRRORED_REPEAT, // GfxSamplerWrapMode_MIRROR
+	GL_CLAMP_TO_EDGE,   // GfxSamplerWrapMode_CLAMP
 };
-static_assert( ARRAY_LENGTH( OpenGLUVWrapModes ) == GFXUVWRAPMODE_COUNT, "Missing GfxUVWrapMode!" );
+static_assert( ARRAY_LENGTH( OpenGLUVWrapModes ) == GFXSAMPLERWRAPMODE_COUNT,
+	"Missing GfxSamplerWrapMode!" );
 
 
 static const GLenum OpenGLBlendFactors[] =
@@ -171,64 +202,70 @@ static const GLenum OpenGLBlendFactors[] =
 	GL_DST_COLOR,            // GfxBlendFactor_DEST_COLOR
 	GL_ONE_MINUS_DST_COLOR,  // GfxBlendFactor_INV_DEST_COLOR
 	GL_SRC_ALPHA_SATURATE,   // GfxBlendFactor_SRC_ALPHA_SAT
+
 	// TODO: Support these?
 	GL_SRC_COLOR,            // GL_SRC1_COLOR,                   // GfxBlendFactor_SRC1_COLOR?
 	GL_ONE_MINUS_SRC_COLOR,  // GL_ONE_MINUS_SRC1_COLOR,         // GfxBlendFactor_INV_SRC1_COLOR
 	GL_SRC_ALPHA,            // GL_SRC1_ALPHA,                   // GfxBlendFactor_SRC1_ALPHA
 	GL_ONE_MINUS_SRC_ALPHA,  // GL_ONE_MINUS_SRC1_ALPHA,         // GfxBlendFactor_INV_SRC1_ALPHA
 };
-static_assert( ARRAY_LENGTH( OpenGLBlendFactors ) == GFXBLENDFACTOR_COUNT, "Missing GfxBlendFactor!" );
+static_assert( ARRAY_LENGTH( OpenGLBlendFactors ) == GFXBLENDFACTOR_COUNT,
+	"Missing GfxBlendFactor!" );
 
 
 static const GLenum OpenGLBlendOperations[] =
 {
 	GL_FUNC_ADD,              // GfxBlendOperation_ADD
 	GL_FUNC_SUBTRACT,         // GfxBlendOperation_SUBTRACT
-	GL_FUNC_REVERSE_SUBTRACT, // GfxBlendOperation_REV_SUBTRACT
 	GL_MIN,                   // GfxBlendOperation_MIN
 	GL_MAX,                   // GfxBlendOperation_MAX
 };
-static_assert( ARRAY_LENGTH( OpenGLBlendOperations ) == GFXBLENDOPERATION_COUNT, "Missing GfxBlendOperation!" );
+static_assert( ARRAY_LENGTH( OpenGLBlendOperations ) == GFXBLENDOPERATION_COUNT,
+	"Missing GfxBlendOperation!" );
 
 
 static const GLboolean OpenGLDepthWriteMasks[] =
 {
-	GL_FALSE, // GfxDepthWriteFlag_NONE
-	GL_TRUE,  // GfxDepthWriteFlag_ALL
+	GL_FALSE, // GfxDepthWrite_NONE
+	GL_TRUE,  // GfxDepthWrite_ALL
 };
-static_assert( ARRAY_LENGTH( OpenGLDepthWriteMasks ) == GFXDEPTHWRITEFLAG_COUNT, "Missing GfxDepthWriteFlag!" );
+static_assert( ARRAY_LENGTH( OpenGLDepthWriteMasks ) == GFXDEPTHWRITE_COUNT,
+	"Missing GfxDepthWrite!" );
 
 
-static const GLenum OpenGLDepthTestModes[] =
+static const GLenum OpenGLDepthFunctions[] =
 {
-	GL_ALWAYS,   // GfxDepthTestMode_NONE
-	GL_LESS,     // GfxDepthTestMode_LESS
-	GL_LEQUAL,   // GfxDepthTestMode_LESS_EQUALS
-	GL_GREATER,  // GfxDepthTestMode_GREATER
-	GL_GEQUAL,   // GfxDepthTestMode_GREATER_EQUALS
-	GL_EQUAL,    // GfxDepthTestMode_EQUAL
-	GL_NOTEQUAL, // GfxDepthTestMode_NOT_EQUAL
-	GL_ALWAYS,   // GfxDepthTestMode_ALWAYS
+	GL_ALWAYS,   // GfxDepthFunction_NONE
+	GL_LESS,     // GfxDepthFunction_LESS
+	GL_LEQUAL,   // GfxDepthFunction_LESS_EQUALS
+	GL_GREATER,  // GfxDepthFunction_GREATER
+	GL_GEQUAL,   // GfxDepthFunction_GREATER_EQUALS
+	GL_EQUAL,    // GfxDepthFunction_EQUAL
+	GL_NOTEQUAL, // GfxDepthFunction_NOT_EQUAL
+	GL_ALWAYS,   // GfxDepthFunction_ALWAYS
 };
-static_assert( ARRAY_LENGTH( OpenGLDepthTestModes ) == GFXDEPTHTESTMODE_COUNT, "Missing GfxDepthTestMode!" );
+static_assert( ARRAY_LENGTH( OpenGLDepthFunctions ) == GFXDEPTHFUNCTION_COUNT,
+	"Missing GfxDepthFunction!" );
 
 
 static const GLenum OpenGLIndexBufferFormats[] =
 {
-	GL_UNSIGNED_BYTE,   // GfxIndexBufferFormat_NONE
-	GL_UNSIGNED_BYTE,   // GfxIndexBufferFormat_U8
-	GL_UNSIGNED_SHORT,  // GfxIndexBufferFormat_U16
-	GL_UNSIGNED_INT,    // GfxIndexBufferFormat_U32
+	GL_UNSIGNED_BYTE,  // GfxIndexBufferFormat_NONE
+	GL_UNSIGNED_BYTE,  // GfxIndexBufferFormat_U8
+	GL_UNSIGNED_SHORT, // GfxIndexBufferFormat_U16
+	GL_UNSIGNED_INT,   // GfxIndexBufferFormat_U32
 };
-static_assert( ARRAY_LENGTH( OpenGLIndexBufferFormats ) == GFXINDEXBUFFERFORMAT_COUNT, "Missing GfxIndexBufferFormat!" );
+static_assert( ARRAY_LENGTH( OpenGLIndexBufferFormats ) == GFXINDEXBUFFERFORMAT_COUNT,
+	"Missing GfxIndexBufferFormat!" );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Resources
 
 struct GfxShaderResource : public GfxResource
 {
 	static void release( GfxShaderResource *&resource );
 	u32 shaderID;
-	GLuint program = GL_NULL;
+	GLuint program = 0;
 	usize sizeVS = 0;
 	usize sizePS = 0;
 	usize sizeCS = 0;
@@ -238,8 +275,8 @@ struct GfxShaderResource : public GfxResource
 struct GfxVertexBufferResource : public GfxResource
 {
 	static void release( GfxVertexBufferResource *&resource );
-	GLuint vao = GL_NULL;
-	GLuint vbo = GL_NULL;
+	GLuint vao = 0;
+	GLuint vbo = 0;
 	GfxCPUAccessMode accessMode;
 	bool mapped = false;
 	byte *data = nullptr;
@@ -254,8 +291,8 @@ struct GfxVertexBufferResource : public GfxResource
 struct GfxInstanceBufferResource : public GfxResource
 {
 	static void release( GfxInstanceBufferResource *&resource );
-	GLuint vao = GL_NULL;
-	GLuint vbo = GL_NULL;
+	GLuint vao = 0;
+	GLuint vbo = 0;
 	GfxCPUAccessMode accessMode;
 	bool mapped = false;
 	byte *data = nullptr;
@@ -270,7 +307,7 @@ struct GfxInstanceBufferResource : public GfxResource
 struct GfxIndexBufferResource : public GfxResource
 {
 	static void release( GfxIndexBufferResource *&resource );
-	GLuint ebo = GL_NULL;
+	GLuint ebo = 0;
 	GfxCPUAccessMode accessMode = GfxCPUAccessMode_NONE;
 	GfxIndexBufferFormat format = GfxIndexBufferFormat_U32;
 	double indicesToVerticesRatio = 1.0;
@@ -281,7 +318,7 @@ struct GfxIndexBufferResource : public GfxResource
 struct GfxUniformBufferResource : public GfxResource
 {
 	static void release( GfxUniformBufferResource *&resource );
-	GLuint ubo = GL_NULL;
+	GLuint ubo = 0;
 	bool mapped = false;
 	byte *data = nullptr;
 	const char *name = "";
@@ -290,43 +327,44 @@ struct GfxUniformBufferResource : public GfxResource
 };
 
 
-struct GfxTexture2DResource : public GfxResource
+struct GfxTextureResource : public GfxResource
 {
-	static void release( GfxTexture2DResource *&resource );
-	GLuint textureSS = GL_NULL;
-	GLuint textureMS = GL_NULL;
+	static void release( GfxTextureResource *&resource );
+	GLuint textureSS = 0;
+	GLuint textureMS = 0;
+	GfxTextureType type;
 	GfxColorFormat colorFormat;
-	u32 width = 0;
-	u32 height = 0;
+	u16 width = 0;
+	u16 height = 0;
+	u16 depth = 0;
 	u16 levels = 0;
 	usize size = 0;
 };
 
 
-struct GfxRenderTarget2DResource : public GfxResource
+struct GfxRenderTargetResource : public GfxResource
 {
-	static void release( GfxRenderTarget2DResource *&resource );
-	GLuint fboSS = GL_NULL;
-	GLuint fboMS = GL_NULL;
-	GLuint pboColor = GL_NULL;
-	GLuint pboDepth = GL_NULL;
-	GfxTexture2DResource *resourceColor = nullptr;
-	GfxTexture2DResource *resourceDepth = nullptr;
+	static void release( GfxRenderTargetResource *&resource );
+	GLuint fboSS = 0;
+	GLuint fboMS = 0;
+	GLuint pboColor = 0;
+	GLuint pboDepth = 0;
+	GfxTextureResource *resourceColor = nullptr;
+	GfxTextureResource *resourceDepth = nullptr;
 	GfxRenderTargetDescription desc = { };
 	u16 width = 0;
 	u16 height = 0;
 	usize size = 0;
 };
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 static GfxResourceFactory<GfxShaderResource, GFX_RESOURCE_COUNT_SHADER> shaderResources;
 static GfxResourceFactory<GfxVertexBufferResource, GFX_RESOURCE_COUNT_VERTEX_BUFFER> vertexBufferResources;
 static GfxResourceFactory<GfxInstanceBufferResource, GFX_RESOURCE_COUNT_INSTANCE_BUFFER> instanceBufferResources;
 static GfxResourceFactory<GfxIndexBufferResource, GFX_RESOURCE_COUNT_INDEX_BUFFER> indexBufferResources;
 static GfxResourceFactory<GfxUniformBufferResource, GFX_RESOURCE_COUNT_UNIFORM_BUFFER> uniformBufferResources;
-static GfxResourceFactory<GfxTexture2DResource, GFX_RESOURCE_COUNT_TEXTURE_2D> texture2DResources;
-static GfxResourceFactory<GfxRenderTarget2DResource, GFX_RESOURCE_COUNT_RENDER_TARGET_2D> renderTarget2DResources;
+static GfxResourceFactory<GfxTextureResource, GFX_RESOURCE_COUNT_TEXTURE> textureResources;
+static GfxResourceFactory<GfxRenderTargetResource, GFX_RESOURCE_COUNT_RENDER_TARGET> renderTargetResources;
 
 
 static bool resources_init()
@@ -336,8 +374,8 @@ static bool resources_init()
 	instanceBufferResources.init();
 	indexBufferResources.init();
 	uniformBufferResources.init();
-	texture2DResources.init();
-	renderTarget2DResources.init();
+	textureResources.init();
+	renderTargetResources.init();
 
 	return true;
 }
@@ -345,8 +383,8 @@ static bool resources_init()
 
 static bool resources_free()
 {
-	renderTarget2DResources.free();
-	texture2DResources.free();
+	renderTargetResources.free();
+	textureResources.free();
 	uniformBufferResources.free();
 	indexBufferResources.free();
 	instanceBufferResources.free();
@@ -357,6 +395,7 @@ static bool resources_free()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// OpenGL System
 
 static void opengl_input_layout_init( const GLuint program, const u32 vertexFormat, const u32 instanceFormat )
 {
@@ -401,7 +440,7 @@ static GLuint opengl_uniform_buffer_uniform_block_index( GfxUniformBufferResourc
 	// Get hash "key" from uniformBuffer index, slot, and shader program
 	char buffer[64];
 	const u32 a = static_cast<u32>( resource->index );
-	const u32 b = static_cast<u32>( boundShaderResource->program );
+	const u32 b = static_cast<u32>( CoreGfx::state.pipeline.shader->program );
 	const u32 c = static_cast<u32>( slot );
 	snprintf( buffer, sizeof( buffer ), "%u_%u_%u", a, b, c ); // TODO: Refactor this?
 	const u32 key = checksum_xcrc32( buffer, strlen( buffer ), 0 );
@@ -413,8 +452,8 @@ static GLuint opengl_uniform_buffer_uniform_block_index( GfxUniformBufferResourc
 	}
 
 	// Find & cache block index
-	const GLuint index = nglGetUniformBlockIndex( boundShaderResource->program,
-	                                              static_cast<const GLchar *>( resource->name ) );
+	const GLuint index = nglGetUniformBlockIndex( CoreGfx::state.pipeline.shader->program,
+		static_cast<const GLchar *>( resource->name ) );
 
 	ErrorReturnIf( index == GL_INVALID_OPERATION, false,
 		"OpenGL: Unable to get uniform block index (Invalid operation) (%s)",
@@ -422,7 +461,7 @@ static GLuint opengl_uniform_buffer_uniform_block_index( GfxUniformBufferResourc
 
 	ErrorReturnIf( index == GL_INVALID_INDEX, false,
 		"OpenGL: Unable to get uniform block index (Invalid index) (%s) %d",
-		resource->name, boundShaderResource->program );
+		resource->name, CoreGfx::state.pipeline.shader->program );
 
 	uniformBufferUniformBlockIndices.add( key, index );
 	return index;
@@ -433,7 +472,7 @@ static GLint opengl_texture_uniform_location( HashMap<u32, GLint> &cache, const 
 {
 	// Get hash "key" from uniformBuffer index, slot, and shader program
 	char buffer[64];
-	const u32 a = static_cast<u32>( boundShaderResource->program );
+	const u32 a = static_cast<u32>( CoreGfx::state.pipeline.shader->program );
 	const u32 b = static_cast<u32>( slot );
 	snprintf( buffer, sizeof( buffer ), "%u_%u", a, b ); // TODO: Refactor this?
 	const u32 key = checksum_xcrc32( buffer, strlen( buffer ), 0 );
@@ -447,12 +486,11 @@ static GLint opengl_texture_uniform_location( HashMap<u32, GLint> &cache, const 
 	// Find & cache uniform index
 	char name[64];
 	snprintf( name, sizeof( name ), "u_texture%d", slot );
-	const GLint location = nglGetUniformLocation( boundShaderResource->program,
-	                                              static_cast<const GLchar *>( name ) );
+	const GLint location = nglGetUniformLocation( CoreGfx::state.pipeline.shader->program,
+		static_cast<const GLchar *>( name ) );
 
 	ErrorReturnIf( location == GL_INVALID_OPERATION, false,
 		"OpenGL: Unable to get texture uniform index (Invalid operation)" );
-
 	ErrorReturnIf( location == GL_INVALID_VALUE, false,
 		"OpenGL: Unable to get texture uniform index (Invalid value)" );
 
@@ -460,78 +498,419 @@ static GLint opengl_texture_uniform_location( HashMap<u32, GLint> &cache, const 
 	return location;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// OpenGL Render State
 
-static bool opengl_update_fbo()
+static bool bind_shader( GfxShaderResource *const resource )
 {
-	// Bind FBO
-	nglBindFramebuffer( GL_FRAMEBUFFER, RT_FBO );
-	bool rtIsActive = false;
+	OPENGL_CHECK_ERRORS_SCOPE
 
-	// Bind Color Textures
-	for( int i = 0; i < GFX_RENDER_TARGET_SLOT_COUNT; i++ )
+	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
+	const bool dirty = BITFLAG_IS_SET( CoreGfx::state.dirtyFlags, GfxStateDirtyFlag_SHADER );
+	if( !dirty && resource == CoreGfx::state.pipeline.shader ) { return true; }
+
+	CoreGfx::state.pipeline.shader = resource;
+	nglUseProgram( resource->program );
+	OPENGL_CHECK_ERROR( "Failed to bind shader program: %u", resource->id );
+	PROFILE_GFX( Gfx::stats.frame.shaderBinds++ );
+
+	ErrorIf( !CoreGfx::api_shader_bind_uniform_buffers_vertex[resource->shaderID](),
+		"Failed to bind vertex shader uniform buffers! (%u)", resource->shaderID );
+	ErrorIf( !CoreGfx::api_shader_bind_uniform_buffers_fragment[resource->shaderID](),
+		"Failed to bind fragment shader uniform buffers! (%u)", resource->shaderID );
+	ErrorIf( !CoreGfx::api_shader_bind_uniform_buffers_compute[resource->shaderID](),
+		"Failed to bind compute shader uniform buffers! (%u)", resource->shaderID );
+
+	BITFLAG_UNSET( CoreGfx::state.dirtyFlags, GfxStateDirtyFlag_SHADER );
+	return true;
+}
+
+
+static bool apply_pipeline_state_raster( const GfxPipelineDescription &state )
+{
+	OPENGL_CHECK_ERRORS_SCOPE
+
+	GfxPipelineDescription &stateCurrent = CoreGfx::state.pipeline.description;
+	const bool dirty = BITFLAG_IS_SET( CoreGfx::state.dirtyFlags, GfxStateDirtyFlag_RASTER );
+	if( !dirty && state.equal_raster( stateCurrent ) )
 	{
-		const GLenum attachment = GL_COLOR_ATTACHMENT0 + i;
-		nglFramebufferTexture2D( GL_FRAMEBUFFER, attachment,
-			RT_TEXTURE_COLOR_TYPE[i], RT_TEXTURE_COLOR[i], 0 );
-		rtIsActive |= ( RT_TEXTURE_COLOR[i] != 0 );
+		return true;
 	}
 
-	// Bind Depth Texture
-	nglFramebufferTexture2D( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
-		RT_TEXTURE_DEPTH_TYPE, RT_TEXTURE_DEPTH, 0 );
-	rtIsActive |= ( RT_TEXTURE_DEPTH != 0 );
-
-	// If Active, Update Draw Buffers
-	if( rtIsActive )
+	if( dirty || state.rasterCullMode != stateCurrent.rasterCullMode )
 	{
-		GLenum buffers[GFX_RENDER_TARGET_SLOT_COUNT];
-		for( int i = 0; i < GFX_RENDER_TARGET_SLOT_COUNT; ++i )
+		glFrontFace( GL_CW );
+		glSetEnabled( GL_CULL_FACE, state.rasterCullMode != GfxRasterCullMode_NONE );
+		glCullFace( OpenGLCullModes[state.rasterCullMode] );
+	}
+
+	if( dirty || state.rasterFillMode != stateCurrent.rasterFillMode )
+	{
+	#if 0 // TODO: Evaluate this, only GL_FRONT_AND_BACK appears to work
+		glPolygonMode( OpenGLCullModes[state.rasterCullMode], OpenGLFillModes[state.rasterFillMode] );
+	#else
+		glPolygonMode( GL_FRONT_AND_BACK, OpenGLFillModes[state.rasterFillMode] );
+	#endif
+	}
+
+	stateCurrent.raster_set( state );
+	BITFLAG_UNSET( CoreGfx::state.dirtyFlags, GfxStateDirtyFlag_RASTER );
+	return true;
+}
+
+
+static bool apply_pipeline_state_blend( const GfxPipelineDescription &state )
+{
+	OPENGL_CHECK_ERRORS_SCOPE
+
+	GfxPipelineDescription &stateCurrent = CoreGfx::state.pipeline.description;
+	const bool dirty = BITFLAG_IS_SET( CoreGfx::state.dirtyFlags, GfxStateDirtyFlag_BLEND );
+	if( !dirty && state.equal_blend( stateCurrent ) ) { return true; }
+
+	if( dirty || state.blendEnabled != stateCurrent.blendEnabled )
+	{
+		glSetEnabled( GL_BLEND, state.blendEnabled );
+	}
+
+	if( dirty || state.blendColorWriteMask != stateCurrent.blendColorWriteMask )
+	{
+		GLboolean r = static_cast<bool>( state.blendColorWriteMask & GfxBlendWrite_RED );
+		GLboolean g = static_cast<bool>( state.blendColorWriteMask & GfxBlendWrite_GREEN );
+		GLboolean b = static_cast<bool>( state.blendColorWriteMask & GfxBlendWrite_BLUE );
+		GLboolean a = static_cast<bool>( state.blendColorWriteMask & GfxBlendWrite_ALPHA );
+		glColorMask( r, g, b, a );
+	}
+
+	if( dirty ||
+		state.blendSrcFactorColor != stateCurrent.blendDstFactorColor ||
+		state.blendSrcFactorAlpha != stateCurrent.blendDstFactorAlpha ||
+		state.blendDstFactorColor != stateCurrent.blendDstFactorColor ||
+		state.blendDstFactorAlpha != stateCurrent.blendDstFactorAlpha )
+	{
+		nglBlendFuncSeparate( OpenGLBlendFactors[state.blendSrcFactorColor],
+			OpenGLBlendFactors[state.blendDstFactorColor],
+			OpenGLBlendFactors[state.blendSrcFactorAlpha],
+			OpenGLBlendFactors[state.blendDstFactorAlpha] );
+	}
+
+	if( dirty ||
+		state.blendOperationColor != stateCurrent.blendOperationColor ||
+		state.blendOperationAlpha != stateCurrent.blendOperationAlpha )
+	{
+		nglBlendEquationSeparate( OpenGLBlendOperations[state.blendOperationColor],
+			OpenGLBlendOperations[state.blendOperationAlpha] );
+	}
+
+	stateCurrent.blend_set( state );
+	BITFLAG_UNSET( CoreGfx::state.dirtyFlags, GfxStateDirtyFlag_BLEND );
+	return true;
+}
+
+
+static bool apply_pipeline_state_depth( const GfxPipelineDescription &state )
+{
+	OPENGL_CHECK_ERRORS_SCOPE
+
+	GfxPipelineDescription &stateCurrent = CoreGfx::state.pipeline.description;
+	const bool dirty = BITFLAG_IS_SET( CoreGfx::state.dirtyFlags, GfxStateDirtyFlag_DEPTH );
+	if( !dirty && state.equal_depth( stateCurrent ) ) { return true; }
+
+	if( dirty || state.depthFunction != stateCurrent.depthFunction )
+	{
+		const bool enabled = state.depthFunction != GfxDepthFunction_NONE;
+	#if !SWAPCHAIN_DEPTH_ENABLED
+		// NOTE: When on the default swapchain FBO, we must ensure depth testing is disabled
+		// otherwise OpenGL can automatically create a swapchain depth attachment;
+		glSetEnabled( GL_DEPTH_TEST, isDefaultTargetActive ? false : enabled );
+	#else
+		glSetEnabled( GL_DEPTH_TEST, enabled );
+	#endif
+	}
+
+	if( dirty || state.depthFunction != stateCurrent.depthFunction )
+	{
+		glDepthFunc( OpenGLDepthFunctions[state.depthFunction] );
+	}
+
+	if( dirty || state.depthWriteMask != stateCurrent.depthWriteMask )
+	{
+		glDepthMask( OpenGLDepthWriteMasks[state.depthWriteMask] );
+	}
+
+	stateCurrent.depth_set_state( state );
+	BITFLAG_UNSET( CoreGfx::state.dirtyFlags, GfxStateDirtyFlag_DEPTH );
+	return true;
+}
+
+
+static bool apply_pipeline_state_stencil( const GfxPipelineDescription &state )
+{
+	OPENGL_CHECK_ERRORS_SCOPE
+
+	GfxPipelineDescription &stateCurrent = CoreGfx::state.pipeline.description;
+	const bool dirty = BITFLAG_IS_SET( CoreGfx::state.dirtyFlags, GfxStateDirtyFlag_STENCIL );
+	if( !dirty && state.equal_stencil( stateCurrent ) ) { return true; }
+
+	// TODO: Implement this
+
+	stateCurrent.stencil_set_state( state );
+	BITFLAG_UNSET( CoreGfx::state.dirtyFlags, GfxStateDirtyFlag_STENCIL );
+	return true;
+}
+
+
+static bool apply_state_scissor( const GfxStateScissor &state )
+{
+	OPENGL_CHECK_ERRORS_SCOPE
+
+	const bool dirty = BITFLAG_IS_SET( CoreGfx::state.dirtyFlags, GfxStateDirtyFlag_SCISSOR );
+	if( !dirty && state == CoreGfx::state.scissor ) { return true; }
+
+	if( state.is_enabled() )
+	{
+		glEnable( GL_SCISSOR_TEST );
+		GLint x = static_cast<GLint>( state.x1 );
+		GLint y = static_cast<GLint>( Window::height - state.y2 ); // Flip y
+		GLint w = static_cast<GLint>( state.x2 - state.x1 );
+		GLint h = static_cast<GLint>( state.y2 - state.y1 );
+		glScissor( x * Window::scale, y * Window::scale, w * Window::scale, h * Window::scale );
+	}
+	else
+	{
+		glDisable( GL_SCISSOR_TEST );
+	}
+
+	CoreGfx::state.scissor = state;
+	BITFLAG_UNSET( CoreGfx::state.dirtyFlags, GfxStateDirtyFlag_SCISSOR );
+	return true;
+}
+
+
+static void render_target_2d_resolve_msaa( GfxRenderTargetResource *const resource )
+{
+	OPENGL_CHECK_ERRORS_SCOPE
+	if( resource == nullptr ) { return; }
+	if( resource->desc.sampleCount <= 1 ) { return; }
+
+	GLbitfield flags = 0;
+	if( resource->desc.colorFormat != GfxColorFormat_NONE ) { flags |= GL_COLOR_BUFFER_BIT; }
+	if( resource->desc.depthFormat != GfxDepthFormat_NONE ) { flags |= GL_DEPTH_BUFFER_BIT; }
+	if( resource->desc.depthFormat == GfxDepthFormat_R24_UINT_G8_UINT ) { flags |= GL_STENCIL_BUFFER_BIT; }
+
+	nglBindFramebuffer( GL_READ_FRAMEBUFFER, resource->fboMS );
+	nglBindFramebuffer( GL_DRAW_FRAMEBUFFER, resource->fboSS );
+	nglBlitFramebuffer( 0, 0, resource->width, resource->height, 0, 0,
+		resource->width, resource->height, flags, GL_NEAREST );
+}
+
+
+static bool bind_targets( GfxRenderTargetResource *const resources[] )
+{
+	OPENGL_CHECK_ERRORS_SCOPE
+	static double_m44 cacheMatrixModel;
+	static double_m44 cacheMatrixView;
+	static double_m44 cacheMatrixPerspective;
+
+	bool dirtySlot[GFX_RENDER_TARGET_SLOT_COUNT] = { false };
+	bool dirtyState = BITFLAG_IS_SET( CoreGfx::state.dirtyFlags, GfxStateDirtyFlag_TARGETS );
+	bool hasCustomRenderTargets = false;
+
+	// FBO State Cache
+	for( int slot = 0; slot < GFX_RENDER_TARGET_SLOT_COUNT; slot++ )
+	{
+		GfxRenderTargetResource *const resource = resources[slot];
+
+		if( resource != nullptr && stateBoundTargetResources[slot] != resource )
 		{
-			buffers[i] = ( RT_TEXTURE_COLOR[i] != 0 ) ? ( GL_COLOR_ATTACHMENT0 + i ) : GL_NONE;
+			render_target_2d_resolve_msaa( stateBoundTargetResources[slot] );
+		}
+
+		hasCustomRenderTargets |= ( resource != nullptr );
+		dirtySlot[slot] |= ( stateBoundTargetResources[slot] != resource );
+		stateBoundTargetResources[slot] = resource;
+
+		if( resource == nullptr )
+		{
+			dirtySlot[slot] |= ( stateBoundColorTextures[slot] != 0 );
+			stateBoundColorTextures[slot] = 0;
+
+			if( slot == 0 )
+			{
+				dirtySlot[slot] |= ( stateBoundDepthTexture != 0 );
+				stateBoundDepthTexture = 0;
+			}
+		}
+		else
+		{
+			const bool hasMultiSample = resource->desc.sampleCount > 1;
+			const bool hasColor = resource->resourceColor != nullptr;
+			hasCustomRenderTargets |= hasColor;
+			const bool hasDepth = resource->resourceDepth != nullptr;
+			hasCustomRenderTargets |= hasDepth;
+
+			// Color
+			if( hasColor )
+			{
+				const GLuint colorTexture = hasMultiSample ?
+					resource->resourceColor->textureMS : resource->resourceColor->textureSS;
+				dirtySlot[slot] |= ( stateBoundColorTextures[slot] != colorTexture );
+				stateBoundColorTextures[slot] = colorTexture;
+
+				const GLuint colorType = hasMultiSample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
+				dirtySlot[slot] |= ( stateBoundColorTypes[slot] != colorType );
+				stateBoundColorTypes[slot] = colorType;
+			}
+			else
+			{
+				dirtySlot[slot] |= ( stateBoundColorTextures[slot] != 0 );
+				stateBoundColorTextures[slot] = 0;
+			}
+
+			// Depth
+			if( slot == 0 )
+			{
+				if( hasDepth )
+				{
+					const GLuint depthTexture = hasMultiSample ?
+						resource->resourceDepth->textureMS : resource->resourceDepth->textureSS;
+					dirtySlot[slot] |= ( stateBoundDepthTexture != depthTexture );
+					stateBoundDepthTexture = depthTexture;
+
+					const GLuint depthType = hasMultiSample ?
+						GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
+					dirtySlot[slot] |= ( stateBoundDepthType != depthType );
+					stateBoundDepthType = depthType;
+				}
+				else
+				{
+					dirtySlot[slot] |= ( stateBoundDepthTexture != 0 );
+					stateBoundDepthTexture = 0;
+				}
+			}
+		}
+
+		dirtyState |= dirtySlot[slot];
+	}
+
+	isDefaultTargetActive = !hasCustomRenderTargets;
+	if( !dirtyState ) { return true; }
+
+#if !SWAPCHAIN_DEPTH_ENABLED
+	if( isDefaultTargetActive )
+	{
+		// NOTE: When returning to the default swapchain and not SWAPCHAIN_DEPTH_ENABLED, we explicitly disable depth
+		GfxPipelineDescription desc = CoreGfx::state.pipeline.description;
+		desc.depthFunction = GfxDepthFunction_NONE;
+		desc.depthWriteMask = GfxDepthWrite_NONE;
+		apply_pipeline_state_depth( desc );
+	}
+#endif
+
+	if( hasCustomRenderTargets )
+	{
+		nglBindFramebuffer( GL_FRAMEBUFFER, stateBoundFBO );
+
+		// Color Textures
+		for( int slot = 0; slot < GFX_RENDER_TARGET_SLOT_COUNT; slot++ )
+		{
+			if( !dirtySlot[slot] ) { continue; }
+
+			const GLenum attachment = GL_COLOR_ATTACHMENT0 + slot;
+			nglFramebufferTexture2D( GL_FRAMEBUFFER, attachment,
+				stateBoundColorTypes[slot], stateBoundColorTextures[slot], 0 );
+		}
+
+		// Depth Texture
+		if( dirtySlot[0] )
+		{
+			nglFramebufferTexture2D( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+				stateBoundDepthType, stateBoundDepthTexture, 0 );
+		}
+
+		GLenum buffers[GFX_RENDER_TARGET_SLOT_COUNT];
+		for( int slot = 0; slot < GFX_RENDER_TARGET_SLOT_COUNT; ++slot )
+		{
+			buffers[slot] = stateBoundColorTextures[slot] != 0 ? GL_COLOR_ATTACHMENT0 + slot : GL_NONE;
 		}
 		nglDrawBuffers( GFX_RENDER_TARGET_SLOT_COUNT, buffers );
 
-		// Check Status
 		if( nglCheckFramebufferStatus( GL_FRAMEBUFFER ) != GL_FRAMEBUFFER_COMPLETE )
 		{
 			ErrorReturnMsg( false, "%s: Failed to create framebuffer", __FUNCTION__ );
 		}
 	}
-	// Else, Unbind FBO
 	else
 	{
 		nglBindFramebuffer( GL_FRAMEBUFFER, 0 );
 	}
 
+	// OpenGL: When binding to a FBO, we need to update the viewport and MVP matrices
+	if( hasCustomRenderTargets )
+	{
+		cacheMatrixModel = Gfx::get_matrix_model();
+		cacheMatrixView = Gfx::get_matrix_view();
+		cacheMatrixPerspective = Gfx::get_matrix_perspective();
+
+		if( resources[0] != nullptr )
+		{
+			const u16 width = resources[0]->width;
+			const u16 height = resources[0]->height;
+			Gfx::set_matrix_model( double_m44_build_identity() );
+			Gfx::set_matrix_view( double_m44_build_identity() );
+			Gfx::set_matrix_perspective( double_m44_build_orthographic( 0.0, width, 0.0, height, 0.0, 1.0 ) );
+			Gfx::viewport_set_size( width, height );
+		}
+	}
+	else
+	{
+		Gfx::set_matrix_mvp( cacheMatrixModel, cacheMatrixView, cacheMatrixPerspective );
+		Gfx::viewport_set_size( Window::width * Window::scale, Window::height * Window::scale );
+	}
+
+	BITFLAG_UNSET( CoreGfx::state.dirtyFlags, GfxStateDirtyFlag_TARGETS );
 	return true;
 }
 
+
+static void render_targets_reset()
+{
+	OPENGL_CHECK_ERRORS_SCOPE
+
+	GfxRenderTargetResource *targets[GFX_RENDER_TARGET_SLOT_COUNT] = { nullptr };
+	bind_targets( targets );
+}
+
+
+static void render_pass_validate()
+{
+	OPENGL_CHECK_ERRORS_SCOPE
+
+	if( CoreGfx::state.renderPassActive ) { return; }
+	if( isDefaultTargetActive ) { return; }
+	render_targets_reset();
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// GFX System
 
 bool CoreGfx::api_init()
 {
-	// Initialize OpenGL Context
-	if( !opengl_init() )
-	{
-		ErrorReturnMsg( false, "%s: Failed to init OpenGL", __FUNCTION__ );
-	}
+	const u16 w = Window::width;
+	const u16 h = Window::height;
+	const u16 f = Window::fullscreen;
 
-#if DEPTH_BUFFER_ENABLED
-	glEnable( GL_DEPTH_TEST );
-	glDepthMask( true );
-#endif
+	ErrorReturnIf( !opengl_init(), false, "%s: Failed to init OpenGL", __FUNCTION__ );
+	OPENGL_CHECK_ERRORS_SCOPE
+	ErrorReturnIf( !api_swapchain_init( w, h, f ), false, "%s: Failed to create swap chain", __FUNCTION__ );
+	ErrorReturnIf( !resources_init(), false, "%s: Failed to create gfx resources", __FUNCTION__ );
 
-	// Resources
-	resources_init();
-
-	// Uniform Caches
 	uniformBufferUniformBlockIndices.init();
-	texture2DUniformLocations.init();
 
-	// Render Targets
-	nglGenFramebuffers( 1, &RT_FBO );
-	for( int i = 0; i < GFX_RENDER_TARGET_SLOT_COUNT; i++ ) { RT_TEXTURE_COLOR[i] = 0; }
-	RT_TEXTURE_DEPTH = 0;
+	uniformLocationsTexture.init();
+
+	nglGenVertexArrays( 1, &drawCallVAOEmpty );
+
+	nglGenFramebuffers( 1, &stateBoundFBO );
 
 	return true;
 }
@@ -539,28 +918,51 @@ bool CoreGfx::api_init()
 
 bool CoreGfx::api_free()
 {
-	// Resources
-	resources_free();
+	nglDeleteFramebuffers( 1, &stateBoundFBO );
+	stateBoundFBO = 0;
 
-	// Uniform Caches
+	nglDeleteVertexArrays( 1, &drawCallVAOEmpty );
+	drawCallVAOEmpty = 0U;
+
+	uniformLocationsTexture.free();
 	uniformBufferUniformBlockIndices.free();
-	texture2DUniformLocations.free();
+
+	resources_free();
+	api_swapchain_free();
+	opengl_free();
+	resources_free();
 
 	return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Frame
 
 void CoreGfx::api_frame_begin()
 {
-	// OpenGL does nothing
+	OPENGL_CHECK_ERRORS_SCOPE
+
+	bind_shader( CoreGfx::shaders[Shader::SHADER_DEFAULT].resource );
+
+	render_targets_reset();
+
+	CoreGfx::state.scissor = GfxStateScissor { };
+	BITFLAG_SET( CoreGfx::state.dirtyFlags, GfxStateDirtyFlag_SCISSOR );
+
+	api_sampler_set_state( GfxStateSampler { } );
+
+	BITFLAG_SET( CoreGfx::state.dirtyFlags, GfxStateDirtyFlag_RASTER );
+	BITFLAG_SET( CoreGfx::state.dirtyFlags, GfxStateDirtyFlag_BLEND );
+	BITFLAG_SET( CoreGfx::state.dirtyFlags, GfxStateDirtyFlag_DEPTH );
+	BITFLAG_SET( CoreGfx::state.dirtyFlags, GfxStateDirtyFlag_STENCIL );
 }
 
 
 void CoreGfx::api_frame_end()
 {
+	OPENGL_CHECK_ERRORS_SCOPE
+
 #if COMPILE_DEBUG
-	// Check OpenGL errors
 	for( ;; )
 	{
 		int error = glGetError();
@@ -569,202 +971,204 @@ void CoreGfx::api_frame_end()
 	}
 #endif
 
-	// Swap Buffers
 	const bool swap = opengl_swap();
 	Assert( swap );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Clear
 
-bool CoreGfx::api_swapchain_init( const u16 width, const u16 height, const bool fullscreen )
+void CoreGfx::api_clear_color( const Color color )
 {
-	PROFILE_GFX( Gfx::stats.gpuMemorySwapchain =
-		GFX_SIZE_IMAGE_COLOR_BYTES( width, height, 1, GfxColorFormat_R8G8B8A8_FLOAT ) * 2 );
+	OPENGL_CHECK_ERRORS_SCOPE
+	static constexpr float INV_255 = 1.0f / 255.0f;
+	glClearColor( color.r * INV_255, color.g * INV_255, color.b * INV_255, color.a * INV_255 );
+	glClear( GL_COLOR_BUFFER_BIT );
+}
 
-#if DEPTH_BUFFER_ENABLED
+
+void CoreGfx::api_clear_depth( const float depth )
+{
+	OPENGL_CHECK_ERRORS_SCOPE
+	glDepthMask( true );
+	glClear( GL_DEPTH_BUFFER_BIT );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Render State
+
+bool CoreGfx::api_swapchain_init( const u16 width, const u16 height, const float dpi )
+{
+	OPENGL_CHECK_ERRORS_SCOPE
+
+	CoreGfx::state.swapchain.width = width;
+	CoreGfx::state.swapchain.height = height;
+	CoreGfx::state.swapchain.dpi = dpi;
+
+#if SWAPCHAIN_DEPTH_ENABLED
 	PROFILE_GFX( Gfx::stats.gpuMemorySwapchain +=
-		GFX_SIZE_IMAGE_DEPTH_BYTES( width, height, 1, DEPTH_BUFFER_FORMAT ) * 2 );
+		GFX_SIZE_IMAGE_DEPTH_BYTES( width, height, 1, SWAPCHAIN_DEPTH_FORMAT ) * 2 );
 #endif
 
+	PROFILE_GFX( Gfx::stats.gpuMemorySwapchain +=
+		GFX_SIZE_IMAGE_COLOR_BYTES( width, height, 1, GfxColorFormat_R8G8B8A8_FLOAT ) * 2 );
+
+	// NOTE:
+	// Since we use do not explicitly create any swapchain color/depth attachments, OpenGL falls back to the
+	// system supplied swapchain for the window. Therefore, we do not have to do anything resource-wise here.
+
+	CoreGfx::api_viewport_set_size( width, height, dpi );
 	return true;
 }
 
 
 bool CoreGfx::api_swapchain_free()
 {
-	return true;
-}
+	OPENGL_CHECK_ERRORS_SCOPE
 
+	PROFILE_GFX( Gfx::stats.gpuMemorySwapchain -= GFX_SIZE_IMAGE_COLOR_BYTES( CoreGfx::state.swapchain.width,
+		CoreGfx::state.swapchain.height, 1, GfxColorFormat_R8G8B8A8_FLOAT ) * 2 );
 
-bool CoreGfx::api_swapchain_resize( u16 width, u16 height, bool fullscreen )
-{
-	PROFILE_GFX( Gfx::stats.gpuMemorySwapchain =
-		GFX_SIZE_IMAGE_COLOR_BYTES( width, height, 1, GfxColorFormat_R8G8B8A8_FLOAT ) * 2 );
-
-#if DEPTH_BUFFER_ENABLED
-	PROFILE_GFX( Gfx::stats.gpuMemorySwapchain +=
-		GFX_SIZE_IMAGE_DEPTH_BYTES( width, height, 1, DEPTH_BUFFER_FORMAT ) * 2 );
+#if SWAPCHAIN_DEPTH_ENABLED
+	PROFILE_GFX( Gfx::stats.gpuMemorySwapchain -= GFX_SIZE_IMAGE_DEPTH_BYTES( CoreGfx::state.swapchain.width,
+		CoreGfx::state.swapchain.height, 1, SWAPCHAIN_DEPTH_FORMAT ) * 2 );
 #endif
 
-	opengl_update();
+	// NOTE:
+	// Since we use do not explicitly create any swapchain color/depth attachments, OpenGL falls back to the
+	// system supplied swapchain for the window. Therefore, we do not have to do anything resource-wise here.
+
 	return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool CoreGfx::api_viewport_init( const u16 width, const u16 height, const bool fullscreen )
+bool CoreGfx::api_swapchain_set_size( const u16 width, const u16 height, const float dpi )
 {
-	GfxViewport &viewport = CoreGfx::viewport;
-	viewport.width = width;
-	viewport.height = height;
-	viewport.fullscreen = fullscreen;
+	OPENGL_CHECK_ERRORS_SCOPE
 
-	glViewport( 0, 0, width, height );
+	const u16 widthPrevious = CoreGfx::state.swapchain.width;
+	const u16 heightPrevious = CoreGfx::state.swapchain.height;
+	const float dpiPrevious = CoreGfx::state.swapchain.dpi;
+
+	CoreGfx::state.swapchain.width = width;
+	CoreGfx::state.swapchain.height = height;
+	CoreGfx::state.swapchain.dpi = dpi;
+
+	PROFILE_GFX( Gfx::stats.gpuMemorySwapchain -=
+		GFX_SIZE_IMAGE_COLOR_BYTES( widthPrevious, heightPrevious, 1, GfxColorFormat_R8G8B8A8_FLOAT ) * 2 );
+	PROFILE_GFX( Gfx::stats.gpuMemorySwapchain +=
+		GFX_SIZE_IMAGE_COLOR_BYTES( width, height, 1, GfxColorFormat_R8G8B8A8_FLOAT ) * 2 );
+
+#if SWAPCHAIN_DEPTH_ENABLED
+	PROFILE_GFX( Gfx::stats.gpuMemorySwapchain -=
+		GFX_SIZE_IMAGE_DEPTH_BYTES( widthPrevious, heightPrevious, 1, SWAPCHAIN_DEPTH_FORMAT ) * 2 );
+	PROFILE_GFX( Gfx::stats.gpuMemorySwapchain +=
+		GFX_SIZE_IMAGE_DEPTH_BYTES( width, height, 1, SWAPCHAIN_DEPTH_FORMAT ) * 2 );
+#endif
+
+	// NOTE:
+	// Since we use do not explicitly create any swapchain color/depth attachments, OpenGL falls back to the
+	// system supplied swapchain for the window. Therefore, resizing is automatically handled when the window
+	// resizes so we do not have to do anything resource-wise here.
+
+	opengl_update();
+	render_targets_reset();
 	return true;
+}
+
+
+bool CoreGfx::api_viewport_init( const u16 width, const u16 height, const float dpi )
+{
+	OPENGL_CHECK_ERRORS_SCOPE
+	return api_viewport_set_size( width, height, dpi );
 }
 
 
 bool CoreGfx::api_viewport_free()
 {
-	// OpenGL does nothing
+	OPENGL_CHECK_ERRORS_SCOPE
 	return true;
 }
 
 
-bool CoreGfx::api_viewport_resize( const u16 width, const u16 height, const bool fullscreen )
+bool CoreGfx::api_viewport_set_size( const u16 width, const u16 height, const float dpi )
 {
-	// Pass through to api_viewport_init (TODO: Do something else?)
-	return api_viewport_init( width, height, fullscreen );
-}
+	OPENGL_CHECK_ERRORS_SCOPE
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	CoreGfx::state.viewport.width = width;
+	CoreGfx::state.viewport.height = height;
+	CoreGfx::state.viewport.dpi = dpi;
 
-bool CoreGfx::api_set_raster_state( const GfxRasterState &state )
-{
-	// Set Cull Mode
-	glFrontFace( GL_CW );
-	if( state.cullMode ) { glEnable( GL_CULL_FACE ); } else { glDisable( GL_CULL_FACE ); }
-	glCullFace( OpenGLCullModes[state.cullMode] );
-
-	// Set Fill Mode
-	// TODO: Evaluate this, only GL_FRONT_AND_BACK appears to work
-	// glPolygonMode( OpenGLCullModes[state.cullMode], OpenGLFillModes[state.fillMode] );
-	glPolygonMode( GL_FRONT_AND_BACK, OpenGLFillModes[state.fillMode] );
-
-	// Set Scissor
-	if( state.scissor )
-	{
-		glEnable( GL_SCISSOR_TEST );
-		GLint x = static_cast<GLint>( state.scissorX1 );
-		GLint y = static_cast<GLint>( Window::height - state.scissorY2 ); // Flip y
-		GLint width = static_cast<GLint>( state.scissorX2 - state.scissorX1 );
-		GLint height = static_cast<GLint>( state.scissorY2 - state.scissorY1 );
-		glScissor( x * Window::scale, y * Window::scale, width * Window::scale, height * Window::scale );
-	}
-	else
-	{
-		glDisable( GL_SCISSOR_TEST );
-	}
+	glViewport( 0, 0, width, height );
 
 	return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool CoreGfx::api_set_sampler_state( const GfxSamplerState &state )
+bool CoreGfx::api_sampler_set_state( const GfxStateSampler &state )
 {
-	// Filter Mode
+	OPENGL_CHECK_ERRORS_SCOPE
+
 	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,
 		OpenGLFilteringModes[state.filterMode][0] );
 	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
-		OpenGLFilteringModes[state.filterMode][FILTER_MODE_MIPMAPPING] );
+		OpenGLFilteringModes[state.filterMode][isFilterModeMipmapping] );
 
-	// UV Wrap Mode
 	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,
 		OpenGLUVWrapModes[state.wrapMode] );
 	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,
 		OpenGLUVWrapModes[state.wrapMode] );
 
-	return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-bool CoreGfx::api_set_blend_state( const GfxBlendState &state )
-{
-	// Set Blend Enable
-	if( state.blendEnable )
-	{
-		glEnable( GL_BLEND );
-	}
-	else
-	{
-		glDisable( GL_BLEND );
-	}
-
-	// Set Color Write Mask
-	GLboolean r = static_cast<bool>( state.colorWriteMask & GfxColorWriteFlag_RED );
-	GLboolean g = static_cast<bool>( state.colorWriteMask & GfxColorWriteFlag_GREEN );
-	GLboolean b = static_cast<bool>( state.colorWriteMask & GfxColorWriteFlag_BLUE );
-	GLboolean a = static_cast<bool>( state.colorWriteMask & GfxColorWriteFlag_ALPHA );
-	glColorMask( r, g, b, a );
-
-	// Blend Functions
-	nglBlendFuncSeparate( OpenGLBlendFactors[state.srcFactorColor], OpenGLBlendFactors[state.dstFactorColor],
-		OpenGLBlendFactors[state.srcFactorAlpha], OpenGLBlendFactors[state.dstFactorAlpha] );
-
-	// Blend Operations
-	nglBlendEquationSeparate( OpenGLBlendOperations[state.blendOperationColor],
-		OpenGLBlendOperations[state.blendOperationAlpha] );
-
-	return true;
-}
-
-void CoreGfx::api_clear_color( const Color color )
-{
-	// Compiler likely does this regardless, but mul instruction is faster than div
-	static constexpr float INV_255 = 1.0f / 255.0f;
-	glClearColor( color.r * INV_255, color.g * INV_255, color.b * INV_255, color.a * INV_255 );
-	glClear( GL_COLOR_BUFFER_BIT );
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-bool CoreGfx::api_set_depth_state( const GfxDepthState &state )
-{
-	// Set Depth Test Enable
-	if( state.depthTestMode != GfxDepthTestMode_NONE )
-	{
-		glEnable( GL_DEPTH_TEST );
-	}
-	else
-	{
-		glDisable( GL_DEPTH_TEST );
-	}
-
-	// Set Depth Test Mode
-	glDepthFunc( OpenGLDepthTestModes[state.depthTestMode] );
-
-	// Set Depth Write Mask
-	glDepthMask( OpenGLDepthWriteMasks[state.depthWriteMask] );
-
+	CoreGfx::state.sampler = state;
 	return true;
 }
 
 
-void CoreGfx::api_clear_depth( const float depth )
+bool CoreGfx::api_scissor_set_state( const GfxStateScissor &state )
 {
-	glDepthMask( true );
-	glClear( GL_DEPTH_BUFFER_BIT );
+	OPENGL_CHECK_ERRORS_SCOPE
+	return apply_state_scissor( state );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Pipeline State
+
+bool CoreGfx::api_set_raster( const GfxPipelineDescription &description )
+{
+	OPENGL_CHECK_ERRORS_SCOPE
+	return apply_pipeline_state_raster( description );
+}
+
+
+bool CoreGfx::api_set_blend( const GfxPipelineDescription &description )
+{
+	OPENGL_CHECK_ERRORS_SCOPE
+	return apply_pipeline_state_blend( description );
+}
+
+
+bool CoreGfx::api_set_depth( const GfxPipelineDescription &description )
+{
+	OPENGL_CHECK_ERRORS_SCOPE
+	return apply_pipeline_state_depth( description );
+}
+
+
+bool CoreGfx::api_set_stencil( const GfxPipelineDescription &description )
+{
+	OPENGL_CHECK_ERRORS_SCOPE
+	return apply_pipeline_state_stencil( description );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Shader
 
 void GfxShaderResource::release( GfxShaderResource *&resource )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	if( resource == nullptr || resource->id == GFX_RESOURCE_ID_NULL ) { return; }
 
-	if( resource->program != GL_NULL ) { nglDeleteProgram( resource->program ); }
+	if( resource->program != 0 ) { nglDeleteProgram( resource->program ); }
 
 	shaderResources.remove( resource->id );
 	resource = nullptr;
@@ -773,21 +1177,19 @@ void GfxShaderResource::release( GfxShaderResource *&resource )
 
 bool CoreGfx::api_shader_init( GfxShaderResource *&resource, const u32 shaderID, const struct ShaderEntry &shaderEntry )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource == nullptr );
 
 	char info[1024];
 	int status;
 
-	// Register Shader
 	resource = shaderResources.make_new();
 	resource->shaderID = shaderID;
 
-	// Create Shaders
 	GLuint shaderVertex = nglCreateShader( GL_VERTEX_SHADER );
 	GLuint shaderFragment = nglCreateShader( GL_FRAGMENT_SHADER );
 	GLuint shaderCompute; // TODO
 
-	// Source Shaders
 	const byte *codeVertex = Assets::binary.data + shaderEntry.offsetVertex;
 	nglShaderSource( shaderVertex, 1, reinterpret_cast<const GLchar **>( &codeVertex ),
 		reinterpret_cast<const GLint *>( &shaderEntry.sizeVertex ) );
@@ -796,7 +1198,6 @@ bool CoreGfx::api_shader_init( GfxShaderResource *&resource, const u32 shaderID,
 	nglShaderSource( shaderFragment, 1, reinterpret_cast<const GLchar **>( &codeFragment ),
 		reinterpret_cast<const GLint *>( &shaderEntry.sizeFragment ) );
 
-	// Compile Vertex Shader
 	nglCompileShader( shaderVertex );
 
 	if( nglGetShaderiv( shaderVertex, GL_COMPILE_STATUS, &status ), !status )
@@ -824,17 +1225,14 @@ bool CoreGfx::api_shader_init( GfxShaderResource *&resource, const u32 shaderID,
 	#endif
 	}
 
-	// Create Program
 	resource->program = nglCreateProgram();
 	nglAttachShader( resource->program, shaderVertex );
 	nglAttachShader( resource->program, shaderFragment );
 	// TODO: compute shaders (must upgrade to Opengl 4.5 & deprecate it on macOS)
 
-	// Input Layouts
-	opengl_input_layout_init( resource->program,
-		CoreGfx::shaderEntries[shaderID].vertexFormat, CoreGfx::shaderEntries[shaderID].instanceFormat );
+	opengl_input_layout_init( resource->program, CoreGfx::shaderEntries[shaderID].vertexFormat,
+		CoreGfx::shaderEntries[shaderID].instanceFormat );
 
-	// Link Shader Program
 	nglLinkProgram( resource->program );
 
 	if( nglGetProgramiv( resource->program, GL_LINK_STATUS, &status ), !status )
@@ -848,7 +1246,6 @@ bool CoreGfx::api_shader_init( GfxShaderResource *&resource, const u32 shaderID,
 	#endif
 	}
 
-	// Delete Shaders
 	nglDeleteShader( shaderVertex );
 	nglDeleteShader( shaderFragment );
 
@@ -865,6 +1262,7 @@ bool CoreGfx::api_shader_init( GfxShaderResource *&resource, const u32 shaderID,
 
 bool CoreGfx::api_shader_free( GfxShaderResource *&resource )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
 	PROFILE_GFX( Gfx::stats.gpuMemoryShaders -= resource->sizeVS );
@@ -876,35 +1274,16 @@ bool CoreGfx::api_shader_free( GfxShaderResource *&resource )
 	return true;
 }
 
-
-bool CoreGfx::api_shader_bind( GfxShaderResource *&resource )
-{
-	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
-
-	boundShaderResource = resource;
-	nglUseProgram( resource->program );
-	CHECK_ERROR( "Failed to bind shader program: %u", resource->shaderID );
-
-	PROFILE_GFX( Gfx::stats.frame.shaderBinds++ );
-	return true;
-}
-
-
-bool CoreGfx::api_shader_dispatch( GfxShaderResource *&resource, const u32 x, const u32 y, const u32 z )
-{
-	// TODO: Implement this
-	GRAPHICS_API_IMPLEMENTATION_WARNING
-	return true;
-}
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Vertex Buffer
 
 void GfxVertexBufferResource::release( GfxVertexBufferResource *&resource )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	if( resource == nullptr || resource->id == GFX_RESOURCE_ID_NULL ) { return; }
 
-	if( resource->vao != GL_NULL ) { nglDeleteVertexArrays( 1, &resource->vao ); }
-	if( resource->vbo != GL_NULL ) { nglDeleteBuffers( 1, &resource->vbo ); }
+	if( resource->vao != 0 ) { nglDeleteVertexArrays( 1, &resource->vao ); }
+	if( resource->vbo != 0 ) { nglDeleteBuffers( 1, &resource->vbo ); }
 
 	vertexBufferResources.remove( resource->id );
 	resource = nullptr;
@@ -914,28 +1293,23 @@ void GfxVertexBufferResource::release( GfxVertexBufferResource *&resource )
 bool CoreGfx::api_vertex_buffer_init_dynamic( GfxVertexBufferResource *&resource, const u32 vertexFormatID,
 	const GfxCPUAccessMode accessMode, const u32 size, const u32 stride )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource == nullptr );
 	Assert( accessMode == GfxCPUAccessMode_WRITE_DISCARD || accessMode == GfxCPUAccessMode_WRITE_NO_OVERWRITE );
 
-	// Register VertexBuffer
 	resource = vertexBufferResources.make_new();
 	resource->stride = stride;
 	resource->accessMode = accessMode;
 	resource->vertexFormat = vertexFormatID;
 	resource->size = size;
 
-	// Generate Buffer VAO
 	nglGenVertexArrays( 1, &resource->vao );
-
-	// Generate Buffer VBO
 	nglGenBuffers( 1, &resource->vbo );
 
-	// Setup Vertex Buffer
 	nglBindBuffer( GL_ARRAY_BUFFER, resource->vbo );
 	nglBufferData( GL_ARRAY_BUFFER, size, nullptr, GL_STATIC_DRAW ); // TODO: GL_DYNAMIC_DRAW
 
-	// Error Checking
-	if( GL_ERROR() )
+	if( OPENGL_ERROR() )
 	{
 		GfxVertexBufferResource::release( resource );
 		ErrorReturnMsg( false, "%s: failed to init vertex buffer (%u)", __FUNCTION__, glGetError() );
@@ -950,15 +1324,17 @@ bool CoreGfx::api_vertex_buffer_init_static( GfxVertexBufferResource *&resource,
 	const GfxCPUAccessMode accessMode, const void *const data,
 	const u32 size, const u32 stride )
 {
-	// TODO
-	// ...
-
+	OPENGL_CHECK_ERRORS_SCOPE
+	Assert( resource == nullptr );
+	Assert( accessMode == GfxCPUAccessMode_WRITE_DISCARD || accessMode == GfxCPUAccessMode_WRITE_NO_OVERWRITE );
+	GRAPHICS_API_IMPLEMENTATION_WARNING // TODO: Implement this
 	return true;
 }
 
 
 bool CoreGfx::api_vertex_buffer_free( GfxVertexBufferResource *&resource )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
 	PROFILE_GFX( Gfx::stats.gpuMemoryVertexBuffers -= resource->size );
@@ -971,11 +1347,13 @@ bool CoreGfx::api_vertex_buffer_free( GfxVertexBufferResource *&resource )
 
 void CoreGfx::api_vertex_buffer_write_begin( GfxVertexBufferResource *const resource )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
+
 	if( resource->mapped == true ) { return; }
 
 	nglBindBuffer( GL_ARRAY_BUFFER, resource->vbo );
-	CHECK_ERROR( "Failed to bind vertex buffer for write begin (resource: %u)", resource->id )
+	OPENGL_CHECK_ERROR( "Failed to bind vertex buffer for write begin (resource: %u)", resource->id )
 
 	GLbitfield access = 0;
 	switch( resource->accessMode )
@@ -989,14 +1367,13 @@ void CoreGfx::api_vertex_buffer_write_begin( GfxVertexBufferResource *const reso
 		break;
 
 		default:
-		case GfxCPUAccessMode_WRITE_NO_OVERWRITE:
+		case GfxCPUAccessMode_WRITE_NO_OVERWRITE: // TODO: Implement this
 			access = GL_MAP_WRITE_BIT;
-			//Error( "Not supported yet" ); // TODO: Support this
 		break;
 	}
 
 	resource->data = reinterpret_cast<byte *>( nglMapBufferRange( GL_ARRAY_BUFFER, 0, resource->size, access ) );
-	CHECK_ERROR( "Failed to map vertex buffer for write begin (resource: %u)", resource->id )
+	OPENGL_CHECK_ERROR( "Failed to map vertex buffer for write begin (resource: %u)", resource->id )
 
 	resource->mapped = true;
 	resource->current = 0;
@@ -1006,14 +1383,16 @@ void CoreGfx::api_vertex_buffer_write_begin( GfxVertexBufferResource *const reso
 
 void CoreGfx::api_vertex_buffer_write_end( GfxVertexBufferResource *const resource )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
+
 	if( resource->mapped == false ) { return; }
 
 	nglBindBuffer( GL_ARRAY_BUFFER, resource->vbo );
-	CHECK_ERROR( "Failed to bind vertex buffer for write end (resource: %u)", resource->id )
+	OPENGL_CHECK_ERROR( "Failed to bind vertex buffer for write end (resource: %u)", resource->id )
 
 	nglUnmapBuffer( GL_ARRAY_BUFFER );
-	CHECK_ERROR( "Failed to unmap vertex buffer for write end (resource: %u)", resource->id )
+	OPENGL_CHECK_ERROR( "Failed to unmap vertex buffer for write end (resource: %u)", resource->id )
 
 	resource->mapped = false;
 }
@@ -1021,6 +1400,7 @@ void CoreGfx::api_vertex_buffer_write_end( GfxVertexBufferResource *const resour
 
 bool CoreGfx::api_vertex_buffer_write( GfxVertexBufferResource *const resource, const void *const data, const u32 size )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	Assert( data != nullptr );
 
@@ -1034,49 +1414,48 @@ bool CoreGfx::api_vertex_buffer_write( GfxVertexBufferResource *const resource, 
 
 u32 CoreGfx::api_vertex_buffer_current( const GfxVertexBufferResource *const resource )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
+
 	return resource->current;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Instance Buffer
 
 void GfxInstanceBufferResource::release( GfxInstanceBufferResource *&resource )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	if( resource == nullptr || resource->id == GFX_RESOURCE_ID_NULL ) { return; }
 
-	if( resource->vao != GL_NULL ) { nglDeleteVertexArrays( 1, &resource->vao ); }
-	if( resource->vbo != GL_NULL ) { nglDeleteBuffers( 1, &resource->vbo ); }
+	if( resource->vao != 0 ) { nglDeleteVertexArrays( 1, &resource->vao ); }
+	if( resource->vbo != 0 ) { nglDeleteBuffers( 1, &resource->vbo ); }
 
 	instanceBufferResources.remove( resource->id );
 	resource = nullptr;
 }
 
 
-bool CoreGfx::api_instance_buffer_init_dynamic( GfxInstanceBufferResource *&resource, const u32 instanceFormatID,
-	const GfxCPUAccessMode accessMode, const u32 size, const u32 stride )
+bool CoreGfx::api_instance_buffer_init_dynamic( GfxInstanceBufferResource *&resource,
+	const u32 instanceFormatID, const GfxCPUAccessMode accessMode, const u32 size, const u32 stride )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource == nullptr );
 	Assert( accessMode == GfxCPUAccessMode_WRITE_DISCARD || accessMode == GfxCPUAccessMode_WRITE_NO_OVERWRITE );
 
-	// Register InstanceBuffer
 	resource = instanceBufferResources.make_new();
 	resource->stride = stride;
 	resource->accessMode = accessMode;
 	resource->instanceFormat = instanceFormatID;
 	resource->size = size;
 
-	// Generate Buffer VAO
 	nglGenVertexArrays( 1, &resource->vao );
-
-	// Generate Buffer VBO
 	nglGenBuffers( 1, &resource->vbo );
 
-	// Setup Instance Buffer
 	nglBindBuffer( GL_ARRAY_BUFFER, resource->vbo );
 	nglBufferData( GL_ARRAY_BUFFER, size, nullptr, GL_STATIC_DRAW ); // TODO: GL_DYNAMIC_DRAW
 
-	// Error Checking
-	if( GL_ERROR() )
+	if( OPENGL_ERROR() )
 	{
 		GfxInstanceBufferResource::release( resource );
 		ErrorReturnMsg( false, "%s: failed to init instance buffer (%u)", __FUNCTION__, glGetError() );
@@ -1087,18 +1466,21 @@ bool CoreGfx::api_instance_buffer_init_dynamic( GfxInstanceBufferResource *&reso
 }
 
 
-bool CoreGfx::api_instance_buffer_init_static( GfxInstanceBufferResource *&resource, const u32 instanceFormatID,
-	const GfxCPUAccessMode accessMode, const void *const data,
+bool CoreGfx::api_instance_buffer_init_static( GfxInstanceBufferResource *&resource,
+	const u32 instanceFormatID, const GfxCPUAccessMode accessMode, const void *const data,
 	const u32 size, const u32 stride )
 {
-	// TODO: Implement this
-	GRAPHICS_API_IMPLEMENTATION_WARNING
+	OPENGL_CHECK_ERRORS_SCOPE
+	Assert( resource == nullptr );
+	Assert( accessMode == GfxCPUAccessMode_WRITE_DISCARD || accessMode == GfxCPUAccessMode_WRITE_NO_OVERWRITE );
+	GRAPHICS_API_IMPLEMENTATION_WARNING // TODO: Implement this
 	return true;
 }
 
 
 bool CoreGfx::api_instance_buffer_free( GfxInstanceBufferResource *&resource )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
 	PROFILE_GFX( Gfx::stats.gpuMemoryInstanceBuffers -= resource->size );
@@ -1111,11 +1493,13 @@ bool CoreGfx::api_instance_buffer_free( GfxInstanceBufferResource *&resource )
 
 void CoreGfx::api_instance_buffer_write_begin( GfxInstanceBufferResource *const resource )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
+
 	if( resource->mapped == true ) { return; }
 
 	nglBindBuffer( GL_ARRAY_BUFFER, resource->vbo );
-	CHECK_ERROR( "Failed to bind instance buffer for write begin (resource: %u)", resource->id )
+	OPENGL_CHECK_ERROR( "Failed to bind instance buffer for write begin (resource: %u)", resource->id )
 
 	GLbitfield access = 0;
 	switch( resource->accessMode )
@@ -1129,14 +1513,13 @@ void CoreGfx::api_instance_buffer_write_begin( GfxInstanceBufferResource *const 
 		break;
 
 		default:
-		case GfxCPUAccessMode_WRITE_NO_OVERWRITE:
+		case GfxCPUAccessMode_WRITE_NO_OVERWRITE: // TODO: Implement this
 			access = GL_MAP_WRITE_BIT;
-			//Error( "Not supported yet" ); // TODO: Support this
 		break;
 	}
 
 	resource->data = reinterpret_cast<byte *>( nglMapBufferRange( GL_ARRAY_BUFFER, 0, resource->size, access ) );
-	CHECK_ERROR( "Failed to map instance buffer for write begin (resource: %u)", resource->id )
+	OPENGL_CHECK_ERROR( "Failed to map instance buffer for write begin (resource: %u)", resource->id )
 
 	resource->mapped = true;
 	resource->current = 0;
@@ -1146,21 +1529,25 @@ void CoreGfx::api_instance_buffer_write_begin( GfxInstanceBufferResource *const 
 
 void CoreGfx::api_instance_buffer_write_end( GfxInstanceBufferResource *const resource )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
+
 	if( resource->mapped == false ) { return; }
 
 	nglBindBuffer( GL_ARRAY_BUFFER, resource->vbo );
-	CHECK_ERROR( "Failed to bind instance buffer for write end (resource: %u)", resource->id )
+	OPENGL_CHECK_ERROR( "Failed to bind instance buffer for write end (resource: %u)", resource->id )
 
 	nglUnmapBuffer( GL_ARRAY_BUFFER );
-	CHECK_ERROR( "Failed to unmap instance buffer for write end (resource: %u)", resource->id )
+	OPENGL_CHECK_ERROR( "Failed to unmap instance buffer for write end (resource: %u)", resource->id )
 
 	resource->mapped = false;
 }
 
 
-bool CoreGfx::api_instance_buffer_write( GfxInstanceBufferResource *const resource, const void *const data, const u32 size )
+bool CoreGfx::api_instance_buffer_write( GfxInstanceBufferResource *const resource,
+	const void *const data, const u32 size )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	Assert( data != nullptr );
 
@@ -1174,18 +1561,21 @@ bool CoreGfx::api_instance_buffer_write( GfxInstanceBufferResource *const resour
 
 u32 CoreGfx::api_instance_buffer_current( const GfxInstanceBufferResource *const resource )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
+
 	return resource->current;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+// Index Buffer
 
 void GfxIndexBufferResource::release( GfxIndexBufferResource *&resource )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	if( resource == nullptr || resource->id == GFX_RESOURCE_ID_NULL ) { return; }
 
-	if( resource->ebo != GL_NULL ) { nglDeleteBuffers( 1, &resource->ebo ); }
+	if( resource->ebo != 0 ) { nglDeleteBuffers( 1, &resource->ebo ); }
 
 	indexBufferResources.remove( resource->id );
 	resource = nullptr;
@@ -1196,28 +1586,22 @@ bool CoreGfx::api_index_buffer_init( GfxIndexBufferResource *&resource, void *da
 	const double indToVertRatio,
 	const GfxIndexBufferFormat format, const GfxCPUAccessMode accessMode )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource == nullptr );
 	Assert( format != GfxIndexBufferFormat_NONE );
 	Assert( format < GFXINDEXBUFFERFORMAT_COUNT );
 
-	// Register IndexBuffer
 	resource = indexBufferResources.make_new();
 	resource->accessMode = accessMode;
 	resource->format = format;
 	resource->indicesToVerticesRatio = indToVertRatio;
 	resource->size = size;
 
-	// Generate Buffer
 	nglGenBuffers( 1, &resource->ebo );
-
-	// Bind Buffer
 	nglBindBuffer( GL_ELEMENT_ARRAY_BUFFER, resource->ebo );
-
-	// Write Index Data
 	nglBufferData( GL_ELEMENT_ARRAY_BUFFER, size, data, GL_STATIC_DRAW );
 
-	// Error Checking
-	if( GL_ERROR() )
+	if( OPENGL_ERROR() )
 	{
 		GfxIndexBufferResource::release( resource );
 		ErrorReturnMsg( false, "%s: failed to init index buffer (%u)", __FUNCTION__, glGetError() );
@@ -1230,6 +1614,7 @@ bool CoreGfx::api_index_buffer_init( GfxIndexBufferResource *&resource, void *da
 
 bool CoreGfx::api_index_buffer_free( GfxIndexBufferResource *&resource )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr );
 
 	PROFILE_GFX( Gfx::stats.gpuMemoryIndexBuffers -= resource->size );
@@ -1240,33 +1625,34 @@ bool CoreGfx::api_index_buffer_free( GfxIndexBufferResource *&resource )
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Uniform Buffer
 
 void GfxUniformBufferResource::release( GfxUniformBufferResource *&resource )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	if( resource == nullptr || resource->id == GFX_RESOURCE_ID_NULL ) { return; }
 
-	if( resource->ubo != GL_NULL ) { nglDeleteBuffers( 1, &resource->ubo ); }
+	if( resource->ubo != 0 ) { nglDeleteBuffers( 1, &resource->ubo ); }
 
 	uniformBufferResources.remove( resource->id );
 	resource = nullptr;
 }
 
 
-
 bool CoreGfx::api_uniform_buffer_init( GfxUniformBufferResource *&resource, const char *name,
 	const int index, const u32 size )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource == nullptr );
 
-	// Register UniformBuffer
 	resource = uniformBufferResources.make_new();
 	resource->name = name;
 	resource->index = index;
 	resource->size = size;
 
 	nglGenBuffers( 1, &resource->ubo );
-	CHECK_ERROR( "Failed to generate constant buffer (resource: %u)", resource->id );
-	if( GL_ERROR() )
+	OPENGL_CHECK_ERROR( "Failed to generate constant buffer (resource: %u)", resource->id );
+	if( OPENGL_ERROR() )
 	{
 		GfxUniformBufferResource::release( resource );
 		ErrorReturnMsg( false, "%s: failed to init uniform buffer ubo (%u)", __FUNCTION__, glGetError() );
@@ -1275,7 +1661,7 @@ bool CoreGfx::api_uniform_buffer_init( GfxUniformBufferResource *&resource, cons
 	nglBindBuffer( GL_UNIFORM_BUFFER, resource->ubo );
 	nglBufferData( GL_UNIFORM_BUFFER, size, nullptr, GL_DYNAMIC_DRAW );
 	nglBindBuffer( GL_UNIFORM_BUFFER, 0 );
-	CHECK_ERROR( "Failed to bind constant buffer for init (resource: %u)", resource->id );
+	OPENGL_CHECK_ERROR( "Failed to bind constant buffer for init (resource: %u)", resource->id );
 
 	PROFILE_GFX( Gfx::stats.gpuMemoryUniformBuffers += resource->size );
 	return true;
@@ -1284,6 +1670,7 @@ bool CoreGfx::api_uniform_buffer_init( GfxUniformBufferResource *&resource, cons
 
 bool CoreGfx::api_uniform_buffer_free( GfxUniformBufferResource *&resource )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
 	PROFILE_GFX( Gfx::stats.gpuMemoryUniformBuffers -= resource->size );
@@ -1296,7 +1683,9 @@ bool CoreGfx::api_uniform_buffer_free( GfxUniformBufferResource *&resource )
 
 void CoreGfx::api_uniform_buffer_write_begin( GfxUniformBufferResource *const resource )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
+
 	if( resource->mapped == true ) { return; }
 	resource->mapped = true;
 }
@@ -1304,7 +1693,9 @@ void CoreGfx::api_uniform_buffer_write_begin( GfxUniformBufferResource *const re
 
 void CoreGfx::api_uniform_buffer_write_end( GfxUniformBufferResource *const resource )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
+
 	if( resource->mapped == false ) { return; }
 	resource->mapped = false;
 }
@@ -1312,6 +1703,7 @@ void CoreGfx::api_uniform_buffer_write_end( GfxUniformBufferResource *const reso
 
 bool CoreGfx::api_uniform_buffer_write( GfxUniformBufferResource *const resource, const void *data )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	Assert( data != nullptr );
 	Assert( resource->mapped );
@@ -1326,6 +1718,7 @@ bool CoreGfx::api_uniform_buffer_write( GfxUniformBufferResource *const resource
 
 bool CoreGfx::api_uniform_buffer_bind_vertex( GfxUniformBufferResource *const resource, const int slot )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	Assert( slot >= 0 );
 
@@ -1333,7 +1726,8 @@ bool CoreGfx::api_uniform_buffer_bind_vertex( GfxUniformBufferResource *const re
 	nglBindBufferBase( GL_UNIFORM_BUFFER, static_cast<GLuint>( resource->index ), resource->ubo );
 
 	const GLuint blockIndex = opengl_uniform_buffer_uniform_block_index( resource, slot );
-	nglUniformBlockBinding( boundShaderResource->program, blockIndex, static_cast<GLuint>( resource->index ) );
+	nglUniformBlockBinding( CoreGfx::state.pipeline.shader->program, blockIndex,
+		static_cast<GLuint>( resource->index ) );
 
 	return true;
 }
@@ -1341,6 +1735,7 @@ bool CoreGfx::api_uniform_buffer_bind_vertex( GfxUniformBufferResource *const re
 
 bool CoreGfx::api_uniform_buffer_bind_fragment( GfxUniformBufferResource *const resource, const int slot )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	Assert( slot >= 0 );
 
@@ -1348,7 +1743,8 @@ bool CoreGfx::api_uniform_buffer_bind_fragment( GfxUniformBufferResource *const 
 	nglBindBufferBase( GL_UNIFORM_BUFFER, static_cast<GLuint>( resource->index ), resource->ubo );
 
 	const GLuint blockIndex = opengl_uniform_buffer_uniform_block_index( resource, slot );
-	nglUniformBlockBinding( boundShaderResource->program, blockIndex, static_cast<GLuint>( resource->index ) );
+	nglUniformBlockBinding( CoreGfx::state.pipeline.shader->program, blockIndex,
+		static_cast<GLuint>( resource->index ) );
 
 	return true;
 }
@@ -1356,6 +1752,7 @@ bool CoreGfx::api_uniform_buffer_bind_fragment( GfxUniformBufferResource *const 
 
 bool CoreGfx::api_uniform_buffer_bind_compute( GfxUniformBufferResource *const resource, const int slot )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	Assert( slot >= 0 );
 
@@ -1363,7 +1760,8 @@ bool CoreGfx::api_uniform_buffer_bind_compute( GfxUniformBufferResource *const r
 	nglBindBufferBase( GL_UNIFORM_BUFFER, static_cast<GLuint>( resource->index ), resource->ubo );
 
 	const GLuint blockIndex = opengl_uniform_buffer_uniform_block_index( resource, slot );
-	nglUniformBlockBinding( boundShaderResource->program, blockIndex, static_cast<GLuint>( resource->index ) );
+	nglUniformBlockBinding( CoreGfx::state.pipeline.shader->program, blockIndex,
+		static_cast<GLuint>( resource->index ) );
 
 	return true;
 }
@@ -1374,36 +1772,35 @@ bool CoreGfx::api_uniform_buffer_bind_compute( GfxUniformBufferResource *const r
 // TODO: GfxMutableBuffer
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Texture
 
-// TODO: GfxTexture1D
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void GfxTexture2DResource::release( GfxTexture2DResource *&resource )
+void GfxTextureResource::release( GfxTextureResource *&resource )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
+
 	if( resource == nullptr || resource->id == GFX_RESOURCE_ID_NULL ) { return; }
+	if( resource->textureSS != 0 ) { glDeleteTextures( 1, &resource->textureSS ); }
 
-	if( resource->textureSS != GL_NULL ) { glDeleteTextures( 1, &resource->textureSS ); }
-
-	texture2DResources.remove( resource->id );
+	textureResources.remove( resource->id );
 	resource = nullptr;
 }
 
 
-bool CoreGfx::api_texture_2d_init( GfxTexture2DResource *&resource, void *pixels,
+bool CoreGfx::api_texture_init( GfxTextureResource *&resource, void *pixels,
 	const u16 width, const u16 height, const u16 levels, const GfxColorFormat &format )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource == nullptr );
 
-	// Cache currently bound texture
-	GLint CURRENT_TEXTURE = 0;
-	glGetIntegerv( GL_TEXTURE_BINDING_2D, &CURRENT_TEXTURE );
+	GLint TEXTURE_CURRENT = 0;
+	glGetIntegerv( GL_TEXTURE_BINDING_2D, &TEXTURE_CURRENT );
 
-	// Register Texture2D
-	resource = texture2DResources.make_new();
+	resource = textureResources.make_new();
+	resource->type = GfxTextureType_2D;
 	resource->colorFormat = format;
 	resource->width = width;
 	resource->height = height;
+	resource->depth = 1U;
 	resource->levels = levels;
 
 	const usize pixelSizeBytes = CoreGfx::colorFormatPixelSizeBytes[format];
@@ -1411,28 +1808,25 @@ bool CoreGfx::api_texture_2d_init( GfxTexture2DResource *&resource, void *pixels
 	const GLenum glFormat = OpenGLColorFormats[format].format;
 	const GLenum glFormatType = OpenGLColorFormats[format].formatType;
 
-	// Error Checking
 	if( Gfx::mip_level_count_2d( width, height ) < levels )
 	{
-		GfxTexture2DResource::release( resource );
+		GfxTextureResource::release( resource );
 		ErrorReturnMsg( false, "%s: requested mip levels is more than texture size supports (attempted: %u)", levels );
 	}
 
 	if( levels >= GFX_MIP_DEPTH_MAX )
 	{
-		GfxTexture2DResource::release( resource );
+		GfxTextureResource::release( resource );
 		ErrorReturnMsg( false, "%s: exceeded max mip level count (has: %u, max: %u)", levels, GFX_MIP_DEPTH_MAX );
 	}
 
-	// Create Texture
 	glGenTextures( 1, &resource->textureSS );
-	if( GL_ERROR() )
+	if( OPENGL_ERROR() )
 	{
-		GfxTexture2DResource::release( resource );
+		GfxTextureResource::release( resource );
 		ErrorReturnMsg( false, "%s: failed to init texture (%d)", __FUNCTION__, glGetError() );
 	}
 
-	// Setup Texture2D Data (TODO: Switch to sampler objects?)
 	glBindTexture( GL_TEXTURE_2D, resource->textureSS );
 	{
 		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
@@ -1441,7 +1835,6 @@ bool CoreGfx::api_texture_2d_init( GfxTexture2DResource *&resource, void *pixels
 			( levels > 1 ) ? GL_LINEAR_MIPMAP_LINEAR : GL_NEAREST );
 		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
 		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, levels - 1 );
-		//glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
 		// Upload Mip Chain
 		const byte *source = reinterpret_cast<const byte *>( pixels );
@@ -1463,9 +1856,10 @@ bool CoreGfx::api_texture_2d_init( GfxTexture2DResource *&resource, void *pixels
 			// Upload Level Data
 			glTexImage2D( GL_TEXTURE_2D, level, glFormatInternal, mipWidth, mipHeight, 0,
 				glFormat, glFormatType, sourceLevel );
-			if( GL_ERROR() )
+
+			if( OPENGL_ERROR() )
 			{
-				GfxTexture2DResource::release( resource );
+				GfxTextureResource::release( resource );
 				ErrorReturnMsg( false, "%s: failed to init texture mip level (tex: %d, mip: %u)",
 					__FUNCTION__, glGetError(), level );
 			}
@@ -1479,48 +1873,51 @@ bool CoreGfx::api_texture_2d_init( GfxTexture2DResource *&resource, void *pixels
 			mipHeight = ( mipHeight > 1 ) ? ( mipHeight >> 1 ) : 1;
 		}
 	}
-	glBindTexture( GL_TEXTURE_2D, CURRENT_TEXTURE );
+	glBindTexture( GL_TEXTURE_2D, TEXTURE_CURRENT );
 
 	PROFILE_GFX( Gfx::stats.gpuMemoryTextures += resource->size );
 	return true;
 }
 
 
-bool CoreGfx::api_texture_2d_free( GfxTexture2DResource *&resource )
+bool CoreGfx::api_texture_free( GfxTextureResource *&resource )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
 	PROFILE_GFX( Gfx::stats.gpuMemoryTextures -= resource->size );
 
-	GfxTexture2DResource::release( resource );
+	GfxTextureResource::release( resource );
 
 	return true;
 }
 
 
-bool CoreGfx::api_texture_2d_bind( GfxTexture2DResource *const resource, const int slot )
+bool CoreGfx::api_texture_bind( GfxTextureResource *const resource, const int slot )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	Assert( slot >= 0 && slot < GFX_TEXTURE_SLOT_COUNT );
 
 	// Bind Texture2D
-	const GLint location = opengl_texture_uniform_location( texture2DUniformLocations, slot );
+	const GLint location = opengl_texture_uniform_location( uniformLocationsTexture, slot );
 	nglUniform1i( location, slot );
 	nglActiveTexture( GL_TEXTURE0 + slot );
 	glBindTexture( GL_TEXTURE_2D, resource->textureSS );
 
 	// OpenGL requires us to explitily set the sampler state on textures binds (TODO: Refactor)
-	FILTER_MODE_MIPMAPPING = resource->levels > 1;
-	CoreGfx::api_set_sampler_state( Gfx::state().sampler );
-	FILTER_MODE_MIPMAPPING = false;
+	isFilterModeMipmapping = resource->levels > 1;
+	CoreGfx::api_sampler_set_state( CoreGfx::state.sampler );
+	isFilterModeMipmapping = false;
 
 	PROFILE_GFX( Gfx::stats.frame.textureBinds++ );
 	return true;
 }
 
 
-bool CoreGfx::api_texture_2d_release( GfxTexture2DResource *const resource, const int slot )
+bool CoreGfx::api_texture_release( GfxTextureResource *const resource, const int slot )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	Assert( slot >= 0 && slot < GFX_TEXTURE_SLOT_COUNT );
 
@@ -1531,42 +1928,37 @@ bool CoreGfx::api_texture_2d_release( GfxTexture2DResource *const resource, cons
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Render Target
 
-// TODO: GfxTexture2DArray
-// TODO: GfxTexture3D
-// TODO: GfxTexture3DArray
-// TODO: GfxTextureCube
-// TODO: GfxTextureCubeArray
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void GfxRenderTarget2DResource::release( GfxRenderTarget2DResource *&resource )
+void GfxRenderTargetResource::release( GfxRenderTargetResource *&resource )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	if( resource == nullptr || resource->id == GFX_RESOURCE_ID_NULL ) { return; }
 
-	if( resource->fboSS != GL_NULL ) { nglDeleteFramebuffers( 1, &resource->fboSS ); }
-	if( resource->fboMS != GL_NULL ) { nglDeleteFramebuffers( 1, &resource->fboMS ); }
-	if( resource->pboColor != GL_NULL ) { nglDeleteBuffers( 1, &resource->pboColor ); }
-	if( resource->pboDepth != GL_NULL ) { nglDeleteBuffers( 1, &resource->pboDepth ); }
+	if( resource->fboSS != 0 ) { nglDeleteFramebuffers( 1, &resource->fboSS ); }
+	if( resource->fboMS != 0 ) { nglDeleteFramebuffers( 1, &resource->fboMS ); }
+	if( resource->pboColor != 0 ) { nglDeleteBuffers( 1, &resource->pboColor ); }
+	if( resource->pboDepth != 0 ) { nglDeleteBuffers( 1, &resource->pboDepth ); }
 
-	renderTarget2DResources.remove( resource->id );
+	renderTargetResources.remove( resource->id );
 	resource = nullptr;
 }
 
 
-bool CoreGfx::api_render_target_2d_init( GfxRenderTarget2DResource *&resource,
-	GfxTexture2DResource *&resourceColor, GfxTexture2DResource *&resourceDepth,
+bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
+	GfxTextureResource *&resourceColor, GfxTextureResource *&resourceDepth,
 	const u16 width, const u16 height,
 	const GfxRenderTargetDescription &desc )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource == nullptr );
+	Assert( resourceColor == nullptr );
+	Assert( resourceDepth == nullptr );
 
-	// Cache currently bound texture
-	GLint CURRENT_TEXTURE = 0;
-	glGetIntegerv( GL_TEXTURE_BINDING_2D, &CURRENT_TEXTURE );
+	GLint TEXTURE_CURRENT = 0;
+	glGetIntegerv( GL_TEXTURE_BINDING_2D, &TEXTURE_CURRENT );
 
-	// Register RenderTarget2D
-	resource = renderTarget2DResources.make_new();
+	resource = renderTargetResources.make_new();
 	resource->width = width;
 	resource->height = height;
 	resource->desc = desc;
@@ -1574,9 +1966,8 @@ bool CoreGfx::api_render_target_2d_init( GfxRenderTarget2DResource *&resource,
 	// Color Texture
 	if( desc.colorFormat != GfxColorFormat_NONE )
 	{
-		// Register Resource
-		Assert( resourceColor == nullptr );
-		resourceColor = texture2DResources.make_new();
+		resourceColor = textureResources.make_new();
+		resourceColor->type = GfxTextureType_2D;
 		resource->resourceColor = resourceColor;
 
 		const GLint glFormatInternal = OpenGLColorFormats[desc.colorFormat].formatInternal;
@@ -1585,10 +1976,10 @@ bool CoreGfx::api_render_target_2d_init( GfxRenderTarget2DResource *&resource,
 
 		// Texture (Single-Sample)
 		glGenTextures( 1, &resourceColor->textureSS );
-		if( GL_ERROR() )
+		if( OPENGL_ERROR() )
 		{
-			GfxTexture2DResource::release( resourceColor );
-			GfxRenderTarget2DResource::release( resource );
+			GfxTextureResource::release( resourceColor );
+			GfxRenderTargetResource::release( resource );
 			ErrorReturnMsg( false, "%s: failed to init color single-sample texture (%d)",
 				__FUNCTION__, glGetError() );
 		}
@@ -1606,25 +1997,25 @@ bool CoreGfx::api_render_target_2d_init( GfxRenderTarget2DResource *&resource,
 			glTexImage2D( GL_TEXTURE_2D, 0, glFormatInternal,
 				width, height, 0, glFormat, glFormatType, nullptr );
 
-			if( GL_ERROR() )
+			if( OPENGL_ERROR() )
 			{
-				GfxTexture2DResource::release( resourceColor );
-				GfxRenderTarget2DResource::release( resource );
+				GfxTextureResource::release( resourceColor );
+				GfxRenderTargetResource::release( resource );
 				PrintLn( "%u, %u", desc.colorFormat, desc.depthFormat );
 				ErrorReturnMsg( false, "%s: failed to upload color single-sample texture data (%d)",
 					__FUNCTION__, glGetError() );
 			}
 		}
-		glBindTexture( GL_TEXTURE_2D, CURRENT_TEXTURE );
+		glBindTexture( GL_TEXTURE_2D, TEXTURE_CURRENT );
 
 		if( desc.sampleCount > 1 )
 		{
 			// Texture (Multi-Sample)
 			glGenTextures( 1, &resourceColor->textureMS );
-			if( GL_ERROR() )
+			if( OPENGL_ERROR() )
 			{
-				GfxTexture2DResource::release( resourceColor );
-				GfxRenderTarget2DResource::release( resource );
+				GfxTextureResource::release( resourceColor );
+				GfxRenderTargetResource::release( resource );
 				ErrorReturnMsg( false, "%s: failed to init color multi-sample texture (%d)",
 					__FUNCTION__, glGetError() );
 			}
@@ -1639,15 +2030,15 @@ bool CoreGfx::api_render_target_2d_init( GfxRenderTarget2DResource *&resource,
 				nglTexImage2DMultisample( GL_TEXTURE_2D_MULTISAMPLE, sampleCount,
 					glFormatInternal, width, height, GL_TRUE);
 
-				if( GL_ERROR() )
+				if( OPENGL_ERROR() )
 				{
-					GfxTexture2DResource::release( resourceColor );
-					GfxRenderTarget2DResource::release( resource );
+					GfxTextureResource::release( resourceColor );
+					GfxRenderTargetResource::release( resource );
 					ErrorReturnMsg( false, "%s: failed to upload color multi-sample texture data (%d)",
 						__FUNCTION__, glGetError() );
 				}
 			}
-			glBindTexture( GL_TEXTURE_2D, CURRENT_TEXTURE );
+			glBindTexture( GL_TEXTURE_2D, TEXTURE_CURRENT );
 		}
 
 		// CPU Readback
@@ -1662,10 +2053,10 @@ bool CoreGfx::api_render_target_2d_init( GfxRenderTarget2DResource *&resource,
 			}
 			nglBindBuffer( GL_PIXEL_PACK_BUFFER, 0 );
 
-			if( GL_ERROR() )
+			if( OPENGL_ERROR() )
 			{
-				GfxTexture2DResource::release( resourceColor );
-				GfxRenderTarget2DResource::release( resource );
+				GfxTextureResource::release( resourceColor );
+				GfxRenderTargetResource::release( resource );
 				ErrorReturnMsg( false, "%s: failed to init color readback pbo (%d)",
 					__FUNCTION__, glGetError() );
 			}
@@ -1675,9 +2066,8 @@ bool CoreGfx::api_render_target_2d_init( GfxRenderTarget2DResource *&resource,
 	// Depth Texture
 	if( desc.depthFormat != GfxDepthFormat_NONE )
 	{
-		// Register Resource
-		Assert( resourceDepth == nullptr );
-		resourceDepth = texture2DResources.make_new();
+		resourceDepth = textureResources.make_new();
+		resourceDepth->type = GfxTextureType_2D;
 		resource->resourceDepth = resourceDepth;
 
 		const GLint glFormatInternal = OpenGLDepthStencilFormats[desc.depthFormat].formatInternal;
@@ -1686,11 +2076,11 @@ bool CoreGfx::api_render_target_2d_init( GfxRenderTarget2DResource *&resource,
 
 		// Texture (Single-Sample)
 		glGenTextures( 1, &resourceDepth->textureSS );
-		if( GL_ERROR() )
+		if( OPENGL_ERROR() )
 		{
-			GfxTexture2DResource::release( resourceColor );
-			GfxTexture2DResource::release( resourceDepth );
-			GfxRenderTarget2DResource::release( resource );
+			GfxTextureResource::release( resourceColor );
+			GfxTextureResource::release( resourceDepth );
+			GfxRenderTargetResource::release( resource );
 			ErrorReturnMsg( false, "%s: failed to init depth single-sample texture (%d)",
 				__FUNCTION__, glGetError() );
 		}
@@ -1708,26 +2098,26 @@ bool CoreGfx::api_render_target_2d_init( GfxRenderTarget2DResource *&resource,
 			glTexImage2D( GL_TEXTURE_2D, 0, glFormatInternal, width, height,
 				0, glFormat, glFormatType, nullptr );
 
-			if( GL_ERROR() )
+			if( OPENGL_ERROR() )
 			{
-				GfxTexture2DResource::release( resourceColor );
-				GfxTexture2DResource::release( resourceDepth );
-				GfxRenderTarget2DResource::release( resource );
+				GfxTextureResource::release( resourceColor );
+				GfxTextureResource::release( resourceDepth );
+				GfxRenderTargetResource::release( resource );
 				ErrorReturnMsg( false, "%s: failed to upload depth single-sample texture data (%d)",
 					__FUNCTION__, glGetError() );
 			}
 		}
-		glBindTexture( GL_TEXTURE_2D, CURRENT_TEXTURE );
+		glBindTexture( GL_TEXTURE_2D, TEXTURE_CURRENT );
 
 		if( desc.sampleCount > 1 )
 		{
 			// Texture (Multi-Sample)
 			glGenTextures( 1, &resourceDepth->textureMS );
-			if( GL_ERROR() )
+			if( OPENGL_ERROR() )
 			{
-				GfxTexture2DResource::release( resourceColor );
-				GfxTexture2DResource::release( resourceDepth );
-				GfxRenderTarget2DResource::release( resource );
+				GfxTextureResource::release( resourceColor );
+				GfxTextureResource::release( resourceDepth );
+				GfxRenderTargetResource::release( resource );
 				ErrorReturnMsg( false, "%s: failed to init color multi-sample texture (%d)",
 					__FUNCTION__, glGetError() );
 			}
@@ -1742,16 +2132,16 @@ bool CoreGfx::api_render_target_2d_init( GfxRenderTarget2DResource *&resource,
 				nglTexImage2DMultisample( GL_TEXTURE_2D_MULTISAMPLE, sampleCount,
 					glFormatInternal, width, height, GL_TRUE);
 
-				if( GL_ERROR() )
+				if( OPENGL_ERROR() )
 				{
-					GfxTexture2DResource::release( resourceColor );
-					GfxTexture2DResource::release( resourceDepth );
-					GfxRenderTarget2DResource::release( resource );
+					GfxTextureResource::release( resourceColor );
+					GfxTextureResource::release( resourceDepth );
+					GfxRenderTargetResource::release( resource );
 					ErrorReturnMsg( false, "%s: failed to upload color multi-sample texture data (%d)",
 						__FUNCTION__, glGetError() );
 				}
 			}
-			glBindTexture( GL_TEXTURE_2D, CURRENT_TEXTURE );
+			glBindTexture( GL_TEXTURE_2D, TEXTURE_CURRENT );
 		}
 
 		// CPU Readback
@@ -1766,10 +2156,10 @@ bool CoreGfx::api_render_target_2d_init( GfxRenderTarget2DResource *&resource,
 			}
 			nglBindBuffer( GL_PIXEL_PACK_BUFFER, 0 );
 
-			if( GL_ERROR() )
+			if( OPENGL_ERROR() )
 			{
-				GfxTexture2DResource::release( resourceColor );
-				GfxRenderTarget2DResource::release( resource );
+				GfxTextureResource::release( resourceColor );
+				GfxRenderTargetResource::release( resource );
 				ErrorReturnMsg( false, "%s: failed to init depth readback pbo (%d)", __FUNCTION__, glGetError() );
 			}
 		}
@@ -1794,9 +2184,9 @@ bool CoreGfx::api_render_target_2d_init( GfxRenderTarget2DResource *&resource,
 		// Check Status
 		if( nglCheckFramebufferStatus( GL_FRAMEBUFFER ) != GL_FRAMEBUFFER_COMPLETE )
 		{
-			GfxTexture2DResource::release( resourceColor );
-			GfxTexture2DResource::release( resourceDepth );
-			GfxRenderTarget2DResource::release( resource );
+			GfxTextureResource::release( resourceColor );
+			GfxTextureResource::release( resourceDepth );
+			GfxRenderTargetResource::release( resource );
 			ErrorReturnMsg( false, "%s: failed to create framebuffer", __FUNCTION__ );
 		}
 	}
@@ -1825,9 +2215,9 @@ bool CoreGfx::api_render_target_2d_init( GfxRenderTarget2DResource *&resource,
 			// Check Status
 			if( nglCheckFramebufferStatus( GL_FRAMEBUFFER ) != GL_FRAMEBUFFER_COMPLETE )
 			{
-				GfxTexture2DResource::release( resourceColor );
-				GfxTexture2DResource::release( resourceDepth );
-				GfxRenderTarget2DResource::release( resource );
+				GfxTextureResource::release( resourceColor );
+				GfxTextureResource::release( resourceDepth );
+				GfxRenderTargetResource::release( resource );
 				ErrorReturnMsg( false, "%s: failed to create framebuffer", __FUNCTION__ );
 			}
 		}
@@ -1839,41 +2229,39 @@ bool CoreGfx::api_render_target_2d_init( GfxRenderTarget2DResource *&resource,
 }
 
 
-bool CoreGfx::api_render_target_2d_free( GfxRenderTarget2DResource *&resource,
-	GfxTexture2DResource *&resourceColor,GfxTexture2DResource *&resourceDepth )
+bool CoreGfx::api_render_target_free( GfxRenderTargetResource *&resource,
+	GfxTextureResource *&resourceColor,GfxTextureResource *&resourceDepth )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
 	PROFILE_GFX( Gfx::stats.gpuMemoryRenderTargets -= resource->size );
 
-	// Color
 	if( resource->desc.colorFormat != GfxColorFormat_NONE )
 	{
 		Assert( resourceColor != nullptr && resourceColor->id != GFX_RESOURCE_ID_NULL );
-		GfxTexture2DResource::release( resourceColor );
+		GfxTextureResource::release( resourceColor );
 	}
 
-	// Depth
 	if( resource->desc.depthFormat != GfxDepthFormat_NONE )
 	{
 		Assert( resourceDepth != nullptr && resourceDepth->id != GFX_RESOURCE_ID_NULL );
-		GfxTexture2DResource::release( resourceDepth );
+		GfxTextureResource::release( resourceDepth );
 	}
 
-	// Target
-	GfxRenderTarget2DResource::release( resource );
+	GfxRenderTargetResource::release( resource );
 
 	return true;
 }
 
 
-bool CoreGfx::api_render_target_2d_copy(
-	GfxRenderTarget2DResource *&srcResource,
-	GfxTexture2DResource *&srcResourceColor, GfxTexture2DResource *&srcResourceDepth,
-	GfxRenderTarget2DResource *&dstResource,
-	GfxTexture2DResource *&dstResourceColor, GfxTexture2DResource *&dstResourceDepth )
+bool CoreGfx::api_render_target_copy(
+	GfxRenderTargetResource *&srcResource,
+	GfxTextureResource *&srcResourceColor, GfxTextureResource *&srcResourceDepth,
+	GfxRenderTargetResource *&dstResource,
+	GfxTextureResource *&dstResourceColor, GfxTextureResource *&dstResourceDepth )
 {
-	// Validate resources
+	OPENGL_CHECK_ERRORS_SCOPE
 	if( srcResource == nullptr || dstResource == nullptr ) { return false; }
 
 	// Ensure equal dimensions
@@ -1883,17 +2271,16 @@ bool CoreGfx::api_render_target_2d_copy(
 		return false;
 	}
 
-	// Copy FBO
 	GLbitfield flags = 0;
 
 	if( srcResource->desc.colorFormat != GfxColorFormat_NONE &&
-	    dstResource->desc.colorFormat != GfxColorFormat_NONE )
+		dstResource->desc.colorFormat != GfxColorFormat_NONE )
 	{
 		flags |= GL_COLOR_BUFFER_BIT;
 	}
 
 	if( srcResource->desc.depthFormat != GfxDepthFormat_NONE &&
-	    dstResource->desc.depthFormat != GfxDepthFormat_NONE )
+		dstResource->desc.depthFormat != GfxDepthFormat_NONE )
 	{
 		flags |= GL_DEPTH_BUFFER_BIT;
 	}
@@ -1919,27 +2306,26 @@ bool CoreGfx::api_render_target_2d_copy(
 }
 
 
-bool CoreGfx::api_render_target_2d_copy_part(
-	GfxRenderTarget2DResource *&srcResource,
-	GfxTexture2DResource *&srcResourceColor, GfxTexture2DResource *&srcResourceDepth,
-	GfxRenderTarget2DResource *&dstResource,
-	GfxTexture2DResource *&dstResourceColor, GfxTexture2DResource *&dstResourceDepth,
+bool CoreGfx::api_render_target_copy_part(
+	GfxRenderTargetResource *&srcResource,
+	GfxTextureResource *&srcResourceColor, GfxTextureResource *&srcResourceDepth,
+	GfxRenderTargetResource *&dstResource,
+	GfxTextureResource *&dstResourceColor, GfxTextureResource *&dstResourceDepth,
 	u16 srcX, u16 srcY, u16 dstX, u16 dstY, u16 width, u16 height )
 {
-	// Validate resources
+	OPENGL_CHECK_ERRORS_SCOPE
 	if( srcResource == nullptr || dstResource == nullptr ) { return false; }
 
-	// Copy FBO
 	GLbitfield flags = 0;
 
 	if( srcResource->desc.colorFormat != GfxColorFormat_NONE &&
-	    dstResource->desc.colorFormat != GfxColorFormat_NONE )
+		dstResource->desc.colorFormat != GfxColorFormat_NONE )
 	{
 		flags |= GL_COLOR_BUFFER_BIT;
 	}
 
 	if( srcResource->desc.depthFormat != GfxDepthFormat_NONE &&
-	    dstResource->desc.depthFormat != GfxDepthFormat_NONE )
+		dstResource->desc.depthFormat != GfxDepthFormat_NONE )
 	{
 		flags |= GL_DEPTH_BUFFER_BIT;
 	}
@@ -1968,16 +2354,17 @@ bool CoreGfx::api_render_target_2d_copy_part(
 }
 
 
-bool CoreGfx::api_render_target_2d_buffer_read_color( GfxRenderTarget2DResource *&resource,
-	GfxTexture2DResource *&resourceColor,
+bool CoreGfx::api_render_target_buffer_read_color( GfxRenderTargetResource *&resource,
+	GfxTextureResource *&resourceColor,
 	void *buffer, const u32 size )
 {
-	ErrorIf( !resource->desc.cpuAccess,
-		"Trying to CPU access a render target that does not have CPU access flag!" );
-
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	Assert( resourceColor != nullptr && resourceColor->id != GFX_RESOURCE_ID_NULL );
 	Assert( resource->pboColor != 0 );
+
+	ErrorIf( !resource->desc.cpuAccess,
+		"Trying to CPU access a render target that does not have CPU access flag!" );
 
 	const u32 sizeSource = GFX_SIZE_IMAGE_COLOR_BYTES(
 		resource->width, resource->height, 1, resource->desc.colorFormat );
@@ -2031,108 +2418,46 @@ bool CoreGfx::api_render_target_2d_buffer_read_color( GfxRenderTarget2DResource 
 }
 
 
-bool api_render_target_2d_buffer_read_depth( GfxRenderTarget2DResource *&resource,
-	GfxTexture2DResource *&resourceDepth,
+bool api_render_target_buffer_read_depth( GfxRenderTargetResource *&resource,
+	GfxTextureResource *&resourceDepth,
 	void *buffer, const u32 size )
 {
-	// TODO: Implement this
-	GRAPHICS_API_IMPLEMENTATION_WARNING
+	OPENGL_CHECK_ERRORS_SCOPE
+	GRAPHICS_API_IMPLEMENTATION_WARNING // TODO: Implement this
 	return true;
 }
 
 
-bool CoreGfx::api_render_target_2d_buffer_write_color( GfxRenderTarget2DResource *&resource,
-	GfxTexture2DResource *&resourceColor,
+bool CoreGfx::api_render_target_buffer_write_color( GfxRenderTargetResource *&resource,
+	GfxTextureResource *&resourceColor,
 	const void *const buffer, const u32 size )
 {
-	// TODO: Implement this
-	GRAPHICS_API_IMPLEMENTATION_WARNING
+	OPENGL_CHECK_ERRORS_SCOPE
+	GRAPHICS_API_IMPLEMENTATION_WARNING // TODO: Implement this
 	return true;
 }
 
 
-bool CoreGfx::api_render_target_2d_buffer_write_depth( GfxRenderTarget2DResource *&resource,
-	GfxTexture2DResource *&resourceDepth,
+bool CoreGfx::api_render_target_buffer_write_depth( GfxRenderTargetResource *&resource,
+	GfxTextureResource *&resourceDepth,
 	const void *const buffer, const u32 size )
 {
-	// TODO: Implement this
-	GRAPHICS_API_IMPLEMENTATION_WARNING
+	OPENGL_CHECK_ERRORS_SCOPE
+	GRAPHICS_API_IMPLEMENTATION_WARNING // TODO: Implement this
 	return true;
-}
-
-
-bool CoreGfx::api_render_target_2d_bind( GfxRenderTarget2DResource *const resource, int slot )
-{
-	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
-	Assert( slot >= 0 && slot < GFX_RENDER_TARGET_SLOT_COUNT );
-
-	const bool hasMultiSample = resource->desc.sampleCount > 1;
-	const bool hasColor = resource->resourceColor != nullptr;
-	const bool hasDepth = resource->resourceDepth != nullptr;
-
-	if( hasMultiSample )
-	{
-		RT_TEXTURE_COLOR[slot] = hasColor ? resource->resourceColor->textureMS : 0;
-		RT_TEXTURE_COLOR_TYPE[slot] = GL_TEXTURE_2D_MULTISAMPLE;
-
-		if( slot == 0 && hasDepth )
-		{
-			RT_TEXTURE_DEPTH = resource->resourceDepth->textureMS;
-			RT_TEXTURE_DEPTH_TYPE = GL_TEXTURE_2D_MULTISAMPLE;
-		}
-	}
-	else
-	{
-		RT_TEXTURE_COLOR[slot] = hasColor ? resource->resourceColor->textureSS : 0;
-		RT_TEXTURE_COLOR_TYPE[slot] = GL_TEXTURE_2D;
-
-		if( slot == 0 && hasDepth )
-		{
-			RT_TEXTURE_DEPTH = resource->resourceDepth->textureSS;
-			RT_TEXTURE_DEPTH_TYPE = GL_TEXTURE_2D;
-		}
-	}
-
-	return opengl_update_fbo();
-}
-
-
-bool CoreGfx::api_render_target_2d_release( GfxRenderTarget2DResource *const resource, const int slot )
-{
-	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
-	Assert( slot >= 0 && slot < GFX_RENDER_TARGET_SLOT_COUNT );
-
-	// MSAA Resolve
-	if( resource->desc.sampleCount > 1 )
-	{
-		GLbitfield flags = 0;
-		if( resource->desc.colorFormat != GfxColorFormat_NONE ) { flags |= GL_COLOR_BUFFER_BIT; }
-		if( resource->desc.depthFormat != GfxDepthFormat_NONE ) { flags |= GL_DEPTH_BUFFER_BIT; }
-		if( resource->desc.depthFormat == GfxDepthFormat_R24_UINT_G8_UINT ) { flags |= GL_STENCIL_BUFFER_BIT; }
-
-		nglBindFramebuffer( GL_READ_FRAMEBUFFER, resource->fboMS );
-		nglBindFramebuffer( GL_DRAW_FRAMEBUFFER, resource->fboSS );
-		nglBlitFramebuffer( 0, 0, resource->width, resource->height,
-			0, 0, resource->width, resource->height, flags, GL_NEAREST );
-	}
-
-	// Reset Slot
-	RT_TEXTURE_COLOR[slot] = 0;
-	RT_TEXTURE_COLOR_TYPE[slot] = GL_TEXTURE_2D;
-	RT_TEXTURE_DEPTH = slot == 0 ? 0 : RT_TEXTURE_DEPTH;
-	RT_TEXTURE_DEPTH_TYPE = slot == 0 ? GL_TEXTURE_2D : RT_TEXTURE_DEPTH_TYPE;
-
-	return opengl_update_fbo();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Draw
 
 static void opengl_draw( const GLsizei vertexCount, const GLuint startVertexLocation,
 	const GfxPrimitiveType type )
 {
-	CoreGfx::state_apply();
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( type < GFXPRIMITIVETYPE_COUNT );
+
 	glDrawArrays( OpenGLPrimitiveTypes[type], startVertexLocation, vertexCount );
+
 	PROFILE_GFX( Gfx::stats.frame.drawCalls++ );
 	PROFILE_GFX( Gfx::stats.frame.vertexCount += vertexCount );
 }
@@ -2141,9 +2466,11 @@ static void opengl_draw( const GLsizei vertexCount, const GLuint startVertexLoca
 static void opengl_draw_instanced( const GLsizei vertexCount, const GLuint startVertexLocation,
 	const GLsizei instanceCount, const GfxPrimitiveType type )
 {
-	CoreGfx::state_apply();
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( type < GFXPRIMITIVETYPE_COUNT );
+
 	nglDrawArraysInstanced( OpenGLPrimitiveTypes[type], startVertexLocation, vertexCount, instanceCount );
+
 	PROFILE_GFX( Gfx::stats.frame.drawCalls++ );
 	PROFILE_GFX( Gfx::stats.frame.vertexCount += vertexCount * instanceCount );
 }
@@ -2152,10 +2479,11 @@ static void opengl_draw_instanced( const GLsizei vertexCount, const GLuint start
 static void opengl_draw_indexed( const GLsizei vertexCount, const GLuint startVertexLocation,
 	const GLuint baseVertexLocation, const GfxIndexBufferFormat format, const GfxPrimitiveType type )
 {
-	CoreGfx::state_apply();
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( type < GFXPRIMITIVETYPE_COUNT );
-	glDrawElements( OpenGLPrimitiveTypes[type], vertexCount,
-		OpenGLIndexBufferFormats[format], 0 );
+
+	glDrawElements( OpenGLPrimitiveTypes[type], vertexCount, OpenGLIndexBufferFormats[format], 0 );
+
 	PROFILE_GFX( Gfx::stats.frame.drawCalls++ );
 	PROFILE_GFX( Gfx::stats.frame.vertexCount += vertexCount );
 }
@@ -2165,30 +2493,35 @@ static void opengl_draw_instanced_indexed( const GLsizei vertexCount, const GLui
 	const GLsizei instanceCount, const GLuint baseVertexLocation,
 	const GfxIndexBufferFormat format, const GfxPrimitiveType type )
 {
-	CoreGfx::state_apply();
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( type < GFXPRIMITIVETYPE_COUNT );
+
 	nglDrawElementsInstanced( OpenGLPrimitiveTypes[type], vertexCount,
 		OpenGLIndexBufferFormats[format], 0, instanceCount );
+
 	PROFILE_GFX( Gfx::stats.frame.drawCalls++ );
 	PROFILE_GFX( Gfx::stats.frame.vertexCount += vertexCount * instanceCount );
 }
 
 
 bool CoreGfx::api_draw(
-		const GfxVertexBufferResource *const resourceVertex, const u32 vertexCount,
-		const GfxInstanceBufferResource *const resourceInstance, const u32 instanceCount,
-		const GfxIndexBufferResource *const resourceIndex,
-		const GfxPrimitiveType type )
+	const GfxVertexBufferResource *const resourceVertex, const u32 vertexCount,
+	const GfxInstanceBufferResource *const resourceInstance, const u32 instanceCount,
+	const GfxIndexBufferResource *const resourceIndex,
+	const GfxPrimitiveType type )
 {
+	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resourceVertex == nullptr || resourceVertex->id != GFX_RESOURCE_ID_NULL );
 	Assert( resourceInstance == nullptr || resourceInstance->id != GFX_RESOURCE_ID_NULL );
 	Assert( resourceIndex == nullptr || resourceIndex->id != GFX_RESOURCE_ID_NULL );
 
+	const GfxShaderResource *const shader = CoreGfx::state.pipeline.shader;
+
 	AssertMsg( resourceVertex == nullptr ||
-		CoreGfx::shaderEntries[Gfx::state().shader.shaderID].vertexFormat == resourceVertex->vertexFormat,
+		CoreGfx::shaderEntries[shader->shaderID].vertexFormat == resourceVertex->vertexFormat,
 		"Attempting to draw a vertex buffer with a shader of a different vertex format!" );
 	AssertMsg( resourceInstance == nullptr ||
-		CoreGfx::shaderEntries[Gfx::state().shader.shaderID].instanceFormat == resourceInstance->instanceFormat,
+		CoreGfx::shaderEntries[shader->shaderID].instanceFormat == resourceInstance->instanceFormat,
 		"Attempting to draw a vertex buffer with a shader of a different instance format!" );
 
 	ErrorIf( resourceVertex != nullptr && resourceVertex->mapped,
@@ -2205,13 +2538,17 @@ bool CoreGfx::api_draw(
 	{
 		nglBindVertexArray( resourceInstance->vao );
 	}
+	else
+	{
+		nglBindVertexArray( drawCallVAOEmpty );
+	}
 
 	// Bind Vertex Buffer
 	GLuint location = 0;
 	if( resourceVertex != nullptr )
 	{
 		nglBindBuffer( GL_ARRAY_BUFFER, resourceVertex->vbo );
-		CHECK_ERROR( "Failed to bind vertex buffer for draw (resource: %u)", resourceVertex->id )
+		OPENGL_CHECK_ERROR( "Failed to bind vertex buffer for draw (resource: %u)", resourceVertex->id )
 		location = opengl_input_layout_bind_vertex( resourceVertex->vertexFormat, 0 );
 	}
 
@@ -2219,7 +2556,7 @@ bool CoreGfx::api_draw(
 	if( resourceInstance != nullptr )
 	{
 		nglBindBuffer( GL_ARRAY_BUFFER, resourceInstance->vbo );
-		CHECK_ERROR( "Failed to bind instance buffer for draw (resource: %u)", resourceInstance->id )
+		OPENGL_CHECK_ERROR( "Failed to bind instance buffer for draw (resource: %u)", resourceInstance->id )
 		opengl_input_layout_bind_instance( resourceInstance->instanceFormat, location );
 	}
 
@@ -2227,7 +2564,7 @@ bool CoreGfx::api_draw(
 	if( resourceIndex != nullptr )
 	{
 		nglBindBuffer( GL_ELEMENT_ARRAY_BUFFER, resourceIndex->ebo );
-		CHECK_ERROR( "Failed to bind index buffer for indexed draw (resource: %u)", resourceVertex->id )
+		OPENGL_CHECK_ERROR( "Failed to bind index buffer for indexed draw (resource: %u)", resourceVertex->id )
 	}
 
 	// Submit Draw
@@ -2257,6 +2594,54 @@ bool CoreGfx::api_draw(
 	}
 
 	return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Dispatch
+
+bool CoreGfx::api_dispatch( const u32 x, const u32 y, const u32 z )
+{
+	OPENGL_CHECK_ERRORS_SCOPE
+	GRAPHICS_API_IMPLEMENTATION_WARNING // TODO: Implement this
+	return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Render Command
+
+void CoreGfx::api_render_command_execute( const GfxRenderCommand &command )
+{
+	OPENGL_CHECK_ERRORS_SCOPE
+
+	render_pass_validate();
+
+	bind_shader( command.pipeline.shader );
+	apply_pipeline_state_raster( command.pipeline.description );
+	apply_pipeline_state_blend( command.pipeline.description );
+	apply_pipeline_state_depth( command.pipeline.description );
+	apply_pipeline_state_stencil( command.pipeline.description );
+
+	apply_state_scissor( CoreGfx::state.scissor );
+
+	if( !command.workFunctionInvoker ) { return; }
+	command.workFunctionInvoker( command.workFunction,
+		GfxRenderCommand::renderCommandArgsStack.get( command.workPayloadOffset, command.workPayloadSize ) );
+}
+
+
+void CoreGfx::api_render_pass_begin( const GfxRenderPass &pass )
+{
+	OPENGL_CHECK_ERRORS_SCOPE
+
+	bind_targets( pass.targets );
+}
+
+
+void CoreGfx::api_render_pass_end( const GfxRenderPass &pass )
+{
+	OPENGL_CHECK_ERRORS_SCOPE
+
+	// NOTE: Do nothing here, since subsequent api_render_pass_begin() will rebind targets
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

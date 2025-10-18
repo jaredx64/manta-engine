@@ -551,7 +551,7 @@ namespace CoreGfxUniformBuffer
 
 	void ExampleUniformBuffer_t::upload() const
 	{
-		auto *&resource = CoreGfx::gfxUniformBufferResources[2];
+		auto *&resource = CoreGfx::uniformBuffers[2];
 		CoreGfx::api_uniform_buffer_write_begin( resource );
 		CoreGfx::api_uniform_buffer_write( resource, this );
 		CoreGfx::api_uniform_buffer_write_end( resource );
@@ -824,14 +824,14 @@ if( rabbitHandle )
 }
 
 // Looping over all obj_rabbit instances
-for( auto rabbitHandle : context.objects<Object::obj_rabbit>() )
+for( auto rabbitHandle : context.iterator<Object::obj_rabbit>() )
 {
 	rabbitHandle->x = 0.0f;
 	rabbitHandle->y = 0.0f;
 }
 
 // Looping over all obj_animal instances (includes obj_rabbits & obj_chicken)
-for( auto animalHandle : context.objects<Object::obj_animal>( true ) )
+for( auto animalHandle : context.iterator_polymorphic<Object::obj_animal>( true ) )
 {
 	animalHandle->x = 0.0f;
 	animalHandle->y = 0.0f;

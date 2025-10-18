@@ -24,21 +24,22 @@ static const NSOpenGLPixelFormatAttribute attributes[]
 	// 32-bit color buffer
 	NSOpenGLPFAColorSize, 32,
 
-    // Depth size
-    NSOpenGLPFADepthSize, bitsDepth,
+	// Depth size
+	NSOpenGLPFADepthSize, bitsDepth,
 
-    // Stencil size
-    NSOpenGLPFAStencilSize, bitsStencil,
+	// Stencil size
+	NSOpenGLPFAStencilSize, bitsStencil,
 
 	// NOTE: Apple says to do this
-    NSOpenGLPFAAccelerated,
-    NSOpenGLPFANoRecovery,
+	NSOpenGLPFAAccelerated,
+	NSOpenGLPFANoRecovery,
 	NSOpenGLPFAAllowOfflineRenderers,
 
-	// Null-terminate the attribute list
+	// Null-terminate
 	0,
 };
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool opengl_init()
 {
@@ -71,25 +72,28 @@ bool opengl_init()
 }
 
 
+bool opengl_free()
+{
+	return true;
+}
+
+
 bool opengl_swap()
 {
 	[context flushBuffer];
-
-	// Success
 	return true;
+}
+
+
+void opengl_update()
+{
+	[context update];
 }
 
 
 void *opengl_proc( const char *name )
 {
 	return nullptr;
-}
-
-
-void opengl_update()
-{
-	//PROFILE_FUNCTION();
-	[context update];
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

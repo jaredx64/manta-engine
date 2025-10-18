@@ -912,7 +912,7 @@ void BuilderCore::compile_write_ninja()
 #if PIPELINE_OS_WINDOWS
 		// Rule RC
 		output.append( "rule rc\n" );
-		output.append( "  command = windres --input $in --output $out --output-format=coff\n\n" );
+		output.append( "  command = windres --input \"$in\" --output \"$out\" --output-format=coff -F pe-x86-64\n\n" );
 #endif
 
 		// Rule Link

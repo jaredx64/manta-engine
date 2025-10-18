@@ -97,31 +97,31 @@ void earth_update( const Delta delta )
 
 void earth_draw( const Delta delta )
 {
-	Gfx::shader_bind( Shader::sh_globe );
-	Gfx::set_filtering_mode( GfxFilteringMode_ANISOTROPIC );
-	Gfx::set_filtering_anisotropy( 8 );
-	Gfx::set_cull_mode( GfxCullMode_BACK );
-	Gfx::set_depth_test_mode( GfxDepthTestMode_LESS );
-	{
-		double_m44 matrixWorld = double_m44_build_identity();
-		const double_m44 matrixScale = double_m44_build_scaling( R_EARTH_EQUATOR, R_EARTH_EQUATOR, R_EARTH_POLE );
-		matrixWorld = double_m44_multiply( matrixScale, matrixWorld );
-		Gfx::set_matrix_mvp( matrixWorld, View::matrixView, View::matrixPerspective );
+	GfxRenderCommand cmd;
+	cmd.set_shader( Shader::sh_globe );
+	cmd.raster_set_cull_mode( GfxRasterCullMode_NONE );
+	cmd.depth_set_function( GfxDepthFunction_LESS );
+	cmd.work( GfxWork
+		{
+			Gfx::sampler_set_filtering_mode( GfxSamplerFilteringMode_ANISOTROPIC );
+			Gfx::sampler_set_filtering_anisotropy( 8 );
 
-		GfxUniformBuffer::UniformsGlobe.sun = Universe::sun;
-		GfxUniformBuffer::UniformsGlobe.upload();
+			double_m44 matrixWorld = double_m44_build_identity();
+			const double_m44 matrixScale = double_m44_build_scaling( R_EARTH_EQUATOR, R_EARTH_EQUATOR, R_EARTH_POLE );
+			matrixWorld = double_m44_multiply( matrixScale, matrixWorld );
+			Gfx::set_matrix_mvp( matrixWorld, View::matrixView, View::matrixPerspective );
 
-		CoreGfx::textures[Texture::tex_earth_color].bind( 0 );
-		CoreGfx::textures[Texture::tex_earth_light_height_cloud].bind( 1 );
-		CoreGfx::textures[Texture::tex_debug_red].bind( 2 );
+			GfxUniformBuffer::UniformsGlobe.sun = Universe::sun;
+			GfxUniformBuffer::UniformsGlobe.upload();
 
-		Gfx::draw_vertex_buffer_indexed( Earth::vertexBuffer, Earth::indexBuffer );
+			Gfx::bind_texture( 0, Texture::tex_earth_color );
+			Gfx::bind_texture( 1, Texture::tex_earth_light_height_cloud );
+			Gfx::bind_texture( 2, Texture::tex_debug_red );
 
-		CoreGfx::textures[Texture::tex_debug_red].release();
-		CoreGfx::textures[Texture::tex_earth_light_height_cloud].release();
-		CoreGfx::textures[Texture::tex_earth_color].release();
-	}
-	Gfx::shader_release();
+			Gfx::draw_vertex_buffer_indexed( Earth::vertexBuffer, Earth::indexBuffer );
+		} );
+
+	Gfx::render_command_execute( cmd );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

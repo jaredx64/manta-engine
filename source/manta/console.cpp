@@ -270,7 +270,7 @@ public:
 			const Token &commandToken = tokens[index];
 			const Token &inputToken = inputTokens[index];
 			const bool isParameter = commandToken.string[0] == PARAMETER_CHAR_REQUIRED ||
-			                         commandToken.string[0] == PARAMETER_CHAR_OPTIONAL;
+				commandToken.string[0] == PARAMETER_CHAR_OPTIONAL;
 
 			if( isParameter )
 			{
@@ -420,10 +420,10 @@ public:
 		dimensionsArea = int_v2 { 0, 0 };
 		dimensionsView = int_v2 { 0, 0 };
 		anchorMouse = int_v2 { 0.0f, 0.0f };
-		scrollbarVisible = bool_v2 { true, true };
+		scrollbarVisible = u8_v2 { true, true };
 		scrollbarValue = float_v2 { 0.0f, 0.0f };
 		scrollbarValueTo = float_v2 { 0.0f, 0.0f };
-		scrollbarSliding = bool_v2 { false, false };
+		scrollbarSliding = u8_v2 { false, false };
 		scrollbarTweenH = float_v2 { 0.0f, 0.0f };
 		scrollbarTweenV = float_v2 { 0.0f, 0.0f };
 	}
@@ -436,7 +436,7 @@ public:
 		// Vertical / Horizontal Bars
 		const int &sizeView = vertical ? dimensionsView.y : dimensionsView.x;
 		const int &sizeArea = vertical ? dimensionsArea.y : dimensionsArea.x;
-		bool &sliding = vertical ? scrollbarSliding.y : scrollbarSliding.x;
+		u8 &sliding = vertical ? scrollbarSliding.y : scrollbarSliding.x;
 		float &value = vertical ? scrollbarValue.y : scrollbarValue.x;
 		float &valueTo = vertical ? scrollbarValueTo.y : scrollbarValueTo.x;
 		float_v2 &tweens = vertical ? scrollbarTweenV : scrollbarTweenH;
@@ -597,11 +597,11 @@ public:
 	int_v2 dimensionsArea;
 	int_v2 dimensionsView;
 	int_v2 anchorMouse;
-	bool_v2 scrollbarVisible;
+	u8_v2 scrollbarVisible;
 	int_v2 scrollbarSize;
 	float_v2 scrollbarValue;
 	float_v2 scrollbarValueTo;
-	bool_v2 scrollbarSliding;
+	u8_v2 scrollbarSliding;
 	float_v2 scrollbarTweenH; // x = background, y = slider
 	float_v2 scrollbarTweenV; // x = background, y = slider
 	constexpr static int scrollbarThickness = 12;
@@ -1098,7 +1098,7 @@ void CoreConsole::draw_input( const Delta delta )
 
 	// Region
 	Region &region = CoreConsole::inputRegion;
-	region.scrollbarVisible = bool_v2 { false, false };
+	region.scrollbarVisible = u8_v2 { false, false };
 	const int rX1 = 20;
 	const int rY1 = 4;
 	const int rX2 = Window::width - 8;
@@ -1123,7 +1123,7 @@ void CoreConsole::draw_input( const Delta delta )
 	draw_text( fnt_iosevka, 16, 8, 14, arrowColor, ">" );
 
 	// Input
-	Gfx::set_scissor_nested( rX1, rY1, rX2, rY2 );
+	Gfx::scissor_set_nested( rX1, rY1, rX2, rY2 );
 	{
 		// Hints
 		if( input->length() > 0 && CoreConsole::tokens.count() > 0 )
@@ -1190,7 +1190,7 @@ void CoreConsole::draw_input( const Delta delta )
 		region.dimensionsArea.x = max( dimensions.x + 4, region.dimensionsView.x );
 		region.dimensionsArea.y = region.dimensionsView.y;
 	}
-	Gfx::reset_scissor();
+	Gfx::scissor_reset();
 }
 
 
@@ -1216,7 +1216,7 @@ void CoreConsole::draw_log( const Delta delta )
 	region.draw( delta, rX1, rY1 );
 
 	// Draw Log
-	Gfx::set_scissor_nested( rX1, rY1, rX2, rY2 );
+	Gfx::scissor_set_nested( rX1, rY1, rX2, rY2 );
 	{
 		// Lines
 		int_v2 dimensions = { 0, 0 };
@@ -1287,7 +1287,7 @@ void CoreConsole::draw_log( const Delta delta )
 		region.dimensionsArea.x = max( dimensions.x + 6, region.dimensionsArea.x );
 		region.dimensionsArea.y = max( dimensions.y + 2, region.dimensionsArea.y );
 	}
-	Gfx::reset_scissor();
+	Gfx::scissor_reset();
 }
 
 
@@ -1318,7 +1318,7 @@ void CoreConsole::draw_candidates( const Delta delta )
 	region.draw( delta, rX1, rY1 );
 
 	int yOffset = 0;
-	Gfx::set_scissor_nested( rX1, rY1, rX2, rY2 );
+	Gfx::scissor_set_nested( rX1, rY1, rX2, rY2 );
 
 	// Candidates
 	for( CommandCompare i = 0, j = 0; i <= CommandCompare_Contains; i++ )
@@ -1427,7 +1427,7 @@ void CoreConsole::draw_candidates( const Delta delta )
 	region.dimensionsArea.y = yOffset + 4;
 	region.dimensionsView = int_v2 { rX2 - rX1, rY2 - rY1 };
 	region.dirty = false;
-	Gfx::reset_scissor();
+	Gfx::scissor_reset();
 }
 
 
@@ -1462,7 +1462,7 @@ CoreConsole::DVarInitializer &CoreConsole::DVarInitializer::get_instance()
 CoreConsole::DVarInitializer &CoreConsole::DVarInitializer::reset_instance()
 {
 	CoreConsole::DVarInitializer &initializer = CoreConsole::DVarInitializer::get_instance();
-	initializer.current = 0;
+	initializer.current = 0LLU;
 	return initializer;
 }
 
@@ -1704,7 +1704,7 @@ static void dvar_color_picker_window( Color *variable )
 }
 
 
-static void dvar_render_target_window( GfxRenderTarget2D *variable )
+static void dvar_render_target_window( GfxRenderTarget *variable )
 {
 	// Log
 	char buffer[COMMAND_SIZE];
@@ -1712,7 +1712,7 @@ static void dvar_render_target_window( GfxRenderTarget2D *variable )
 	Console::Log( c_white, buffer );
 
 	// Find name
-	const char *name = "GfxRenderTarget2D";
+	const char *name = "GfxRenderTarget";
 	for( Command &command : CoreConsole::commands )
 	{
 		if( command.payload == reinterpret_cast<void *>( variable ) )
@@ -1722,8 +1722,8 @@ static void dvar_render_target_window( GfxRenderTarget2D *variable )
 	}
 
 	// Window
-	ObjectInstance window = ui.create_widget( Object::UIWidget_Window_GfxRenderTarget2D );
-	auto windowHandle = ui.handle<Object::UIWidget_Window_GfxRenderTarget2D>( window );
+	ObjectInstance window = ui.create_widget( Object::UIWidget_Window_GfxRenderTarget );
+	auto windowHandle = ui.handle<Object::UIWidget_Window_GfxRenderTarget>( window );
 	if( windowHandle )
 	{
 		windowHandle->x = 64;
@@ -1864,7 +1864,7 @@ CoreConsole::DVar::DVar( bool scoped, Color *variable, const char *definition, c
 }
 
 
-CoreConsole::DVar::DVar( bool scoped, GfxRenderTarget2D *variable, const char *definition, const char *description )
+CoreConsole::DVar::DVar( bool scoped, GfxRenderTarget *variable, const char *definition, const char *description )
 {
 	Assert( variable != nullptr );
 	payload = scoped ? reinterpret_cast<void *>( variable ) : nullptr;
@@ -1873,7 +1873,7 @@ CoreConsole::DVar::DVar( bool scoped, GfxRenderTarget2D *variable, const char *d
 		CONSOLE_COMMAND_LAMBDA
 		{
 			Assert( payload != nullptr );
-			dvar_render_target_window( reinterpret_cast<GfxRenderTarget2D *>( payload ) );
+			dvar_render_target_window( reinterpret_cast<GfxRenderTarget *>( payload ) );
 		} );
 }
 
@@ -2016,7 +2016,7 @@ void Console::draw( const Delta delta )
 			const int bY2 = bY1 + 4 + CoreConsole::candidates_count_view() * 24;
 
 			const bool canHover = !( !Mouse::check_pressed( mb_left ) && Mouse::check( mb_left ) ) &&
-				                  !( ui.get_widget_hover() );
+				!( ui.get_widget_hover() );
 			candidateRegion.hover = canHover && point_in_rect( mX, mY, bX1, bY1, bX2, bY2 );
 
 			const int hasScrollbarV = ( candidateRegion.dimensionsArea.y > candidateRegion.dimensionsView.y );
@@ -2038,7 +2038,7 @@ void Console::draw( const Delta delta )
 			const int bX2 = Window::width - 4;
 			const int bY2 = Window::height - 64;
 			const bool canHover = !( !Mouse::check_pressed( mb_left ) && Mouse::check( mb_left ) ) &&
-			                      !( ui.get_widget_hover() );
+				!( ui.get_widget_hover() );
 			logRegion.hover = point_in_rect( mX, mY, bX1, bY1, bX2, bY2 ) && canHover;
 		}
 

@@ -60,6 +60,11 @@ namespace Window
 	}
 
 
+	void show_cursor( const bool enabled )
+	{
+	}
+
+
 	void set_caption( const char *caption )
 	{
 	}

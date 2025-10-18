@@ -330,7 +330,7 @@
 	Window::width = static_cast<int>( dirtyRect.size.width );
 	Window::height = static_cast<int>( dirtyRect.size.height );
 	Window::resized = true;
-	Gfx::viewport_update();
+	CoreGfx::swapchain_viewport_update();
 #endif
 }
 
@@ -577,6 +577,21 @@ namespace Window
 			{
 				Keyboard::state().keyCurrent[i] = false;
 			}
+		}
+	#endif
+	}
+
+
+	void show_cursor( const bool enabled )
+	{
+	#if WINDOW_ENABLED
+		if( enabled )
+		{
+			[NSCursor unhide];
+		}
+		else
+		{
+			[NSCursor hide];
 		}
 	#endif
 	}

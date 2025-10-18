@@ -35,12 +35,12 @@
 	#define DELTA_TIME_FRAMERATE ( 60.0f )
 #endif
 
-#ifndef DEPTH_BUFFER_ENABLED
-	#define DEPTH_BUFFER_ENABLED ( false )
+#ifndef SWAPCHAIN_DEPTH_ENABLED
+	#define SWAPCHAIN_DEPTH_ENABLED ( false )
 #endif
 
-#ifndef DEPTH_BUFFER_FORMAT
-	#define DEPTH_BUFFER_FORMAT ( GfxDepthFormat_R32_FLOAT )
+#ifndef SWAPCHAIN_DEPTH_FORMAT
+	#define SWAPCHAIN_DEPTH_FORMAT ( GfxDepthFormat_R32_FLOAT )
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -77,8 +77,8 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#ifndef RENDER_QUAD_BATCH_SIZE
-	#define RENDER_QUAD_BATCH_SIZE ( 4096 )
+#ifndef GFX_QUAD_BATCH_SIZE
+	#define GFX_QUAD_BATCH_SIZE ( 4096 )
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

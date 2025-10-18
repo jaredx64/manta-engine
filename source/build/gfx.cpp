@@ -194,7 +194,7 @@ void Gfx::codegen()
 		String &header = Gfx::headerGfx;
 		header.append( "#pragma once\n\n" );
 		header.append( "#include <core/types.hpp>\n#include <core/memory.hpp>\n" );
-		header.append( "#include <core/math.hpp>\n\n#include <manta/vector.hpp>\n\n" );
+		header.append( "#include <core/math.hpp>\n\n#include <core/math.hpp>\n\n" );
 
 		header.append( COMMENT_BREAK "\n\n" );
 		{
@@ -376,16 +376,14 @@ void Gfx::codegen()
 		{
 			source.append( "namespace CoreGfx\n{\n" );
 
-			source.append( "\tGfxUniformBufferResource *gfxUniformBufferResources[CoreGfx::uniformBufferCount];\n\n" );
-
 			source.append( "\tbool api_init_uniform_buffers()\n\t{\n" );
 			for( UniformBuffer &uniformBuffer : Gfx::uniformBuffers )
 			{
-				source.append( "\t\tgfxUniformBufferResources[" ).append( static_cast<int>( uniformBuffer.id ) );
+				source.append( "\t\tuniformBuffers[" ).append( static_cast<int>( uniformBuffer.id ) );
 				source.append( "] = nullptr;\n" );
 				source.append( "\t\tGfxUniformBuffer::" ).append( uniformBuffer.name ).append( ".zero();\n" );
 				source.append( "\t\tif( !CoreGfx::api_uniform_buffer_init( " );
-				source.append( "gfxUniformBufferResources[" ).append( static_cast<int>( uniformBuffer.id ) );
+				source.append( "uniformBuffers[" ).append( static_cast<int>( uniformBuffer.id ) );
 				source.append( "], \"t_" ).append( uniformBuffer.name );
 				source.append( "\", " ).append( static_cast<int>( uniformBuffer.id ) );
 				source.append( ", sizeof( CoreGfxUniformBuffer::" );
@@ -398,7 +396,7 @@ void Gfx::codegen()
 			source.append( "\tbool api_free_uniform_buffers()\n\t{\n" );
 			source.append( "\t\tfor( u32 i = 0; i < uniformBufferCount; i++ )\n" );
 			source.append( "\t\t{\n" );
-			source.append( "\t\t\tif( !CoreGfx::api_uniform_buffer_free( gfxUniformBufferResources[i] ) ) { return false; }\n" );
+			source.append( "\t\t\tif( !CoreGfx::api_uniform_buffer_free( uniformBuffers[i] ) ) { return false; }\n" );
 			source.append( "\t\t}\n" );
 			source.append( "\n\t\t// Success!\n" );
 			source.append( "\t\treturn true;\n" );
@@ -426,7 +424,7 @@ void Gfx::codegen()
 						int uniformBufferSlot = shader.uniformBufferSlots[stage][i];
 						UniformBuffer &uniformBuffer = Gfx::uniformBuffers[uniformBufferID];
 						source.append( "\t\tif( !CoreGfx::api_uniform_buffer_bind_" ).append( shaderStages[stage] );
-						source.append( "( CoreGfx::gfxUniformBufferResources[" );
+						source.append( "( CoreGfx::uniformBuffers[" );
 						source.append( uniformBufferID ).append( "], " ).append( uniformBufferSlot );
 						source.append( " ) ) { return false; }" );
 						source.append( " // ").append( uniformBuffer.name ).append( "\n" );

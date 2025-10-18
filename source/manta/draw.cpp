@@ -14,7 +14,7 @@
 
 static const Assets::SpriteEntry &nullSprite = Assets::sprite( Sprite::SPRITE_DEFAULT );
 static const Assets::GlyphEntry &nullGlyph = Assets::glyph( nullSprite.glyph );
-static const GfxTexture2D *const nullTexture = &CoreGfx::textures[nullSprite.texture];
+static const GfxTexture *const nullTexture = &CoreGfx::textures[nullSprite.texture];
 
 static Align halign = Align_Left;
 static Align valign = Align_Top;
@@ -152,7 +152,7 @@ void draw_sprite( const Sprite sprite, const u16 subimg, float x, float y, const
 #if GRAPHICS_ENABLED
 	const Assets::SpriteEntry &dSprite = Assets::sprite( sprite );
 	const Assets::GlyphEntry &dGlyph = Assets::glyph( dSprite.glyph + ( subimg % Assets::sprite( sprite ).count ) );
-	GfxTexture2D *texture = &CoreGfx::textures[dSprite.texture];
+	GfxTexture *texture = &CoreGfx::textures[dSprite.texture];
 
 	float width  = dSprite.width * xscale;
 	float height = dSprite.height * yscale;
@@ -173,7 +173,7 @@ void draw_sprite_part( const Sprite sprite, const u16 subimg, float x, float y,
 #if GRAPHICS_ENABLED
 	const Assets::SpriteEntry &dSprite = Assets::sprite( sprite );
 	const Assets::GlyphEntry &dGlyph = Assets::glyph( dSprite.glyph + ( subimg % Assets::sprite( sprite ).count ) );
-	const GfxTexture2D *const texture = &CoreGfx::textures[dSprite.texture];
+	const GfxTexture *const texture = &CoreGfx::textures[dSprite.texture];
 
 	float width  = dSprite.width * xscale;
 	float height = dSprite.height * yscale;
@@ -199,7 +199,7 @@ void draw_sprite_part_quad( const Sprite sprite, const u16 subimg,
 #if GRAPHICS_ENABLED
 	const Assets::SpriteEntry &dSprite = Assets::sprite( sprite );
 	const Assets::GlyphEntry &dGlyph = Assets::glyph( dSprite.glyph + ( subimg % Assets::sprite( sprite ).count ) );
-	const GfxTexture2D *const texture = &CoreGfx::textures[dSprite.texture];
+	const GfxTexture *const texture = &CoreGfx::textures[dSprite.texture];
 
 	const u16 u = dGlyph.u2 - dGlyph.u1;
 	const u16 v = dGlyph.v2 - dGlyph.v1;
@@ -217,7 +217,7 @@ void draw_sprite_angle( const Sprite sprite, const u16 subimg, float x, float y,
 #if GRAPHICS_ENABLED
 	const Assets::SpriteEntry &dSprite = Assets::sprite( sprite );
 	const Assets::GlyphEntry &dGlyph = Assets::glyph( dSprite.glyph + ( subimg % Assets::sprite( sprite ).count ) );
-	const GfxTexture2D *const texture = &CoreGfx::textures[dSprite.texture];
+	const GfxTexture *const texture = &CoreGfx::textures[dSprite.texture];
 
 	const float width = dSprite.width * xscale;
 	const float height = dSprite.height * yscale;
@@ -225,11 +225,11 @@ void draw_sprite_angle( const Sprite sprite, const u16 subimg, float x, float y,
 	const float dy = dSprite.yorigin * yscale;
 
 #if 0
-	const float s = sinf( degtorad( angle ) );
-	const float c = cosf( degtorad( angle ) );
+	const float s = sinf( angle * DEG2RAD_F );
+	const float c = cosf( angle * DEG2RAD_F );
 #else
 	float s, c;
-	fast_sin_cos( degtorad( angle ), s, c );
+	fast_sinf_cosf( angle * DEG2RAD_F, s, c );
 #endif
 
 	const float x1 = x - ( dx ) * c + ( dy ) * s;
@@ -252,7 +252,7 @@ void draw_sprite_fast( const Sprite sprite, const u16 subimg, float x, float y, 
 #if GRAPHICS_ENABLED
 	const Assets::SpriteEntry &dSprite = Assets::sprite( sprite );
 	const Assets::GlyphEntry &dGlyph = Assets::glyph( dSprite.glyph + subimg );
-	const GfxTexture2D *const texture = &CoreGfx::textures[dSprite.texture];
+	const GfxTexture *const texture = &CoreGfx::textures[dSprite.texture];
 
 	const float width = dSprite.width;
 	const float height = dSprite.height;
@@ -264,7 +264,7 @@ void draw_sprite_fast( const Sprite sprite, const u16 subimg, float x, float y, 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void draw_render_target_2d( const GfxRenderTarget2D &surface, float x, float y,
+void draw_render_target( const GfxRenderTarget &surface, float x, float y,
 	const float xscale, const float yscale,
 	const Color color, const float depth )
 {
@@ -285,7 +285,7 @@ void draw_render_target_2d( const GfxRenderTarget2D &surface, float x, float y,
 }
 
 
-void draw_render_target_2d_depth( const GfxRenderTarget2D &surface, float x, float y,
+void draw_render_target_depth( const GfxRenderTarget &surface, float x, float y,
 	const float xscale, const float yscale,
 	const Color color, const float depth )
 {
@@ -490,7 +490,7 @@ void draw_line( const float x1, const float y1, const float x2, const float y2,
 	{
 		const float angle = atanf( ( y2 - y1 ) / ( x2 - x1 ) ) + ( x2 < x1 ? PI : 0.0f );
 		const float length = float_v2_distance( { x1, y1 }, { x2, y2 } );
-		draw_rectangle_angle( x1, y1, x1 + length, y1 + thickness, radtodeg( angle ), color, false, depth );
+		draw_rectangle_angle( x1, y1, x1 + length, y1 + thickness, angle * RAD2DEG_F, color, false, depth );
 	}
 #endif
 }
@@ -601,13 +601,13 @@ void draw_text( const Font font, const u16 size, const float x, const float y, C
 
 			// TODO: Implement this properly...
 			if( UNLIKELY( Gfx::quad_batch_can_break() ) ||
-			    UNLIKELY( Gfx::state().textureResource[0] != CoreFonts::texture2D.resource ) )
+			    UNLIKELY( CoreGfx::state.boundTexture[0] != CoreFonts::glyphAtlasTexture.resource ) )
 			{
 				CoreFonts::update();
 			}
 
 			Gfx::quad_batch_write( glyphX1, glyphY1, glyphX2, glyphY2,
-			                       u1, v1, u2, v2, color, &CoreFonts::texture2D, 0.0f );
+				u1, v1, u2, v2, color, &CoreFonts::glyphAtlasTexture, 0.0f );
 		}
 
 		// Advance Character

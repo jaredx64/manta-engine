@@ -80,7 +80,7 @@ namespace CoreFonts
 	extern void cache( const u16 ttf, const u16 size, const u32 start, const u32 end );
 	extern void cache( const u16 ttf, const u16 size, const char *buffer );
 
-	extern GfxTexture2D texture2D;
+	extern GfxTexture glyphAtlasTexture;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

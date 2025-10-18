@@ -85,11 +85,7 @@ public:
 		else
 		{
 			// Align & grow memory
-			while( !fixed )
-			{
-				if( tell + sizeof( Type ) <= capacity ) { break; }
-				grow();
-			}
+			for( ; !fixed && tell + sizeof( Type ) > capacity; grow() ) { }
 
 			// Write element
 			const usize writeIndex = tell;
@@ -117,11 +113,7 @@ public:
 		else
 		{
 			// Align & grow memory
-			while( !fixed )
-			{
-				if( offset + sizeof( Type ) <= capacity ) { break; }
-				grow();
-			}
+			for( ; !fixed && offset + sizeof( Type ) > capacity; grow() ) { }
 
 			// Write element
 			const usize writeIndex = offset;

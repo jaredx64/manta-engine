@@ -3,9 +3,9 @@
 #include <core/types.hpp>
 #include <core/list.hpp>
 #include <core/factory.hpp>
+#include <core/math.hpp>
 
 #include <manta/input.hpp>
-#include <manta/vector.hpp>
 #include <manta/objects.system.hpp>
 #include <manta/text.hpp>
 
@@ -172,7 +172,6 @@ private:
 	Keyboard keyboard;
 	Mouse mouse;
 };
-constexpr usize s = sizeof( UIContext );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

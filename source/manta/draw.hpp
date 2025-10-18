@@ -107,11 +107,11 @@ extern void draw_sprite_fast( const Sprite sprite, const u16 subimg,
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-extern void draw_render_target_2d( const class GfxRenderTarget2D &renderTarget, float x, float y,
+extern void draw_render_target( const class GfxRenderTarget &renderTarget, float x, float y,
 	const float xscale = 1.0f, const float yscale = 1.0f,
 	const Color color = c_white, const float depth = 0.0f );
 
-extern void draw_render_target_2d_depth( const class GfxRenderTarget2D &renderTarget, float x, float y,
+extern void draw_render_target_depth( const class GfxRenderTarget &renderTarget, float x, float y,
 	const float xscale = 1.0f, const float yscale = 1.0f,
 	const Color color = c_white, const float depth = 0.0f );
 
@@ -145,7 +145,7 @@ extern void draw_circle_gradient( float x, float y, float radius, Color c1 = c_w
 	u32 resolution = 20, const float depth = 0.0f );
 
 inline void draw_circle( float x, float y, float radius, Color color = c_white,
-						 u32 resolution = 20, float depth = 0.0f )
+	u32 resolution = 20, float depth = 0.0f )
 {
 	draw_circle_gradient( x, y, radius, color, color, resolution, depth );
 }

@@ -12,8 +12,8 @@ void Buffer::init( usize reserve, const bool grow )
 {
 	// Set state
 	capacity = reserve;
-	current = 0;
-	tell = 0;
+	current = 0LLU;
+	tell = 0LLU;
 	fixed = !grow;
 
 	// Allocate memory
@@ -39,9 +39,9 @@ void Buffer::free()
 	data = nullptr;
 
 	// Reset state
-	capacity = 0;
-	current = 0;
-	tell = 0;
+	capacity = 0LLU;
+	current = 0LLU;
+	tell = 0LLU;
 }
 
 
@@ -61,7 +61,7 @@ bool Buffer::load( const char *path, const bool grow )
 
 	// Fetch file size
 	const usize size = fsize( file );
-	if( size == 0 ) { success = false; goto cleanup; }
+	if( size == 0LLU ) { success = false; goto cleanup; }
 
 	// Initialize buffer
 	init( size, grow );
@@ -71,7 +71,7 @@ bool Buffer::load( const char *path, const bool grow )
 
 	// Set state
 	current = size;
-	tell = 0;
+	tell = 0LLU;
 
 cleanup:
 	// Close file
@@ -138,9 +138,9 @@ Buffer &Buffer::move( Buffer &&other )
 
 	// Reset the other buffer to null state
 	other.data = nullptr;
-	other.capacity = 0;
-	other.current = 0;
-	other.tell = 0;
+	other.capacity = 0LLU;
+	other.current = 0LLU;
+	other.tell = 0LLU;
 	other.fixed = false;
 
 	// Return this
@@ -178,8 +178,8 @@ bool Buffer::shrink()
 
 void Buffer::clear()
 {
-	current = 0;
-	tell = 0;
+	current = 0LLU;
+	tell = 0LLU;
 }
 
 
@@ -187,11 +187,7 @@ usize Buffer::write( void *bytes, const usize size )
 {
 	// Grow memory
 	MemoryAssert( data != nullptr );
-	while( !fixed )
-	{
-		if( tell + size <= capacity ) { break; }
-		grow();
-	}
+	for( ; !fixed && tell + size > capacity; grow() ) { }
 
 	// Write element
 	ErrorIf( tell + size > capacity, "Buffer: write exceeded buffer capacity" );
@@ -210,11 +206,7 @@ usize Buffer::write_from_file( const char *path, const usize offset, const usize
 
 	// Grow memory
 	MemoryAssert( data != nullptr );
-	while( !fixed )
-	{
-		if( tell + size <= capacity ) { break; }
-		grow();
-	}
+	for( ; !fixed && tell + size > capacity; grow() ) { }
 
 	// Open file for reading
 	FILE *file = fopen( path, "rb" );

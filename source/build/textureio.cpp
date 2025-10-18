@@ -72,8 +72,8 @@ bool Texture2DBuffer::load( const char *path )
 	int w, h, channels;
 	data = reinterpret_cast<rgba *>( stbi_load( path, &w, &h, &channels, sizeof( rgba ) ) );
 	if( data == nullptr ) { width = 0; height = 0; return false; }
-	AssertMsg( w <= U16_MAX && w <= U16_MAX,
-		"Attempting to load texture larger than max supported (try: %dx%d max:%dx%d)", w, h, U16_MAX, U16_MAX );
+	AssertMsg( static_cast<u16>( w ) <= U16_MAX && static_cast<u16>( w ) <= U16_MAX,
+		"Attempting to load texture larger than max supported (try: %dx%d max:%ux%u)", w, h, U16_MAX, U16_MAX );
 	width = static_cast<u16>( w );
 	height = static_cast<u16>( h );
 	return true;

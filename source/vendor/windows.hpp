@@ -582,6 +582,7 @@
 	extern "C" DLL_IMPORT int STD_CALL ReleaseDC(HWND, HDC);
 	extern "C" DLL_IMPORT BOOL STD_CALL DestroyWindow(HWND);
 	extern "C" DLL_IMPORT BOOL STD_CALL UnregisterClassW(LPCWSTR, HINSTANCE);
+	extern "C" DLL_IMPORT int STD_CALL ShowCursor(BOOL);
 
 	// WinBase.h
 	extern "C" DLL_IMPORT LPVOID STD_CALL GlobalLock(HGLOBAL);

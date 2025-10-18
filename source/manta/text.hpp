@@ -194,8 +194,8 @@ private:
 public:
 	TextChar *data = nullptr;
 	TextFormat defaultFormat;
-	usize capacity = 0;
-	usize current = 0;
+	usize capacity = 0LLU;
+	usize current = 0LLU;
 
 public:
 	usize limitCharacters = 0; // Max character count
@@ -273,7 +273,7 @@ private:
 	}
 
     char data[N + 1] { };
-	usize current = 0;
+	usize current = 0LLU;
 };
 
 

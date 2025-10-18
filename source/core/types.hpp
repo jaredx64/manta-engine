@@ -27,8 +27,8 @@ using i32 = signed int;
 #define I32_MAX ( 0x7FFFFFFF )
 
 using i64 = signed long long;
-#define I64_MIN ( 0x8000000000000000L )
-#define I64_MAX ( 0x7FFFFFFFFFFFFFFFL )
+#define I64_MIN ( 0x8000000000000000LL )
+#define I64_MAX ( 0x7FFFFFFFFFFFFFFFLL )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -45,12 +45,8 @@ using u32 = unsigned int;
 #define U32_MAX ( 0xFFFFFFFF )
 
 using u64 = unsigned long long;
-#define U64_MIN ( 0 )
-#define U64_MAX ( 0xFFFFFFFFFFFFFFFFUL )
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-using UUID = u64;
+#define U64_MIN ( 0LLU )
+#define U64_MAX ( 0xFFFFFFFFFFFFFFFFLLU )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -157,7 +153,7 @@ template <typename T> struct remove_reference<T &&> { using type = T; };
 #define BITFLAG_SET( variable, flag )     ( ( variable ) |= ( flag ) )
 #define BITFLAG_UNSET( variable, flag )   ( ( variable ) &= ( ~( flag ) ) )
 #define BITFLAG_TOGGLE( variable, flag )  ( ( variable ) ^= ( flag ) )
-#define BITFLAG_ENABLED( variable, flag ) ( ( variable ) & ( flag ) )
+#define BITFLAG_IS_SET( variable, flag ) ( ( variable ) & ( flag ) )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

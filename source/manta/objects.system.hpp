@@ -24,19 +24,19 @@ class Deserializer; // <core/serializer.hpp>
 
 // Loop over all active instances of a specified object type
 #define foreach_object( objectContext, objectType, handle ) \
-	for( ObjectHandle<objectType> handle : objectContext.template iterator_active<objectType>( false ) )
+	for( ObjectHandle<objectType> handle : objectContext.template iterator<objectType>() )
 
 // Loop over all active instances of a specified object type and its derived child types
 #define foreach_object_polymorphic( objectContext, objectType, handle ) \
-	for( ObjectHandle<objectType> handle : objectContext.template iterator_active<objectType>( true ) )
+	for( ObjectHandle<objectType> handle : objectContext.template iterator_polymorphic<objectType>() )
 
-// Loop over all instances of a specified object type
+// Loop over all instances (including deactivated) of a specified object type
 #define foreach_object_all( objectContext, objectType, handle ) \
-	for( ObjectHandle<objectType> handle : objectContext.template iterator_all<objectType>( false ) )
+	for( ObjectHandle<objectType> handle : objectContext.template iterator_all<objectType>() )
 
-// Loop over all instances of a specified object type and its derived child types
+// Loop over all instances (including deactivated) of a specified object type and its derived child types
 #define foreach_object_polymorphic_all( objectContext, objectType, handle ) \
-	for( ObjectHandle<objectType> handle : objectContext.template iterator_all<objectType>( true ) )
+	for( ObjectHandle<objectType> handle : objectContext.template iterator_polymorphic_all<objectType>() )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -91,12 +91,12 @@ public:
 	ObjectInstance( const u16 type, const u16 generation, const u16 bucket, const u16 index ) :
 		alive{ 0 }, deactivated{ 0 }, type{ type }, generation{ generation }, bucketID{ bucket }, index{ index } { }
 
-	u16 alive : 1;       // alive flag
+	u16 alive : 1; // alive flag
 	u16 deactivated : 1; // deactivated flag (skips foreach)
-	u16 type : 14;       // object type (id)
-	u16 generation;      // age in ObjectBucket
-	u16 bucketID;        // index into ObjectContext bucket array
-	u16 index;           // object's index within ObjectBucket
+	u16 type : 14; // object type (id)
+	u16 generation; // age in ObjectBucket
+	u16 bucketID; // index into ObjectContext bucket array
+	u16 index; // object's index within ObjectBucket
 
 	template <Object_t T> ObjectHandle<T> handle( const ObjectContext &context ) const; // impl: objects.generated.cpp
 	bool operator==( const ObjectInstance &other ) const { return equals( other ); }
@@ -249,13 +249,13 @@ private:
 		ObjectBucket( ObjectContext &context ) : context( context ) { }
 
 		ObjectContext &context; // parent ObjectContext
-		byte *data = nullptr;   // data buffer pointer
-		u16 type = 0;           // object type
-		u16 bucketIDNext = 0;   // index of next ObjectBucket in ObjectContext
-		u16 bucketID = 0;       // index of this ObjectBucket in ObjectContext
-		u16 current = 0;        // current insertion index
-		u16 bottom = 0;         // lowest 'alive' index
-		u16 top = 0;            // highest 'alive' index
+		byte *data = nullptr; // data buffer pointer
+		u16 type = 0; // object type
+		u16 bucketIDNext = 0; // index of next ObjectBucket in ObjectContext
+		u16 bucketID = 0; // index of this ObjectBucket in ObjectContext
+		u16 current = 0; // current insertion index
+		u16 bottom = 0; // lowest 'alive' index
+		u16 top = 0; // highest 'alive' index
 
 		void *new_object_pointer();
 		ObjectInstance new_object( void *ptr );
@@ -288,11 +288,11 @@ private:
 
 		bool ( *find_object_ptr )( ObjectIterator &, const ObjectBucket *const, const u16 );
 		const ObjectContext &context; // parent ObjectContext
-		byte *ptr;                    // pointer to current object instance data
-		u16 type : 15;                // object type to iterate over
-		u16 polymorphic : 1;          // if true, interate child types too
-		u16 index;                    // index within current ObjectBucket
-		u16 bucketID;                 // current ObjectBucket index
+		byte *ptr; // pointer to current object instance data
+		u16 type : 15; // object type to iterate over
+		u16 polymorphic : 1; // if true, interate child types too
+		u16 index; // index within current ObjectBucket
+		u16 bucketID; // current ObjectBucket index
 	};
 
 	struct ObjectIteratorActive : public ObjectIterator
@@ -328,10 +328,16 @@ public:
 		ObjectIteratorAll itr;
 	};
 
-	template <Object_t T> IteratorAll<T> iterator_all( const bool polymorphic = false ) const
+	template <Object_t T> IteratorAll<T> iterator_all() const
 	{
 		Assert( buckets != nullptr );
-		return IteratorAll<T>{ *this, T, polymorphic };
+		return IteratorAll<T> { *this, T, false };
+	}
+
+	template <Object_t T> IteratorAll<T> iterator_polymorphic_all() const
+	{
+		Assert( buckets != nullptr );
+		return IteratorAll<T> { *this, T, true };
 	}
 
 	template <Object_t T> struct IteratorActive
@@ -346,10 +352,16 @@ public:
 		ObjectIteratorActive itr;
 	};
 
-	template <Object_t T> IteratorActive<T> iterator_active( const bool polymorphic = false ) const
+	template <Object_t T> IteratorActive<T> iterator() const
 	{
 		Assert( buckets != nullptr );
-		return IteratorActive<T>{ *this, T, polymorphic };
+		return IteratorActive<T> { *this, T, false };
+	}
+
+	template <Object_t T> IteratorActive<T> iterator_polymorphic() const
+	{
+		Assert( buckets != nullptr );
+		return IteratorActive<T> { *this, T, true };
 	}
 
 	template <Object_t T> ObjectHandle<T> handle( const ObjectInstance &object ) const
@@ -359,10 +371,10 @@ public:
 
 private:
 	ObjectBucket *buckets = nullptr; // ObjectBucket array (dynamic)
-	u16 *bucketCache = nullptr;      // Most recent buckets touched by object create/destroy
-	u32 *objectCount = nullptr;      // Instance count for each object type
-	u16 capacity = 0;                // Number of allocated ObjectBucket slots
-	u16 current = 0;                 // Current ObjectBucket insertion index
+	u16 *bucketCache = nullptr; // Most recent buckets touched by object create/destroy
+	u32 *objectCount = nullptr; // Instance count for each object type
+	u16 capacity = 0; // Number of allocated ObjectBucket slots
+	u16 current = 0; // Current ObjectBucket insertion index
 	u16 disableEvents : 1;
 	u16 __unused : 15;
 	const ObjectCategory_t category;

@@ -34,10 +34,10 @@ void compile_shader( Shader &shader, const char *path )
 		// Output
 		const char *shaderTypeExtensions[] =
 		{
-			".generated.shader", // ShaderType_NONE
-			".generated.hlsl",   // ShaderType_HLSL
-			".generated.glsl",   // ShaderType_GLSL
-			".generated.metal",  // ShaderType_METAL
+			".generated.none",  // ShaderType_NONE
+			".generated.hlsl",  // ShaderType_HLSL
+			".generated.glsl",  // ShaderType_GLSL
+			".generated.metal", // ShaderType_METAL
 		};
 		static_assert( ARRAY_LENGTH( shaderTypeExtensions ) == SHADERTYPE_COUNT, "Missing ShaderType!" );
 
@@ -178,7 +178,7 @@ void compile_shader( Shader &shader, const char *path )
 
 	// Write
 	{
-#if COMPILE_DEBUG && 0
+#if COMPILE_DEBUG
 		String output = "";
 		output.append( COMMENT_BREAK );
 		for( ShaderStage stage = 0; stage < SHADERSTAGE_COUNT; stage++ )

@@ -7,7 +7,6 @@
 
 #include <manta/thread.hpp>
 #include <manta/assets.hpp>
-#include <manta/vector.hpp>
 #include <manta/random.hpp>
 #include <manta/time.hpp>
 
@@ -1187,8 +1186,8 @@ SoundHandle CoreAudio::play_stream( const int idBus, const u32 assetID,
 	CoreAudio::Stream &stream = CoreAudio::sounds[s];
 
 	Assert( assetID < CoreAssets::soundCount );
-	const Assets::SoundEntry &binSound = Assets::sound( assetID );
-	Assert( binSound.streamed );
+	const Assets::SoundEntry &soundEntry = Assets::sound( assetID );
+	Assert( soundEntry.streamed );
 
 	// Effects
 	memory_copy( &stream.effects, &effects, sizeof( stream.effects ) );
@@ -1205,10 +1204,10 @@ SoundHandle CoreAudio::play_stream( const int idBus, const u32 assetID,
 	memory_copy( &stream.description, &description, sizeof( stream.description ) );
 
 	// State
-	stream.channels = binSound.channels;
+	stream.channels = soundEntry.channels;
 	stream.samplePosition = description.startTimeRandomize ?
-		CoreAudio::random.next_float( binSound.sampleCount ) : description.startTimeMS;
-	stream.samplesCount = binSound.sampleCount;
+		CoreAudio::random.next_float( soundEntry.sampleCount ) : description.startTimeMS;
+	stream.samplesCount = soundEntry.sampleCount;
 
 	stream.assetID = assetID;
 	stream.streamPosition = ( static_cast<usize>( stream.samplePosition ) / AUDIO_STREAM_BLOCK ) *
@@ -1380,23 +1379,23 @@ SoundHandle AudioContext::play_sound( const u32 sound,
 	Assert( idBus >= 0 || idBus < AUDIO_BUS_COUNT );
 
 	Assert( sound < CoreAssets::soundCount );
-	const Assets::SoundEntry &binSound = Assets::sound( sound );
+	const Assets::SoundEntry &soundEntry = Assets::sound( sound );
 
 #if COMPILE_DEBUG
-	const char *name = binSound.name;
+	const char *name = soundEntry.name;
 #else
 	const char *name = "";
 #endif
 
-	if( binSound.streamed )
+	if( soundEntry.streamed )
 	{
 		return CoreAudio::play_stream( idBus, sound, effects, description, name );
 	}
 	else
 	{
-		const i16 *const samples = &CoreAudio::samples[binSound.sampleOffset];
-		const u32 samplesCount = binSound.sampleCount;
-		const int channels = binSound.channels;
+		const i16 *const samples = &CoreAudio::samples[soundEntry.sampleOffset];
+		const u32 samplesCount = soundEntry.sampleCount;
+		const int channels = soundEntry.channels;
 		return CoreAudio::play_voice( idBus, samples, samplesCount, channels, effects, description, name );
 	}
 }

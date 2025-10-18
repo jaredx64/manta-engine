@@ -1,7 +1,7 @@
 #include <manta/3d.hpp>
 
+#include <core/math.hpp>
 #include <manta/gfx.hpp>
-#include <manta/matrix.hpp>
 #include <manta/draw.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -534,10 +534,16 @@ static void frustum_draw( const float_v3 *corners, const Color &color, const boo
 	}
 	frustum.write_end();
 
-	CoreGfx::textures[Texture::TEXTURE_DEFAULT].bind( 0 );
+	GfxRenderCommand cmd;
+	cmd.set_shader( Shader::SHADER_DEFAULT );
+	cmd.depth_set_function( GfxDepthFunction_NONE );
+	Gfx::render_command_execute( cmd, GfxWorkCapture
+		{
+			Gfx::bind_texture( 0, Texture::TEXTURE_DEFAULT );
+			Gfx::draw_vertex_buffer( frustum, wireframe ? GfxPrimitiveType_LineList :
+				GfxPrimitiveType_TriangleList );
+		} );
 
-	GfxDepthTestMode depthTestModeCache = Gfx::state().depth.depthTestMode;
-	Gfx::draw_vertex_buffer( frustum, wireframe ? GfxPrimitiveType_LineList : GfxPrimitiveType_TriangleList );
 	frustum.free();
 }
 
@@ -610,44 +616,57 @@ void draw_axis_3d( int x, int y, u16 width, u16 height, float_v3 forward, float_
 	rtDesc.colorFormat = GfxColorFormat_R8G8B8A8_FLOAT;
 	rtDesc.depthFormat = GfxDepthFormat_R16_FLOAT;
 
-	GfxRenderTarget2D rt;
+	GfxRenderTarget rt;
 	rt.init( width, height, rtDesc );
 
 	// Cache Gfx State
 	double_m44 CACHE_MATRIX_MODEL = Gfx::get_matrix_model();
 	double_m44 CACHE_MATRIX_VIEW = Gfx::get_matrix_view();
 	double_m44 CACHE_MATRIX_PERSPECTIVE = Gfx::get_matrix_perspective();
-	Shader CACHE_SHADER = Gfx::shader_current();
 
 	// Draw XYZ Gizmo
-	Gfx::shader_bind( Shader::SHADER_DEFAULT_RGB );
-	rt.bind();
+	GfxRenderPass pass;
+	pass.set_target( 0, rt );
+	pass.set_name( "XYZ Gizmo" );
+	Gfx::render_pass_begin( pass );
 	{
 		Gfx::clear_color( backgroundColor );
 		Gfx::clear_depth();
 
-		Gfx::set_depth_test_mode( GfxDepthTestMode_LESS_EQUALS );
-		Gfx::set_cull_mode( GfxCullMode_NONE );
+		GfxRenderCommand cmd;
+		cmd.set_shader( Shader::SHADER_DEFAULT_RGB );
+		cmd.depth_set_function( GfxDepthFunction_LESS_EQUALS );
+		cmd.raster_set_cull_mode( GfxRasterCullMode_NONE );
+		Gfx::render_command_execute( cmd, GfxWorkCapture
+			{
+				const double_m44 matrixView = double_m44_build_lookat(
+					-forward.x * 4.0,
+					-forward.y * 4.0,
+					-forward.z * 4.0,
+					0.0, 0.0, 0.0, up.x, up.y, up.z );
 
-		double_m44 matrixView = double_m44_build_lookat(
-			-forward.x * 4.0, -forward.y * 4.0, -forward.z * 4.0,
-			0.0, 0.0, 0.0, up.x, up.y, up.z );
-		double_m44 matrixProj = double_m44_build_perspective( 35.0, static_cast<double>( width ) / height, 0.1, 16.0 );
-		Gfx::set_matrix_mvp( double_m44_build_identity(), matrixView, matrixProj );
+				const double_m44 matrixPerspective = double_m44_build_perspective( 35.0,
+					static_cast<double>( width ) / height, 0.1, 16.0 );
 
-		Gfx::draw_vertex_buffer( vertexBuffer );
+				Gfx::set_matrix_mvp( double_m44_build_identity(), matrixView, matrixPerspective );
+
+				Gfx::draw_vertex_buffer( vertexBuffer );
+			} );
 	}
-	rt.release();
+	Gfx::render_pass_end( pass );
 
 	// Restore GFX State
 	Gfx::set_matrix_mvp( CACHE_MATRIX_MODEL, CACHE_MATRIX_VIEW, CACHE_MATRIX_PERSPECTIVE );
 
 	// Draw Render Target
-	Gfx::shader_bind( Shader::SHADER_DEFAULT );
-	rt.textureColor.bind( 0 );
-	draw_quad_uv( x, y, x + width, y + height, 0x0000, 0x0000, 0xFFFF, 0xFFFF, c_white );
-	Gfx::quad_batch_break();
-	Gfx::shader_bind( CACHE_SHADER );
+	GfxRenderCommand cmd;
+	cmd.set_shader( Shader::SHADER_DEFAULT );
+	Gfx::render_command_execute( cmd, GfxWorkCapture
+		{
+			Gfx::bind_texture( 0, rt.textureColor );
+			draw_quad_uv( x, y, x + width, y + height,
+				0x0000, 0x0000, 0xFFFF, 0xFFFF, c_white );
+		} );
 
 	// Free Resources
 	rt.free();

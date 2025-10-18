@@ -77,7 +77,7 @@ enum_type( Timeline, int )
 };
 
 
-struct BinAnimation
+struct AnimationEntry
 {
 	u32 keyframeFirst[TIMELINE_COUNT];
 	u32 keyframeCount[TIMELINE_COUNT];
@@ -86,7 +86,7 @@ struct BinAnimation
 
 
 constexpr int numAnimations = 2;
-static BinAnimation binAnimations[numAnimations] =
+static AnimationEntry animationEntries[numAnimations] =
 {
 	{ .keyframeFirst = { 0, 0, 0, 14, 14, 0, 0 }, .keyframeCount = { 4, 0, 0, 2, 2, 0, 0 }, .duration = 5.0f },
 	{ .keyframeFirst = { 4, 8, 11, 0, 0, 0, 0 }, .keyframeCount = { 4, 3, 3, 0, 0, 0, 0 }, .duration = 1.0f },
@@ -101,7 +101,7 @@ enum_type( AnimationID, u32 )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct BinBone
+struct BoneEntry
 {
 	u32 animationFirst;
 	u32 animationCount;
@@ -123,7 +123,7 @@ enum_type( BoneID, u32 )
 };
 
 constexpr int numBones = 4;
-static BinBone binBones[numBones] =
+static BoneEntry boneEntries[numBones] =
 {
 	{ .animationFirst = 0, .animationCount = 1, .parent = U32_MAX,
 		.x = 0.0f, .y = 0.0f, .length = 16.0f, .scaleX = 1.0f, .scaleY = 1.0f, .rotation = 0.0f },
@@ -140,7 +140,7 @@ static BinBone binBones[numBones] =
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct BinSkeleton
+struct SkeletonEntry
 {
 	u32 boneFirst;
 	u32 boneCount;
@@ -155,7 +155,7 @@ enum_type( SkeletonID, u32 )
 
 
 constexpr int numSkeletons = 1;
-static BinSkeleton binSkeletons[numSkeletons] =
+static SkeletonEntry skeletonEntries[numSkeletons] =
 {
 	{ .boneFirst = 0, .boneCount = 4 },
 };
@@ -234,7 +234,7 @@ public:
 	float get_translation_x() const;
 	float get_translation_y() const;
 
-	void update( const BinBone &binBone, const Delta delta );
+	void update( const BoneEntry &boneEntry, const Delta delta );
 	void draw( const Delta delta, float x, float y, Color color, float depth = 0.0f );
 
 private:

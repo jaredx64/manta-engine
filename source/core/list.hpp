@@ -23,6 +23,9 @@ public:
 	List<T> &operator=( const List<T> &other ) { return copy( other ); }
 	List<T> &operator=( List<T> &&other ) { return move( static_cast<List<T> &&>( other ) ); }
 #else
+	List() = default;
+	List( List<T> &&other ) { move( static_cast<List<T> &&>( other ) ); }
+
 	List<T> &operator=( const List<T> &other ) { Error( "List: assignment disabled" ); return *this; }
 	List<T> &operator=( List<T> &&other ) { Error( "List: assignment disabled" ); return *this; }
 
@@ -33,7 +36,7 @@ public:
 		if( Debug::memoryLeakDetection && Debug::exitCode == 0 )
 		{
 			MemoryAssertMsg( data == nullptr, "ERROR: Memory leak in List (%p) (size: %.2f kb)",
-			                 this, KB( size_allocated_bytes() ) );
+				this, KB( size_allocated_bytes() ) );
 		}
 	}
 #endif
@@ -49,7 +52,7 @@ private:
 		capacity = capacity > USIZE_MAX / 2 ? USIZE_MAX : capacity * 2;
 		data = reinterpret_cast<T *>( memory_realloc( data, capacity * sizeof( T ) ) );
 		ErrorIf( data == nullptr, "Failed to reallocate memory for grow List (%p: realloc %d bytes)",
-		         data, capacity * sizeof( T ) );
+			data, capacity * sizeof( T ) );
 	}
 
 	void quicksort( usize left, usize right, bool ascending )
@@ -92,6 +95,7 @@ private:
 		return i;
 	}
 
+public:
 	void swap( usize i, usize j )
 	{
 		if( i == j ) { return; }
@@ -100,12 +104,11 @@ private:
 		data[j] = static_cast<T &&>( temp );
 	}
 
-public:
 	void init( const usize reserve = 1 )
 	{
 		// Set state
 		capacity = reserve;
-		current = 0;
+		current = 0LLU;
 
 		// Allocate memory
 		MemoryAssert( data == nullptr );
@@ -133,8 +136,8 @@ public:
 		data = nullptr;
 
 		// Reset state
-		capacity = 0;
-		current = 0;
+		capacity = 0LLU;
+		current = 0LLU;
 	}
 
 	void reserve( const usize reserve )
@@ -190,8 +193,8 @@ public:
 
 		// Reset other List to null state
 		other.data = nullptr;
-		other.capacity = 0;
-		other.current = 0;
+		other.capacity = 0LLU;
+		other.current = 0LLU;
 
 		// Return this
 		return *this;
@@ -237,7 +240,7 @@ public:
 		for( usize i = 0; i < current; i++ ) { data[i].~T(); }
 
 		// Reset state
-		current = 0;
+		current = 0LLU;
 	}
 
 	void sort( bool ascending = true )
@@ -550,8 +553,8 @@ public:
 //private:
 public:
 	T *data = nullptr;
-	usize capacity = 0;
-	usize current = 0;
+	usize capacity = 0LLU;
+	usize current = 0LLU;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

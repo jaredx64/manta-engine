@@ -81,24 +81,25 @@ void universe_update( const Delta delta )
 
 void universe_draw( const Delta delta )
 {
-	Gfx::shader_bind( Shader::SHADER_DEFAULT );
-	Gfx::set_cull_mode( GfxCullMode_FRONT );
-	Gfx::set_filtering_mode( GfxFilteringMode_ANISOTROPIC );
-	Gfx::set_filtering_anisotropy( 8 );
-	{
-		const double_m44 matrixPerspective = double_m44_build_perspective( View::fov, View::aspect, 0.01, 128.0 );
-		Gfx::set_matrix_mvp( View::matrixWorld, View::matrixLook, matrixPerspective );
+	GfxRenderCommand cmd;
+	cmd.set_shader( Shader::SHADER_DEFAULT );
+	cmd.raster_set_cull_mode( GfxRasterCullMode_FRONT );
+	cmd.depth_set_function( GfxDepthFunction_NONE );
+	cmd.depth_set_write( GfxDepthWrite_NONE );
+	cmd.work( GfxWork
+		{
+			Gfx::sampler_set_filtering_mode( GfxSamplerFilteringMode_ANISOTROPIC );
+			Gfx::sampler_set_filtering_anisotropy( 8 );
 
-		CoreGfx::textures[Texture::tex_stars_color].bind( 0 );
+			const double_m44 matrixPerspective = double_m44_build_perspective( View::fov, View::aspect,
+				0.01, 128.0 );
+			Gfx::set_matrix_mvp( View::matrixWorld, View::matrixLook, matrixPerspective );
 
-		Gfx::draw_vertex_buffer_indexed( Universe::vertexBuffer, Universe::indexBuffer );
+			Gfx::bind_texture( 0, Texture::tex_stars_color );
+			Gfx::draw_vertex_buffer_indexed( Universe::vertexBuffer, Universe::indexBuffer );
+		} );
 
-		CoreGfx::textures[Texture::tex_stars_color].release();
-	}
-	Gfx::set_cull_mode( GfxCullMode_BACK );
-	Gfx::shader_release();
-
-	Gfx::clear_depth();
+	Gfx::render_command_execute( cmd );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

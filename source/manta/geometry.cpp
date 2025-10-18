@@ -5,8 +5,6 @@
 #include <core/math.hpp>
 #include <core/hashmap.hpp>
 
-#include <manta/vector.hpp>
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 u32 geometry_generate_sphere_icosahedron( u32 subdivisions, List<float_v3> *positions,

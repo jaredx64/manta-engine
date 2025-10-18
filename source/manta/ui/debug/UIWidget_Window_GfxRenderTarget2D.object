@@ -13,7 +13,7 @@ SOURCE_INCLUDES
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-OBJECT( UIWidget_Window_GfxRenderTarget2D )
+OBJECT( UIWidget_Window_GfxRenderTarget )
 PARENT( UIWidget_Window )
 
 CATEGORY( UI )
@@ -25,7 +25,7 @@ BUCKET_SIZE( 64 )
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // PUBLIC STATE
 
-PUBLIC GfxRenderTarget2D *rt = nullptr;
+PUBLIC GfxRenderTarget *rt = nullptr;
 
 PUBLIC bool showChannelR = true;
 PUBLIC bool showChannelG = true;
@@ -61,7 +61,7 @@ PROTECTED void init()
 	handleChannelR->callbackOnInteract = []( UIContext &context, ObjectInstance widget )
 		{
 			auto widgetHandle = context.handle<Object::UIWidget_Button>( widget ); Assert( widgetHandle );
-			auto parentHandle = context.handle<Object::UIWidget_Window_GfxRenderTarget2D>( widgetHandle->parent );
+			auto parentHandle = context.handle<Object::UIWidget_Window_GfxRenderTarget>( widgetHandle->parent );
 			Assert( parentHandle );
 			parentHandle->showChannelR = !parentHandle->showChannelR;
 		};
@@ -74,7 +74,7 @@ PROTECTED void init()
 	handleChannelG->callbackOnInteract = []( UIContext &context, ObjectInstance widget )
 		{
 			auto widgetHandle = context.handle<Object::UIWidget_Button>( widget ); Assert( widgetHandle );
-			auto parentHandle = context.handle<Object::UIWidget_Window_GfxRenderTarget2D>( widgetHandle->parent );
+			auto parentHandle = context.handle<Object::UIWidget_Window_GfxRenderTarget>( widgetHandle->parent );
 			Assert( parentHandle );
 			parentHandle->showChannelG = !parentHandle->showChannelG;
 		};
@@ -87,7 +87,7 @@ PROTECTED void init()
 	handleChannelB->callbackOnInteract = []( UIContext &context, ObjectInstance widget )
 		{
 			auto widgetHandle = context.handle<Object::UIWidget_Button>( widget ); Assert( widgetHandle );
-			auto parentHandle = context.handle<Object::UIWidget_Window_GfxRenderTarget2D>( widgetHandle->parent );
+			auto parentHandle = context.handle<Object::UIWidget_Window_GfxRenderTarget>( widgetHandle->parent );
 			Assert( parentHandle );
 			parentHandle->showChannelB = !parentHandle->showChannelB;
 		};
@@ -100,7 +100,7 @@ PROTECTED void init()
 	handleChannelA->callbackOnInteract = []( UIContext &context, ObjectInstance widget )
 		{
 			auto widgetHandle = context.handle<Object::UIWidget_Button>( widget ); Assert( widgetHandle );
-			auto parentHandle = context.handle<Object::UIWidget_Window_GfxRenderTarget2D>( widgetHandle->parent );
+			auto parentHandle = context.handle<Object::UIWidget_Window_GfxRenderTarget>( widgetHandle->parent );
 			Assert( parentHandle );
 			parentHandle->showChannelA = !parentHandle->showChannelA;
 		};
@@ -113,7 +113,7 @@ PROTECTED void init()
 	handleDepth->callbackOnInteract = []( UIContext &context, ObjectInstance widget )
 		{
 			auto widgetHandle = context.handle<Object::UIWidget_Button>( widget ); Assert( widgetHandle );
-			auto parentHandle = context.handle<Object::UIWidget_Window_GfxRenderTarget2D>( widgetHandle->parent );
+			auto parentHandle = context.handle<Object::UIWidget_Window_GfxRenderTarget>( widgetHandle->parent );
 			Assert( parentHandle );
 			parentHandle->showDepth = !parentHandle->showDepth;
 		};
@@ -126,7 +126,7 @@ PROTECTED void init()
 	handleInverted->callbackOnInteract = []( UIContext &context, ObjectInstance widget )
 		{
 			auto widgetHandle = context.handle<Object::UIWidget_Button>( widget ); Assert( widgetHandle );
-			auto parentHandle = context.handle<Object::UIWidget_Window_GfxRenderTarget2D>( widgetHandle->parent );
+			auto parentHandle = context.handle<Object::UIWidget_Window_GfxRenderTarget>( widgetHandle->parent );
 			Assert( parentHandle );
 			parentHandle->showInverted = !parentHandle->showInverted;
 		};
@@ -217,26 +217,27 @@ PROTECTED void render( const Delta delta, const Alpha alpha )
 	draw_rectangle( x1, y1, x2, y2, c_black );
 
 	// Texture Resource
-	GfxColorWriteFlag flags = GfxColorWriteFlag_NONE;
-	if( showChannelR ) { flags |= GfxColorWriteFlag_RED; }
-	if( showChannelG ) { flags |= GfxColorWriteFlag_GREEN; }
-	if( showChannelB ) { flags |= GfxColorWriteFlag_BLUE; }
-	if( showChannelA ) { flags |= GfxColorWriteFlag_ALPHA; }
-	Gfx::set_color_write_mask( flags );
+	GfxBlendWrite flags = GfxBlendWrite_NONE;
+	if( showChannelR ) { flags |= GfxBlendWrite_RED; }
+	if( showChannelG ) { flags |= GfxBlendWrite_GREEN; }
+	if( showChannelB ) { flags |= GfxBlendWrite_BLUE; }
+	if( showChannelA ) { flags |= GfxBlendWrite_ALPHA; }
+	Gfx::blend_set_write( flags );
 	{
 		const u16 u1 = 0x0000;
 		const u16 v1 = showInverted ? 0xFFFF : 0x0000;
 		const u16 u2 = 0xFFFF;
 		const u16 v2 = showInverted ? 0x0000 : 0xFFFF;
 
-		GfxTexture2D &texture = showDepth ? rt->textureDepth : rt->textureColor;
+		GfxTexture &texture = showDepth ? rt->textureDepth : rt->textureColor;
 		if( texture.resource != nullptr )
 		{
-			texture.bind( 0 );
+			Gfx::bind_texture( 0, texture );
 			draw_quad_uv( x1, y1, x2, y2, u1, v1, u2, v2 );
+			Gfx::release_texture( 0, texture );
 		}
 	}
-	Gfx::set_color_write_mask( GfxColorWriteFlag_ALL );
+	Gfx::blend_set_write( GfxBlendWrite_ALL );
 }
 
 

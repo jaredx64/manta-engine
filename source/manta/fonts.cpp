@@ -32,14 +32,14 @@ namespace CoreFonts
 	};
 
 	// Global
-	GfxTexture2D texture2D;
+	GfxTexture glyphAtlasTexture;
 
 	// Static
 	static u16 insertX = CoreFonts::FONTS_GLYPH_PADDING;
 	static u16 insertY = CoreFonts::FONTS_GLYPH_PADDING;
 	static u16 lineHeight = 0;
 
-	static Texture2DBuffer textureBuffer;
+	static Texture2DBuffer glyphAtlasTextureBuffer;
 	static byte *bitmap;
 
 	static FontGlyphEntry *data = nullptr;
@@ -124,11 +124,12 @@ bool CoreFonts::init()
 	dirtyGlyphs.init();
 
 	// Init Texture2DBuffer
-	textureBuffer.init( CoreFonts::FONTS_TEXTURE_SIZE, CoreFonts::FONTS_TEXTURE_SIZE );
-	textureBuffer.clear( rgba{ 0, 0, 0, 0 } );
+	glyphAtlasTextureBuffer.init( CoreFonts::FONTS_TEXTURE_SIZE, CoreFonts::FONTS_TEXTURE_SIZE );
+	glyphAtlasTextureBuffer.clear( rgba{ 0, 0, 0, 0 } );
 
 	// Init Texture2D
-	texture2D.init( textureBuffer.data, textureBuffer.width, textureBuffer.height, GfxColorFormat_R8G8B8A8_FLOAT );
+	glyphAtlasTexture.init_2d( glyphAtlasTextureBuffer.data, glyphAtlasTextureBuffer.width,
+		glyphAtlasTextureBuffer.height, GfxColorFormat_R8G8B8A8_FLOAT );
 
 	// Init bitmap buffer
 	bitmap = reinterpret_cast<byte *>(
@@ -155,7 +156,7 @@ bool CoreFonts::free()
 	dirtyGlyphs.free();
 
 	// Free Texture2D
-	texture2D.free();
+	glyphAtlasTexture.free();
 
 	// Free bitmap buffer
 	if( bitmap != nullptr )
@@ -222,7 +223,7 @@ CoreFonts::FontGlyphInfo &CoreFonts::get( FontGlyphKey key )
 bool CoreFonts::pack( CoreFonts::FontGlyphInfo &glyphInfo )
 {
 	// Check if the glyph pushes us onto a "new line"
-	if( insertX + glyphInfo.width + CoreFonts::FONTS_GLYPH_PADDING >= textureBuffer.width )
+	if( insertX + glyphInfo.width + CoreFonts::FONTS_GLYPH_PADDING >= glyphAtlasTextureBuffer.width )
 	{
 		insertX = CoreFonts::FONTS_GLYPH_PADDING;
 		insertY += lineHeight + CoreFonts::FONTS_GLYPH_PADDING * 2;
@@ -230,7 +231,7 @@ bool CoreFonts::pack( CoreFonts::FontGlyphInfo &glyphInfo )
 	}
 
 	// No more room?
-	if( insertY + glyphInfo.height + CoreFonts::FONTS_GLYPH_PADDING >= textureBuffer.height )
+	if( insertY + glyphInfo.height + CoreFonts::FONTS_GLYPH_PADDING >= glyphAtlasTextureBuffer.height )
 	{
 		return false;
 	}
@@ -254,14 +255,15 @@ void CoreFonts::flush()
 	memory_set( data, 0, size );
 
 	// Clear Texture2DBuffer
-	textureBuffer.clear( rgba { 0, 0, 0, 0 } );
+	glyphAtlasTextureBuffer.clear( rgba { 0, 0, 0, 0 } );
 
 	// Clear newGlyph list
 	dirtyGlyphs.clear();
 
 	// Update GPU texture
-	texture2D.free();
-	texture2D.init( textureBuffer.data, textureBuffer.width, textureBuffer.height, GfxColorFormat_R8G8B8A8_FLOAT );
+	glyphAtlasTexture.free();
+	glyphAtlasTexture.init_2d( glyphAtlasTextureBuffer.data, glyphAtlasTextureBuffer.width,
+		glyphAtlasTextureBuffer.height, GfxColorFormat_R8G8B8A8_FLOAT );
 
 	// Reset packing state
 	insertX = FONTS_GLYPH_PADDING;
@@ -296,8 +298,8 @@ void CoreFonts::update()
 			for( u16 y = 0; y < glyph.height; y++ )
 			{
 				const u32 srcIndex = y * glyph.width + x;
-				const u32 dstIndex = ( glyph.v + y ) * textureBuffer.width + ( glyph.u + x );
-				textureBuffer.data[dstIndex] = rgba{ 255, 255, 255, static_cast<u8>( bitmap[srcIndex] ) };
+				const u32 dstIndex = ( glyph.v + y ) * glyphAtlasTextureBuffer.width + ( glyph.u + x );
+				glyphAtlasTextureBuffer.data[dstIndex] = rgba{ 255, 255, 255, static_cast<u8>( bitmap[srcIndex] ) };
 			}
 		}
 	}
@@ -306,8 +308,9 @@ void CoreFonts::update()
 	dirtyGlyphs.clear();
 
 	// Update GPU texture
-	texture2D.free();
-	texture2D.init( textureBuffer.data, textureBuffer.width, textureBuffer.height, GfxColorFormat_R8G8B8A8_FLOAT );
+	glyphAtlasTexture.free();
+	glyphAtlasTexture.init_2d( glyphAtlasTextureBuffer.data, glyphAtlasTextureBuffer.width,
+		glyphAtlasTextureBuffer.height, GfxColorFormat_R8G8B8A8_FLOAT );
 }
 
 

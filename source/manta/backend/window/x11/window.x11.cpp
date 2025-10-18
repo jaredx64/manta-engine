@@ -158,7 +158,7 @@ namespace CoreWindow
 						Window::width = event.xconfigure.width;
 						Window::height = event.xconfigure.height;
 						Window::resized = true;
-						Gfx::viewport_update();
+						CoreGfx::swapchain_viewport_update();
 					}
 				}
 				break;
@@ -413,6 +413,14 @@ namespace Window
 
 		// Don't forget to update the internal fullscreen state!
 		Window::fullscreen = enabled;
+	#endif
+	}
+
+
+	void show_cursor( const bool enabled )
+	{
+	#if WINDOW_ENABLED
+		// TODO
 	#endif
 	}
 

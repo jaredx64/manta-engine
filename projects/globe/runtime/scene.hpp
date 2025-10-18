@@ -6,8 +6,8 @@
 
 namespace Scene
 {
-	extern GfxRenderTarget2D rtSceneMSAA;
-	extern GfxRenderTarget2D rtSceneComposite;
+	extern GfxRenderTarget rtSceneMSAA;
+	extern GfxRenderTarget rtSceneComposite;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

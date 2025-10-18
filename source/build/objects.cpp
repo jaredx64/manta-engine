@@ -319,7 +319,7 @@ void ObjectFile::parse_keywords( const String &buffer )
 
 	// Gather keywords
 	const usize length = buffer.length_bytes();
-	for( usize current = 0; current < length; current++ )
+	for( usize current = 0LLU; current < length; current++ )
 	{
 		// Comments
 		if( buffer[current] == '/' )
@@ -442,11 +442,13 @@ void ObjectFile::parse_keywords_values( const String &buffer )
 			// BUCKET_SIZE
 			case KeywordID_BUCKET_SIZE:
 			{
-				const int value = keyword_PARENTHESES_int( buffer, keyword );
-				ErrorIfLine( value < 0 || value > U16_MAX, line, "%s() must be range 1 - %u", g_KEYWORDS[KeywordID_BUCKET_SIZE], U16_MAX );
-				ErrorIfLine( value == 0, line, "%s() must be range 1 - %u. Use %s( true ) if desired size is 0",
+				const usize value = static_cast<usize>( keyword_PARENTHESES_int( buffer, keyword ) );
+				ErrorIfLine( value > U16_MAX, line,
+					"%s() must be range 1 - %u", g_KEYWORDS[KeywordID_BUCKET_SIZE], U16_MAX );
+				ErrorIfLine( value == 0LLU, line,
+					"%s() must be range 1 - %u. Use %s( true ) if desired size is 0",
 					g_KEYWORDS[KeywordID_BUCKET_SIZE], U16_MAX, g_KEYWORDS[KeywordID_ABSTRACT] );
-				bucketSize = static_cast<usize>( value );
+				bucketSize = value;
 			}
 			break;
 
@@ -1005,8 +1007,8 @@ void ObjectFile::keyword_FRIEND( const String &buffer, Keyword &keyword )
 
 void ObjectFile::keyword_CATEGORY( const String &buffer, Keyword &keyword )
 {
-	usize current = 0;
-	usize end = 0;
+	usize current = 0LLU;
+	usize end = 0LLU;
 	const bool found = find_keyword_parentheses( buffer, keyword.start, keyword.end, current, end );
 	ErrorIfLine( !found, line_at( buffer, keyword.start ), "%s(...) must not be empty!", g_KEYWORDS[KeywordID_CATEGORY] );
 
@@ -1032,8 +1034,8 @@ void ObjectFile::keyword_CATEGORY( const String &buffer, Keyword &keyword )
 
 void ObjectFile::keyword_VERSIONS( const String &buffer, Keyword &keyword )
 {
-	usize current = 0;
-	usize end = 0;
+	usize current = 0LLU;
+	usize end = 0LLU;
 	const bool found = find_keyword_parentheses( buffer, keyword.start, keyword.end, current, end );
 	ErrorIfLine( !found, line_at( buffer, keyword.start ), "%s(...) must not be empty!", g_KEYWORDS[KeywordID_VERSIONS] );
 

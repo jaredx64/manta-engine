@@ -414,13 +414,13 @@ void UIContext::scissor_set( const UIScissor &s )
 	if( !s.scissoring )
 	{
 		scissor = UIScissor { };
-		Gfx::reset_scissor();
+		Gfx::scissor_reset();
 		return;
 	}
 
 	// Set Scissor
 	scissor = s;
-	Gfx::set_scissor( scissor.x1, scissor.y1, scissor.x2, scissor.y2 );
+	Gfx::scissor_set( scissor.x1, scissor.y1, scissor.x2, scissor.y2 );
 
 	//draw_rectangle( 0, 0, 2000, 2000, c_red );
 }
@@ -431,7 +431,7 @@ void UIContext::scissor_set_nested( const UIScissor &s )
 	if( !s.scissoring )
 	{
 		scissor = UIScissor { };
-		Gfx::reset_scissor();
+		Gfx::scissor_reset();
 		return;
 	}
 
@@ -442,7 +442,7 @@ void UIContext::scissor_set_nested( const UIScissor &s )
 	scissor.y1 = max( scissor.y1, s.y1 );
 	scissor.x2 = min( scissor.x2, s.x2 );
 	scissor.y2 = min( scissor.y2, s.y2 );
-	Gfx::set_scissor( scissor.x1, scissor.y1, scissor.x2, scissor.y2 );
+	Gfx::scissor_set( scissor.x1, scissor.y1, scissor.x2, scissor.y2 );
 
 	//draw_rectangle( 0, 0, 2000, 2000, c_purple );
 }

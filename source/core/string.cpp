@@ -242,8 +242,8 @@ void String::free()
 	data = nullptr;
 
 	// Reset state
-	capacity = 0;
-	current = 0;
+	capacity = 0LLU;
+	current = 0LLU;
 }
 
 
@@ -305,8 +305,8 @@ String &String::move( String &&other )
 
 	// Reset other String to null state
 	other.data = nullptr;
-	other.capacity = 0;
-	other.current = 0;
+	other.capacity = 0LLU;
+	other.current = 0LLU;
 
 	// Return this
 	return *this;
@@ -357,7 +357,7 @@ String &String::clear()
 {
 	MemoryAssert( data != nullptr );
 	data[0] = '\0';
-	current = 0;
+	current = 0LLU;
 	return *this;
 }
 
@@ -399,7 +399,7 @@ String &String::trim()
 	{
 		// String is entirely whitespace, return empty string
 		data[0] = '\0';
-		current = 0;
+		current = 0LLU;
 	}
 	else if( leadingSpaces > 0 || trailingSpaces > 0 )
 	{
@@ -418,7 +418,7 @@ String &String::append( const char *string )
 	MemoryAssert( data != nullptr );
 	if( string == nullptr ) { return *this; }
 	const usize length = strlen( string );
-	while( capacity < current + length ) { grow(); }
+	for( ; current + length > capacity; grow() ) { }
 	memory_copy( data + current, string, length );
 	current += length;
 	data[current] = '\0';
@@ -436,7 +436,7 @@ String &String::append( const StringView &string )
 {
 	MemoryAssert( data != nullptr );
 	if( string.data == nullptr || string.length == 0 || string.data[0] == '\0' ) { return *this; }
-	while( capacity < current + string.length ) { grow(); }
+	for( ; current + string.length > capacity; grow() ) { }
 	memory_copy( data + current, string.data, string.length );
 	current += string.length;
 	data[current] = '\0';
@@ -447,7 +447,7 @@ String &String::append( const StringView &string )
 String &String::append( char c )
 {
 	MemoryAssert( data != nullptr );
-	while( capacity < current + 1 ) { grow(); }
+	for( ; current + 1 > capacity; grow() ) { }
 	data[current++] = c;
 	data[current] = '\0';
 	return *this;
@@ -503,7 +503,7 @@ String &String::insert( const usize index, const char *string )
 	// Grow data (if necessary)
 	Assert( index <= current );
 	const usize length = strlen( string );
-	while( capacity < current + length ) { grow(); }
+	for( ; current + length > capacity; grow() ) { }
 
 	// Move chars after index to the right & insert string
 	const usize shift = current - index;

@@ -24,8 +24,8 @@ static GfxRenderTargetDescription rtSceneCompositeDescription;
 
 namespace Scene
 {
-	GfxRenderTarget2D rtSceneMSAA;
-	GfxRenderTarget2D rtSceneComposite;
+	GfxRenderTarget rtSceneMSAA;
+	GfxRenderTarget rtSceneComposite;
 }
 
 static float fade = 1.0;
@@ -34,7 +34,7 @@ static bool debug = false;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static void validate_render_target( GfxRenderTarget2D &target )
+static void validate_render_target( GfxRenderTarget &target )
 {
 	if( target.width != Window::width || target.height != Window::height )
 	{
@@ -68,61 +68,67 @@ void scene_free()
 
 void scene_draw_3d( const Delta delta )
 {
+	GfxRenderPass passMSAA;
 	validate_render_target( Scene::rtSceneMSAA );
+	passMSAA.set_target( 0, Scene::rtSceneMSAA );
+
+	GfxRenderPass passComposite;
 	validate_render_target( Scene::rtSceneComposite );
+	passComposite.set_target( 0, Scene::rtSceneComposite );
 
 	// Earth
-	Scene::rtSceneMSAA.bind();
-	Gfx::set_depth_test_mode( GfxDepthTestMode_LESS );
-	Gfx::clear_color( Color { 0, 0, 0, 0 } );
-	Gfx::clear_depth();
+	passMSAA.set_name( "Earth (MSAA)" );
+	Gfx::render_pass_begin( passMSAA );
 	{
-		// Earth (MSAA)
+		Gfx::clear_color( Color { 0, 0, 0, 0 } );
+		Gfx::clear_depth();
+
 		earth_draw( delta );
 	}
-	Gfx::set_depth_test_mode( GfxDepthTestMode_NONE );
-	Scene::rtSceneMSAA.release();
+	Gfx::render_pass_end( passMSAA );
 
 	// Scene
-	Scene::rtSceneComposite.bind();
-	Gfx::set_depth_test_mode( GfxDepthTestMode_LESS );
-	Gfx::clear_color( Color { 0, 0, 0, 0 } );
-	Gfx::clear_depth();
+	passComposite.set_name( "Scene" );
+	Gfx::render_pass_begin( passComposite );
 	{
+		Gfx::clear_color( Color { 0, 0, 0, 0 } );
+
 		// Universe
 		universe_draw( delta );
 
 		// Earth (Composite)
-		Gfx::shader_bind( Shader::sh_composite_quad );
-		Gfx::set_depth_test_mode( GfxDepthTestMode_NONE );
-		{
-			Scene::rtSceneMSAA.textureColor.bind( 0 );
-			Gfx::draw_vertices( 4, GfxPrimitiveType_TriangleStrip );
-			Scene::rtSceneMSAA.textureColor.release();
-		}
-		Gfx::clear_depth();
-		Gfx::shader_release();
+		GfxRenderCommand cmd;
+		cmd.set_shader( Shader::sh_composite_quad );
+		cmd.depth_set_function( GfxDepthFunction_NONE );
+		cmd.depth_set_write( GfxDepthWrite_NONE );
+		cmd.work( GfxWork
+			{
+				Gfx::bind_texture( 0, Scene::rtSceneMSAA.textureColor );
+				Gfx::draw_vertices( 4, GfxPrimitiveType_TriangleStrip );
+			} );
+		Gfx::render_command_execute( cmd );
 
 		// Atmosphere
 		atmosphere_draw( delta );
 	}
-	Gfx::set_depth_test_mode( GfxDepthTestMode_NONE );
-	Scene::rtSceneComposite.release();
+	Gfx::render_pass_end( passComposite );
 
 	// Composite
-	Gfx::shader_bind( Shader::sh_composite_quad );
-	{
-		Scene::rtSceneComposite.textureColor.bind( 0 );
-		Gfx::draw_vertices( 4, GfxPrimitiveType_TriangleStrip );
-		Scene::rtSceneComposite.textureColor.release();
-	}
-	Gfx::shader_release();
+	GfxRenderCommand cmd;
+	cmd.set_shader( Shader::sh_composite_quad );
+	cmd.work( GfxWork
+		{
+			Gfx::bind_texture( 0, Scene::rtSceneComposite.textureColor );
+			Gfx::draw_vertices( 4, GfxPrimitiveType_TriangleStrip );
+		} );
+	Gfx::render_command_execute( cmd );
 }
 
 
 void scene_draw_ui( const Delta delta )
 {
 	Gfx::set_matrix_mvp_2d_orthographic( 0.0, 0.0, 1.0, 0.0, Window::width, Window::height );
+	Gfx::sampler_set_filtering_mode( GfxSamplerFilteringMode_NEAREST );
 
 	// Labels
 	if( Keyboard::check_pressed( vk_l ) ) { labels = !labels; }
@@ -131,7 +137,6 @@ void scene_draw_ui( const Delta delta )
 	// Scene Fade-in
 	if( fade > 0.0f )
 	{
-		Gfx::reset_blend_mode();
 		draw_rectangle( 0, 0, Window::width, Window::height,
 			Color { 0, 0, 0, static_cast<u8>( fade * 255 ) } );
 		fade -= delta;

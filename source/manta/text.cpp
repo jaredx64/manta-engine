@@ -180,8 +180,8 @@ void Text::grow()
 void Text::init( const char *string )
 {
 	// Set state
-	capacity = 1;
-	current = 0;
+	capacity = 1LLU;
+	current = 0LLU;
 
 	// Allocate memory
 	MemoryAssert( data == nullptr );
@@ -211,8 +211,8 @@ void Text::free()
 	data = nullptr;
 
 	// Reset state
-	capacity = 0;
-	current = 0;
+	capacity = 0LLU;
+	current = 0LLU;
 }
 
 
@@ -249,8 +249,8 @@ Text &Text::move( Text &&other )
 
 	// Reset other Text to null state
 	other.data = nullptr;
-	other.capacity = 0;
-	other.current = 0;
+	other.capacity = 0LLU;
+	other.current = 0LLU;
 
 	// Return this
 	return *this;
@@ -261,7 +261,7 @@ void Text::clear()
 {
 	MemoryAssert( data != nullptr );
 
-	current = 0;
+	current = 0LLU;
 	if( callbackOnUpdate != nullptr ) { callbackOnUpdate( *this ); }
 }
 
@@ -353,7 +353,7 @@ usize Text::insert( const usize index, const TextChar &c )
 
 	// Grow data (if necessary)
 	Assert( index <= current );
-	while( capacity < current + 1 ) { grow(); }
+	for( ; current + 1 > capacity; grow() ) { }
 
 	// Move characters to the right & insert character
 	const usize shift = current - index;
@@ -515,12 +515,12 @@ static void draw_glyph( const float x, const float y, const float xOffset, const
 
 	// TODO: Implement this properly...
 	if( UNLIKELY( Gfx::quad_batch_can_break() ) ||
-		UNLIKELY( Gfx::state().textureResource[0] != CoreFonts::texture2D.resource ) )
+		UNLIKELY( CoreGfx::state.boundTexture[0] != CoreFonts::glyphAtlasTexture.resource ) )
 	{
 		CoreFonts::update();
 	}
 
-	Gfx::quad_batch_write( glyphX1, glyphY1, glyphX2, glyphY2, u1, v1, u2, v2, color, &CoreFonts::texture2D, 0.0f );
+	Gfx::quad_batch_write( glyphX1, glyphY1, glyphX2, glyphY2, u1, v1, u2, v2, color, &CoreFonts::glyphAtlasTexture, 0.0f );
 }
 
 

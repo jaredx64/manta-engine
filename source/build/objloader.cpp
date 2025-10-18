@@ -106,7 +106,7 @@ static bool next_vertex_position( const String &file, usize &tell, List<VertexPo
 
 static void parse_vertex_positions( const String &file, List<VertexPosition> &positions )
 {
-	usize tell = 0;
+	usize tell = 0LLU;
 	while( next_vertex_position( file, tell, positions ) ) { }
 }
 
@@ -135,7 +135,7 @@ static bool next_vertex_normal( const String &file, usize &tell, List<VertexNorm
 
 static void parse_vertex_normals( const String &file, List<VertexNormal> &normals )
 {
-	usize tell = 0;
+	usize tell = 0LLU;
 	while( next_vertex_normal( file, tell, normals ) ) { }
 }
 
@@ -164,7 +164,7 @@ static bool next_vertex_uv( const String &file, usize &tell, List<VertexUV> &uvs
 
 static void parse_vertex_uvs( const String &file, List<VertexUV> &uvs )
 {
-	usize tell = 0;
+	usize tell = 0LLU;
 	while( next_vertex_uv( file, tell, uvs ) ) { }
 }
 
@@ -209,7 +209,7 @@ static bool next_face( const String &file, usize &tell, List<Vertex> &vertices )
 
 static void parse_faces( const String &file, List<Vertex> &vertices )
 {
-	usize tell = 0;
+	usize tell = 0LLU;
 	while( next_face( file, tell, vertices ) ) { }
 }
 

@@ -86,16 +86,55 @@ struct Alpha
 struct Color
 {
 	constexpr Color( const u8 r = 0, const u8 g = 0, const u8 b = 0, const u8 a = 255 ) :
-		r{ r },
-		g{ g },
-		b{ b },
-		a{ a } { }
+		r{ r }, g{ g }, b{ b }, a{ a } { }
 
-    constexpr Color( const u32 code )
+	constexpr Color( const u8_v4 &rgba ) :
+		r{ rgba.x }, g{ rgba.y }, b{ rgba.z }, a{ rgba.w } { }
+
+	constexpr Color( const u8_v3 &rgb ) :
+		r{ rgb.x }, g{ rgb.y }, b{ rgb.z }, a{ 255 } { }
+
+	constexpr Color( const int_v4 &rgba ) :
+		r{ static_cast<u8>( rgba.x ) },
+		g{ static_cast<u8>( rgba.y ) },
+		b{ static_cast<u8>( rgba.z ) },
+		a{ static_cast<u8>( rgba.w ) } { }
+
+	constexpr Color( const int_v3 &rgb ) :
+		r{ static_cast<u8>( rgb.x ) },
+		g{ static_cast<u8>( rgb.y ) },
+		b{ static_cast<u8>( rgb.z ) },
+		a{ 255 } { }
+
+	constexpr Color( const float_v4 &rgba ) :
+		r{ static_cast<u8>( clamp( rgba.x * 255.0f, 0.0f, 255.0f ) ) },
+		g{ static_cast<u8>( clamp( rgba.y * 255.0f, 0.0f, 255.0f ) ) },
+		b{ static_cast<u8>( clamp( rgba.z * 255.0f, 0.0f, 255.0f ) ) },
+		a{ static_cast<u8>( clamp( rgba.w * 255.0f, 0.0f, 255.0f ) ) } { }
+
+	constexpr Color( const float_v3 &rgb ) :
+		r{ static_cast<u8>( clamp( rgb.x * 255.0f, 0.0f, 255.0f ) ) },
+		g{ static_cast<u8>( clamp( rgb.y * 255.0f, 0.0f, 255.0f ) ) },
+		b{ static_cast<u8>( clamp( rgb.z * 255.0f, 0.0f, 255.0f ) ) },
+		a{ 255 } { }
+
+	constexpr Color( const double_v4 &rgba ) :
+		r{ static_cast<u8>( clamp( rgba.x * 255.0, 0.0, 255.0 ) ) },
+		g{ static_cast<u8>( clamp( rgba.y * 255.0, 0.0, 255.0 ) ) },
+		b{ static_cast<u8>( clamp( rgba.z * 255.0, 0.0, 255.0 ) ) },
+		a{ static_cast<u8>( clamp( rgba.w * 255.0, 0.0, 255.0 ) ) } { }
+
+	constexpr Color( const double_v3 &rgb ) :
+		r{ static_cast<u8>( clamp( rgb.x * 255.0, 0.0, 255.0 ) ) },
+		g{ static_cast<u8>( clamp( rgb.y * 255.0, 0.0, 255.0 ) ) },
+		b{ static_cast<u8>( clamp( rgb.z * 255.0, 0.0, 255.0 ) ) },
+		a{ 255 } { }
+
+	constexpr Color( const u32 code )
         : r{ static_cast<u8>( ( code >> 24 ) & 0xFF ) },
           g{ static_cast<u8>( ( code >> 16 ) & 0xFF ) },
-          b{ static_cast<u8>( ( code >>  8 ) & 0xFF ) },
-          a{ static_cast<u8>( ( code       ) & 0xFF ) } { }
+          b{ static_cast<u8>( ( code >> 8 ) & 0xFF ) },
+          a{ static_cast<u8>( ( code ) & 0xFF ) } { }
 
 	Color operator*( const Color &c ) const;
 	Color operator*( Color &c ) const;
@@ -127,20 +166,42 @@ struct Color
 	Color &operator-=( const Color &c );
 	Color &operator-=( Color &c );
 
-	bool operator==( const Color &c ) const
-	{
-		return ( r == c.r && g == c.g && b == c.b && a == c.a );
-	}
+	bool operator==( const Color &c ) const { return ( r == c.r && g == c.g && b == c.b && a == c.a ); }
+
+	static constexpr float INV_255_F = 1.0f / 255.0f;
+	static constexpr double INV_255_D = 1.0f / 255.0f;
+
+	u8_v4 as_u8_v4() const { return u8_v4 { r, g, b, a }; }
+	operator const u8_v4() const { return as_u8_v4(); }
+
+	u8_v3 as_u8_v3() const { return u8_v3 { r, g, b }; }
+	operator const u8_v3() const { return as_u8_v3(); }
+
+	int_v4 as_int_v4() const { return int_v4 { r, g, b, a }; }
+	operator const int_v4() const { return as_int_v4(); }
+
+	int_v3 as_int_v3() const { return int_v3 { r, g, b }; }
+	operator const int_v3() const { return as_int_v3(); }
+
+	float_v4 as_float_v4() const { return float_v4 { r * INV_255_F, g * INV_255_F, b * INV_255_F, a * INV_255_F }; }
+	operator const float_v4() const { return as_float_v4(); }
+
+	float_v3 as_float_v3() const { return float_v3 { r * INV_255_F, g * INV_255_F, b * INV_255_F }; }
+	operator const float_v3() const { return as_float_v3(); }
+
+	double_v4 as_double_v4() const { return double_v4 { r * INV_255_D, g * INV_255_D, b * INV_255_D, a * INV_255_D }; }
+	operator const double_v4() const { return as_double_v4(); }
+
+	double_v3 as_double_v3() const { return double_v3 { r * INV_255_D, g * INV_255_D, b * INV_255_D }; }
+	operator const double_v3() const { return as_double_v3(); }
 
 	u32 hash()
 	{
-		return ( static_cast<u32>( r ) << 24 ) |
-		       ( static_cast<u32>( g ) << 16 ) |
-		       ( static_cast<u32>( b ) <<  8 ) |
-		       ( static_cast<u32>( a ) );
+		return ( static_cast<u32>( r ) << 24 ) | ( static_cast<u32>( g ) << 16 ) |
+			( static_cast<u32>( b ) << 8 ) | ( static_cast<u32>( a ) );
 	}
 
-    union
+	union
 	{
         struct { u8 r, g, b, a; };
         struct { u8 h, s, v, alpha; };

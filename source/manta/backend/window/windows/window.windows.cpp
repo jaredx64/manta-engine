@@ -65,7 +65,7 @@ namespace CoreWindow
 					Window::width = static_cast<int>( width );
 					Window::height = static_cast<int>( height );
 					Window::resized = true;
-					Gfx::viewport_update();
+					CoreGfx::swapchain_viewport_update();
 				}
 				return 0;
 			}
@@ -440,6 +440,14 @@ namespace Window
 				SWP_FRAMECHANGED | SWP_SHOWWINDOW
 			);
 		}
+	#endif
+	}
+
+
+	void show_cursor( const bool enabled )
+	{
+	#if WINDOW_ENABLED
+		ShowCursor( enabled );
 	#endif
 	}
 

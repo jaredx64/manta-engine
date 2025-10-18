@@ -553,7 +553,7 @@ struct NodeBuffer
 	template <typename T> Node *add( const T node )
 	{
 		// Exceeded current memory block size?
-		if( current + sizeof( T ) >= capacity ) { grow(); }
+		for( ; current + sizeof( T ) > capacity; grow() ) { }
 
 		// Write Node
 		byte *ptr = data + current;
@@ -566,8 +566,8 @@ struct NodeBuffer
 
 	List<byte *> pages;
 	byte *data = nullptr;
-	usize current = 0;
-	usize capacity = 0;
+	usize current = 0LLU;
+	usize capacity = 0LLU;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
