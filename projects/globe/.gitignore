@@ -1,0 +1,16 @@
+# Visual Studio
+.vs/
+.vscode/
+node_modules/
+
+# Clangd
+.cache/
+compile_commands.json
+
+# Manta Engine
+output/
+packages/
+.manta
+
+# System Cache
+.DS_Store
