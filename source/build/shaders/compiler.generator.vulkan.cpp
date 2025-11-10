@@ -85,25 +85,7 @@ void GeneratorVulkan::generate_structure( NodeStruct *node )
 			output.append( "[" ).append( memberVariable.arrayLengthY ).append( "]");
 		}
 
-		// : <semantic>
-		if( expectMeta )
-		{
-			const char *semantic = "";
-			switch( memberVariable.semantic )
-			{
-				case SemanticType_POSITION: semantic = "POSITION"; break;
-				case SemanticType_TEXCOORD: semantic = "TEXCOORD"; break;
-				case SemanticType_NORMAL: semantic = "NORMAL"; break;
-				case SemanticType_DEPTH: semantic = "DEPTH"; break;
-				case SemanticType_COLOR: semantic = "COLOR"; break;
-				case SemanticType_BINORMAL: semantic = "BINORMAL"; break;
-				case SemanticType_TANGENT: semantic = "TANGENT"; break;
-				case SemanticType_INSTANCE: semantic = "INSTANCE"; break;
-				default: Error( "Unexpected semantic type: %u", memberVariable.semantic ); break;
-			};
-			output.append( " : " ).append( semantic );
-		}
-
+		output.append( " : SEMANTIC" );
 		output.append( ";\n" );
 	}
 	indent_sub();

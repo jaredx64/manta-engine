@@ -35,6 +35,10 @@
 	#define DELTA_TIME_FRAMERATE ( 60.0f )
 #endif
 
+#ifndef SWAPCHAIN_DPI_SCALED
+	#define SWAPCHAIN_DPI_SCALED ( false )
+#endif
+
 #ifndef SWAPCHAIN_DEPTH_ENABLED
 	#define SWAPCHAIN_DEPTH_ENABLED ( false )
 #endif

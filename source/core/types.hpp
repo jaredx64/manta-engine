@@ -260,6 +260,18 @@ public:
 	const T &operator[]( usize index ) const { return elements[index].value; }
 };
 
+// Metal
+template <typename T, int Alignment, usize Count> class metal_array_1d
+{
+private:
+	struct alignas( Alignment ) T_Padded { T value; };
+	T_Padded elements[Count];
+
+public:
+	T &operator[]( usize index ) { return elements[index].value; }
+	const T &operator[]( usize index ) const { return elements[index].value; }
+};
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #ifndef __FUNCTION__

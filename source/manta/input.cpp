@@ -123,30 +123,6 @@ void Keyboard::keyboard_update( const Delta delta )
 
 	// Reset Input Buffer
 	keyboardState.inputBuffer[0] = '\0';
-
-	// Key Repeat
-	/*
-	for( int key = 0; key < 256; key++ )
-	{
-		// Not holding the key?
-		if( !keyCurrent[key] )
-		{
-			keyRepeatTimer[key] = 16.0f;
-			continue;
-		}
-
-		// Held the key long enough?
-		if( keyRepeatTimer[key] <= 0.0f )
-		{
-			keyRepeat[key] = true;
-			keyRepeatTimer[key] = 2.0f;
-			continue;
-		}
-
-		// Decrement timer
-		keyRepeatTimer[key] -= delta * DELTA_TIME_FRAMERATE;
-	}
-	*/
 }
 
 
@@ -187,23 +163,47 @@ void Mouse::set_active( Mouse &mouse )
 
 float Mouse::x()
 {
-	return Mouse::state().positionX;
+	return Mouse::state().positionX * Window::scale;
 }
 
 
 float Mouse::y()
 {
-	return Mouse::state().positionY;
+	return Mouse::state().positionY * Window::scale;
 }
 
 
 float Mouse::x_previous()
 {
-	return Mouse::state().positionXPrevious;
+	return Mouse::state().positionXPrevious * Window::scale;
 }
 
 
 float Mouse::y_previous()
+{
+	return Mouse::state().positionYPrevious * Window::scale;
+}
+
+
+float Mouse::x_logical()
+{
+	return Mouse::state().positionX;
+}
+
+
+float Mouse::y_logical()
+{
+	return Mouse::state().positionY;
+}
+
+
+float Mouse::x_logical_previous()
+{
+	return Mouse::state().positionXPrevious;
+}
+
+
+float Mouse::y_logical_previous()
 {
 	return Mouse::state().positionYPrevious;
 }

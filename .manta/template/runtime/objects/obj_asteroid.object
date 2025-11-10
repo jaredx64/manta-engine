@@ -50,28 +50,28 @@ CONSTRUCTOR( const float _size )
 		case 0: // Left
 		{
 			x = 0 - border * 0.5f;
-			y = random.next_float( 0.0f, static_cast<float>( Window::height ) );
+			y = random.next_float( 0.0f, static_cast<float>( Window::height_logical() ) );
 		}
 		break;
 
 		case 1: // Right
 		{
-			x = static_cast<float>( Window::width ) + border * 0.5f;
-			y = random.next_float( 0.0f, static_cast<float>( Window::height ) );
+			x = static_cast<float>( Window::width_logical() ) + border * 0.5f;
+			y = random.next_float( 0.0f, static_cast<float>( Window::height_logical() ) );
 		}
 		break;
 
 		case 2: // Top
 		{
-			x = random.next_float( 0.0f, static_cast<float>( Window::width ) );
+			x = random.next_float( 0.0f, static_cast<float>( Window::width_logical() ) );
 			y = 0 - border * 0.5f;
 		}
 		break;
 
 		case 3: // Bottom
 		{
-			x = random.next_float( 0.0f, static_cast<float>( Window::width ) );
-			y = static_cast<float>( Window::height ) + border * 0.5f;
+			x = random.next_float( 0.0f, static_cast<float>( Window::width_logical() ) );
+			y = static_cast<float>( Window::height_logical() ) + border * 0.5f;
 		}
 		break;
 	}
@@ -105,8 +105,8 @@ EVENT_UPDATE
 	// Destroy
 	constexpr float border = 256.0f;
 	if( x < -border ||
-		x > static_cast<float>( Window::width + border ) ||
-		y < -border || y > static_cast<float>( Window::height + border ) )
+		x > static_cast<float>( Window::width_logical() + border ) ||
+		y < -border || y > static_cast<float>( Window::height_logical() + border ) )
 	{
 		Scene::objects.destroy( id );
 		return;

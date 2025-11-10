@@ -135,6 +135,7 @@ async function activate( context )
 	WIDGET_NEW_PROJECT.tooltip = "Create a new project";
 
 	// Update Workspace
+	SetupClangdWatchers( context );
 	WorkspaceUpdate( false );
 }
 
@@ -151,6 +152,15 @@ module.exports = {
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+function SetupClangdWatchers( context )
+{
+	const watcher = vscode.workspace.createFileSystemWatcher( "**/*.{cpp,mm,shader,object}" );
+	watcher.onDidCreate( () => WriteClangdCompileCommandsJSON() );
+	watcher.onDidDelete( () => WriteClangdCompileCommandsJSON() );
+	watcher.onDidChange( () => WriteClangdCompileCommandsJSON() );
+	context.subscriptions.push( watcher );
+}
 
 
 async function WorkspaceDetect()
@@ -224,6 +234,9 @@ function WorkspaceUpdate( switchProject = true )
 
 		// Update VSCode settings
 		SaveVSCodeSettings();
+
+		// Update Clangd
+		WriteClangdCompileCommandsJSON();
 
 		// Save Cache
 		SaveProjectCache();
@@ -460,7 +473,6 @@ async function CreateNewProject( projectName )
 		WidgetValueSet( WIDGET_PROJECT, WIDGET_PROJECT_OPTIONS, projectName, false );
 		WorkspaceUpdate( true );
 
-		// Success
 		vscode.window.showInformationMessage( `Project "${projectName}" created successfully.` );
 	} catch ( error ) { vscode.window.showErrorMessage( `Error creating project: ${error.message}` ); }
 }
@@ -566,6 +578,370 @@ function WriteVSCodeCppPropertiesJSON()
 }
 
 
+function FindSourcesRecursive( directory, extensions = [] )
+{
+	try
+	{
+		var results = [];
+		var list = fs.readdirSync( directory, { withFileTypes: true } );
+
+		for( const entry of list )
+		{
+			const full = path.join( directory, entry.name );
+
+			if( entry.isDirectory() )
+			{
+				results = results.concat( FindSourcesRecursive( full, extensions ) );
+			}
+			else if( entry.isFile() )
+			{
+				for( const extension of extensions )
+				{
+					if( full.endsWith( "." + extension ) )
+					{
+						results.push( full );
+						break;
+					}
+				}
+			}
+		}
+
+		return results;
+	}
+	catch( err )
+	{
+		console.error( "FindSourcesRecursive failed:", err );
+		return [];
+	}
+}
+
+
+function FindSourcesFlat( directory, extensions = [] )
+{
+	const results = [];
+	let entries;
+
+	try
+	{
+		entries = fs.readdirSync(directory, { withFileTypes: true });
+	}
+	catch( err )
+	{
+		console.error( "FindSourcesFlat failed:", err );
+		return results;
+	}
+
+	for( const entry of entries )
+	{
+		if( !entry.isFile() ) { continue; }
+		for( const extension of extensions )
+		{
+			if( entry.name.endsWith( "." + extension ) )
+			{
+				results.push( path.join( directory, entry.name ) );
+				break;
+			}
+		}
+	}
+
+	return results;
+}
+
+
+function ClangdSourceFlags( filepath )
+{
+	const extension = filepath.split( '.' ).pop().toLowerCase();
+
+	if( extension === "mm" )
+	{
+		return '-x objective-c++ -nostdinc++';
+	}
+	else if( extension === "shader" )
+	{
+		var flags = "-x c++ -nostdinc -nostdinc++";
+
+		if( WIDGET_GRAPHICS.name === "d3d11" )
+		{
+			flags += " -DSHADER_HLSL=1 -DSHADER_D3D11=1";
+		}
+		else if( WIDGET_GRAPHICS.name === "d3d12" )
+		{
+			flags += " -DSHADER_HLSL=1 -DSHADER_D3D12=1";
+		}
+		else if( WIDGET_GRAPHICS.name === 'opengl' )
+		{
+			flags += " -DSHADER_GLSL=1 -DSHADER_OPENGL=1";
+		}
+		else if( WIDGET_GRAPHICS.name === 'vulkan' )
+		{
+			flags += " -DSHADER_GLSL=1 -DSHADER_VULKAN=1";
+		}
+		else if( WIDGET_GRAPHICS.name === 'metal' )
+		{
+			flags += " -DSHADER_METAL=1";
+		}
+
+		return flags;
+	}
+
+	// .cpp, .object
+	return "-x c++ -nostdinc -nostdinc++";
+}
+
+
+function WriteClangdCompileCommandsJSON()
+{
+	try
+	{
+		let json = [];
+		const pathJSON = path.join( PATH_WORKSPACE, "compile_commands.json");
+		const pathEngine = PATH_ENGINE.replace( /\\/g, '/' );
+
+		var extensionsSources = ["cpp", "mm", "object"];
+		var extensionsShaders = ["shader"];
+
+		// Delete Clangd .cache
+		const pathCacheEngine = path.join(PATH_ENGINE, ".cache" );
+		const pathCacheProject = path.join(PATH_ENGINE, "projects", WIDGET_PROJECT.name, ".cache" );
+		if( fs.existsSync( pathCacheEngine ) ) { fs.rmSync( pathCacheEngine, { recursive: true, force: true } ); }
+		if( fs.existsSync( pathCacheProject ) ) { fs.rmSync( pathCacheProject, { recursive: true, force: true } ); }
+
+		// Core
+		let filesCore = FindSourcesRecursive( path.join( pathEngine, "source", "core" ), extensionsSources )
+		for( const file of filesCore )
+		{
+			const pathFile = file.replace( /\\/g, '/' );
+			json.push( {
+				directory: pathEngine,
+				command: [
+					"clang++ -std=c++20 -fsyntax-only", ClangdSourceFlags( pathFile ),
+					"-DCOMPILE_DEBUG=1",
+					"-I" + path.posix.join( pathEngine, "source" ),
+					"-I" + path.posix.join( pathEngine, "projects", WIDGET_PROJECT.name, "output", "generated" ),
+					pathFile
+				].join( " " ),
+				file: pathFile
+			} );
+		}
+
+		// Vendor
+		let filesVendor = FindSourcesRecursive( path.join( pathEngine, "source", "vendor" ), extensionsSources )
+		for( const file of filesVendor )
+		{
+			const pathFile = file.replace( /\\/g, '/' );
+			json.push( {
+				directory: pathEngine,
+				command: [
+					"clang++ -std=c++20 -fsyntax-only", ClangdSourceFlags( pathFile ),
+					"-DCOMPILE_DEBUG=1",
+					"-I" + path.posix.join( pathEngine, "source" ),
+					"-I" + path.posix.join( pathEngine, "projects", WIDGET_PROJECT.name, "output", "generated" ),
+					pathFile
+				].join( " " ),
+				file: pathFile
+			} );
+		}
+
+		// Engine Boot
+		let filesBootEngine = FindSourcesRecursive( path.join( pathEngine, "source", "boot" ), extensionsSources )
+		for( const file of filesBootEngine )
+		{
+			const pathFile = file.replace( /\\/g, '/' );
+			json.push( {
+				directory: pathEngine,
+				command: [
+					"clang++ -std=c++20 -fsyntax-only", ClangdSourceFlags( pathFile ),
+					"-DCOMPILE_DEBUG=1",
+					"-I" + path.posix.join( pathEngine, "source" ),
+					"-I" + path.posix.join( pathEngine, "source", "boot" ),
+					pathFile
+				].join( " " ),
+				file: pathFile
+			} );
+		}
+
+		// Engine Build
+		let filesBuildEngine = FindSourcesRecursive( path.join( pathEngine, "source", "build" ), extensionsSources )
+		for( const file of filesBuildEngine )
+		{
+			const pathFile = file.replace( /\\/g, '/' );
+			json.push( {
+				directory: pathEngine,
+				command: [
+					"clang++ -std=c++20 -fsyntax-only", ClangdSourceFlags( pathFile ),
+					"-DUNICODE",
+					"-DCOMPILE_DEBUG=1",
+					"-I" + path.posix.join( pathEngine, "source" ),
+					"-I" + path.posix.join( pathEngine, "projects", WIDGET_PROJECT.name, "build" ),
+					"-I" + path.posix.join( pathEngine, "projects", WIDGET_PROJECT.name, "output", "generated" ),
+					pathFile
+				].join( " " ),
+				file: pathFile
+			} );
+		}
+
+		// Project Build
+		let filesBuildProject = FindSourcesRecursive(
+			path.join( pathEngine, "projects", WIDGET_PROJECT.name, "build" ), extensionsSources )
+		for( const file of filesBuildProject )
+		{
+			const pathFile = file.replace( /\\/g, '/' );
+			json.push( {
+				directory: pathEngine,
+				command: [
+					"clang++ -std=c++20 -fsyntax-only", ClangdSourceFlags( pathFile ),
+					"-DUNICODE",
+					"-DCOMPILE_DEBUG=1",
+					"-I" + path.posix.join( pathEngine, "source" ),
+					"-I" + path.posix.join( pathEngine, "projects", WIDGET_PROJECT.name, "build" ),
+					"-I" + path.posix.join( pathEngine, "projects", WIDGET_PROJECT.name, "output", "generated" ),
+					pathFile
+				].join( " " ),
+				file: pathFile
+			} );
+		}
+
+		// Engine Runtime
+		let filesRuntimeEngine = FindSourcesFlat( path.join( pathEngine, "source", "manta" ), extensionsSources )
+
+		filesRuntimeEngine.push(...
+			FindSourcesRecursive( path.join( pathEngine, "source", "assets" ), extensionsSources ) );
+
+		filesRuntimeEngine.push(...
+			FindSourcesRecursive( path.join( pathEngine, "source", "manta", "ui" ), extensionsSources ) );
+
+		filesRuntimeEngine.push(...FindSourcesRecursive(
+			path.join( pathEngine, "source", "manta", "backend", "gfx", WIDGET_GRAPHICS.name ), extensionsSources ) );
+
+		if( PlatformIsWindows() )
+		{
+			filesRuntimeEngine.push(...FindSourcesRecursive(
+				path.join( pathEngine, "source", "manta", "backend", "audio", "wasapi" ), extensionsSources ) );
+			filesRuntimeEngine.push(...FindSourcesRecursive(
+				path.join( pathEngine, "source", "manta", "backend", "filesystem", "windows" ), extensionsSources ) );
+			filesRuntimeEngine.push(...FindSourcesRecursive(
+				path.join( pathEngine, "source", "manta", "backend", "network", "windows" ), extensionsSources ) );
+			filesRuntimeEngine.push(...FindSourcesRecursive(
+				path.join( pathEngine, "source", "manta", "backend", "thread", "windows" ), extensionsSources ) );
+			filesRuntimeEngine.push(...FindSourcesRecursive(
+				path.join( pathEngine, "source", "manta", "backend", "time", "windows" ), extensionsSources ) );
+			filesRuntimeEngine.push(...FindSourcesRecursive(
+				path.join( pathEngine, "source", "manta", "backend", "window", "windows" ), extensionsSources ) );
+		}
+		else if( PlatformIsLinux() )
+		{
+			filesRuntimeEngine.push(...FindSourcesRecursive(
+				path.join( pathEngine, "source", "manta", "backend", "audio", "alsa" ), extensionsSources ) );
+			filesRuntimeEngine.push(...FindSourcesRecursive(
+				path.join( pathEngine, "source", "manta", "backend", "filesystem", "posix" ), extensionsSources ) );
+			filesRuntimeEngine.push(...FindSourcesRecursive(
+				path.join( pathEngine, "source", "manta", "backend", "network", "posix" ), extensionsSources ) );
+			filesRuntimeEngine.push(...FindSourcesRecursive(
+				path.join( pathEngine, "source", "manta", "backend", "thread", "posix" ), extensionsSources ) );
+			filesRuntimeEngine.push(...FindSourcesRecursive(
+				path.join( pathEngine, "source", "manta", "backend", "time", "posix" ), extensionsSources ) );
+			filesRuntimeEngine.push(...FindSourcesRecursive(
+				path.join( pathEngine, "source", "manta", "backend", "window", "x11" ), extensionsSources ) );
+		}
+		else if( PlatformIsMacOS() )
+		{
+			filesRuntimeEngine.push(...FindSourcesRecursive(
+				path.join( pathEngine, "source", "manta", "backend", "audio", "coreaudio" ), extensionsSources ) );
+			filesRuntimeEngine.push(...FindSourcesRecursive(
+				path.join( pathEngine, "source", "manta", "backend", "filesystem", "posix" ), extensionsSources ) );
+			filesRuntimeEngine.push(...FindSourcesRecursive(
+				path.join( pathEngine, "source", "manta", "backend", "network", "posix" ), extensionsSources ) );
+			filesRuntimeEngine.push(...FindSourcesRecursive(
+				path.join( pathEngine, "source", "manta", "backend", "thread", "posix" ), extensionsSources ) );
+			filesRuntimeEngine.push(...FindSourcesRecursive(
+				path.join( pathEngine, "source", "manta", "backend", "time", "posix" ), extensionsSources ) );
+			filesRuntimeEngine.push(...FindSourcesRecursive(
+				path.join( pathEngine, "source", "manta", "backend", "window", "cocoa" ), extensionsSources ) );
+		}
+
+		for( const file of filesRuntimeEngine )
+		{
+			const pathFile = file.replace( /\\/g, '/' );
+			json.push( {
+				directory: pathEngine,
+				command: [
+					"clang++ -std=c++20 -fsyntax-only", ClangdSourceFlags( pathFile ),
+					"-DCOMPILE_ENGINE",
+					"-DCOMPILE_DEBUG=1",
+					"-I" + path.posix.join( pathEngine, "source" ),
+					"-I" + path.posix.join( pathEngine, "projects", WIDGET_PROJECT.name, "runtime" ),
+					"-I" + path.posix.join( pathEngine, "projects", WIDGET_PROJECT.name, "output", "generated" ),
+					pathFile
+				].join( " " ),
+				file: pathFile
+			} );
+		}
+
+		// Engine Shaders
+		let filesShadersEngine = FindSourcesRecursive( path.join( pathEngine, "source", "assets" ), extensionsShaders );
+		for( const file of filesShadersEngine )
+		{
+			const pathFile = file.replace( /\\/g, '/' );
+			json.push( {
+				directory: pathEngine,
+				command: [
+					"clang++ -std=c++20 -fsyntax-only", ClangdSourceFlags( pathFile ),
+					"-I" + path.posix.join( pathEngine, "source" ),
+					pathFile
+				].join( " " ),
+				file: pathFile
+			} );
+		}
+
+		// Project Runtime
+		let filesRuntimeProject = FindSourcesRecursive(
+			path.join( pathEngine, "projects", WIDGET_PROJECT.name, "runtime" ), extensionsSources )
+		for( const file of filesRuntimeProject )
+		{
+			const pathFile = file.replace( /\\/g, '/' );
+			json.push( {
+				directory: pathEngine,
+				command: [
+					"clang++ -std=c++20 -fsyntax-only", ClangdSourceFlags( pathFile ),
+					"-DCOMPILE_ENGINE",
+					"-DCOMPILE_DEBUG=1",
+					"-I" + path.posix.join( pathEngine, "source" ),
+					"-I" + path.posix.join( pathEngine, "projects", WIDGET_PROJECT.name, "runtime" ),
+					"-I" + path.posix.join( pathEngine, "projects", WIDGET_PROJECT.name, "output", "generated" ),
+					pathFile
+				].join( " " ),
+				file: pathFile
+			} );
+		}
+
+		// Project Shaders
+		let filesShadersProject = FindSourcesRecursive(
+			path.join( pathEngine, "projects", WIDGET_PROJECT.name ), extensionsShaders )
+		for( const file of filesShadersProject )
+		{
+			const pathFile = file.replace( /\\/g, '/' );
+			json.push( {
+				directory: pathEngine,
+				command: [
+					"clang++ -std=c++20 -fsyntax-only", ClangdSourceFlags( pathFile ),
+					"-I" + path.posix.join( pathEngine, "source" ),
+					pathFile
+				].join( " " ),
+				file: pathFile
+			} );
+		}
+
+		fs.writeFileSync( pathJSON, JSON.stringify( json, null, 2 ) );
+	}
+	catch( err )
+	{
+		console.error( "WriteClangdCompileCommandsJSON failed:", err );
+	}
+
+	vscode.commands.executeCommand( "clangd.restart" );
+}
+
+
 function WriteVSCodeLaunchJSON()
 {
 	const json =
@@ -611,11 +987,11 @@ function GetBootCommand()
 	var bootArgs= [
 		`-project=${WIDGET_PROJECT.name}`,
 		`-config=${WIDGET_CONFIG.name}`,
-        `-os=${WIDGET_OS.name}`,
-        `-architecture=${WIDGET_ARCHITECTURE.name}`,
-        `-toolchain=${WIDGET_TOOLCHAIN.name}`,
-        `-gfx=${WIDGET_GRAPHICS.name}`,
-    ];
+		`-os=${WIDGET_OS.name}`,
+		`-architecture=${WIDGET_ARCHITECTURE.name}`,
+		`-toolchain=${WIDGET_TOOLCHAIN.name}`,
+		`-gfx=${WIDGET_GRAPHICS.name}`,
+	];
 	bootArgs = bootArgs.join( " " );
 
 	// Boot Command
@@ -694,7 +1070,7 @@ function CommandSelectConfig()
 
 function CommandSelectRender()
 {
-	WidgetValueChoosePrompt( WIDGET_GRAPHICS, WIDGET_GRAPHICS_OPTIONS, true );
+	WidgetValueChoosePrompt( WIDGET_GRAPHICS, WIDGET_GRAPHICS_OPTIONS, true, WriteClangdCompileCommandsJSON );
 }
 
 
@@ -934,6 +1310,6 @@ function ShowMessage( message )
 
 function CloseTerminals()
 {
-    const terminals = vscode.window.terminals;
-    terminals.forEach( terminal => { terminal.dispose(); } );
+	const terminals = vscode.window.terminals;
+	terminals.forEach( terminal => { terminal.dispose(); } );
 }

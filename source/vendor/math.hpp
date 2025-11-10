@@ -3,7 +3,7 @@
 
 #if USE_OFFICIAL_HEADERS
 #include <vendor/conflicts.hpp>
-#include <math.h>
+	#include <math.h>
 #include <vendor/conflicts.hpp>
 #else
 	#if PIPELINE_COMPILER_MSVC
@@ -38,9 +38,6 @@
 		extern "C" int abs(int);
 		extern "C" double frexp(double, int *);
 		extern "C" double ldexp(double, int);
-
-		inline double abs(double x) { return fabs(x); }
-		inline float abs(float x) { return static_cast<float>(fabs(x)); }
 	#else
 		inline double cos(double x) { return __builtin_cos(x); }
 		inline float cosf(float x) { return __builtin_cosf(x); }

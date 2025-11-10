@@ -57,7 +57,7 @@ bool opengl_init()
 	}
 
 	// Disable Retina Framebuffer
-	[CoreWindow::view setWantsBestResolutionOpenGLSurface:YES];
+	[CoreWindow::view setWantsBestResolutionOpenGLSurface: YES];
 
 	// Bind Context
 	[context setView: CoreWindow::view];
@@ -65,9 +65,8 @@ bool opengl_init()
 
 	// Disable Vsync (TODO)
 	int vsync = 0;
-	[context setValues:&vsync forParameter:NSOpenGLContextParameterSwapInterval];
+	[context setValues: &vsync forParameter: NSOpenGLContextParameterSwapInterval];
 
-	// Success
 	return true;
 }
 

@@ -3,7 +3,12 @@
 .vscode/
 node_modules/
 
+# Clangd
+.cache/
+compile_commands.json
+
 # Manta Engine
+projects/
 boot-vcvars64.txt
 .cache
 

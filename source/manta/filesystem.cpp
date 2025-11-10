@@ -219,7 +219,6 @@ bool File::open( const char *path )
 	data[size] = '\0';
 	if( fread( data, size, 1, file ) < 1 ) { goto cleanup; }
 
-	// Success
 	return true;
 
 cleanup:
@@ -238,14 +237,10 @@ bool File::save( const char *path )
 	if( data == nullptr ) { return false; }
 	if( file == nullptr ) { return false; }
 
-	// Open file for writing
 	FILE *wfile = fopen( path, "wb" );
 	if( wfile == nullptr ) { return false; }
-
-	// Write file
 	if( fwrite( data, size, 1, wfile ) < 1 ) { goto cleanup; }
 
-	// Success
 	return true;
 
 cleanup:

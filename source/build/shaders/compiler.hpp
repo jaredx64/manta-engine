@@ -147,17 +147,12 @@ enum_type( TokenType, int )
 	TokenType_Texture3D,
 	TokenType_TextureCube,
 	TokenType_TextureCubeArray,
-	TokenType_Target,
-	TokenType_Semantic,
-	TokenType_POSITION,
-	TokenType_TEXCOORD,
-	TokenType_NORMAL,
-	TokenType_DEPTH,
+	TokenType_AttributePositionOut,
+	TokenType_AttributePositionIn,
+	TokenType_AttributeTarget,
 	TokenType_COLOR,
-	TokenType_BINORMAL,
-	TokenType_TANGENT,
-	TokenType_INSTANCE,
-	TokenType_InputFormat,
+	TokenType_DEPTH,
+	TokenType_AttributePackedAs,
 	TokenType_UNORM8,
 	TokenType_UNORM16,
 	TokenType_UNORM32,
@@ -217,13 +212,6 @@ enum_type( Primitive, u32 )
 	Primitive_Float2x2,
 	Primitive_Float3x3,
 	Primitive_Float4x4,
-	Primitive_Double,
-	Primitive_Double2,
-	Primitive_Double3,
-	Primitive_Double4,
-	Primitive_Double2x2,
-	Primitive_Double3x3,
-	Primitive_Double4x4,
 	Primitive_Texture1D,
 	Primitive_Texture1DArray,
 	Primitive_Texture2D,
@@ -374,14 +362,11 @@ extern const char *StructTypeNames[];
 
 enum_type( SemanticType, u32 )
 {
-	SemanticType_POSITION, // TokenType_POSITION
-	SemanticType_TEXCOORD, // TokenType_TEXCOORD
-	SemanticType_NORMAL,   // TokenType_NORMAL
-	SemanticType_DEPTH,    // TokenType_DEPTH
-	SemanticType_COLOR,    // TokenType_COLOR
-	SemanticType_BINORMAL, // TokenType_BINORMAL
-	SemanticType_TANGENT,  // TokenType_TANGENT
-	SemanticType_INSTANCE, // TokenType_INSTANCE
+	SemanticType_VERTEX,
+	SemanticType_INSTANCE,
+	SemanticType_POSITION,
+	SemanticType_COLOR,
+	SemanticType_DEPTH,
 	SEMANTICTYPE_COUNT,
 };
 
@@ -390,15 +375,15 @@ extern const char *Semantics[];
 
 enum_type( SVSemanticType, u32 )
 {
-	SVSemanticType_DISPATCH_THREAD_ID,
-	SVSemanticType_GROUP_ID,
-	SVSemanticType_GROUP_THREAD_ID,
-	SVSemanticType_GROUP_INDEX,
 	SVSemanticType_VERTEX_ID,
 	SVSemanticType_INSTANCE_ID,
 	SVSemanticType_PRIMITIVE_ID,
-	SVSemanticType_FRONT_FACING,
 	SVSemanticType_SAMPLE_ID,
+	SVSemanticType_FRONT_FACING,
+	SVSemanticType_DISPATCH_THREAD_ID,
+	SVSemanticType_GROUP_THREAD_ID,
+	SVSemanticType_GROUP_ID,
+	SVSemanticType_GROUP_INDEX,
 	SVSEMANTICTYPE_COUNT,
 };
 
@@ -421,7 +406,7 @@ enum_type( InputFormat, u32 )
 	InputFormat_SINT32,
 	InputFormat_FLOAT16,
 	InputFormat_FLOAT32,
-	PACKASTYPE_COUNT,
+	INPUTFORMAT_COUNT,
 };
 
 
@@ -486,7 +471,8 @@ struct Type : public Construct
 	TokenType tokenType = TokenType_Null;
 	bool builtin = false;
 	bool global = false;
-	bool pipelineIntermediate = false;
+	bool pipelineVarying = false;
+	int slot = -1;
 	int sizeBytesPacked = 0;
 	int sizeBytesPadded = 0;
 };
@@ -497,6 +483,7 @@ struct Struct : public Construct
 	TypeID typeID;
 	int slot = 0;
 	u32 size = 0;
+	u32 alignment = 0;
 };
 
 
@@ -506,7 +493,7 @@ struct Variable : public Construct
 	StringView name { };
 	TypeID typeID = USIZE_MAX;
 	InputFormat format = InputFormat_UNORM8;
-	SemanticType semantic = SemanticType_TEXCOORD;
+	SemanticType semantic = SemanticType_VERTEX;
 	TextureType texture = TextureType_Texture2D;
 	int slot = -1;
 	int arrayLengthX = 0;

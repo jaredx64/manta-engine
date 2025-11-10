@@ -162,7 +162,6 @@ void Generator::generate_node( Node *node )
 
 		case NodeType_Struct:
 		{
-			generate_structure_gfx( reinterpret_cast<NodeStruct *>( node ) );
 			generate_structure( reinterpret_cast<NodeStruct *>( node ) );
 		}
 		break;
@@ -857,6 +856,8 @@ void Generator::generate_structure( NodeStruct *node )
 {
 	Struct &structure = parser.structs[node->structID];
 
+	generate_structure_gfx( node );
+
 	Type &type = parser.types[structure.typeID];
 	const String &typeName = type_name( structure.typeID );
 	const VariableID first = type.memberFirst;
@@ -934,14 +935,11 @@ void Generator::generate_structure( NodeStruct *node )
 			const char *semantic = "";
 			switch( memberVariable.semantic )
 			{
+				case SemanticType_VERTEX: semantic = "VERTEX"; break;
+				case SemanticType_INSTANCE: semantic = "INSTANCE"; break;
 				case SemanticType_POSITION: semantic = "POSITION"; break;
-				case SemanticType_TEXCOORD: semantic = "TEXCOORD"; break;
-				case SemanticType_NORMAL: semantic = "NORMAL"; break;
 				case SemanticType_DEPTH: semantic = "DEPTH"; break;
 				case SemanticType_COLOR: semantic = "COLOR"; break;
-				case SemanticType_BINORMAL: semantic = "BINORMAL"; break;
-				case SemanticType_TANGENT: semantic = "TANGENT"; break;
-				case SemanticType_INSTANCE: semantic = "INSTANCE"; break;
 				default: Error( "Unexpected semantic type: %u", memberVariable.semantic ); return;
 			};
 			output.append( " " ).append( "semantic( " ).append( semantic ).append( " )" );
@@ -1029,8 +1027,6 @@ bool Generator::generate_structure_gfx_shared_struct( NodeStruct *node )
 	if( Gfx::sharedStructCache.contains( checksumKey ) )
 	{
 		SharedStruct &sharedStruct = Gfx::sharedStructs[Gfx::sharedStructCache.get( checksumKey )];
-		shader.uniformBufferIDs[stage].add( sharedStruct.id ); // Add this SharedStruct to the shader
-		shader.uniformBufferSlots[stage].add( structure.slot );
 		if( sharedStruct.checksum == checksumBuffer ) { return false; }
 		Error( "SharedStruct with name '%.*s' already declared with a different layout",
 			type.name.length, type.name.data );
@@ -1044,8 +1040,6 @@ bool Generator::generate_structure_gfx_shared_struct( NodeStruct *node )
 	sharedStruct.checksum = checksumBuffer;
 
 	Gfx::sharedStructCache.add( checksumKey, sharedStruct.id );
-	shader.uniformBufferIDs[stage].add( sharedStruct.id ); // Add this SharedStruct to the shader
-	shader.uniformBufferSlots[stage].add( structure.slot );
 
 	// Tight Struct
 	String &headerTight = sharedStruct.headerTight;
@@ -1066,6 +1060,10 @@ bool Generator::generate_structure_gfx_shared_struct( NodeStruct *node )
 	String &headerAlign = sharedStruct.headerAlign;
 	if( sharedStruct.id != 0 ) { headerAlign.append( "\n" ); }
 	headerAlign.append( "\tstruct " );
+	if( structure.alignment > 1 )
+	{
+		headerAlign.append( "alignas( " ).append( structure.alignment ).append( " ) " );
+	}
 	headerAlign.append( type.name ).append( "\n" );
 	headerAlign.append( "\t{\n" );
 	for( VariableID i = first; i < last; i++ )
@@ -1188,6 +1186,7 @@ bool Generator::generate_structure_gfx_instance( NodeStruct *node )
 	if( Gfx::instanceFormatCache.contains( checksumKey ) )
 	{
 		InstanceFormat &instanceFormat = Gfx::instanceFormats[Gfx::instanceFormatCache.get( checksumKey )];
+		instanceFormat.node = node;
 		if( parser.instanceFormatTypeName.equals( type.name ) ) { shader.instanceFormatID = instanceFormat.id; }
 		if( instanceFormat.checksum == checksumBuffer ) { return false; }
 		Error( "Instance format with name '%.*s' already declared with a different layout",
@@ -1266,7 +1265,6 @@ bool Generator::generate_structure_gfx_instance( NodeStruct *node )
 			case Primitive_Int:
 			case Primitive_UInt:
 			case Primitive_Float:
-			case Primitive_Double:
 				dimensions = 1;
 			break;
 
@@ -1274,7 +1272,6 @@ bool Generator::generate_structure_gfx_instance( NodeStruct *node )
 			case Primitive_Int2:
 			case Primitive_UInt2:
 			case Primitive_Float2:
-			case Primitive_Double2:
 				dimensions = 2;
 			break;
 
@@ -1282,7 +1279,6 @@ bool Generator::generate_structure_gfx_instance( NodeStruct *node )
 			case Primitive_Int3:
 			case Primitive_UInt3:
 			case Primitive_Float3:
-			case Primitive_Double3:
 				dimensions = 3;
 			break;
 
@@ -1290,7 +1286,6 @@ bool Generator::generate_structure_gfx_instance( NodeStruct *node )
 			case Primitive_Int4:
 			case Primitive_UInt4:
 			case Primitive_Float4:
-			case Primitive_Double4:
 				dimensions = 4;
 			break;
 
@@ -1414,7 +1409,6 @@ bool Generator::generate_structure_gfx_vertex( NodeStruct *node )
 			case Primitive_Int:
 			case Primitive_UInt:
 			case Primitive_Float:
-			case Primitive_Double:
 				dimensions = 1;
 			break;
 
@@ -1422,7 +1416,6 @@ bool Generator::generate_structure_gfx_vertex( NodeStruct *node )
 			case Primitive_Int2:
 			case Primitive_UInt2:
 			case Primitive_Float2:
-			case Primitive_Double2:
 				dimensions = 2;
 			break;
 
@@ -1430,7 +1423,6 @@ bool Generator::generate_structure_gfx_vertex( NodeStruct *node )
 			case Primitive_Int3:
 			case Primitive_UInt3:
 			case Primitive_Float3:
-			case Primitive_Double3:
 				dimensions = 3;
 			break;
 
@@ -1438,7 +1430,6 @@ bool Generator::generate_structure_gfx_vertex( NodeStruct *node )
 			case Primitive_Int4:
 			case Primitive_UInt4:
 			case Primitive_Float4:
-			case Primitive_Double4:
 				dimensions = 4;
 			break;
 
@@ -1641,6 +1632,8 @@ int Generator::append_structure_padding( String &output, const char *indent,
 void Generator::append_structure_member_padded( String &output, const char *indent,
 	Type &type, Variable &variable, int &structureByteOffset )
 {
+	auto round_up16 = []( int size ) { return ( size + 15 ) & ~15; };
+
 	char typeNameBuffer[512];
 	int typeSizeBytes = 0;
 
@@ -1649,22 +1642,22 @@ void Generator::append_structure_member_padded( String &output, const char *inde
 	switch( variable.typeID )
 	{
 		case Primitive_Bool: typeNameCPU = StringView( "u32" ); size = 4; align = 4; break;
-		case Primitive_Bool2: typeNameCPU = StringView( "u32_v2" ); size = 8; align = 4; break;
+		case Primitive_Bool2: typeNameCPU = StringView( "u32_v2" ); size = 8; align = 8; break;
 		case Primitive_Bool3: typeNameCPU = StringView( "u32_v3" ); size = 12; align = 16; break;
 		case Primitive_Bool4: typeNameCPU = StringView( "u32_v4" ); size = 16; align = 16; break;
 
 		case Primitive_Int: typeNameCPU = StringView( "i32" ); size = 4; align = 4; break;
-		case Primitive_Int2: typeNameCPU = StringView( "int_v2" ); size = 8; align = 4; break;
+		case Primitive_Int2: typeNameCPU = StringView( "int_v2" ); size = 8; align = 8; break;
 		case Primitive_Int3: typeNameCPU = StringView( "int_v3" ); size = 12; align = 16; break;
 		case Primitive_Int4: typeNameCPU = StringView( "int_v4" ); size = 16; align = 16; break;
 
 		case Primitive_UInt: typeNameCPU = StringView( "u32" ); size = 4; align = 4; break;
-		case Primitive_UInt2: typeNameCPU = StringView( "u32_v2" ); size = 8; align = 4; break;
+		case Primitive_UInt2: typeNameCPU = StringView( "u32_v2" ); size = 8; align = 8; break;
 		case Primitive_UInt3: typeNameCPU = StringView( "u32_v3" ); size = 12; align = 16; break;
 		case Primitive_UInt4: typeNameCPU = StringView( "u32_v4" ); size = 16; align = 16; break;
 
 		case Primitive_Float: typeNameCPU = StringView( "float" ); size = 4; align = 4; break;
-		case Primitive_Float2: typeNameCPU = StringView( "float_v2" ); size = 8; align = 4; break;
+		case Primitive_Float2: typeNameCPU = StringView( "float_v2" ); size = 8; align = 8; break;
 		case Primitive_Float3: typeNameCPU = StringView( "float_v3" ); size = 12; align = 16; break;
 		case Primitive_Float4: typeNameCPU = StringView( "float_v4" ); size = 16; align = 16; break;
 
@@ -1672,28 +1665,20 @@ void Generator::append_structure_member_padded( String &output, const char *inde
 		case Primitive_Float3x3: typeNameCPU = StringView( "float_m44" ); size = 64; align = 16; break;
 		case Primitive_Float4x4: typeNameCPU = StringView( "float_m44" ); size = 64; align = 16; break;
 
-		case Primitive_Double: typeNameCPU = StringView( "double" ); size = 8; align = 8; break;
-		case Primitive_Double2: typeNameCPU = StringView( "double_v2" ); size = 16; align = 8; break;
-		case Primitive_Double3: typeNameCPU = StringView( "double_v3" ); size = 24; align = 16; break;
-		case Primitive_Double4: typeNameCPU = StringView( "double_v4" ); size = 32; align = 16; break;
-
-		case Primitive_Double2x2: typeNameCPU = StringView( "double_m44" ); size = 64; align = 16; break;
-		case Primitive_Double3x3: typeNameCPU = StringView( "double_m44" ); size = 64; align = 16; break;
-		case Primitive_Double4x4: typeNameCPU = StringView( "double_m44" ); size = 64; align = 16; break;
-
 		default: typeNameCPU.data = nullptr; size = 0; align = 16; break;
 	};
 
 	// Struct Size
-	if( type.tokenType == TokenType_SharedStruct ) { size = type.sizeBytesPadded; align = 16; }
+	if( type.tokenType == TokenType_SharedStruct ) { size = round_up16( type.sizeBytesPadded ); align = 16; }
 
 	// Calculate required padding & increment byte offset
 	structureByteOffset += Generator::append_structure_padding( output, indent, size, align, structureByteOffset );
-	auto round_up16 = []( int size ) { return ( size + 15 ) & ~15; };
 
 	// Type
 	if( variable.arrayLengthX > 0 && variable.arrayLengthY > 0 )
 	{
+		structureByteOffset += Generator::append_structure_padding( output, indent, 0, 16, structureByteOffset );
+
 		snprintf( typeNameBuffer, sizeof( typeNameBuffer ), "std140_array_2d<%s%.*s, %d, %d>",
 			type.tokenType == TokenType_SharedStruct ? "GfxStructPadded::" : "",
 			static_cast<int>( typeNameCPU.data == nullptr ? type.name.length : typeNameCPU.length ),
@@ -1712,6 +1697,8 @@ void Generator::append_structure_member_padded( String &output, const char *inde
 	}
 	else if( variable.arrayLengthX > 0 )
 	{
+		structureByteOffset += Generator::append_structure_padding( output, indent, 0, 16, structureByteOffset );
+
 		snprintf( typeNameBuffer, sizeof( typeNameBuffer ), "std140_array_1d<%s%.*s, %d>",
 			type.tokenType == TokenType_SharedStruct ? "GfxStructPadded::" : "",
 			static_cast<int>( typeNameCPU.data == nullptr ? type.name.length : typeNameCPU.length ),
@@ -1734,6 +1721,7 @@ void Generator::append_structure_member_padded( String &output, const char *inde
 			type.tokenType == TokenType_SharedStruct ? "GfxStructPadded::" : "",
 			static_cast<int>( typeNameCPU.data == nullptr ? type.name.length : typeNameCPU.length ),
 			typeNameCPU.data == nullptr ? type.name.data : typeNameCPU.data );
+
 
 		typeSizeBytes = size;
 
@@ -1790,15 +1778,6 @@ void Generator::append_structure_member_packed( String &output, const char *inde
 		case Primitive_Float2x2: typeNameCPU = StringView( "float_m44" ); break;
 		case Primitive_Float3x3: typeNameCPU = StringView( "float_m44" ); break;
 		case Primitive_Float4x4: typeNameCPU = StringView( "float_m44" ); break;
-
-		case Primitive_Double: typeNameCPU = StringView( "double" ); break;
-		case Primitive_Double2: typeNameCPU = StringView( "double_v2" ); break;
-		case Primitive_Double3: typeNameCPU = StringView( "double_v3" ); break;
-		case Primitive_Double4: typeNameCPU = StringView( "double_v4" ); break;
-
-		case Primitive_Double2x2: typeNameCPU = StringView( "double_m44" ); break;
-		case Primitive_Double3x3: typeNameCPU = StringView( "double_m44" ); break;
-		case Primitive_Double4x4: typeNameCPU = StringView( "double_m44" ); break;
 
 		case Primitive_Void: typeNameCPU = StringView( "void" ); break;
 		default: typeNameCPU.data = nullptr; break;

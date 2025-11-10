@@ -71,6 +71,7 @@ struct SharedStruct
 	u32 checksum = 0;
 	String headerTight;
 	String headerAlign;
+	int alignment = 0;
 };
 
 struct UniformBuffer

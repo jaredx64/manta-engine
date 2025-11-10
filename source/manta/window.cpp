@@ -42,3 +42,28 @@ void Window::update( const Delta delta )
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+int Window::width_logical()
+{
+	return Window::width;
+}
+
+
+int Window::height_logical()
+{
+	return Window::height;
+}
+
+
+int Window::width_pixels()
+{
+	return static_cast<int>( Window::width * Window::scale );
+}
+
+
+int Window::height_pixels()
+{
+	return static_cast<int>( Window::height * Window::scale );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

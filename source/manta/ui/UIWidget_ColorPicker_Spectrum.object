@@ -219,7 +219,7 @@ PROTECTED void render( const Delta delta, const Alpha a )
 
 	// Colors
 	GfxRenderCommand cmd;
-	cmd.set_shader( Shader::SHADER_DEFAULT_HSV );
+	cmd.shader( Shader::SHADER_DEFAULT_HSV );
 	Gfx::render_command_execute( cmd, GfxWorkCapture
 		{
 			// Spectrum

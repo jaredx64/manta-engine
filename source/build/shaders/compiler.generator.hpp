@@ -15,7 +15,10 @@ class Generator
 {
 public:
 	Generator( Shader &shader, ShaderStage stage, Parser &parser ) :
-		shader{ shader }, stage{ stage }, parser{ parser }, output{ shader.outputs[stage] } { }
+		shader { shader },
+		stage { stage },
+		parser { parser },
+		output { shader.outputs[stage] } { }
 
 public:
 	Shader &shader;
@@ -110,7 +113,7 @@ class GeneratorHLSL : public Generator
 {
 public:
 	GeneratorHLSL( Shader &shader, ShaderStage stage, Parser &parser ) :
-		Generator{ shader, stage, parser } { }
+		Generator { shader, stage, parser } { }
 
 public:
 	virtual void append_structure_member_padded( String &output, const char *indent,
@@ -150,7 +153,7 @@ class GeneratorGLSL : public Generator
 {
 public:
 	GeneratorGLSL( Shader &shader, ShaderStage stage, Parser &parser ) :
-		Generator{ shader, stage, parser } { }
+		Generator { shader, stage, parser } { }
 
 public:
 	virtual void process_names();
@@ -182,8 +185,31 @@ public:
 	GeneratorMetal( Shader &shader, ShaderStage stage, Parser &parser ) :
 		Generator{ shader, stage, parser } { }
 
-public:
+	virtual void append_structure_member_padded( String &output, const char *indent,
+		Type &type, Variable &variable, int &structureByteOffset );
+
+	virtual void generate_stage( ShaderStage stage );
+
+	virtual void generate_statement_discard( NodeStatementDiscard *node );
+
+	virtual void generate_expression_binary_dot( NodeExpressionBinary *node );
+
+	virtual void generate_function_declaration( NodeFunctionDeclaration *node );
+	virtual void generate_function_declaration_main_pipeline( NodeFunctionDeclaration *node );
+	virtual void generate_function_declaration_main_compute( NodeFunctionDeclaration *node );
+
+	virtual void generate_function_call_parameters( NodeFunctionCall *node );
+	virtual void generate_function_call_intrinsics( NodeFunctionCall *node );
+
+	virtual void generate_sv_semantic( NodeSVSemantic *node );
+
 	virtual void generate_structure( NodeStruct *node );
+	virtual bool generate_structure_gfx_vertex( NodeStruct *node );
+	virtual bool generate_structure_gfx_instance( NodeStruct *node );
+
+	virtual void generate_texture( NodeTexture *node );
+
+	void generate_statement_block_main( NodeStatementBlock *node );
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -192,7 +218,7 @@ class GeneratorVulkan : public Generator
 {
 public:
 	GeneratorVulkan( Shader &shader, ShaderStage stage, Parser &parser ) :
-		Generator{ shader, stage, parser } { }
+		Generator { shader, stage, parser } { }
 
 public:
 	virtual void generate_structure( NodeStruct *node );

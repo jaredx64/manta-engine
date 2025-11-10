@@ -86,7 +86,7 @@ void CoreGfx::api_clear_depth( const float depth )
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Render State
 
-bool CoreGfx::api_swapchain_init( const u16 width, const u16 height, const float dpi )
+bool CoreGfx::api_swapchain_init( const u16 width, const u16 height )
 {
 	return true;
 }
@@ -98,13 +98,13 @@ bool CoreGfx::api_swapchain_free()
 }
 
 
-bool CoreGfx::api_swapchain_set_size( const u16 width, const u16 height, const float dpi )
+bool CoreGfx::api_swapchain_set_size( const u16 width, const u16 height )
 {
 	return true;
 }
 
 
-bool CoreGfx::api_viewport_init( const u16 width, const u16 height, const float dpi )
+bool CoreGfx::api_viewport_init( const u16 width, const u16 height )
 {
 	return true;
 }
@@ -116,7 +116,7 @@ bool CoreGfx::api_viewport_free()
 }
 
 
-bool CoreGfx::api_viewport_set_size( const u16 width, const u16 height, const float dpi )
+bool CoreGfx::api_viewport_set_size( const u16 width, const u16 height )
 {
 	return true;
 }
@@ -179,6 +179,39 @@ bool CoreGfx::api_shader_free( GfxShaderResource *&resource )
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Buffer
+
+bool CoreGfx::api_buffer_init( GfxBufferResource *&resource, const usize capacity )
+{
+	return true;
+}
+
+
+bool CoreGfx::api_buffer_free( GfxBufferResource *&resource )
+{
+	return true;
+}
+
+
+void CoreGfx::api_buffer_write_begin( GfxBufferResource *const resource )
+{
+	// ...
+}
+
+
+void CoreGfx::api_buffer_write_end( GfxBufferResource *const resource )
+{
+	// ...
+}
+
+
+void CoreGfx::api_buffer_write( GfxBufferResource *const resource, const void *const data,
+	const usize size, const usize offset )
+{
+	// ...
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Vertex Buffer
 
 void GfxVertexBufferResource::release( GfxVertexBufferResource *&resource )
@@ -186,16 +219,8 @@ void GfxVertexBufferResource::release( GfxVertexBufferResource *&resource )
 }
 
 
-bool CoreGfx::api_vertex_buffer_init_dynamic( GfxVertexBufferResource *&resource, const u32 vertexFormatID,
-	const GfxCPUAccessMode accessMode, const u32 size, const u32 stride )
-{
-	return true;
-}
-
-
-bool CoreGfx::api_vertex_buffer_init_static( GfxVertexBufferResource *&resource, const u32 vertexFormatID,
-	const GfxCPUAccessMode accessMode, const void *const data,
-	const u32 size, const u32 stride )
+bool CoreGfx::api_vertex_buffer_init( GfxVertexBufferResource *&resource, const u32 vertexFormatID,
+	const GfxWriteMode writeMode, const u32 capacity, const u32 stride )
 {
 	return true;
 }
@@ -217,10 +242,9 @@ void CoreGfx::api_vertex_buffer_write_end( GfxVertexBufferResource *const resour
 }
 
 
-bool CoreGfx::api_vertex_buffer_write( GfxVertexBufferResource *const resource,
+void CoreGfx::api_vertex_buffer_write( GfxVertexBufferResource *const resource,
 	const void *const data, const u32 size )
 {
-	return true;
 }
 
 
@@ -237,16 +261,8 @@ void GfxInstanceBufferResource::release( GfxInstanceBufferResource *&resource )
 }
 
 
-bool CoreGfx::api_instance_buffer_init_dynamic( GfxInstanceBufferResource *&resource, const u32 instanceFormatID,
-	const GfxCPUAccessMode accessMode, const u32 size, const u32 stride )
-{
-	return true;
-}
-
-
-bool CoreGfx::api_instance_buffer_init_static( GfxInstanceBufferResource *&resource, const u32 instanceFormatID,
-	const GfxCPUAccessMode accessMode, const void *const data,
-	const u32 size, const u32 stride )
+bool CoreGfx::api_instance_buffer_init( GfxInstanceBufferResource *&resource, const u32 instanceFormatID,
+	const GfxWriteMode writeMode, const u32 capacity, const u32 stride )
 {
 	return true;
 }
@@ -268,10 +284,9 @@ void CoreGfx::api_instance_buffer_write_end( GfxInstanceBufferResource *const re
 }
 
 
-bool CoreGfx::api_instance_buffer_write( GfxInstanceBufferResource *const resource,
+void CoreGfx::api_instance_buffer_write( GfxInstanceBufferResource *const resource,
 	const void *const data, const u32 size )
 {
-	return true;
 }
 
 
@@ -290,7 +305,7 @@ void GfxIndexBufferResource::release( GfxIndexBufferResource *&resource )
 
 bool CoreGfx::api_index_buffer_init( GfxIndexBufferResource *&resource,
 	void *data, const u32 size, const double indicesToVerticesRatio,
-	const GfxIndexBufferFormat format, const GfxCPUAccessMode accessMode )
+	const GfxIndexBufferFormat format, const GfxWriteMode writeMode )
 {
 	return true;
 }
@@ -332,9 +347,8 @@ void CoreGfx::api_uniform_buffer_write_end( GfxUniformBufferResource *const reso
 }
 
 
-bool CoreGfx::api_uniform_buffer_write( GfxUniformBufferResource *const resource, const void *data )
+void CoreGfx::api_uniform_buffer_write( GfxUniformBufferResource *const resource, const void *data )
 {
-	return true;
 }
 
 
@@ -492,6 +506,11 @@ bool CoreGfx::api_dispatch( const u32 x, const u32 y, const u32 z )
 // Render Command
 
 void CoreGfx::api_render_command_execute( const GfxRenderCommand &command )
+{
+}
+
+
+void CoreGfx::api_render_command_execute_post( const GfxRenderCommand &command )
 {
 }
 

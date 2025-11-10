@@ -459,15 +459,15 @@ static ExpressionValue expression_evaluate_value( Node *node )
 				}
 				else if( value1.isInteger && !value2.isInteger )
 				{
-					r = abs( static_cast<double>( value1.integer ) - value2.number ) < eps;
+					r = fabs( static_cast<double>( value1.integer ) - value2.number ) < eps;
 				}
 				else if( !value1.isInteger && value2.isInteger )
 				{
-					r = abs( value1.number - static_cast<double>( value2.integer ) ) < eps;
+					r = fabs( value1.number - static_cast<double>( value2.integer ) ) < eps;
 				}
 				else
 				{
-					r = abs( value1.number - value2.number ) < eps;
+					r = fabs( value1.number - value2.number ) < eps;
 				}
 
 				valueOut.integer = static_cast<i64>( r );

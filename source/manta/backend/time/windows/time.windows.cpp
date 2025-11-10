@@ -15,18 +15,12 @@ bool CoreTime::init()
 {
 	LARGE_INTEGER result;
 
-	// Set Timer Resolution
 	if( timeBeginPeriod( 1 ) != TIMERR_NOERROR ) { ErrorReturnMsg( false, "WIN: Failed to set timer resolution" ); }
-
-	// Get Timer Offset
 	if( !QueryPerformanceCounter( &offset ) ) { ErrorReturnMsg( false, "WIN: Failed to get timer offset" ); }
-
-	// Get Timer Frequency
 	if( !QueryPerformanceFrequency( &result ) ) { ErrorReturnMsg( false, "WIN: Failed to get timer frequency" ); }
 
 	frequency = static_cast<double>( result.QuadPart );
 
-	// Success
 	return true;
 }
 

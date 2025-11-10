@@ -1,9 +1,6 @@
 #include <manta/gfx.hpp>
 #include <gfx.api.generated.hpp>
 
-#include <vendor/d3d11.hpp>
-#include <vendor/d3dcompiler.hpp>
-
 #include <config.hpp>
 
 #include <core/buffer.hpp>
@@ -11,10 +8,14 @@
 #include <core/hashmap.hpp>
 #include <core/math.hpp>
 
-#include <manta/window.hpp>
-
 #include <manta/backend/gfx/gfxfactory.hpp>
+#include <manta/backend/gfx/d3d11/d3d11.hpp>
 #include <manta/backend/window/windows/window.windows.hpp>
+
+#include <manta/window.hpp>
+#include <manta/thread.hpp>
+
+#include <vendor/d3dcompiler.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -40,6 +41,9 @@ static const GUID IID_ID3D11Texture2D
 
 static const GUID IID_ID3DUserDefinedAnnotation
 	{ 0xB2DAAD8B, 0x03D4, 0x4DBF, { 0x95, 0xEB, 0x32, 0xAB, 0x4B, 0x63, 0xD0, 0xAB } };
+
+static const GUID IID_ID3D11Multithread
+	{ 0x9B7E4E00, 0x342C, 0x4106, { 0xA1, 0x9F, 0x4F, 0x27, 0x04, 0xF6, 0x89, 0xF0 } };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // D3D11 Backend State
@@ -122,21 +126,21 @@ static_assert( ARRAY_LENGTH( D3D11PrimitiveTypes ) == GFXPRIMITIVETYPE_COUNT,
 
 static const D3D11_FILL_MODE D3D11FillModes[] =
 {
-	D3D11_FILL_SOLID,     // GfxRasterFillMode_SOLID
-	D3D11_FILL_WIREFRAME, // GfxRasterFillMode_WIREFRAME
+	D3D11_FILL_SOLID,     // GfxFillMode_SOLID
+	D3D11_FILL_WIREFRAME, // GfxFillMode_WIREFRAME
 };
 static_assert( ARRAY_LENGTH( D3D11FillModes ) == GFXRASTERFILLMODE_COUNT,
-	"Missing GfxRasterFillMode!" );
+	"Missing GfxFillMode!" );
 
 
 static const D3D11_CULL_MODE D3D11CullModes[] =
 {
-	D3D11_CULL_NONE,  // GfxRasterCullMode_NONE
-	D3D11_CULL_FRONT, // GfxRasterCullMode_FRONT
-	D3D11_CULL_BACK,  // GfxRasterCullMode_BACK
+	D3D11_CULL_NONE,  // GfxCullMode_NONE
+	D3D11_CULL_FRONT, // GfxCullMode_FRONT
+	D3D11_CULL_BACK,  // GfxCullMode_BACK
 };
 static_assert( ARRAY_LENGTH( D3D11CullModes ) == GFXRASTERCULLMODE_COUNT,
-	"Missing GfxRasterCullMode!" );
+	"Missing GfxCullMode!" );
 
 
 static const D3D11_FILTER D3D11FilteringModes[] =
@@ -219,7 +223,6 @@ static_assert( ARRAY_LENGTH( D3D11DepthFunctions ) == GFXDEPTHFUNCTION_COUNT,
 static const DXGI_FORMAT D3D11IndexBufferFormats[] =
 {
 	DXGI_FORMAT_UNKNOWN,  // GfxIndexBufferFormat_NONE
-	DXGI_FORMAT_R8_UINT,  // GfxIndexBufferFormat_U8
 	DXGI_FORMAT_R16_UINT, // GfxIndexBufferFormat_U16
 	DXGI_FORMAT_R32_UINT, // GfxIndexBufferFormat_U32
 };
@@ -233,24 +236,20 @@ enum
 	D3D11_CPU_ACCESS_READ_WRITE = D3D11_CPU_ACCESS_READ | D3D11_CPU_ACCESS_WRITE,
 };
 
-struct D3D11MapAccessMode { UINT cpuAccessFlag; D3D11_MAP d3d11Map; D3D11_USAGE d3d11Usage; };
+struct D3D11MapAccessMode { UINT access; D3D11_USAGE usage; D3D11_MAP map;  };
 static const D3D11MapAccessMode D3D11CPUAccessModes[] =
 {
-	// GfxCPUAccessMode_NONE
-	{ D3D11_CPU_ACCESS_NONE, D3D11_MAP_WRITE_NO_OVERWRITE, D3D11_USAGE_IMMUTABLE },
-	// GfxCPUAccessMode_READ
-	{ D3D11_CPU_ACCESS_READ, D3D11_MAP_READ, D3D11_USAGE_IMMUTABLE },
-	// GfxCPUAccessMode_READ_WRITE
-	{ D3D11_CPU_ACCESS_READ_WRITE, D3D11_MAP_READ_WRITE, D3D11_USAGE_DYNAMIC },
-	// GfxCPUAccessMode_WRITE
-	{ D3D11_CPU_ACCESS_WRITE, D3D11_MAP_WRITE, D3D11_USAGE_DYNAMIC },
-	// GfxCPUAccessMode_WRITE_DISCARD
-	{ D3D11_CPU_ACCESS_WRITE, D3D11_MAP_WRITE_DISCARD, D3D11_USAGE_DYNAMIC },
-	// GfxCPUAccessMode_WRITE_NO_OVERWRITE
-	{ D3D11_CPU_ACCESS_WRITE, D3D11_MAP_WRITE_NO_OVERWRITE, D3D11_USAGE_DYNAMIC },
+	// GfxWriteMode_NONE
+	{ D3D11_CPU_ACCESS_NONE, D3D11_USAGE_IMMUTABLE, D3D11_MAP_WRITE },
+	// GfxWriteMode_ONCE
+	{ D3D11_CPU_ACCESS_WRITE, D3D11_USAGE_DYNAMIC, D3D11_MAP_WRITE },
+	// GfxWriteMode_OVERWRITE
+	{ D3D11_CPU_ACCESS_WRITE, D3D11_USAGE_DYNAMIC, D3D11_MAP_WRITE_DISCARD },
+	// GfxWriteMode_OFFSET_RING
+	{ D3D11_CPU_ACCESS_WRITE, D3D11_USAGE_DYNAMIC, D3D11_MAP_WRITE_NO_OVERWRITE },
 };
-static_assert( ARRAY_LENGTH( D3D11CPUAccessModes ) == GFXCPUACCESSMODE_COUNT,
-	"Missing GfxCPUAccessMode!" );
+static_assert( ARRAY_LENGTH( D3D11CPUAccessModes ) == GFXWRITEMODE_COUNT,
+	"Missing GfxWriteMode!" );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Resources
@@ -258,10 +257,12 @@ static_assert( ARRAY_LENGTH( D3D11CPUAccessModes ) == GFXCPUACCESSMODE_COUNT,
 struct GfxShaderResource : public GfxResource
 {
 	static void release( GfxShaderResource *&resource );
+
 	ID3D11ComputeShader *cs = nullptr;
 	ID3D11VertexShader *vs = nullptr;
 	ID3D11PixelShader *ps = nullptr;
 	ID3D11InputLayout *il = nullptr;
+
 	UINT sizeVS = 0;
 	UINT sizePS = 0;
 	UINT sizeCS = 0;
@@ -272,10 +273,12 @@ struct GfxShaderResource : public GfxResource
 struct GfxVertexBufferResource : public GfxResource
 {
 	static void release( GfxVertexBufferResource *&resource );
+
 	ID3D11Buffer *buffer = nullptr;
-	GfxCPUAccessMode accessMode;
-	u32 vertexFormat = 0;
+	GfxWriteMode writeMode;
 	bool mapped = false;
+
+	u32 vertexFormat = 0;
 	byte *data = nullptr;
 	UINT size = 0; // buffer size in bytes
 	UINT stride = 0; // vertex size in bytes
@@ -287,10 +290,12 @@ struct GfxVertexBufferResource : public GfxResource
 struct GfxInstanceBufferResource : public GfxResource
 {
 	static void release( GfxInstanceBufferResource *&resource );
+
 	ID3D11Buffer *buffer = nullptr;
-	GfxCPUAccessMode accessMode;
-	u32 instanceFormat = 0;
+	GfxWriteMode writeMode;
 	bool mapped = false;
+
+	u32 instanceFormat = 0;
 	byte *data = nullptr;
 	UINT size = 0; // buffer size in bytes
 	UINT stride = 0; // vertex size in bytes
@@ -302,9 +307,11 @@ struct GfxInstanceBufferResource : public GfxResource
 struct GfxIndexBufferResource : public GfxResource
 {
 	static void release( GfxIndexBufferResource *&resource );
-	ID3D11Buffer *buffer = nullptr;
-	GfxCPUAccessMode accessMode = GfxCPUAccessMode_NONE;
+
+	GfxWriteMode writeMode = GfxWriteMode_NONE;
+
 	GfxIndexBufferFormat format = GfxIndexBufferFormat_U32;
+	ID3D11Buffer *buffer = nullptr;
 	double indicesToVerticesRatio = 1.0;
 	UINT size = 0; // buffer size in bytes
 };
@@ -313,8 +320,10 @@ struct GfxIndexBufferResource : public GfxResource
 struct GfxUniformBufferResource : public GfxResource
 {
 	static void release( GfxUniformBufferResource *&resource );
+
 	ID3D11Buffer *buffer = nullptr;
 	bool mapped = false;
+
 	byte *data = nullptr;
 	const char *name = "";
 	int index = 0;
@@ -325,8 +334,10 @@ struct GfxUniformBufferResource : public GfxResource
 struct GfxTextureResource : public GfxResource
 {
 	static void release( GfxTextureResource *&resource );
+
 	ID3D11ShaderResourceView *srv = nullptr;
 	ID3D11UnorderedAccessView *uav = nullptr;
+
 	GfxTextureType type;
 	GfxColorFormat colorFormat;
 	u16 width = 0;
@@ -340,6 +351,7 @@ struct GfxTextureResource : public GfxResource
 struct GfxRenderTargetResource : public GfxResource
 {
 	static void release( GfxRenderTargetResource *&resource );
+
 	ID3D11RenderTargetView *rtv = nullptr;
 	ID3D11DepthStencilView *dsv = nullptr;
 	ID3D11Texture2D *textureColorSS = nullptr;
@@ -348,6 +360,7 @@ struct GfxRenderTargetResource : public GfxResource
 	ID3D11Texture2D *textureDepthMS = nullptr;
 	ID3D11Texture2D *textureColorStaging = nullptr;
 	ID3D11Texture2D *textureDepthStaging = nullptr;
+
 	GfxRenderTargetDescription desc = { };
 	u16 width = 0;
 	u16 height = 0;
@@ -607,43 +620,6 @@ static bool d3d11_factory_free()
 	return true;
 }
 
-
-static CoreGfx::D3D11InputLayoutDescription d3d11_build_input_layout_description(
-	const u32 vertexFormatID, const u32 instanceFormatID )
-{
-	static D3D11_INPUT_ELEMENT_DESC scratch[255];
-	int count = 0;
-
-	// Per-Vertex Input Layouts
-	if( vertexFormatID != U32_MAX )
-	{
-		CoreGfx::D3D11InputLayoutDescription vertex;
-		CoreGfx::d3d11_input_layout_desc_vertex[vertexFormatID]( vertex );
-		if( vertex.desc != nullptr )
-		{
-			memory_copy( &scratch[count], vertex.desc, vertex.count * sizeof( D3D11_INPUT_ELEMENT_DESC ) );
-		}
-		count += vertex.count;
-	}
-
-	// Per-Instance
-	if( instanceFormatID != U32_MAX )
-	{
-		CoreGfx::D3D11InputLayoutDescription instance;
-		CoreGfx::d3d11_input_layout_desc_instance[instanceFormatID]( instance );
-		if( instance.desc != nullptr )
-		{
-			memory_copy( &scratch[count], instance.desc, instance.count * sizeof( D3D11_INPUT_ELEMENT_DESC ) );
-		}
-		count += instance.count;
-	}
-
-	CoreGfx::D3D11InputLayoutDescription inputLayoutDescription;
-	inputLayoutDescription.desc = &scratch[0];
-	inputLayoutDescription.count = count;
-	return inputLayoutDescription;
-}
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // D3D11 Render State
 
@@ -659,11 +635,11 @@ static bool bind_shader( GfxShaderResource *const resource )
 	context->IASetInputLayout( resource->il );
 	PROFILE_GFX( Gfx::stats.frame.shaderBinds++ );
 
-	ErrorIf( !CoreGfx::api_shader_bind_uniform_buffers_vertex[resource->shaderID](),
+	ErrorIf( !CoreGfx::shader_bind_uniform_buffers_vertex( resource->shaderID ),
 		"Failed to bind vertex shader uniform buffers! (%u)", resource->shaderID );
-	ErrorIf( !CoreGfx::api_shader_bind_uniform_buffers_fragment[resource->shaderID](),
+	ErrorIf( !CoreGfx::shader_bind_uniform_buffers_fragment( resource->shaderID ),
 		"Failed to bind fragment shader uniform buffers! (%u)", resource->shaderID );
-	ErrorIf( !CoreGfx::api_shader_bind_uniform_buffers_compute[resource->shaderID](),
+	ErrorIf( !CoreGfx::shader_bind_uniform_buffers_compute( resource->shaderID ),
 		"Failed to bind compute shader uniform buffers! (%u)", resource->shaderID );
 
 	BITFLAG_UNSET( CoreGfx::state.dirtyFlags, GfxStateDirtyFlag_SHADER );
@@ -819,7 +795,7 @@ static bool bind_targets( GfxRenderTargetResource *const resources[] )
 	{
 		GfxRenderTargetResource *const resource = resources[slot];
 
-		if( resource != nullptr && stateBoundTargetResources[slot] != resource )
+		if( stateBoundTargetResources[slot] != nullptr && stateBoundTargetResources[slot] != resource )
 		{
 			msaa_resolve_render_target_2d( stateBoundTargetResources[slot] );
 		}
@@ -900,7 +876,7 @@ static bool bind_targets( GfxRenderTargetResource *const resources[] )
 	else
 	{
 		Gfx::set_matrix_mvp( cacheMatrixModel, cacheMatrixView, cacheMatrixPerspective );
-		Gfx::viewport_set_size( Window::width * Window::scale, Window::height * Window::scale );
+		Gfx::viewport_set_size( Gfx::swapchain_width(), Gfx::swapchain_height() );
 	}
 
 	BITFLAG_UNSET( CoreGfx::state.dirtyFlags, GfxStateDirtyFlag_TARGETS );
@@ -923,19 +899,129 @@ static void render_pass_validate()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#define MULTITHREADED_DEVICE_CONTEXT false
+
+
+struct D3D11Work
+{
+	u64 id = 0LLU;
+	ID3D11Query *query = nullptr;
+};
+
+
+static List<D3D11Work> d3d11WorkInFlight;
+static Mutex d3d11WorkInFlightMutex;
+static bool d3d11WorkListenerThreadActive;
+
+
+THREAD_FUNCTION( d3d11_async_work_completion_listener )
+{
+#if MULTITHREADED_DEVICE_CONTEXT
+	d3d11WorkListenerThreadActive = true;
+
+	while( d3d11WorkListenerThreadActive )
+	{
+		d3d11WorkInFlightMutex.lock();
+		for( usize i = 0; i < d3d11WorkInFlight.size(); )
+		{
+			const D3D11Work work = d3d11WorkInFlight[i];
+			ID3D11Asynchronous *query = reinterpret_cast<ID3D11Asynchronous *>( work.query );
+
+			BOOL done = false;
+			HRESULT hr = context->GetData( query, &done, sizeof( done ), D3D11_ASYNC_GETDATA_DONOTFLUSH );
+
+			if( hr == S_OK && done )
+			{
+				PrintLn( "finished: %llu", work.id );
+
+				d3d11WorkInFlight.remove_swap( i );
+				if( work.query ) { reinterpret_cast<ID3D11Asynchronous *>( work.query )->Release(); }
+				continue;
+			}
+
+			i++;
+		}
+		d3d11WorkInFlightMutex.unlock();
+
+		Thread::sleep( 1 );
+	}
+#endif
+	return 0;
+}
+
+
+static void d3d11_work_commit( const u64 commitID )
+{
+#if MULTITHREADED_DEVICE_CONTEXT
+	D3D11Work work = { };
+	work.id = commitID;
+
+	D3D11_QUERY_DESC qd = { D3D11_QUERY_EVENT, 0 };
+
+	d3d11WorkInFlightMutex.lock();
+	{
+		device->CreateQuery( &qd, &work.query );
+		context->End( reinterpret_cast<ID3D11Asynchronous *>( work.query ) );
+		d3d11WorkInFlight.add( work );
+	}
+	d3d11WorkInFlightMutex.unlock();
+#endif
+}
+
+
+static bool d3d11_work_tracking_init()
+{
+#if MULTITHREADED_DEVICE_CONTEXT
+	ID3D11Multithread *multithread = nullptr;
+	context->QueryInterface( IID_ID3D11Multithread, reinterpret_cast<void **>( &multithread ) );
+	if( multithread )
+	{
+		multithread->SetMultithreadProtected( true );
+		multithread->Release();
+	}
+
+	d3d11WorkInFlight.init( 256 );
+	d3d11WorkInFlightMutex.init();
+
+	d3d11WorkListenerThreadActive = false;
+	Thread::sleep( 0 );
+	Thread::create( d3d11_async_work_completion_listener );
+#endif
+	return true;
+}
+
+
+static void d3d11_work_tracking_free()
+{
+#if MULTITHREADED_DEVICE_CONTEXT
+	d3d11WorkListenerThreadActive = false;
+	Thread::sleep( 1 ); // Wait for worker thread to finish
+
+	d3d11WorkInFlightMutex.free();
+	d3d11WorkInFlight.free();
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // GFX System
 
 bool CoreGfx::api_init()
 {
+#if SWAPCHAIN_DPI_SCALED
 	const u16 w = Window::width;
 	const u16 h = Window::height;
-	const u16 f = Window::fullscreen;
+#else
+	const u16 w = Window::width * Window::scale;
+	const u16 h = Window::height * Window::scale;
+#endif
 
-	ErrorReturnIf( !d3d11_device_init(), false, "%s: Failed to create D3D11 device", __FUNCTION__ );
-	ErrorReturnIf( !d3d11_factory_init(), false, "%s: Failed to create D3D11 factory", __FUNCTION__ );
-	ErrorReturnIf( !api_swapchain_init( w, h, f ), false, "%s: Failed to create swap chain", __FUNCTION__ );
-	ErrorReturnIf( !msaa_resolver_init(), false, "%s: Failed to init MSAA resolver", __FUNCTION__ );
-	ErrorReturnIf( !resources_init(), false, "%s: Failed to create gfx resources", __FUNCTION__ );
+	ErrorReturnIf( !d3d11_device_init(), false, "%s: Failed to initialize D3D11 device", __FUNCTION__ );
+	ErrorReturnIf( !d3d11_factory_init(), false, "%s: Failed to initialize D3D11 factory", __FUNCTION__ );
+	ErrorReturnIf( !d3d11_work_tracking_init(), false, "%s: Failed to initialize work tracking thread", __FUNCTION__ );
+	ErrorReturnIf( !api_swapchain_init( w, h ), false, "%s: Failed to initialize swap chain", __FUNCTION__ );
+	ErrorReturnIf( !msaa_resolver_init(), false, "%s: Failed to initialize MSAA resolver", __FUNCTION__ );
+	ErrorReturnIf( !resources_init(), false, "%s: Failed to initialize resources", __FUNCTION__ );
 
 #if COMPILE_DEBUG
 	context->QueryInterface( IID_ID3DUserDefinedAnnotation, reinterpret_cast<void **>( &annotation ) );
@@ -953,7 +1039,8 @@ bool CoreGfx::api_free()
 
 	resources_free();
 	msaa_resolver_free();
-	resources_free();
+	api_swapchain_free();
+	d3d11_work_tracking_free();
 	d3d11_factory_free();
 	d3d11_device_free();
 
@@ -1016,13 +1103,12 @@ void CoreGfx::api_clear_depth( const float depth )
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Render State
 
-bool CoreGfx::api_swapchain_init( const u16 width, const u16 height, const float dpi )
+bool CoreGfx::api_swapchain_init( const u16 width, const u16 height )
 {
 	const GfxColorFormat colorFormat = GfxColorFormat_R8G8B8A8_FLOAT; // TODO: Support other formats
 
 	CoreGfx::state.swapchain.width = width;
 	CoreGfx::state.swapchain.height = height;
-	CoreGfx::state.swapchain.dpi = dpi;
 
 	DECL_ZERO( DXGI_SWAP_CHAIN_DESC, swapChainDesc );
 	swapChainDesc.BufferDesc.Width = width;
@@ -1140,7 +1226,7 @@ bool CoreGfx::api_swapchain_init( const u16 width, const u16 height, const float
 	}
 #endif
 
-	CoreGfx::api_viewport_set_size( width, height, dpi );
+	CoreGfx::api_viewport_set_size( width, height );
 	return true;
 }
 
@@ -1163,17 +1249,15 @@ bool CoreGfx::api_swapchain_free()
 }
 
 
-bool CoreGfx::api_swapchain_set_size( const u16 width, const u16 height, const float dpi )
+bool CoreGfx::api_swapchain_set_size( const u16 width, const u16 height )
 {
 	const GfxColorFormat colorFormat = GfxColorFormat_R8G8B8A8_FLOAT; // TODO: Support other formats
 
 	const u16 widthPrevious = CoreGfx::state.swapchain.width;
 	const u16 heightPrevious = CoreGfx::state.swapchain.height;
-	const float dpiPrevious = CoreGfx::state.swapchain.dpi;
 
 	CoreGfx::state.swapchain.width = width;
 	CoreGfx::state.swapchain.height = height;
-	CoreGfx::state.swapchain.dpi = dpi;
 
 	context->VSSetShader( nullptr, nullptr, 0 );
 	context->PSSetShader( nullptr, nullptr, 0 );
@@ -1273,9 +1357,9 @@ bool CoreGfx::api_swapchain_set_size( const u16 width, const u16 height, const f
 }
 
 
-bool CoreGfx::api_viewport_init( const u16 width, const u16 height, const float dpi )
+bool CoreGfx::api_viewport_init( const u16 width, const u16 height )
 {
-	return api_viewport_set_size( width, height, dpi );
+	return api_viewport_set_size( width, height );
 }
 
 
@@ -1286,11 +1370,10 @@ bool CoreGfx::api_viewport_free()
 }
 
 
-bool CoreGfx::api_viewport_set_size( const u16 width, const u16 height, const float dpi )
+bool CoreGfx::api_viewport_set_size( const u16 width, const u16 height )
 {
 	CoreGfx::state.viewport.width = width;
 	CoreGfx::state.viewport.height = height;
-	CoreGfx::state.viewport.dpi = dpi;
 
 	DECL_ZERO( D3D11_VIEWPORT, d3d11Viewport );
 	d3d11Viewport.TopLeftX = 0.0f;
@@ -1435,10 +1518,53 @@ bool CoreGfx::api_shader_init( GfxShaderResource *&resource, const u32 shaderID,
 				__FUNCTION__, shaderEntry.name );
 		}
 
-		D3D11InputLayoutDescription inputLayoutDescription = d3d11_build_input_layout_description(
-			CoreGfx::shaderEntries[shaderID].vertexFormat, CoreGfx::shaderEntries[shaderID].instanceFormat );
+		// Input Layouts
+		static D3D11_INPUT_ELEMENT_DESC inputLayoutElements[256];
+		UINT inputLayoutElementsCount = 0U;
+		UINT inputLayoutBufferIndex = 0U;
 
-		if( FAILED( device->CreateInputLayout( inputLayoutDescription.desc, inputLayoutDescription.count,
+		if( shaderEntry.vertexFormat != U32_MAX )
+		{
+			Assert( shaderEntry.vertexFormat < inputLayoutFormatsVertexCount );
+			const D3D11InputLayoutFormats &table = CoreGfx::inputLayoutFormatsVertex[shaderEntry.vertexFormat];
+			for( UINT i = 0; i < table.attributesCount; i++ )
+			{
+				const D3D11InputLayoutAttributes &attributes = table.attributes[i];
+				D3D11_INPUT_ELEMENT_DESC &desc = inputLayoutElements[inputLayoutElementsCount];
+				memory_set( &desc, 0, sizeof( D3D11_INPUT_ELEMENT_DESC ) );
+				desc.SemanticName = attributes.semanticName;
+				desc.SemanticIndex = attributes.semanticIndex;
+				desc.Format = attributes.format;
+				desc.InputSlot = inputLayoutBufferIndex;
+				desc.AlignedByteOffset = attributes.offset;
+				desc.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
+				desc.InstanceDataStepRate = 0;
+				inputLayoutElementsCount++;
+			}
+			inputLayoutBufferIndex = table.attributesCount > 0U ? 1U : 0U;
+		}
+
+		if( shaderEntry.instanceFormat != U32_MAX )
+		{
+			Assert( shaderEntry.instanceFormat < inputLayoutFormatsInstanceCount );
+			const D3D11InputLayoutFormats &table = CoreGfx::inputLayoutFormatsInstance[shaderEntry.instanceFormat];
+			for( UINT i = 0; i < table.attributesCount; i++ )
+			{
+				const D3D11InputLayoutAttributes &attributes = table.attributes[i];
+				D3D11_INPUT_ELEMENT_DESC &desc = inputLayoutElements[inputLayoutElementsCount];
+				memory_set( &desc, 0, sizeof( D3D11_INPUT_ELEMENT_DESC ) );
+				desc.SemanticName = attributes.semanticName;
+				desc.SemanticIndex = attributes.semanticIndex;
+				desc.Format = attributes.format;
+				desc.InputSlot = inputLayoutBufferIndex;
+				desc.AlignedByteOffset = attributes.offset;
+				desc.InputSlotClass = D3D11_INPUT_PER_INSTANCE_DATA;
+				desc.InstanceDataStepRate = 1;
+				inputLayoutElementsCount++;
+			}
+		}
+
+		if( FAILED( device->CreateInputLayout( inputLayoutElements, inputLayoutElementsCount,
 			vsStripped->GetBufferPointer(),
 			vsStripped->GetBufferSize(), &resource->il ) ) )
 		{
@@ -1453,7 +1579,7 @@ bool CoreGfx::api_shader_init( GfxShaderResource *&resource, const u32 shaderID,
 	{
 		const void *codeFragment = reinterpret_cast<const void *>( Assets::binary.data + shaderEntry.offsetFragment );
 		if( FAILED( D3DCompile( codeFragment, shaderEntry.sizeFragment, nullptr, nullptr, nullptr,
-			"ps_main", "ps_4_0", D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &psCode, &info ) ) )
+			"ps_main", "ps_5_0", D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &psCode, &info ) ) )
 		{
 			GfxShaderResource::release( resource );
 			ErrorReturnMsg( false,
@@ -1482,7 +1608,7 @@ bool CoreGfx::api_shader_init( GfxShaderResource *&resource, const u32 shaderID,
 	{
 		const void *codeCompute = reinterpret_cast<const void *>( Assets::binary.data + shaderEntry.offsetCompute );
 		if( FAILED( D3DCompile( codeCompute, shaderEntry.sizeCompute, nullptr, nullptr, nullptr,
-			"vs_main", "vs_4_0", D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &csCode, &info ) ) )
+			"vs_main", "vs_5_0", D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &csCode, &info ) ) )
 		{
 			GfxShaderResource::release( resource );
 			ErrorReturnMsg( false,
@@ -1527,6 +1653,39 @@ bool CoreGfx::api_shader_free( GfxShaderResource *&resource )
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Buffer
+
+bool CoreGfx::api_buffer_init( GfxBufferResource *&resource, const usize capacity )
+{
+	return true;
+}
+
+
+bool CoreGfx::api_buffer_free( GfxBufferResource *&resource )
+{
+	return true;
+}
+
+
+void CoreGfx::api_buffer_write_begin( GfxBufferResource *const resource )
+{
+	// ...
+}
+
+
+void CoreGfx::api_buffer_write_end( GfxBufferResource *const resource )
+{
+	// ...
+}
+
+
+void CoreGfx::api_buffer_write( GfxBufferResource *const resource, const void *const data,
+	const usize size, const usize offset )
+{
+	// ...
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Vertex Buffer
 
 void GfxVertexBufferResource::release( GfxVertexBufferResource *&resource )
@@ -1540,23 +1699,22 @@ void GfxVertexBufferResource::release( GfxVertexBufferResource *&resource )
 }
 
 
-bool CoreGfx::api_vertex_buffer_init_dynamic( GfxVertexBufferResource *&resource, const u32 vertexFormatID,
-	const GfxCPUAccessMode accessMode, const u32 size, const u32 stride )
+bool CoreGfx::api_vertex_buffer_init( GfxVertexBufferResource *&resource, const u32 vertexFormatID,
+	const GfxWriteMode writeMode, const u32 capacity, const u32 stride )
 {
 	Assert( resource == nullptr );
-	Assert( accessMode == GfxCPUAccessMode_WRITE_DISCARD || accessMode == GfxCPUAccessMode_WRITE_NO_OVERWRITE );
-
 	resource = vertexBufferResources.make_new();
-	resource->size = size;
-	resource->stride = stride;
-	resource->accessMode = accessMode;
+	resource->writeMode = writeMode;
+	resource->mapped = false;
 	resource->vertexFormat = vertexFormatID;
+	resource->size = capacity;
+	resource->stride = stride;
 
 	DECL_ZERO( D3D11_BUFFER_DESC, bfDesc );
-	bfDesc.ByteWidth = size;
-	bfDesc.Usage = D3D11CPUAccessModes[accessMode].d3d11Usage;
+	bfDesc.ByteWidth = capacity;
+	bfDesc.Usage = D3D11CPUAccessModes[writeMode].usage;
 	bfDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	bfDesc.CPUAccessFlags = D3D11CPUAccessModes[accessMode].cpuAccessFlag;
+	bfDesc.CPUAccessFlags = D3D11CPUAccessModes[writeMode].access;
 	bfDesc.MiscFlags = 0;
 	bfDesc.StructureByteStride = 0;
 
@@ -1567,17 +1725,6 @@ bool CoreGfx::api_vertex_buffer_init_dynamic( GfxVertexBufferResource *&resource
 	}
 
 	PROFILE_GFX( Gfx::stats.gpuMemoryVertexBuffers += resource->size );
-	return true;
-}
-
-
-bool CoreGfx::api_vertex_buffer_init_static( GfxVertexBufferResource *&resource, const u32 vertexFormatID,
-	const GfxCPUAccessMode accessMode, const void *const data,
-	const u32 size, const u32 stride )
-{
-	Assert( resource == nullptr );
-	Assert( accessMode == GfxCPUAccessMode_WRITE_DISCARD || accessMode == GfxCPUAccessMode_WRITE_NO_OVERWRITE );
-	GRAPHICS_API_IMPLEMENTATION_WARNING // TODO: Implement this
 	return true;
 }
 
@@ -1597,46 +1744,39 @@ bool CoreGfx::api_vertex_buffer_free( GfxVertexBufferResource *&resource )
 void CoreGfx::api_vertex_buffer_write_begin( GfxVertexBufferResource *const resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
-	if( resource->mapped == true ) { return; }
 
-	const GfxCPUAccessMode accessMode = resource->accessMode;
-	Assert( accessMode == GfxCPUAccessMode_WRITE ||
-		accessMode == GfxCPUAccessMode_WRITE_DISCARD ||
-		accessMode == GfxCPUAccessMode_WRITE_NO_OVERWRITE )
+	const GfxWriteMode writeMode = resource->writeMode == GfxWriteMode_RING ?
+		GfxWriteMode_OVERWRITE : resource->writeMode; // TODO: Temporary
 
+	Assert( !resource->mapped );
  	DECL_ZERO( D3D11_MAPPED_SUBRESOURCE, mappedResource );
-	context->Map( resource->buffer, 0, D3D11CPUAccessModes[accessMode].d3d11Map, 0, &mappedResource );
+	context->Map( resource->buffer, 0, D3D11CPUAccessModes[writeMode].map, 0, &mappedResource );
 	resource->mapped = true;
 
-	if( accessMode == GfxCPUAccessMode_WRITE_DISCARD || resource->data == nullptr )
-	{
-		resource->data = reinterpret_cast<byte *>( mappedResource.pData );
-		resource->current = 0;
-		resource->offset = 0;
-	}
+	resource->data = reinterpret_cast<byte *>( mappedResource.pData );
+	resource->current = 0;
+	resource->offset = 0;
 }
 
 
 void CoreGfx::api_vertex_buffer_write_end( GfxVertexBufferResource *const resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
-	if( resource->mapped == false ) { return; }
 
+	Assert( resource->mapped );
 	context->Unmap( resource->buffer, 0 );
 	resource->mapped = false;
 }
 
 
-bool CoreGfx::api_vertex_buffer_write( GfxVertexBufferResource *const resource,
+void CoreGfx::api_vertex_buffer_write( GfxVertexBufferResource *const resource,
 	const void *const data, const u32 size )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
-	Assert( resource->mapped );
 
+	Assert( resource->mapped );
 	memory_copy( resource->data + resource->current, data, size );
 	resource->current += size;
-
-	return true;
 }
 
 
@@ -1660,23 +1800,22 @@ void GfxInstanceBufferResource::release( GfxInstanceBufferResource *&resource )
 }
 
 
-bool CoreGfx::api_instance_buffer_init_dynamic( GfxInstanceBufferResource *&resource, const u32 instanceFormatID,
-	const GfxCPUAccessMode accessMode, const u32 size, const u32 stride )
+bool CoreGfx::api_instance_buffer_init( GfxInstanceBufferResource *&resource, const u32 instanceFormatID,
+	const GfxWriteMode writeMode, const u32 capacity, const u32 stride )
 {
 	Assert( resource == nullptr );
-	Assert( accessMode == GfxCPUAccessMode_WRITE_DISCARD || accessMode == GfxCPUAccessMode_WRITE_NO_OVERWRITE );
-
 	resource = instanceBufferResources.make_new();
-	resource->size = size;
-	resource->stride = stride;
-	resource->accessMode = accessMode;
+	resource->writeMode = writeMode;
+	resource->mapped = false;
 	resource->instanceFormat = instanceFormatID;
+	resource->size = capacity;
+	resource->stride = stride;
 
 	DECL_ZERO( D3D11_BUFFER_DESC, bfDesc );
-	bfDesc.ByteWidth = size;
-	bfDesc.Usage = D3D11CPUAccessModes[accessMode].d3d11Usage;
+	bfDesc.ByteWidth = capacity;
+	bfDesc.Usage = D3D11CPUAccessModes[writeMode].usage;
 	bfDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	bfDesc.CPUAccessFlags = D3D11CPUAccessModes[accessMode].cpuAccessFlag;
+	bfDesc.CPUAccessFlags = D3D11CPUAccessModes[writeMode].access;
 	bfDesc.MiscFlags = 0;
 	bfDesc.StructureByteStride = 0;
 
@@ -1687,17 +1826,6 @@ bool CoreGfx::api_instance_buffer_init_dynamic( GfxInstanceBufferResource *&reso
 	}
 
 	PROFILE_GFX( Gfx::stats.gpuMemoryInstanceBuffers += resource->size );
-	return true;
-}
-
-
-bool CoreGfx::api_instance_buffer_init_static( GfxInstanceBufferResource *&resource, const u32 instanceFormatID,
-	const GfxCPUAccessMode accessMode, const void *const data,
-	const u32 size, const u32 stride )
-{
-	Assert( resource == nullptr );
-	Assert( accessMode == GfxCPUAccessMode_WRITE_DISCARD || accessMode == GfxCPUAccessMode_WRITE_NO_OVERWRITE );
-	GRAPHICS_API_IMPLEMENTATION_WARNING // TODO: Implement this
 	return true;
 }
 
@@ -1717,46 +1845,39 @@ bool CoreGfx::api_instance_buffer_free( GfxInstanceBufferResource *&resource )
 void CoreGfx::api_instance_buffer_write_begin( GfxInstanceBufferResource *const resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
-	if( resource->mapped == true ) { return; }
 
-	const GfxCPUAccessMode accessMode = resource->accessMode;
-	Assert( accessMode == GfxCPUAccessMode_WRITE ||
-		accessMode == GfxCPUAccessMode_WRITE_DISCARD ||
-		accessMode == GfxCPUAccessMode_WRITE_NO_OVERWRITE )
+	const GfxWriteMode writeMode = resource->writeMode == GfxWriteMode_RING ?
+		GfxWriteMode_OVERWRITE : resource->writeMode; // TODO: Temporary
 
+	Assert( !resource->mapped );
  	DECL_ZERO( D3D11_MAPPED_SUBRESOURCE, mappedResource );
-	context->Map( resource->buffer, 0, D3D11CPUAccessModes[accessMode].d3d11Map, 0, &mappedResource );
+	context->Map( resource->buffer, 0, D3D11CPUAccessModes[writeMode].map, 0, &mappedResource );
 	resource->mapped = true;
 
-	if( accessMode == GfxCPUAccessMode_WRITE_DISCARD || resource->data == nullptr )
-	{
-		resource->data = reinterpret_cast<byte *>( mappedResource.pData );
-		resource->current = 0;
-		resource->offset = 0;
-	}
+	resource->data = reinterpret_cast<byte *>( mappedResource.pData );
+	resource->current = 0;
+	resource->offset = 0;
 }
 
 
 void CoreGfx::api_instance_buffer_write_end( GfxInstanceBufferResource *const resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
-	if( resource->mapped == false ) { return; }
 
+	Assert( !resource->mapped );
 	context->Unmap( resource->buffer, 0 );
 	resource->mapped = false;
 }
 
 
-bool CoreGfx::api_instance_buffer_write( GfxInstanceBufferResource *const resource,
+void CoreGfx::api_instance_buffer_write( GfxInstanceBufferResource *const resource,
 	const void *const data, const u32 size )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
-	Assert( resource->mapped );
 
+	Assert( resource->mapped );
 	memory_copy( resource->data + resource->current, data, size );
 	resource->current += size;
-
-	return true;
 }
 
 
@@ -1782,23 +1903,23 @@ void GfxIndexBufferResource::release( GfxIndexBufferResource *&resource )
 
 bool CoreGfx::api_index_buffer_init( GfxIndexBufferResource *&resource,
 	void *data, const u32 size, const double indicesToVerticesRatio,
-	const GfxIndexBufferFormat format, const GfxCPUAccessMode accessMode )
+	const GfxIndexBufferFormat format, const GfxWriteMode writeMode )
 {
 	Assert( resource == nullptr );
 	Assert( format != GfxIndexBufferFormat_NONE );
 	Assert( format < GFXINDEXBUFFERFORMAT_COUNT );
 
 	resource = indexBufferResources.make_new();
-	resource->accessMode = accessMode;
+	resource->writeMode = writeMode;
 	resource->format = format;
 	resource->indicesToVerticesRatio = indicesToVerticesRatio;
 	resource->size = size;
 
 	DECL_ZERO( D3D11_BUFFER_DESC, bfDesc );
 	bfDesc.ByteWidth = size;
-	bfDesc.Usage = D3D11CPUAccessModes[accessMode].d3d11Usage;
+	bfDesc.Usage = D3D11CPUAccessModes[writeMode].usage;
 	bfDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-	bfDesc.CPUAccessFlags = D3D11CPUAccessModes[accessMode].cpuAccessFlag;
+	bfDesc.CPUAccessFlags = D3D11CPUAccessModes[writeMode].access;
 	bfDesc.MiscFlags = 0;
 	bfDesc.StructureByteStride = 0;
 
@@ -1885,11 +2006,10 @@ bool CoreGfx::api_uniform_buffer_free( GfxUniformBufferResource *&resource )
 void CoreGfx::api_uniform_buffer_write_begin( GfxUniformBufferResource *const resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
-	if( resource->mapped == true ) { return; }
 
+	Assert( !resource->mapped );
  	DECL_ZERO( D3D11_MAPPED_SUBRESOURCE, mappedResource );
 	context->Map( resource->buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource );
-
 	resource->data = reinterpret_cast<byte *>( mappedResource.pData );
 	resource->mapped = true;
 }
@@ -1898,22 +2018,20 @@ void CoreGfx::api_uniform_buffer_write_begin( GfxUniformBufferResource *const re
 void CoreGfx::api_uniform_buffer_write_end( GfxUniformBufferResource *const resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
-	if( resource->mapped == false ) { return; }
 
+	Assert( resource->mapped );
 	context->Unmap( resource->buffer, 0 );
 	resource->mapped = false;
 }
 
 
-bool CoreGfx::api_uniform_buffer_write( GfxUniformBufferResource *const resource, const void *data )
+void CoreGfx::api_uniform_buffer_write( GfxUniformBufferResource *const resource, const void *data )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
+
 	Assert( resource->mapped );
 	Assert( resource->data != nullptr );
-
 	memory_copy( resource->data, data, resource->size );
-
-	return true;
 }
 
 
@@ -2604,11 +2722,11 @@ bool CoreGfx::api_draw(
 	ID3D11Buffer *buffers[2] = { nullptr, nullptr };
 	UINT strides[2] = { 0, 0 };
 	UINT offsets[2] = { 0, 0 };
-	UINT slot = 0;
 	UINT count = 0;
 
 	if( resourceVertex != nullptr )
 	{
+		Assert( !resourceVertex->mapped );
 		buffers[count] = resourceVertex->buffer;
 		strides[count] = resourceVertex->stride;
 		offsets[count] = resourceVertex->offset;
@@ -2617,19 +2735,15 @@ bool CoreGfx::api_draw(
 
 	if( resourceInstance != nullptr )
 	{
-		if( resourceVertex == nullptr ) { slot = 1; }
+		Assert( !resourceInstance->mapped );
 		buffers[count] = resourceInstance->buffer;
 		strides[count] = resourceInstance->stride;
 		offsets[count] = resourceInstance->offset;
 		count++;
 	}
 
-	if( count > 0 )
-	{
-		context->IASetVertexBuffers( slot, count, buffers, strides, offsets );
-	}
+	context->IASetVertexBuffers( 0, count, buffers, strides, offsets );
 
-	// Submit Index Buffer
 	if( resourceIndex )
 	{
 		context->IASetIndexBuffer( resourceIndex->buffer, D3D11IndexBufferFormats[resourceIndex->format], 0 );
@@ -2661,6 +2775,8 @@ bool CoreGfx::api_draw(
 		}
 	}
 
+	static u64 commitIDCurrent = 0;
+	d3d11_work_commit( commitIDCurrent++ );
 	return true;
 }
 
@@ -2692,6 +2808,11 @@ void CoreGfx::api_render_command_execute( const GfxRenderCommand &command )
 	if( !command.workFunctionInvoker ) { return; }
 	command.workFunctionInvoker( command.workFunction,
 		GfxRenderCommand::renderCommandArgsStack.get( command.workPayloadOffset, command.workPayloadSize ) );
+}
+
+
+void CoreGfx::api_render_command_execute_post( const GfxRenderCommand &command )
+{
 }
 
 

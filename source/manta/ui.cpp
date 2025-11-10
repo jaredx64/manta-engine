@@ -68,7 +68,7 @@ bool UIContext::destroy_widget( ObjectInstance &widget )
 {
 	// Validate Type
 	if( !widget ) { return true; }
-	AssertMsg( object_is_child_of( widget.type,Object::UIWidget ),
+	AssertMsg( object_is_child_of( widget.type, Object::UIWidget ),
 		"Attempting to destroy UIWidget of UIWidget type! (%s)", CoreObjects::TYPE_NAME[widget.type] );
 
 	// Destroy widget
@@ -667,7 +667,6 @@ bool UIContext::test_widget( ObjectHandle<Object::UIWidget> &widgetHandle )
 		matrix_set( matrix );
 	}
 
-	// Failure
 	return hovering;
 }
 

@@ -30,13 +30,6 @@ const char *Primitives[] =
 	"float2x2",         // Primitive_Float2x2
 	"float3x3",         // Primitive_Float3x3
 	"float4x4",         // Primitive_Float4x4
-	"double",           // Primitive_Double
-	"double2",          // Primitive_Double2
-	"double3",          // Primitive_Double3
-	"double4",          // Primitive_Double4
-	"double2x2",        // Primitive_Double2x2
-	"double3x3",        // Primitive_Double3x3
-	"double4x4",        // Primitive_Double4x4
 	"Texture1D",        // Primitive_Texture1D
 	"Texture1DArray",   // Primitive_Texture1DArray
 	"Texture2D",        // Primitive_Texture2D
@@ -178,31 +171,17 @@ const char *StructTypeNames[] =
 static_assert( ARRAY_LENGTH( StructTypeNames ) == STRUCTTYPE_COUNT, "Missing StructType!" );
 
 
-const char *Semantics[] =
-{
-	"POSITION",
-	"TEXCOORD",
-	"NORMAL",
-	"DEPTH",
-	"COLOR",
-	"BINORMAL",
-	"TANGENT",
-	"INSTANCE",
-};
-static_assert( ARRAY_LENGTH( Semantics ) == SEMANTICTYPE_COUNT, "Missing SemanticType!" );
-
-
 const char *SVSemantics[] =
 {
-	"SV_DispatchThreadID",
-	"SV_GroupID",
-	"SV_GroupThreadID",
-	"SV_GroupIndex",
 	"SV_VertexID",
 	"SV_InstanceID",
 	"SV_PrimitiveID",
+	"SV_SampleID",
 	"SV_IsFrontFace",
-	"SV_SampleIndex",
+	"SV_DispatchThreadID",
+	"SV_GroupThreadID",
+	"SV_GroupID",
+	"SV_GroupIndex",
 };
 static_assert( ARRAY_LENGTH( SVSemantics ) == SVSEMANTICTYPE_COUNT, "Missing SVSemantic!" );
 
@@ -259,17 +238,12 @@ const Keyword KeywordNames[] =
 	{ "texture3D", TokenType_Texture3D },
 	{ "textureCube", TokenType_TextureCube },
 	{ "textureCubeArray", TokenType_TextureCubeArray },
-	{ "target", TokenType_Target },
-	{ "semantic", TokenType_Semantic },
-	{ "POSITION", TokenType_POSITION },
-	{ "TEXCOORD", TokenType_TEXCOORD },
-	{ "NORMAL", TokenType_NORMAL },
+	{ "position_out", TokenType_AttributePositionOut },
+	{ "position_in", TokenType_AttributePositionIn },
+	{ "target", TokenType_AttributeTarget },
 	{ "DEPTH", TokenType_DEPTH },
 	{ "COLOR", TokenType_COLOR },
-	{ "BINORMAL", TokenType_BINORMAL },
-	{ "TANGENT", TokenType_TANGENT },
-	{ "INSTANCE", TokenType_INSTANCE },
-	{ "format", TokenType_InputFormat },
+	{ "packed_as", TokenType_AttributePackedAs },
 	{ "UNORM8", TokenType_UNORM8 },
 	{ "UNORM16", TokenType_UNORM16 },
 	{ "UNORM32", TokenType_UNORM32 },
@@ -309,29 +283,91 @@ static_assert( ARRAY_LENGTH( DirectiveNames ) == TOKENTYPE_DIRECTIVE_COUNT, "Mis
 
 const char *SwizzleTypeNames[] =
 {
-	"x",
-	"y",
-	"z",
-	"w",
-	"xy",
-	"yz",
-	"zw",
-	"xyz",
-	"yzw",
-	"xyzw",
-	"r",
-	"g",
-	"b",
-	"a",
-	"rg",
-	"gb",
-	"ba",
-	"rgb",
-	"gba",
-	"rgba",
-	"u",
-	"v",
-	"uv",
+	"x", "y", "z", "w", "r", "g", "b", "a",
+	"xx", "yx", "zx", "wx", "xy", "yy", "zy", "wy",
+	"xz", "yz", "zz", "wz", "xw", "yw", "zw", "ww",
+	"rr", "gr", "br", "ar", "rg", "gg", "bg", "ag",
+	"rb", "gb", "bb", "ab", "ra", "ga", "ba", "aa",
+	"xxx", "yxx", "zxx", "wxx", "xyx", "yyx", "zyx", "wyx",
+	"xzx", "yzx", "zzx", "wzx", "xwx", "ywx", "zwx", "wwx",
+	"xxy", "yxy", "zxy", "wxy", "xyy", "yyy", "zyy", "wyy",
+	"xzy", "yzy", "zzy", "wzy", "xwy", "ywy", "zwy", "wwy",
+	"xxz", "yxz", "zxz", "wxz", "xyz", "yyz", "zyz", "wyz",
+	"xzz", "yzz", "zzz", "wzz", "xwz", "ywz", "zwz", "wwz",
+	"xxw", "yxw", "zxw", "wxw", "xyw", "yyw", "zyw", "wyw",
+	"xzw", "yzw", "zzw", "wzw", "xww", "yww", "zww", "www",
+	"rrr", "grr", "brr", "arr", "rgr", "ggr", "bgr", "agr",
+	"rbr", "gbr", "bbr", "abr", "rar", "gar", "bar", "aar",
+	"rrg", "grg", "brg", "arg", "rgg", "ggg", "bgg", "agg",
+	"rbg", "gbg", "bbg", "abg", "rag", "gag", "bag", "aag",
+	"rrb", "grb", "brb", "arb", "rgb", "ggb", "bgb", "agb",
+	"rbb", "gbb", "bbb", "abb", "rab", "gab", "bab", "aab",
+	"rra", "gra", "bra", "ara", "rga", "gga", "bga", "aga",
+	"rba", "gba", "bba", "aba", "raa", "gaa", "baa", "aaa",
+	"xxxx", "yxxx", "zxxx", "wxxx", "xyxx", "yyxx", "zyxx", "wyxx",
+	"xzxx", "yzxx", "zzxx", "wzxx", "xwxx", "ywxx", "zwxx", "wwxx",
+	"xxyx", "yxyx", "zxyx", "wxyx", "xyyx", "yyyx", "zyyx", "wyyx",
+	"xzyx", "yzyx", "zzyx", "wzyx", "xwyx", "ywyx", "zwyx", "wwyx",
+	"xxzx", "yxzx", "zxzx", "wxzx", "xyzx", "yyzx", "zyzx", "wyzx",
+	"xzzx", "yzzx", "zzzx", "wzzx", "xwzx", "ywzx", "zwzx", "wwzx",
+	"xxwx", "yxwx", "zxwx", "wxwx", "xywx", "yywx", "zywx", "wywx",
+	"xzwx", "yzwx", "zzwx", "wzwx", "xwwx", "ywwx", "zwwx", "wwwx",
+	"xxxy", "yxxy", "zxxy", "wxxy", "xyxy", "yyxy", "zyxy", "wyxy",
+	"xzxy", "yzxy", "zzxy", "wzxy", "xwxy", "ywxy", "zwxy", "wwxy",
+	"xxyy", "yxyy", "zxyy", "wxyy", "xyyy", "yyyy", "zyyy", "wyyy",
+	"xzyy", "yzyy", "zzyy", "wzyy", "xwyy", "ywyy", "zwyy", "wwyy",
+	"xxzy", "yxzy", "zxzy", "wxzy", "xyzy", "yyzy", "zyzy", "wyzy",
+	"xzzy", "yzzy", "zzzy", "wzzy", "xwzy", "ywzy", "zwzy", "wwzy",
+	"xxwy", "yxwy", "zxwy", "wxwy", "xywy", "yywy", "zywy", "wywy",
+	"xzwy", "yzwy", "zzwy", "wzwy", "xwwy", "ywwy", "zwwy", "wwwy",
+	"xxxz", "yxxz", "zxxz", "wxxz", "xyxz", "yyxz", "zyxz", "wyxz",
+	"xzxz", "yzxz", "zzxz", "wzxz", "xwxz", "ywxz", "zwxz", "wwxz",
+	"xxyz", "yxyz", "zxyz", "wxyz", "xyyz", "yyyz", "zyyz", "wyyz",
+	"xzyz", "yzyz", "zzyz", "wzyz", "xwyz", "ywyz", "zwyz", "wwyz",
+	"xxzz", "yxzz", "zxzz", "wxzz", "xyzz", "yyzz", "zyzz", "wyzz",
+	"xzzz", "yzzz", "zzzz", "wzzz", "xwzz", "ywzz", "zwzz", "wwzz",
+	"xxwz", "yxwz", "zxwz", "wxwz", "xywz", "yywz", "zywz", "wywz",
+	"xzwz", "yzwz", "zzwz", "wzwz", "xwwz", "ywwz", "zwwz", "wwwz",
+	"xxxw", "yxxw", "zxxw", "wxxw", "xyxw", "yyxw", "zyxw", "wyxw",
+	"xzxw", "yzxw", "zzxw", "wzxw", "xwxw", "ywxw", "zwxw", "wwxw",
+	"xxyw", "yxyw", "zxyw", "wxyw", "xyyw", "yyyw", "zyyw", "wyyw",
+	"xzyw", "yzyw", "zzyw", "wzyw", "xwyw", "ywyw", "zwyw", "wwyw",
+	"xxzw", "yxzw", "zxzw", "wxzw", "xyzw", "yyzw", "zyzw", "wyzw",
+	"xzzw", "yzzw", "zzzw", "wzzw", "xwzw", "ywzw", "zwzw", "wwzw",
+	"xxww", "yxww", "zxww", "wxww", "xyww", "yyww", "zyww", "wyww",
+	"xzww", "yzww", "zzww", "wzww", "xwww", "ywww", "zwww", "wwww",
+	"rrrr", "grrr", "brrr", "arrr", "rgrr", "ggrr", "bgrr", "agrr",
+	"rbrr", "gbrr", "bbrr", "abrr", "rarr", "garr", "barr", "aarr",
+	"rrgr", "grgr", "brgr", "argr", "rggr", "gggr", "bggr", "aggr",
+	"rbgr", "gbgr", "bbgr", "abgr", "ragr", "gagr", "bagr", "aagr",
+	"rrbr", "grbr", "brbr", "arbr", "rgbr", "ggbr", "bgbr", "agbr",
+	"rbbr", "gbbr", "bbbr", "abbr", "rabr", "gabr", "babr", "aabr",
+	"rrar", "grar", "brar", "arar", "rgar", "ggar", "bgar", "agar",
+	"rbar", "gbar", "bbar", "abar", "raar", "gaar", "baar", "aaar",
+	"rrrg", "grrg", "brrg", "arrg", "rgrg", "ggrg", "bgrg", "agrg",
+	"rbrg", "gbrg", "bbrg", "abrg", "rarg", "garg", "barg", "aarg",
+	"rrgg", "grgg", "brgg", "argg", "rggg", "gggg", "bggg", "aggg",
+	"rbgg", "gbgg", "bbgg", "abgg", "ragg", "gagg", "bagg", "aagg",
+	"rrbg", "grbg", "brbg", "arbg", "rgbg", "ggbg", "bgbg", "agbg",
+	"rbbg", "gbbg", "bbbg", "abbg", "rabg", "gabg", "babg", "aabg",
+	"rrag", "grag", "brag", "arag", "rgag", "ggag", "bgag", "agag",
+	"rbag", "gbag", "bbag", "abag", "raag", "gaag", "baag", "aaag",
+	"rrrb", "grrb", "brrb", "arrb", "rgrb", "ggrb", "bgrb", "agrb",
+	"rbrb", "gbrb", "bbrb", "abrb", "rarb", "garb", "barb", "aarb",
+	"rrgb", "grgb", "brgb", "argb", "rggb", "gggb", "bggb", "aggb",
+	"rbgb", "gbgb", "bbgb", "abgb", "ragb", "gagb", "bagb", "aagb",
+	"rrbb", "grbb", "brbb", "arbb", "rgbb", "ggbb", "bgbb", "agbb",
+	"rbbb", "gbbb", "bbbb", "abbb", "rabb", "gabb", "babb", "aabb",
+	"rrab", "grab", "brab", "arab", "rgab", "ggab", "bgab", "agab",
+	"rbab", "gbab", "bbab", "abab", "raab", "gaab", "baab", "aaab",
+	"rrra", "grra", "brra", "arra", "rgra", "ggra", "bgra", "agra",
+	"rbra", "gbra", "bbra", "abra", "rara", "gara", "bara", "aara",
+	"rrga", "grga", "brga", "arga", "rgga", "ggga", "bgga", "agga",
+	"rbga", "gbga", "bbga", "abga", "raga", "gaga", "baga", "aaga",
+	"rrba", "grba", "brba", "arba", "rgba", "ggba", "bgba", "agba",
+	"rbba", "gbba", "bbba", "abba", "raba", "gaba", "baba", "aaba",
+	"rraa", "graa", "braa", "araa", "rgaa", "ggaa", "bgaa", "agaa",
+	"rbaa", "gbaa", "bbaa", "abaa", "raaa", "gaaa", "baaa", "aaaa",
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -721,13 +757,10 @@ VariableID Parser::register_variable( const Variable variable )
 
 void Parser::register_swizzles()
 {
-	u32 swizzleCount = ARRAY_LENGTH( SwizzleTypeNames );
-	for( u32 i = 0; i < swizzleCount; i++ )
+	const int swizzleCount = ARRAY_LENGTH( SwizzleTypeNames );
+	for( int i = 0; i < swizzleCount; i++ )
 	{
-		StringView name;
-		name.data = SwizzleTypeNames[i];
-		name.length = strlen( name.data );
-		swizzleMap.add( name, i );
+		swizzleMap.add( StringView { SwizzleTypeNames[i], strlen( SwizzleTypeNames[i] ) }, i );
 	}
 }
 
@@ -987,7 +1020,8 @@ void Parser::init()
 	// Slots
 	for( u32 i = 0; i < SHADER_MAX_BUFFER_SLOTS; i++ ) { bufferSlots[i] = false; }
 	for( u32 i = 0; i < SHADER_MAX_TEXTURE_SLOTS; i++ ) { textureSlots[i] = false; }
-	for( u32 i = 0; i < SHADER_MAX_TARGET_SLOTS; i++ ) { targetSlots[i] = false; }
+	for( u32 i = 0; i < SHADER_MAX_TARGET_SLOTS; i++ ) { targetColorSlots[i] = false; }
+	for( u32 i = 0; i < SHADER_MAX_TARGET_SLOTS; i++ ) { targetDepthSlots[i] = false; }
 }
 
 
@@ -1075,22 +1109,18 @@ static bool vertex_input_type_allowed( const TypeID typeID )
 		case Primitive_Int:
 		case Primitive_UInt:
 		case Primitive_Float:
-		case Primitive_Double:
 		case Primitive_Bool2:
 		case Primitive_Int2:
 		case Primitive_UInt2:
 		case Primitive_Float2:
-		case Primitive_Double2:
 		case Primitive_Bool3:
 		case Primitive_Int3:
 		case Primitive_UInt3:
 		case Primitive_Float3:
-		case Primitive_Double3:
 		case Primitive_Bool4:
 		case Primitive_Int4:
 		case Primitive_UInt4:
 		case Primitive_Float4:
-		case Primitive_Double4:
 			// Allowed type
 		return true;
 	}
@@ -1108,22 +1138,18 @@ static bool instance_input_type_allowed( const TypeID typeID )
 		case Primitive_Int:
 		case Primitive_UInt:
 		case Primitive_Float:
-		case Primitive_Double:
 		case Primitive_Bool2:
 		case Primitive_Int2:
 		case Primitive_UInt2:
 		case Primitive_Float2:
-		case Primitive_Double2:
 		case Primitive_Bool3:
 		case Primitive_Int3:
 		case Primitive_UInt3:
 		case Primitive_Float3:
-		case Primitive_Double3:
 		case Primitive_Bool4:
 		case Primitive_Int4:
 		case Primitive_UInt4:
 		case Primitive_Float4:
-		case Primitive_Double4:
 		case Primitive_Float4x4:
 			// Allowed type
 		return true;
@@ -1162,13 +1188,6 @@ static bool buffer_type_allowed( const TokenType typeToken, const TypeID typeID 
 		case Primitive_Float2x2:
 		case Primitive_Float3x3:
 		case Primitive_Float4x4:
-		case Primitive_Double:
-		case Primitive_Double2:
-		case Primitive_Double3:
-		case Primitive_Double4:
-		case Primitive_Double2x2:
-		case Primitive_Double3x3:
-		case Primitive_Double4x4:
 			// Allowed type
 		return true;
 	}
@@ -1192,26 +1211,25 @@ Node *Parser::parse_structure()
 	StructType structType = StructType_Struct;
 	bool expectSlot = false;
 	bool expectSize = false;
-	bool expectTags = false;
 	switch( token.type )
 	{
 		case TokenType_Struct:
 			structType = StructType_Struct;
 			type.global = false;
-			type.pipelineIntermediate = false;
+			type.pipelineVarying = false;
 		break;
 
 		case TokenType_SharedStruct:
 			structType = StructType_SharedStruct;
 			type.global = false;
-			type.pipelineIntermediate = false;
+			type.pipelineVarying = false;
 		break;
 
 		case TokenType_UniformBuffer:
 			structType = StructType_UniformBuffer;
 			expectSlot = true;
 			type.global = true;
-			type.pipelineIntermediate = false;
+			type.pipelineVarying = false;
 		break;
 
 		case TokenType_ConstantBuffer:
@@ -1219,7 +1237,7 @@ Node *Parser::parse_structure()
 			expectSlot = true;
 			expectSize = true;
 			type.global = true;
-			type.pipelineIntermediate = false;
+			type.pipelineVarying = false;
 		break;
 
 		case TokenType_MutableBuffer:
@@ -1227,56 +1245,49 @@ Node *Parser::parse_structure()
 			expectSlot = true;
 			expectSize = true;
 			type.global = true;
-			type.pipelineIntermediate = false;
+			type.pipelineVarying = false;
 		break;
 
 		case TokenType_InstanceInput:
 			structType = StructType_InstanceInput;
-			expectTags = true;
 			type.global = true;
-			type.pipelineIntermediate = false;
+			type.pipelineVarying = false;
 		break;
 
 		case TokenType_VertexInput:
 			structType = StructType_VertexInput;
-			expectTags = true;
 			type.global = true;
-			type.pipelineIntermediate = false;
+			type.pipelineVarying = false;
 		break;
 
 		case TokenType_VertexOutput:
 			structType = StructType_VertexOutput;
-			expectTags = true;
 			type.global = true;
-			type.pipelineIntermediate = true;
+			type.pipelineVarying = true;
 		break;
 
 		case TokenType_FragmentInput:
 			structType = StructType_FragmentInput;
-			expectTags = true;
 			type.global = true;
-			type.pipelineIntermediate = true;
+			type.pipelineVarying = true;
 		break;
 
 		case TokenType_FragmentOutput:
 			structType = StructType_FragmentOutput;
-			expectTags = true;
 			type.global = true;
-			type.pipelineIntermediate = false;
+			type.pipelineVarying = false;
 		break;
 
 		case TokenType_ComputeInput:
 			structType = StructType_ComputeInput;
-			expectTags = true;
 			type.global = true;
-			type.pipelineIntermediate = false;
+			type.pipelineVarying = false;
 		break;
 
 		case TokenType_ComputeOutput:
 			structType = StructType_ComputeOutput;
-			expectTags = true;
 			type.global = true;
-			type.pipelineIntermediate = true;
+			type.pipelineVarying = true;
 		break;
 
 		default: Error( "unknown structure type!" ); break;
@@ -1344,6 +1355,9 @@ Node *Parser::parse_structure()
 	// Members
 	token = scanner.next();
 	type.memberFirst = variables.size();
+	type.slot = structure.slot;
+	bool parseAttribute = false;
+	bool seenAttributePosition = false;
 	while( token.type != TokenType_RCurly )
 	{
 		// Variables
@@ -1394,113 +1408,134 @@ Node *Parser::parse_structure()
 			ErrorIf( !allowedType, "Type not allowed in vertex_input! Must be a primitive, non-matrix type" );
 		}
 
+		// Parse Attributes
+		auto parse_attribute_position_vertex = [&]()
+			{
+				ErrorIf( token.type != TokenType_AttributePositionOut,
+					"unexpected attribute '%.*s' -- must be 'position_out'",
+					token.name.length, token.name.data );
+				token = scanner.next();
 
-		// Parse Tags
-		if( expectTags )
+				variable.semantic = SemanticType_POSITION;
+				seenAttributePosition = true;
+			};
+
+		auto parse_attribute_position_fragment = [&]()
+			{
+				ErrorIf( token.type != TokenType_AttributePositionIn,
+					"unexpected attribute '%.*s' -- must be 'position_in'",
+					token.name.length, token.name.data );
+				token = scanner.next();
+
+				variable.semantic = SemanticType_POSITION;
+				seenAttributePosition = true;
+			};
+
+		auto parse_attribute_pack_as = [&]()
+			{
+				ErrorIf( token.type != TokenType_AttributePackedAs,
+					"unexpected attribute '%.*s' -- must be 'packed_as(...)'",
+					token.name.length, token.name.data );
+				token = scanner.next();
+
+				ErrorIf( token.type != TokenType_LParen,
+					"expected '(' before format type" );
+				token = scanner.next();
+
+				ErrorIf( token.type < TokenType_UNORM8 || token.type > TokenType_FLOAT32,
+					"unexpected format type '%.*s'", token.name.length, token.name.data );
+				variable.format = ( token.type - TokenType_UNORM8 );
+				token = scanner.next();
+
+				ErrorIf( token.type != TokenType_RParen,
+					"expected ')' after format type" );
+				token = scanner.next();
+			};
+
+		auto parse_attribute_target = [&]()
+			{
+				ErrorIf( token.type != TokenType_AttributeTarget,
+					"unexpected attribute '%.*s' -- must be 'target(slot, type)'",
+					token.name.length, token.name.data );
+				token = scanner.next();
+
+				ErrorIf( token.type != TokenType_LParen,
+					"expected '(' before format type" );
+				token = scanner.next();
+
+				ErrorIf( token.type != TokenType_Integer,
+					"slot must be a positive, constant integer" );
+				const int slot = static_cast<int>( token.integer );
+				ErrorIf( slot >= SHADER_MAX_TARGET_SLOTS,
+					"slot exceeded maximum: %u", SHADER_MAX_TARGET_SLOTS );
+				variable.slot = slot;
+				token = scanner.next();
+
+				ErrorIf( token.type != TokenType_Comma,
+					"expected ',' after slot" );
+				token = scanner.next();
+
+				switch( token.type )
+				{
+					case TokenType_COLOR:
+					{
+						variable.semantic = SemanticType_COLOR;
+						ErrorIf( targetColorSlots[slot] == true,
+							"target( %u, COLOR ) is already bound!", variable.slot );
+						targetColorSlots[slot] = true;
+					}
+					break;
+
+					case TokenType_DEPTH:
+					{
+						variable.semantic = SemanticType_DEPTH;
+						ErrorIf( slot != 0, "DEPTH targets can only be bound to slot 0!" );
+						ErrorIf( targetDepthSlots[slot] == true,
+							"target( %u, DEPTH ) is already bound!", variable.slot );
+						targetColorSlots[slot] = true;
+					}
+					break;
+
+					default:
+						Error( "unexpected format '%.*s' -- must be COLOR or DEPTH",
+							token.name.length, token.name.data );
+					break;
+				}
+				token = scanner.next();
+
+				ErrorIf( token.type != TokenType_RParen,
+					"expected ')' after format type" );
+				token = scanner.next();
+			};
+
+		switch( structType )
 		{
-			// SemanticType
-			variable.semantic = SemanticType_TEXCOORD;
-			if( token.type == TokenType_Semantic )
-			{
-				token = scanner.next();
-				ErrorIf( token.type != TokenType_LParen, "%s: expected '(' before semantic type", structName );
+			case StructType_VertexInput:
+				// format(...)
+				parse_attribute_pack_as();
+				variable.semantic = SemanticType_VERTEX;
+			break;
 
-				token = scanner.next();
-				ErrorIf( token.type < TokenType_POSITION || token.type > TokenType_INSTANCE,
-					"%s: unknown semantic", structName );
-				variable.semantic = ( token.type - TokenType_POSITION ); // TODO: Wrapper for this?
+			case StructType_InstanceInput:
+				// format(...)
+				parse_attribute_pack_as();
+				variable.semantic = SemanticType_INSTANCE;
+			break;
 
-				token = scanner.next();
-				ErrorIf( token.type != TokenType_RParen, "%s: expected ')' after semantic type", structName );
+			case StructType_VertexOutput:
+				// position_out
+				if( !seenAttributePosition ) { parse_attribute_position_vertex(); break; }
+			break;
 
-				token = scanner.next();
-			}
-			else
-			{
-				// fragment_output requirements
-				ErrorIf( structType == StructType_FragmentOutput,
-					"%s members require a semantic() of 'COLOR' or 'DEPTH'", structName );
-			}
+			case StructType_FragmentInput:
+				// position_in
+				if( !seenAttributePosition ) { parse_attribute_position_fragment(); }
+			break;
 
-			// instance_input
-			if( structType == StructType_InstanceInput )
-			{
-				// Input Format
-				ErrorIf( token.type != TokenType_InputFormat, "instance_input members require a format()" );
-
-				token = scanner.next();
-				ErrorIf( token.type != TokenType_LParen, "%s: expected '(' before format type", structName );
-
-				token = scanner.next();
-				ErrorIf( token.type < TokenType_UNORM8 || token.type > TokenType_FLOAT32,
-					"%s: invalid format() type", structName );
-				variable.format = ( token.type - TokenType_UNORM8 ); // TODO: Wrapper for this?
-
-				token = scanner.next();
-				ErrorIf( token.type != TokenType_RParen, "%s: expected ')' after format type", structName );
-
-				token = scanner.next();
-			}
-
-			// vertex_input
-			if( structType == StructType_VertexInput )
-			{
-				// Input Format
-				ErrorIf( token.type != TokenType_InputFormat, "vertex_input members require a format()" );
-
-				token = scanner.next();
-				ErrorIf( token.type != TokenType_LParen, "%s: expected '(' before format type", structName );
-
-				token = scanner.next();
-				ErrorIf( token.type < TokenType_UNORM8 || token.type > TokenType_FLOAT32,
-					"%s: invalid format() type", structName );
-				variable.format = ( token.type - TokenType_UNORM8 ); // TODO: Wrapper for this?
-
-				token = scanner.next();
-				ErrorIf( token.type != TokenType_RParen, "%s: expected ')' after format type", structName );
-
-				token = scanner.next();
-			}
-
-			// fragment_output
-			if( structType == StructType_FragmentOutput )
-			{
-				// Restrictions
-				const bool validSemantic = ( variable.semantic == SemanticType_COLOR ||
-											 variable.semantic == SemanticType_DEPTH );
-				if( !validSemantic )
-				{
-					scanner.back();
-					scanner.back();
-					Error( "%s must only be semantic 'COLOR' or 'DEPTH", structName );
-				}
-
-				// Target
-				if( variable.semantic == SemanticType_COLOR )
-				{
-					ErrorIf( token.type != TokenType_Target,
-						"%s semantic 'COLOR' requires a target() slot", structName );
-
-					token = scanner.next();
-					ErrorIf( token.type != TokenType_LParen,
-						"%s: expected '(' before target type", structName );
-
-					token = scanner.next();
-					ErrorIf( token.type != TokenType_Integer,
-						"%s: target() must be a positive, constant integer", structName );
-					variable.slot = static_cast<int>( token.integer );
-					ErrorIf( variable.slot >= SHADER_MAX_TARGET_SLOTS,
-						"%s: target() exceeded maximum: %u", structName, SHADER_MAX_TARGET_SLOTS );
-					ErrorIf( targetSlots[variable.slot],
-						"%s: target( '%u' ) is already bound!", structName, variable.slot );
-					targetSlots[variable.slot] = true;
-
-					token = scanner.next();
-					ErrorIf( token.type != TokenType_RParen, "%s: expected ')' after target", structName );
-
-					token = scanner.next();
-				}
-			}
+			case StructType_FragmentOutput:
+				// target(slot, type)
+				parse_attribute_target();
+			break;
 		}
 
 		// Semicolon

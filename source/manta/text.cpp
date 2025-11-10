@@ -938,8 +938,6 @@ bool Text::filter_ascii( Text &text, u32 codepoint )
 	if( codepoint >= 32 && codepoint < 127 ) { return true; }
 	if( codepoint == '\t' ) { return true; }
 	if( codepoint == '\n' ) { return true; }
-
-	// Failure
 	return true;
 }
 
@@ -947,8 +945,6 @@ bool Text::filter_ascii( Text &text, u32 codepoint )
 bool Text::filter_emoji( Text &text, u32 codepoint )
 {
 	// TODO ...
-
-	// Failure
 	if( text.callbackOnError != nullptr ) { text.callbackOnError( text, TextErr_IllegalCharacter ); }
 	return false;
 }
@@ -967,7 +963,6 @@ bool Text::filter_number( Text &text, u32 codepoint )
 	// Allow '-' if on the first character
 	if( codepoint == '-' && text.length() == 0 ) { return true; }
 
-	// Failure
 	if( text.callbackOnError != nullptr ) { text.callbackOnError( text, TextErr_IllegalCharacter ); }
 	return false;
 }
@@ -983,7 +978,6 @@ bool Text::filter_number_positive( Text &text, u32 codepoint )
 	for( usize i = 0; i < text.length(); i++ ) { hasDecimal |= text.data[i].codepoint == '.'; }
 	if( codepoint == '.' && !hasDecimal ) { return true; }
 
-	// Failure
 	if( text.callbackOnError != nullptr ) { text.callbackOnError( text, TextErr_IllegalCharacter ); }
 	return false;
 }
@@ -997,7 +991,6 @@ bool Text::filter_integer( Text &text, u32 codepoint )
 	// Allow '-' if on the first character
 	if( codepoint == '-' && text.length() == 0 ) { return true; }
 
-	// Failure
 	if( text.callbackOnError != nullptr ) { text.callbackOnError( text, TextErr_IllegalCharacter ); }
 	return false;
 }
@@ -1008,7 +1001,6 @@ bool Text::filter_integer_positive( Text &text, u32 codepoint )
 	// Allow digits
 	if( codepoint >= '0' && codepoint <= '9' ) { return true; }
 
-	// Failure
 	if( text.callbackOnError != nullptr ) { text.callbackOnError( text, TextErr_IllegalCharacter ); }
 	return false;
 }
@@ -1023,7 +1015,6 @@ bool Text::filter_hex( Text &text, u32 codepoint )
 	if( codepoint >= 'a' && codepoint <= 'f' ) { return true; }
 	if( codepoint >= 'A' && codepoint <= 'F' ) { return true; }
 
-	// Failure
 	if( text.callbackOnError != nullptr ) { text.callbackOnError( text, TextErr_IllegalCharacter ); }
 	return false;
 }
@@ -1034,7 +1025,6 @@ bool Text::filter_boolean( Text &text, u32 codepoint )
 	// Only allow a '0' or '1'
 	if( text.length() == 0 && ( codepoint == '0' || codepoint == '1' ) ) { return true; }
 
-	// Failure
 	if( text.callbackOnError != nullptr ) { text.callbackOnError( text, TextErr_IllegalCharacter ); }
 	return false;
 }
@@ -1055,11 +1045,9 @@ bool Text::filter_filename( Text &text, u32 codepoint )
 	// Cannot start with a space
 	if( codepoint == ' ' && text.length() == 0 ) { goto error; }
 
-	// Success
 	return true;
 
 error:
-	// Failure
 	if( text.callbackOnError != nullptr ) { text.callbackOnError( text, TextErr_IllegalCharacter ); }
 	return false;
 }
@@ -1080,11 +1068,9 @@ bool Text::filter_console( Text &text, u32 codepoint )
 	// Cannot start with a space
 	if( codepoint == ' ' && text.length() == 0 ) { goto error; }
 
-	// Success
 	return true;
 
 error:
-	// Failure
 	if( text.callbackOnError != nullptr ) { text.callbackOnError( text, TextErr_IllegalCharacter ); }
 	return false;
 }

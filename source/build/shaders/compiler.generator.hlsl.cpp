@@ -10,11 +10,240 @@ namespace ShaderCompiler
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+static String entryParameters;
+static String globalMembers;
+static String globalConstructor;
+
 static u32 SemanticCount[SEMANTICTYPE_COUNT];
-
 static bool generatedSampler = false;
-
 static String INSTANCE_INPUT_VARIABLE_SUBSTITUTION = "";
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+static const char *D3D11_SEMANTIC_NAME[] =
+{
+	"V", // SemanticType_VERTEX
+	"I", // SemanticType_INSTANCE
+	"POSITION", // SemanticType_POSITION
+	"DEPTH", // SemanticType_DEPTH
+	"COLOR", // SemanticType_COLOR
+};
+
+
+struct D3D11InputFormatInfo { const char *format; int size; };
+
+
+static const D3D11InputFormatInfo D3D11_INPUT_FORMATS_UNORM8[] =
+{
+	{ "DXGI_FORMAT_R8_UNORM", 1 },
+	{ "DXGI_FORMAT_R8G8_UNORM", 2 },
+	{ "DXGI_FORMAT_R8G8B8A8_UNORM", 4 },
+	{ "DXGI_FORMAT_R8G8B8A8_UNORM", 4 },
+};
+
+
+static const D3D11InputFormatInfo D3D11_INPUT_FORMATS_UNORM16[] =
+{
+	{ "DXGI_FORMAT_R16_UNORM", 2 },
+	{ "DXGI_FORMAT_R16G16_UNORM", 4 },
+	{ "DXGI_FORMAT_R16G16B16A18_UNORM", 8 },
+	{ "DXGI_FORMAT_R16G16B16A18_UNORM", 8 },
+};
+
+
+static const D3D11InputFormatInfo D3D11_INPUT_FORMATS_UNORM32[] =
+{
+	{ "DXGI_FORMAT_R32_UNORM", 4 },
+	{ "DXGI_FORMAT_R32G32_UNORM", 8 },
+	{ "DXGI_FORMAT_R32G32B32_TYPELESS", 12 },
+	{ "DXGI_FORMAT_R32G32B32A32_TYPELESS", 16 },
+};
+
+
+static const D3D11InputFormatInfo D3D11_INPUT_FORMATS_SNORM8[] =
+{
+	{ "DXGI_FORMAT_R8_SNORM", 1 },
+	{ "DXGI_FORMAT_R8G8_SNORM", 2 },
+	{ "DXGI_FORMAT_R8G8B8A8_SNORM", 4 },
+	{ "DXGI_FORMAT_R8G8B8A8_SNORM", 4 },
+};
+
+
+static const D3D11InputFormatInfo D3D11_INPUT_FORMATS_SNORM16[] =
+{
+	{ "DXGI_FORMAT_R16_SNORM", 2 },
+	{ "DXGI_FORMAT_R16G16_SNORM", 4 },
+	{ "DXGI_FORMAT_R16G16B16A18_SNORM", 8 },
+	{ "DXGI_FORMAT_R16G16B16A18_SNORM", 8 },
+};
+
+
+static const D3D11InputFormatInfo D3D11_INPUT_FORMATS_SNORM32[] =
+{
+	{ "DXGI_FORMAT_R32_SNORM", 4 },
+	{ "DXGI_FORMAT_R32G32_SNORM", 8 },
+	{ "DXGI_FORMAT_R32G32B32_TYPELESS", 12 },
+	{ "DXGI_FORMAT_R32G32B32A32_TYPELESS", 16 },
+};
+
+
+static const D3D11InputFormatInfo D3D11_INPUT_FORMATS_UINT8[] =
+{
+	{ "DXGI_FORMAT_R8_UINT", 1 },
+	{ "DXGI_FORMAT_R8G8_UINT", 2 },
+	{ "DXGI_FORMAT_R8G8B8A8_UINT", 4 },
+	{ "DXGI_FORMAT_R8G8B8A8_UINT", 4 },
+};
+
+
+static const D3D11InputFormatInfo D3D11_INPUT_FORMATS_UINT16[] =
+{
+	{ "DXGI_FORMAT_R16_UINT", 2 },
+	{ "DXGI_FORMAT_R16G16_UINT", 4 },
+	{ "DXGI_FORMAT_R16G16B16A16_UINT", 8 },
+	{ "DXGI_FORMAT_R16G16B16A16_UINT", 8 },
+};
+
+
+static const D3D11InputFormatInfo D3D11_INPUT_FORMATS_UINT32[] =
+{
+	{ "DXGI_FORMAT_R32_UINT", 4 },
+	{ "DXGI_FORMAT_R32G32_UINT", 8 },
+	{ "DXGI_FORMAT_R32G32B32_UINT", 12 },
+	{ "DXGI_FORMAT_R32G32B32A32_UINT", 16 },
+};
+
+
+static const D3D11InputFormatInfo D3D11_INPUT_FORMATS_SINT8[] =
+{
+	{ "DXGI_FORMAT_R8_SINT", 1 },
+	{ "DXGI_FORMAT_R8G8_SINT", 2 },
+	{ "DXGI_FORMAT_R8G8B8A8_SINT", 4 },
+	{ "DXGI_FORMAT_R8G8B8A8_SINT", 4 },
+};
+
+
+static const D3D11InputFormatInfo D3D11_INPUT_FORMATS_SINT16[] =
+{
+	{ "DXGI_FORMAT_R16_SINT", 2 },
+	{ "DXGI_FORMAT_R16G16_SINT", 4 },
+	{ "DXGI_FORMAT_R16G16B16A16_SINT", 8 },
+	{ "DXGI_FORMAT_R16G16B16A16_SINT", 8 },
+};
+
+
+static const D3D11InputFormatInfo D3D11_INPUT_FORMATS_SINT32[] =
+{
+	{ "DXGI_FORMAT_R32_SINT", 4 },
+	{ "DXGI_FORMAT_R32G32_SINT", 8 },
+	{ "DXGI_FORMAT_R32G32B32_SINT", 12 },
+	{ "DXGI_FORMAT_R32G32B32A32_SINT", 16 },
+};
+
+
+static const D3D11InputFormatInfo D3D11_INPUT_FORMATS_FLOAT16[] =
+{
+	{ "DXGI_FORMAT_R16_FLOAT", 2 },
+	{ "DXGI_FORMAT_R16G16_FLOAT", 4 },
+	{ "DXGI_FORMAT_R16G16B16A16_FLOAT", 8 },
+	{ "DXGI_FORMAT_R16G16B16A16_FLOAT", 8 },
+};
+
+
+static const D3D11InputFormatInfo D3D11_INPUT_FORMATS_FLOAT32[] =
+{
+	{ "DXGI_FORMAT_R32_FLOAT", 4 },
+	{ "DXGI_FORMAT_R32G32_FLOAT", 8 },
+	{ "DXGI_FORMAT_R32G32B32_FLOAT", 12 },
+	{ "DXGI_FORMAT_R32G32B32A32_FLOAT", 16 },
+};
+
+
+static const D3D11InputFormatInfo *const D3D11_INPUT_FORMATS[] =
+{
+	D3D11_INPUT_FORMATS_UNORM8, // InputFormat_UNORM8
+	D3D11_INPUT_FORMATS_UNORM16, // InputFormat_UNORM16
+	D3D11_INPUT_FORMATS_UNORM32, // InputFormat_UNORM32
+	D3D11_INPUT_FORMATS_SNORM8, // InputFormat_SNORM8
+	D3D11_INPUT_FORMATS_SNORM16, // InputFormat_SNORM16
+	D3D11_INPUT_FORMATS_SNORM32, // InputFormat_SNORM32
+	D3D11_INPUT_FORMATS_UINT8, // InputFormat_UINT8
+	D3D11_INPUT_FORMATS_UINT16, // InputFormat_UINT16
+	D3D11_INPUT_FORMATS_UINT32, // InputFormat_UINT32
+	D3D11_INPUT_FORMATS_SINT8, // InputFormat_SINT8
+	D3D11_INPUT_FORMATS_SINT16, // InputFormat_SINT16
+	D3D11_INPUT_FORMATS_SINT32, // InputFormat_SINT32
+	D3D11_INPUT_FORMATS_FLOAT16, // InputFormat_FLOAT16
+	D3D11_INPUT_FORMATS_FLOAT32, // InputFormat_FLOAT32
+};
+
+
+static int primitive_component_count( const Primitive type )
+{
+	switch( type )
+	{
+		case Primitive_Bool:
+		case Primitive_Int:
+		case Primitive_UInt:
+		case Primitive_Float:
+			return 1;
+
+		case Primitive_Bool2:
+		case Primitive_Int2:
+		case Primitive_UInt2:
+		case Primitive_Float2:
+			return 2;
+
+		case Primitive_Bool3:
+		case Primitive_Int3:
+		case Primitive_UInt3:
+		case Primitive_Float3:
+			return 3;
+
+		case Primitive_Bool4:
+		case Primitive_Int4:
+		case Primitive_UInt4:
+		case Primitive_Float4:
+			return 4;
+
+		default:
+			return 0;
+	}
+}
+
+
+static const D3D11InputFormatInfo *const d3d11_input_format( const Primitive primitve, const InputFormat format )
+{
+	switch( primitve )
+	{
+		case Primitive_Bool:
+		case Primitive_Int:
+		case Primitive_UInt:
+		case Primitive_Float:
+			return &D3D11_INPUT_FORMATS[format][0];
+
+		case Primitive_Bool2:
+		case Primitive_Int2:
+		case Primitive_UInt2:
+		case Primitive_Float2:
+			return &D3D11_INPUT_FORMATS[format][1];
+
+		case Primitive_Bool3:
+		case Primitive_Int3:
+		case Primitive_UInt3:
+		case Primitive_Float3:
+			return &D3D11_INPUT_FORMATS[format][2];
+
+		case Primitive_Bool4:
+		case Primitive_Int4:
+		case Primitive_UInt4:
+		case Primitive_Float4:
+			return &D3D11_INPUT_FORMATS[format][3];
+
+		default:
+			return nullptr;
+	}
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -34,62 +263,26 @@ static void semantics_get_name( char *buffer, const usize size, StructType struc
 
 	switch( structType )
 	{
+		case StructType_VertexInput:
 		case StructType_InstanceInput:
 		{
 			switch( variable.semantic )
 			{
-				case SemanticType_INSTANCE: name = "INSTANCE";   break;
-				default: Error( "Unexpected semantic type: %u", variable.semantic ); return;
-			}
-		}
-		break;
-
-		case StructType_VertexInput:
-		{
-			switch( variable.semantic )
-			{
-				case SemanticType_POSITION: snprintf( buffer, size, "POSITION" ); return;
-				case SemanticType_TEXCOORD: name = "TEXCOORD"; break;
-				case SemanticType_NORMAL: name = "NORMAL"; break;
-				case SemanticType_DEPTH: Error( "HLSL: vertex_input: unsupported semantic DEPTH" );
-				case SemanticType_COLOR: name = "COLOR"; break;
-				case SemanticType_BINORMAL: name = "BINORMAL"; break;
-				case SemanticType_TANGENT: name = "TANGENT";   break;
-				case SemanticType_INSTANCE: name = "INSTANCE";   break;
+				case SemanticType_VERTEX: name = "V"; break;
+				case SemanticType_INSTANCE: name = "I"; break;
 				default: Error( "Unexpected semantic type: %u", variable.semantic ); return;
 			}
 		}
 		break;
 
 		case StructType_VertexOutput:
-		{
-			switch( variable.semantic )
-			{
-				case SemanticType_POSITION: snprintf( buffer, size, "SV_POSITION" ); return;
-				case SemanticType_TEXCOORD: name = "TEXCOORD"; break;
-				case SemanticType_NORMAL: name = "NORMAL"; break;
-				case SemanticType_DEPTH: Error( "HLSL: vertex_output: unsupported semantic DEPTH" );
-				case SemanticType_COLOR: name = "COLOR"; break;
-				case SemanticType_BINORMAL: name = "BINORMAL"; break;
-				case SemanticType_TANGENT: name = "TANGENT";   break;
-				case SemanticType_INSTANCE: name = "INSTANCE";   break;
-				default: Error( "Unexpected semantic type: %u", variable.semantic ); return;
-			}
-		}
-		break;
-
 		case StructType_FragmentInput:
 		{
 			switch( variable.semantic )
 			{
+				case SemanticType_VERTEX: name = "V"; break;
+				case SemanticType_INSTANCE: name = "I"; break;
 				case SemanticType_POSITION: snprintf( buffer, size, "SV_POSITION" ); return;
-				case SemanticType_TEXCOORD: name = "TEXCOORD"; break;
-				case SemanticType_NORMAL: name = "NORMAL";   break;
-				case SemanticType_DEPTH: Error( "HLSL: fragment_input: unsupported semantic DEPTH" );
-				case SemanticType_COLOR: name = "COLOR"; break;
-				case SemanticType_BINORMAL: name = "BINORMAL"; break;
-				case SemanticType_TANGENT: name = "TANGENT";   break;
-				case SemanticType_INSTANCE: name = "INSTANCE";   break;
 				default: Error( "Unexpected semantic type: %u", variable.semantic ); return;
 			}
 		}
@@ -99,14 +292,8 @@ static void semantics_get_name( char *buffer, const usize size, StructType struc
 		{
 			switch( variable.semantic )
 			{
-				case SemanticType_POSITION: Error( "HLSL: fragment_output: unsupported semantic POSITION" );
-				case SemanticType_TEXCOORD: Error( "HLSL: fragment_output: unsupported semantic TEXCOORD" );
-				case SemanticType_NORMAL: Error( "HLSL: fragment_output: unsupported semantic NORMAL" );
-				case SemanticType_DEPTH: snprintf( buffer, size, "SV_DEPTH" ); return;
 				case SemanticType_COLOR: name = "SV_TARGET"; break;
-				case SemanticType_BINORMAL: Error( "HLSL: fragment_output: unsupported semantic BINORMAL" );
-				case SemanticType_TANGENT: Error( "HLSL: fragment_output: unsupported semantic TANGENT" );
-				case SemanticType_INSTANCE: Error( "HLSL: fragment_output: unsupported semantic INSTANCE" );
+				case SemanticType_DEPTH: snprintf( buffer, size, "SV_DEPTH" ); return;
 				default: Error( "Unexpected semantic type: %u", variable.semantic ); return;
 			}
 		}
@@ -119,88 +306,6 @@ static void semantics_get_name( char *buffer, const usize size, StructType struc
 	const u32 slot = variable.slot < 0 ? SemanticCount[variable.semantic] : static_cast<u32>( variable.slot );
 	snprintf( buffer, size, "%s%u", name, slot );
 	SemanticCount[variable.semantic]++;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void GeneratorHLSL::generate_sv_semantic_struct()
-{
-	output.append( "struct SV\n{\n" );
-	indent_add();
-
-	if( stage == ShaderStage_Vertex )
-	{
-		output.append( indent ).append( "uint vertexID;\n" );
-		output.append( indent ).append( "uint instanceID;\n" );
-	}
-	else if( stage == ShaderStage_Fragment )
-	{
-		output.append( indent ).append( "uint primitiveID;\n" );
-		output.append( indent ).append( "bool isFrontFace;\n" );
-		//output.append( indent ).append( "uint sampleIndex : SV_SAMPLEINDEX;\n" );
-	}
-	else if( stage == ShaderStage_Compute )
-	{
-		output.append( indent ).append( "uint3 dispatchThreadID;\n" );
-		output.append( indent ).append( "uint3 groupID;\n" );
-		output.append( indent ).append( "uint3 groupThreadID;\n" );
-		output.append( indent ).append( "uint groupIndex;\n" );
-	}
-
-	indent_sub();
-	output.append( "};\n\n" );
-}
-
-
-void GeneratorHLSL::generate_sv_semantic_entry_parameters()
-{
-	if( stage == ShaderStage_Vertex )
-	{
-		output.append( "uint vertexID : SV_VERTEXID, " );
-		output.append( "uint instanceID : SV_INSTANCEID" );
-	}
-	else if( stage == ShaderStage_Fragment )
-	{
-		output.append( "uint primitiveID : SV_PRIMITIVEID, " );
-		output.append( "uint isFrontFace : SV_ISFRONTFACE" );
-		//output.append( "uint sampleIndex : SV_SAMPLEINDEX, " );
-	}
-	else if( stage == ShaderStage_Compute )
-	{
-		output.append( "uint3 dispatchThreadID : SV_DISPATCHTHREADID, " );
-		output.append( "uint3 groupThreadID : SV_GROUPTHREADID, " );
-		output.append( "uint3 groupID : SV_GROUPID, " );
-		output.append( "uint groupIndex : SV_GROUPINDEX" );
-	}
-}
-
-
-void GeneratorHLSL::generate_sv_semantic_entry_caching()
-{
-	indent_add();
-	output.append( indent ).append( "SV sv;\n" );
-
-	if( stage == ShaderStage_Vertex )
-	{
-		output.append( indent ).append( "sv.vertexID = vertexID;\n" );
-		output.append( indent ).append( "sv.instanceID = instanceID;\n" );
-	}
-	else if( stage == ShaderStage_Fragment )
-	{
-		output.append( indent ).append( "sv.primitiveID = primitiveID;\n" );
-		output.append( indent ).append( "sv.isFrontFace = isFrontFace;\n" );
-		//output.append( indent ).append( "sv.sampleIndex = sampleIndex;\n" );
-	}
-	else if( stage == ShaderStage_Compute )
-	{
-		output.append( indent ).append( "sv.dispatchThreadID = dispatchThreadID;\n" );
-		output.append( indent ).append( "sv.groupThreadID = groupThreadID;\n" );
-		output.append( indent ).append( "sv.groupID = groupID;\n" );
-		output.append( indent ).append( "sv.groupIndex = groupIndex;\n" );
-	}
-
-	output.append( "\n" );
-	indent_sub();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -239,15 +344,6 @@ void GeneratorHLSL::append_structure_member_padded( String &output, const char *
 		case Primitive_Float3x3: typeNameCPU = StringView( "float_m44" ); size = 64; align = 16; break;
 		case Primitive_Float4x4: typeNameCPU = StringView( "float_m44" ); size = 64; align = 16; break;
 
-		case Primitive_Double: typeNameCPU = StringView( "double" ); size = 8; align = 4; break;
-		case Primitive_Double2: typeNameCPU = StringView( "double_v2" ); size = 16; align = 4; break;
-		case Primitive_Double3: typeNameCPU = StringView( "double_v3" ); size = 24; align = 4; break;
-		case Primitive_Double4: typeNameCPU = StringView( "double_v4" ); size = 32; align = 16; break;
-
-		case Primitive_Double2x2: typeNameCPU = StringView( "double_m44" ); size = 64; align = 16; break;
-		case Primitive_Double3x3: typeNameCPU = StringView( "double_m44" ); size = 64; align = 16; break;
-		case Primitive_Double4x4: typeNameCPU = StringView( "double_m44" ); size = 64; align = 16; break;
-
 		default: typeNameCPU.data = nullptr; size = 0; align = 16; break;
 	};
 
@@ -261,6 +357,8 @@ void GeneratorHLSL::append_structure_member_padded( String &output, const char *
 	// Type
 	if( variable.arrayLengthX > 0 && variable.arrayLengthY > 0 )
 	{
+		structureByteOffset += Generator::append_structure_padding( output, indent, 0, 16, structureByteOffset );
+
 		snprintf( typeNameBuffer, sizeof( typeNameBuffer ), "std140_array_2d_hlsl<%s%.*s, %d, %d>",
 			type.tokenType == TokenType_SharedStruct ? "GfxStructPadded::" : "",
 			static_cast<int>( typeNameCPU.data == nullptr ? type.name.length : typeNameCPU.length ),
@@ -280,6 +378,8 @@ void GeneratorHLSL::append_structure_member_padded( String &output, const char *
 	}
 	else if( variable.arrayLengthX > 0 )
 	{
+		structureByteOffset += Generator::append_structure_padding( output, indent, 0, 16, structureByteOffset );
+
 		snprintf( typeNameBuffer, sizeof( typeNameBuffer ), "std140_array_1d_hlsl<%s%.*s, %d>",
 			type.tokenType == TokenType_SharedStruct ? "GfxStructPadded::" : "",
 			static_cast<int>( typeNameCPU.data == nullptr ? type.name.length : typeNameCPU.length ),
@@ -330,12 +430,60 @@ void GeneratorHLSL::append_structure_member_padded( String &output, const char *
 void GeneratorHLSL::generate_stage( ShaderStage stage )
 {
 	generatedSampler = false;
+	entryParameters.clear();
+	globalMembers.clear();
+	globalConstructor.clear();
 
-	// SV Semantics
-	generate_sv_semantic_struct();
+	if( stage == ShaderStage_Vertex )
+	{
+		entryParameters.append( ",\n\tuint vertexID : SV_VertexID" );
+		globalMembers.append( "\tuint vertexID;\n" );
+		globalConstructor.append( "vertexID" );
 
-	// Super
+		entryParameters.append( ",\n\tuint instanceID : SV_InstanceID" );
+		globalMembers.append( "\tuint instanceID;\n" );
+		globalConstructor.append( ", instanceID" );
+	}
+	else if( stage == ShaderStage_Fragment )
+	{
+		entryParameters.append( ",\n\tuint primitiveID : SV_PrimitiveID" );
+		globalMembers.append( "\tuint primitiveID;\n" );
+		globalConstructor.append( "primitiveID" );
+
+		entryParameters.append( ",\n\tuint sampleID : SV_SampleIndex" );
+		globalMembers.append( "\tuint sampleID;\n" );
+		globalConstructor.append( ", sampleID" );
+
+		entryParameters.append( ",\n\tbool isFrontFace : SV_IsFrontFace" );
+		globalMembers.append( "\tbool isFrontFace;\n" );
+		globalConstructor.append( ", isFrontFace" );
+	}
+	else if( stage == ShaderStage_Compute )
+	{
+		entryParameters.append( "uint3 dispatchThreadID : SV_DispatchThreadID" );
+		globalMembers.append( "\tuint3 dispatchThreadID;\n" );
+		globalConstructor.append( "dispatchThreadID" );
+
+		entryParameters.append( ",\n\tuint3 groupThreadID : SV_GroupThreadID" );
+		globalMembers.append( "\tuint3 groupThreadID;\n" );
+		globalConstructor.append( ", groupThreadID" );
+
+		entryParameters.append( ",\n\tuint3 groupID : SV_GroupID" );
+		globalMembers.append( "\tuint3 groupID;\n" );
+		globalConstructor.append( ", groupID" );
+
+		entryParameters.append( ",\n\tuint groupIndex : SV_GroupIndex" );
+		globalMembers.append( "\tuint groupIndex;\n" );
+		globalConstructor.append( ", groupIndex" );
+	}
+
 	Generator::generate_stage( stage );
+
+	String header;
+	header.append( "struct Global\n{\n" );
+	header.append( globalMembers );
+	header.append( "};\n\n" );
+	output.insert( 0, header );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -386,7 +534,7 @@ void GeneratorHLSL::generate_function_declaration( NodeFunctionDeclaration *node
 
 	if( first != last )
 	{
-		output.append( "( SV sv" );
+		output.append( "( Global global" );
 		VariableID parameterCount = 0;
 		for( VariableID i = first; i < last; i++ )
 		{
@@ -457,9 +605,9 @@ void GeneratorHLSL::generate_function_declaration_main_pipeline( NodeFunctionDec
 
 	// Return Type & Name
 	output.append( indent ).append( "void " ).append( mainName ).append( "( " );
-	output.append( "in " ).append( inTypeName ).append( " " ).append( variable_name( inID ) ).append( ", " );
-	output.append( "out " ).append( outTypeName ).append( " " ).append( variable_name( outID ) ).append( ", " );
-	generate_sv_semantic_entry_parameters();
+	output.append( "in " ).append( inTypeName ).append( " " ).append( variable_name( inID ) );
+	output.append( ", out " ).append( outTypeName ).append( " " ).append( variable_name( outID ) );
+	output.append( entryParameters );
 	output.append( " )\n" );
 
 	generate_statement_block_main( reinterpret_cast<NodeStatementBlock *>( node->block ) );
@@ -480,7 +628,7 @@ void GeneratorHLSL::generate_function_declaration_main_compute( NodeFunctionDecl
 
 	// Return Type & Name
 	output.append( indent ).append( "void cs_main( " );
-	generate_sv_semantic_entry_parameters();
+	output.append( entryParameters );
 	output.append( " )\n" );
 
 	generate_statement_block_main( reinterpret_cast<NodeStatementBlock *>( node->block ) );
@@ -492,11 +640,13 @@ void GeneratorHLSL::generate_statement_block_main( NodeStatementBlock *node )
 {
 	output.append( indent ).append( "{\n" );
 
-	// SV Semantics
-	generate_sv_semantic_entry_caching();
-
-	// Body
+	indent_add();
+	output.append( indent ).append( "Global global = { " ).append( globalConstructor ).append( " };\n" );
+	output.append( indent ).append( "{\n" );
 	generate_statement_block_no_braces( node );
+	output.append( indent ).append( "}\n" );
+	indent_sub();
+
 	output.append( indent ).append( "}\n" );
 }
 
@@ -564,9 +714,9 @@ void GeneratorHLSL::generate_function_call_parameters( NodeFunctionCall *node )
 {
 	output.append( "(" );
 
-	// HLSL: All custom functions must pass SV
+	// HLSL: All custom functions must pass Global
 	const bool isIntrinsic = node->functionID < INTRINSIC_COUNT;
-	if( !isIntrinsic ) { output.append( " sv" ); }
+	if( !isIntrinsic ) { output.append( " global" ); }
 
 	if( node->param != nullptr )
 	{
@@ -942,6 +1092,8 @@ void GeneratorHLSL::generate_function_call_intrinsics( NodeFunctionCall *node )
 
 void GeneratorHLSL::generate_structure( NodeStruct *node )
 {
+	generate_structure_gfx( node );
+
 	// Skip generating StructType_InstanceInput
 	if( node->structType == StructType_InstanceInput ) { return; }
 
@@ -1080,7 +1232,6 @@ void GeneratorHLSL::generate_structure( NodeStruct *node )
 		{
 			NodeStruct *nodeInstanceInput = reinterpret_cast<NodeStruct *>( instanceFormat.node );
 			const String &instanceInputName = type_name( parser.structs[nodeInstanceInput->structID].typeID );
-			output.append( "\n" );
 			append_structure_members( nodeInstanceInput, instanceInputName );
 		}
 	}
@@ -1095,451 +1246,17 @@ void GeneratorHLSL::generate_sv_semantic( NodeSVSemantic *node )
 {
 	switch( node->svSemanticType )
 	{
-		case SVSemanticType_DISPATCH_THREAD_ID: output.append( "sv.dispatchThreadID" ); return;
-		case SVSemanticType_GROUP_ID:  output.append( "sv.groupID" ); return;
-		case SVSemanticType_GROUP_THREAD_ID: output.append( "sv.groupThreadID" ); return;
-		case SVSemanticType_GROUP_INDEX: output.append( "sv.groupIndex" ); return;
-		case SVSemanticType_VERTEX_ID: output.append( "sv.vertexID" ); return;
-		case SVSemanticType_INSTANCE_ID: output.append( "sv.instanceID" ); return;
-		case SVSemanticType_PRIMITIVE_ID: output.append( "sv.primitiveID" ); return;
-		case SVSemanticType_FRONT_FACING: output.append( "sv.isFrontFace" ); return;
-		case SVSemanticType_SAMPLE_ID: output.append( "sv.sampleIndex" ); return;
-
-		default: Error( "Unexpected SV Semantic: %s", SVSemantics[node->svSemanticType] );
+		case SVSemanticType_VERTEX_ID: output.append( "global.vertexID" ); return;
+		case SVSemanticType_INSTANCE_ID: output.append( "global.instanceID" ); return;
+		case SVSemanticType_PRIMITIVE_ID: output.append( "global.primitiveID" ); return;
+		case SVSemanticType_SAMPLE_ID: output.append( "global.sampleID" ); return;
+		case SVSemanticType_FRONT_FACING: output.append( "global.isFrontFace" ); return;
+		case SVSemanticType_DISPATCH_THREAD_ID: output.append( "global.dispatchThreadID" ); return;
+		case SVSemanticType_GROUP_THREAD_ID: output.append( "global.groupThreadID" ); return;
+		case SVSemanticType_GROUP_ID:  output.append( "global.groupID" ); return;
+		case SVSemanticType_GROUP_INDEX: output.append( "global.groupIndex" ); return;
+		default: Error( "Unexpected System-Value Semantic: %s", SVSemantics[node->svSemanticType] );
 	}
-}
-
-
-bool GeneratorHLSL::generate_structure_gfx_instance( NodeStruct *node )
-{
-	// Register this vertex format in the system
-	if( !Generator::generate_structure_gfx_instance( node ) )
-	{
-		return false; // Already registered -- no need to continue
-	}
-
-	// Generate D3D11/HLSL Vertex Format interfaces
-	const Struct &structure = parser.structs[node->structID];
-	const Type &type = parser.types[structure.typeID];
-	const VariableID first = type.memberFirst;
-	const VariableID last = first + type.memberCount;
-
-	int byteOffset = 0;
-	int semanticIndex[SEMANTICTYPE_COUNT];
-	for( u32 i = 0; i < SEMANTICTYPE_COUNT; i++ ) { semanticIndex[i] = 0; }
-
-	String desc;
-
-	const usize count = last - first;
-	if( count > 0 )
-	{
-		desc.append( "\t" "static D3D11_INPUT_ELEMENT_DESC inputDescription[] = \n" );
-		desc.append( "\t" "{\n" );
-		for( usize i = first; i < last; i++ )
-		{
-			Variable &memberVariable = parser.variables[i];
-			const String &memberVariableName = variable_name( i );
-			const String &memberTypeName = type_name( memberVariable.typeID );
-
-			// SemanticName
-			desc.append( "\t" "\t" "{ \"" );
-			switch( memberVariable.semantic )
-			{
-				case SemanticType_POSITION: desc.append( "POSITION" ); break;
-				case SemanticType_TEXCOORD: desc.append( "TEXCOORD" ); break;
-				case SemanticType_NORMAL: desc.append( "NORMAL" ); break;
-				case SemanticType_DEPTH: desc.append( "DEPTH" ); break;
-				case SemanticType_COLOR: desc.append( "COLOR" ); break;
-				case SemanticType_BINORMAL: desc.append( "BINORMAL" ); break;
-				case SemanticType_TANGENT: desc.append( "TANGENT" ); break;
-				case SemanticType_INSTANCE: desc.append( "INSTANCE" ); break;
-				default: Error( "Unexpected semantic type: %u", memberVariable.semantic ); break;
-			}
-			desc.append( "\", " );
-
-			// SemanticIndex
-			desc.append( semanticIndex[memberVariable.semantic] );
-			semanticIndex[memberVariable.semantic]++;
-			desc.append( ", " );
-
-			const char *format = "";
-			int formatSize = 0;
-
-			// Format
-			switch( memberVariable.typeID )
-			{
-				case Primitive_Bool:
-				case Primitive_Int:
-				case Primitive_UInt:
-				case Primitive_Float:
-				case Primitive_Double:
-				{
-					switch( memberVariable.format )
-					{
-						// 1 Byte
-						case InputFormat_UNORM8:
-							format = "DXGI_FORMAT_R8_UNORM";
-							formatSize = 1;
-						break;
-
-						case InputFormat_SNORM8:
-							format = "DXGI_FORMAT_R8_SNORM";
-							formatSize = 1;
-						break;
-
-						case InputFormat_UINT8:
-							format = "DXGI_FORMAT_R8_UINT";
-							formatSize = 1;
-						break;
-
-						case InputFormat_SINT8:
-							format = "DXGI_FORMAT_R8_SINT";
-							formatSize = 1;
-						break;
-
-						// 2 Bytes
-						case InputFormat_UNORM16:
-							format = "DXGI_FORMAT_R16_UNORM";
-							formatSize = 2;
-						break;
-
-						case InputFormat_SNORM16:
-							format = "DXGI_FORMAT_R16_SNORM";
-							formatSize = 2;
-						break;
-
-						case InputFormat_UINT16:
-							format = "DXGI_FORMAT_R16_UINT";
-							formatSize = 2;
-						break;
-
-						case InputFormat_SINT16:
-							format = "DXGI_FORMAT_R16_SINT";
-							formatSize = 2;
-						break;
-
-						case InputFormat_FLOAT16:
-							format = "DXGI_FORMAT_R16_FLOAT";
-							formatSize = 2;
-						break;
-
-						// 4 Bytes
-						case InputFormat_UNORM32:
-							format = "DXGI_FORMAT_R32_UNORM";
-							formatSize = 4;
-						break;
-
-						case InputFormat_SNORM32:
-							format = "DXGI_FORMAT_R32_SNORM";
-							formatSize = 4;
-						break;
-
-						case InputFormat_UINT32:
-							format = "DXGI_FORMAT_R32_UINT";
-							formatSize = 4;
-						break;
-
-						case InputFormat_SINT32:
-							format = "DXGI_FORMAT_R32_SINT";
-							formatSize = 4;
-						break;
-
-						case InputFormat_FLOAT32:
-							format = "DXGI_FORMAT_R32_FLOAT";
-							formatSize = 4;
-						break;
-					}
-				}
-				break;
-
-				case Primitive_Bool2:
-				case Primitive_Int2:
-				case Primitive_UInt2:
-				case Primitive_Float2:
-				case Primitive_Double2:
-				{
-					switch( memberVariable.format )
-					{
-						// 1 Byte
-						case InputFormat_UNORM8:
-							format = "DXGI_FORMAT_R8G8_UNORM";
-							formatSize = 2;
-						break;
-
-						case InputFormat_SNORM8:
-							format = "DXGI_FORMAT_R8G8_SNORM";
-							formatSize = 2;
-						break;
-
-						case InputFormat_UINT8:
-							format = "DXGI_FORMAT_R8G8_UINT";
-							formatSize = 2;
-						break;
-
-						case InputFormat_SINT8:
-							format = "DXGI_FORMAT_R8G8_SINT";
-							formatSize = 2;
-						break;
-
-						// 2 Bytes
-						case InputFormat_UNORM16:
-							format = "DXGI_FORMAT_R16G16_UNORM";
-							formatSize = 4;
-						break;
-
-						case InputFormat_SNORM16:
-							format = "DXGI_FORMAT_R16G16_SNORM";
-							formatSize = 4;
-						break;
-
-						case InputFormat_UINT16:
-							format = "DXGI_FORMAT_R16G16_UINT";
-							formatSize = 4;
-						break;
-
-						case InputFormat_SINT16:
-							format = "DXGI_FORMAT_R16G16_SINT";
-							formatSize = 4;
-						break;
-
-						case InputFormat_FLOAT16:
-							format = "DXGI_FORMAT_R16G16_FLOAT";
-							formatSize = 4;
-						break;
-
-						// 4 Bytes
-						case InputFormat_UNORM32:
-							format = "DXGI_FORMAT_R32G32_UNORM";
-							formatSize = 8;
-						break;
-
-						case InputFormat_SNORM32:
-							format = "DXGI_FORMAT_R32G32_SNORM";
-							formatSize = 8;
-						break;
-
-						case InputFormat_UINT32:
-							format = "DXGI_FORMAT_R32G32_UINT";
-							formatSize = 8;
-						break;
-
-						case InputFormat_SINT32:
-							format = "DXGI_FORMAT_R32G32_SINT";
-							formatSize = 8;
-						break;
-
-						case InputFormat_FLOAT32:
-							format = "DXGI_FORMAT_R32G32_FLOAT";
-							formatSize = 8;
-						break;
-					}
-				}
-				break;
-
-				case Primitive_Bool3:
-				case Primitive_Int3:
-				case Primitive_UInt3:
-				case Primitive_Float3:
-				case Primitive_Double3:
-				{
-					switch( memberVariable.format )
-					{
-						// 1 Byte
-						case InputFormat_UNORM8:
-							format = "DXGI_FORMAT_R8G8B8A8_UNORM";
-							formatSize = 4;
-						break;
-
-						case InputFormat_SNORM8:
-							format = "DXGI_FORMAT_R8G8B8A8_SNORM";
-							formatSize = 4;
-						break;
-
-						case InputFormat_UINT8:
-							format = "DXGI_FORMAT_R8G8B8A8_UINT";
-							formatSize = 4;
-						break;
-
-						case InputFormat_SINT8:
-							format = "DXGI_FORMAT_R8G8B8A8_SINT";
-							formatSize = 4;
-						break;
-
-						// 2 Bytes
-						case InputFormat_UNORM16:
-							format = "DXGI_FORMAT_R16G16B16A16_UNORM";
-							formatSize = 8;
-						break;
-
-						case InputFormat_SNORM16:
-							format = "DXGI_FORMAT_R16G16B16A16_SNORM";
-							formatSize = 8;
-						break;
-
-						case InputFormat_UINT16:
-							format = "DXGI_FORMAT_R16G16B16A16_UINT";
-							formatSize = 8;
-						break;
-
-						case InputFormat_SINT16:
-							format = "DXGI_FORMAT_R16G16B16A16_SINT";
-							formatSize = 8;
-						break;
-
-						case InputFormat_FLOAT16:
-							format = "DXGI_FORMAT_R16G16B16A16_FLOAT";
-							formatSize = 8;
-						break;
-
-						// 4 Bytes
-						case InputFormat_UNORM32:
-							format = "DXGI_FORMAT_R32G32B32_TYPELESS";
-							formatSize = 12;
-						break;
-
-						case InputFormat_SNORM32:
-							format = "DXGI_FORMAT_R32G32B32_TYPELESS";
-							formatSize = 12;
-						break;
-
-						case InputFormat_UINT32:
-							format = "DXGI_FORMAT_R32G32B32_UINT";
-							formatSize = 12;
-						break;
-
-						case InputFormat_SINT32:
-							format = "DXGI_FORMAT_R32G32B32_SINT";
-							formatSize = 12;
-						break;
-
-						case InputFormat_FLOAT32:
-							format = "DXGI_FORMAT_R32G32B32_FLOAT";
-							formatSize = 12;
-						break;
-					}
-				}
-				break;
-
-				case Primitive_Bool4:
-				case Primitive_Int4:
-				case Primitive_UInt4:
-				case Primitive_Float4:
-				case Primitive_Double4:
-				{
-					switch( memberVariable.format )
-					{
-						// 1 Byte
-						case InputFormat_UNORM8:
-							format = "DXGI_FORMAT_R8G8B8A8_UNORM";
-							formatSize = 4;
-						break;
-
-						case InputFormat_SNORM8:
-							format = "DXGI_FORMAT_R8G8B8A8_SNORM";
-							formatSize = 4;
-						break;
-
-						case InputFormat_UINT8:
-							format = "DXGI_FORMAT_R8G8B8A8_UINT";
-							formatSize = 4;
-						break;
-
-						case InputFormat_SINT8:
-							format = "DXGI_FORMAT_R8G8B8A8_SINT";
-							formatSize = 4;
-						break;
-
-						// 2 Bytes
-						case InputFormat_UNORM16:
-							format = "DXGI_FORMAT_R16G16B16A16_UNORM";
-							formatSize = 8;
-						break;
-
-						case InputFormat_SNORM16:
-							format = "DXGI_FORMAT_R16G16B16A16_SNORM";
-							formatSize = 8;
-						break;
-
-						case InputFormat_UINT16:
-							format = "DXGI_FORMAT_R16G16B16A16_UINT";
-							formatSize = 8;
-						break;
-
-						case InputFormat_SINT16:
-							format = "DXGI_FORMAT_R16G16B16A16_SINT";
-							formatSize = 8;
-						break;
-
-						case InputFormat_FLOAT16:
-							format = "DXGI_FORMAT_R16G16B16A16_FLOAT";
-							formatSize = 8;
-						break;
-
-						// 4 Bytes
-						case InputFormat_UNORM32:
-							format = "DXGI_FORMAT_R32G32B32A32_TYPELESS";
-							formatSize = 16;
-						break;
-
-						case InputFormat_SNORM32:
-							format = "DXGI_FORMAT_R32G32B32A32_TYPELESS";
-							formatSize = 16;
-						break;
-
-						case InputFormat_UINT32:
-							format = "DXGI_FORMAT_R32G32B32A32_UINT";
-							formatSize = 16;
-						break;
-
-						case InputFormat_SINT32:
-							format = "DXGI_FORMAT_R32G32B32A32_SINT";
-							formatSize = 16;
-						break;
-
-						case InputFormat_FLOAT32:
-							format = "DXGI_FORMAT_R32G32B32A32_FLOAT";
-							formatSize = 16;
-						break;
-					}
-				}
-				break;
-			}
-			desc.append( format );
-			desc.append( ", " );
-
-			// InputSlot
-			desc.append( "1" );
-			desc.append( ", " );
-
-			// AlignedByteOffset
-			desc.append( byteOffset );
-			byteOffset += formatSize;
-			desc.append( ", " );
-
-			// InputSlotClass
-			desc.append( "D3D11_INPUT_PER_INSTANCE_DATA" );
-			desc.append( ", " );
-
-			// InstanceDataStepRate
-			desc.append( "1" );
-			desc.append( " },\n" );
-		}
-		desc.append( "\t" "};\n" );
-	}
-	else
-	{
-		desc.append( "\t" "static D3D11_INPUT_ELEMENT_DESC *inputDescription = nullptr;\n" );
-	}
-
-	// Write To gfx.api.generated.cpp
-	shader.source.append( "static void d3d11_input_layout_desc_instance_" ).append( type.name );
-	shader.source.append( "( D3D11InputLayoutDescription &desc )\n{\n" );
-	shader.source.append( desc ).append( "\n" );
-	shader.source.append( "\t" "desc.desc = inputDescription;\n" );
-	shader.source.append( "\t" "desc.count = ").append( count ).append( ";\n" );
-	shader.source.append( "}\n\n" );
-
-	return true;
 }
 
 
@@ -1551,427 +1268,112 @@ bool GeneratorHLSL::generate_structure_gfx_vertex( NodeStruct *node )
 		return false; // Already registered -- no need to continue
 	}
 
-	// Generate D3D11/HLSL Vertex Format interfaces
+	// Generate D3D11 Vertex Format interfaces
 	const Struct &structure = parser.structs[node->structID];
 	const Type &type = parser.types[structure.typeID];
 	const VariableID first = type.memberFirst;
 	const VariableID last = first + type.memberCount;
 
+	int semanticIndex[SEMANTICTYPE_COUNT] = { 0 };
 	int byteOffset = 0;
-	int semanticIndex[SEMANTICTYPE_COUNT];
-	for( u32 i = 0; i < SEMANTICTYPE_COUNT; i++ ) { semanticIndex[i] = 0; }
-
-	String desc;
+	String attributes;
 
 	const usize count = last - first;
 	if( count > 0 )
 	{
-		desc.append( "\t" "static D3D11_INPUT_ELEMENT_DESC inputDescription[] = \n" );
-		desc.append( "\t" "{\n" );
+		attributes.append( "constexpr D3D11InputLayoutAttributes d3d11InputAttributesVertex_" );
+		attributes.append( type.name ).append( "[" ).append( count ).append("]  =\n{\n" );
+
 		for( usize i = first; i < last; i++ )
 		{
-			Variable &memberVariable = parser.variables[i];
-			const String &memberVariableName = variable_name( i );
-			const String &memberTypeName = type_name( memberVariable.typeID );
+			const Variable &memberVariable = parser.variables[i];
+			const D3D11InputFormatInfo *const inputFormat = d3d11_input_format( memberVariable.typeID,
+				memberVariable.format );
+			ErrorReturnIf( inputFormat == nullptr, false, "Unexpected vertex input format!" );
 
-			// SemanticName
-			desc.append( "\t" "\t" "{ \"" );
-			switch( memberVariable.semantic )
-			{
-				case SemanticType_POSITION: desc.append( "POSITION" ); break;
-				case SemanticType_TEXCOORD: desc.append( "TEXCOORD" ); break;
-				case SemanticType_NORMAL: desc.append( "NORMAL" ); break;
-				case SemanticType_DEPTH: desc.append( "DEPTH" ); break;
-				case SemanticType_COLOR: desc.append( "COLOR" ); break;
-				case SemanticType_BINORMAL: desc.append( "BINORMAL" ); break;
-				case SemanticType_TANGENT: desc.append( "TANGENT" ); break;
-				case SemanticType_INSTANCE: desc.append( "INSTANCE" ); break;
-				default: Error( "Unexpected semantic type: %u", memberVariable.semantic ); break;
-			}
-			desc.append( "\", " );
-
-			// SemanticIndex
-			desc.append( semanticIndex[memberVariable.semantic] );
+			Assert( memberVariable.semantic < SEMANTICTYPE_COUNT );
+			attributes.append( "\t" "{ \"" ).append( D3D11_SEMANTIC_NAME[memberVariable.semantic] ).append( "\", " );
+			attributes.append( semanticIndex[memberVariable.semantic] ).append( ", " );
 			semanticIndex[memberVariable.semantic]++;
-			desc.append( ", " );
-
-			const char *format = "";
-			int formatSize = 0;
-
-			// Format
-			switch( memberVariable.typeID )
-			{
-				case Primitive_Bool:
-				case Primitive_Int:
-				case Primitive_UInt:
-				case Primitive_Float:
-				case Primitive_Double:
-				{
-					switch( memberVariable.format )
-					{
-						// 1 Byte
-						case InputFormat_UNORM8:
-							format = "DXGI_FORMAT_R8_UNORM";
-							formatSize = 1;
-						break;
-
-						case InputFormat_SNORM8:
-							format = "DXGI_FORMAT_R8_SNORM";
-							formatSize = 1;
-						break;
-
-						case InputFormat_UINT8:
-							format = "DXGI_FORMAT_R8_UINT";
-							formatSize = 1;
-						break;
-
-						case InputFormat_SINT8:
-							format = "DXGI_FORMAT_R8_SINT";
-							formatSize = 1;
-						break;
-
-						// 2 Bytes
-						case InputFormat_UNORM16:
-							format = "DXGI_FORMAT_R16_UNORM";
-							formatSize = 2;
-						break;
-
-						case InputFormat_SNORM16:
-							format = "DXGI_FORMAT_R16_SNORM";
-							formatSize = 2;
-						break;
-
-						case InputFormat_UINT16:
-							format = "DXGI_FORMAT_R16_UINT";
-							formatSize = 2;
-						break;
-
-						case InputFormat_SINT16:
-							format = "DXGI_FORMAT_R16_SINT";
-							formatSize = 2;
-						break;
-
-						case InputFormat_FLOAT16:
-							format = "DXGI_FORMAT_R16_FLOAT";
-							formatSize = 2;
-						break;
-
-						// 4 Bytes
-						case InputFormat_UNORM32:
-							format = "DXGI_FORMAT_R32_UNORM";
-							formatSize = 4;
-						break;
-
-						case InputFormat_SNORM32:
-							format = "DXGI_FORMAT_R32_SNORM";
-							formatSize = 4;
-						break;
-
-						case InputFormat_UINT32:
-							format = "DXGI_FORMAT_R32_UINT";
-							formatSize = 4;
-						break;
-
-						case InputFormat_SINT32:
-							format = "DXGI_FORMAT_R32_SINT";
-							formatSize = 4;
-						break;
-
-						case InputFormat_FLOAT32:
-							format = "DXGI_FORMAT_R32_FLOAT";
-							formatSize = 4;
-						break;
-					}
-				}
-				break;
-
-				case Primitive_Bool2:
-				case Primitive_Int2:
-				case Primitive_UInt2:
-				case Primitive_Float2:
-				case Primitive_Double2:
-				{
-					switch( memberVariable.format )
-					{
-						// 1 Byte
-						case InputFormat_UNORM8:
-							format = "DXGI_FORMAT_R8G8_UNORM";
-							formatSize = 2;
-						break;
-
-						case InputFormat_SNORM8:
-							format = "DXGI_FORMAT_R8G8_SNORM";
-							formatSize = 2;
-						break;
-
-						case InputFormat_UINT8:
-							format = "DXGI_FORMAT_R8G8_UINT";
-							formatSize = 2;
-						break;
-
-						case InputFormat_SINT8:
-							format = "DXGI_FORMAT_R8G8_SINT";
-							formatSize = 2;
-						break;
-
-						// 2 Bytes
-						case InputFormat_UNORM16:
-							format = "DXGI_FORMAT_R16G16_UNORM";
-							formatSize = 4;
-						break;
-
-						case InputFormat_SNORM16:
-							format = "DXGI_FORMAT_R16G16_SNORM";
-							formatSize = 4;
-						break;
-
-						case InputFormat_UINT16:
-							format = "DXGI_FORMAT_R16G16_UINT";
-							formatSize = 4;
-						break;
-
-						case InputFormat_SINT16:
-							format = "DXGI_FORMAT_R16G16_SINT";
-							formatSize = 4;
-						break;
-
-						case InputFormat_FLOAT16:
-							format = "DXGI_FORMAT_R16G16_FLOAT";
-							formatSize = 4;
-						break;
-
-						// 4 Bytes
-						case InputFormat_UNORM32:
-							format = "DXGI_FORMAT_R32G32_UNORM";
-							formatSize = 8;
-						break;
-
-						case InputFormat_SNORM32:
-							format = "DXGI_FORMAT_R32G32_SNORM";
-							formatSize = 8;
-						break;
-
-						case InputFormat_UINT32:
-							format = "DXGI_FORMAT_R32G32_UINT";
-							formatSize = 8;
-						break;
-
-						case InputFormat_SINT32:
-							format = "DXGI_FORMAT_R32G32_SINT";
-							formatSize = 8;
-						break;
-
-						case InputFormat_FLOAT32:
-							format = "DXGI_FORMAT_R32G32_FLOAT";
-							formatSize = 8;
-						break;
-					}
-				}
-				break;
-
-				case Primitive_Bool3:
-				case Primitive_Int3:
-				case Primitive_UInt3:
-				case Primitive_Float3:
-				case Primitive_Double3:
-				{
-					switch( memberVariable.format )
-					{
-						// 1 Byte
-						case InputFormat_UNORM8:
-							format = "DXGI_FORMAT_R8G8B8A8_UNORM";
-							formatSize = 4;
-						break;
-
-						case InputFormat_SNORM8:
-							format = "DXGI_FORMAT_R8G8B8A8_SNORM";
-							formatSize = 4;
-						break;
-
-						case InputFormat_UINT8:
-							format = "DXGI_FORMAT_R8G8B8A8_UINT";
-							formatSize = 4;
-						break;
-
-						case InputFormat_SINT8:
-							format = "DXGI_FORMAT_R8G8B8A8_SINT";
-							formatSize = 4;
-						break;
-
-						// 2 Bytes
-						case InputFormat_UNORM16:
-							format = "DXGI_FORMAT_R16G16B16A16_UNORM";
-							formatSize = 8;
-						break;
-
-						case InputFormat_SNORM16:
-							format = "DXGI_FORMAT_R16G16B16A16_SNORM";
-							formatSize = 8;
-						break;
-
-						case InputFormat_UINT16:
-							format = "DXGI_FORMAT_R16G16B16A16_UINT";
-							formatSize = 8;
-						break;
-
-						case InputFormat_SINT16:
-							format = "DXGI_FORMAT_R16G16B16A16_SINT";
-							formatSize = 8;
-						break;
-
-						case InputFormat_FLOAT16:
-							format = "DXGI_FORMAT_R16G16B16A16_FLOAT";
-							formatSize = 8;
-						break;
-
-						// 4 Bytes
-						case InputFormat_UNORM32:
-							format = "DXGI_FORMAT_R32G32B32_TYPELESS";
-							formatSize = 12;
-						break;
-
-						case InputFormat_SNORM32:
-							format = "DXGI_FORMAT_R32G32B32_TYPELESS";
-							formatSize = 12;
-						break;
-
-						case InputFormat_UINT32:
-							format = "DXGI_FORMAT_R32G32B32_UINT";
-							formatSize = 12;
-						break;
-
-						case InputFormat_SINT32:
-							format = "DXGI_FORMAT_R32G32B32_SINT";
-							formatSize = 12;
-						break;
-
-						case InputFormat_FLOAT32:
-							format = "DXGI_FORMAT_R32G32B32_FLOAT";
-							formatSize = 12;
-						break;
-					}
-				}
-				break;
-
-				case Primitive_Bool4:
-				case Primitive_Int4:
-				case Primitive_UInt4:
-				case Primitive_Float4:
-				case Primitive_Double4:
-				{
-					switch( memberVariable.format )
-					{
-						// 1 Byte
-						case InputFormat_UNORM8:
-							format = "DXGI_FORMAT_R8G8B8A8_UNORM";
-							formatSize = 4;
-						break;
-
-						case InputFormat_SNORM8:
-							format = "DXGI_FORMAT_R8G8B8A8_SNORM";
-							formatSize = 4;
-						break;
-
-						case InputFormat_UINT8:
-							format = "DXGI_FORMAT_R8G8B8A8_UINT";
-							formatSize = 4;
-						break;
-
-						case InputFormat_SINT8:
-							format = "DXGI_FORMAT_R8G8B8A8_SINT";
-							formatSize = 4;
-						break;
-
-						// 2 Bytes
-						case InputFormat_UNORM16:
-							format = "DXGI_FORMAT_R16G16B16A16_UNORM";
-							formatSize = 8;
-						break;
-
-						case InputFormat_SNORM16:
-							format = "DXGI_FORMAT_R16G16B16A16_SNORM";
-							formatSize = 8;
-						break;
-
-						case InputFormat_UINT16:
-							format = "DXGI_FORMAT_R16G16B16A16_UINT";
-							formatSize = 8;
-						break;
-
-						case InputFormat_SINT16:
-							format = "DXGI_FORMAT_R16G16B16A16_SINT";
-							formatSize = 8;
-						break;
-
-						case InputFormat_FLOAT16:
-							format = "DXGI_FORMAT_R16G16B16A16_FLOAT";
-							formatSize = 8;
-						break;
-
-						// 4 Bytes
-						case InputFormat_UNORM32:
-							format = "DXGI_FORMAT_R32G32B32A32_TYPELESS";
-							formatSize = 16;
-						break;
-
-						case InputFormat_SNORM32:
-							format = "DXGI_FORMAT_R32G32B32A32_TYPELESS";
-							formatSize = 16;
-						break;
-
-						case InputFormat_UINT32:
-							format = "DXGI_FORMAT_R32G32B32A32_UINT";
-							formatSize = 16;
-						break;
-
-						case InputFormat_SINT32:
-							format = "DXGI_FORMAT_R32G32B32A32_SINT";
-							formatSize = 16;
-						break;
-
-						case InputFormat_FLOAT32:
-							format = "DXGI_FORMAT_R32G32B32A32_FLOAT";
-							formatSize = 16;
-						break;
-					}
-				}
-				break;
-			}
-			desc.append( format );
-			desc.append( ", " );
-
-			// InputSlot
-			desc.append( "0" );
-			desc.append( ", " );
-
-			// AlignedByteOffset
-			desc.append( byteOffset );
-			byteOffset += formatSize;
-			desc.append( ", " );
-
-			// InputSlotClass
-			desc.append( "D3D11_INPUT_PER_VERTEX_DATA" );
-			desc.append( ", " );
-
-			// InstanceDataStepRate
-			desc.append( "0" );
-			desc.append( " },\n" );
+			attributes.append( inputFormat->format ).append( ", " );
+			attributes.append( byteOffset ).append( " },\n" );
+			byteOffset += inputFormat->size;
 		}
-		desc.append( "\t" "};\n" );
+
+		attributes.append( "};\n\n" );
 	}
 	else
 	{
-		desc.append( "\t" "static D3D11_INPUT_ELEMENT_DESC *inputDescription = nullptr;\n" );
+		attributes.append( "constexpr D3D11InputLayoutAttributes *d3d11InputAttributesVertex_" );
+		attributes.append( type.name ).append( " = nullptr;\n\n" );
 	}
 
-	// Write To gfx.api.generated.cpp
-	shader.source.append( "static void d3d11_input_layout_desc_vertex_" ).append( type.name );
-	shader.source.append( "( D3D11InputLayoutDescription &desc )\n{\n" );
-	shader.source.append( desc ).append( "\n" );
-	shader.source.append( "\t" "desc.desc = inputDescription;\n" );
-	shader.source.append( "\t" "desc.count = ").append( count ).append( ";\n" );
-	shader.source.append( "}\n\n" );
+	attributes.append( "constexpr D3D11InputLayoutFormats inputLayoutFormatVertex_" );
+	attributes.append( type.name ).append( " =\n{\n\td3d11InputAttributesVertex_" );
+	attributes.append( type.name ).append( ", " ).append( count ).append( ", " ).append( byteOffset );
+	attributes.append( "\n};\n\n" );
 
+	// Write to gfx.api.generated.hpp
+	shader.header.append( attributes );
+	return true;
+}
+
+
+bool GeneratorHLSL::generate_structure_gfx_instance( NodeStruct *node )
+{
+	// Register this vertex format in the system
+	if( !Generator::generate_structure_gfx_instance( node ) )
+	{
+		return false; // Already registered -- no need to continue
+	}
+
+	// Generate D3D11 Vertex Format interfaces
+	const Struct &structure = parser.structs[node->structID];
+	const Type &type = parser.types[structure.typeID];
+	const VariableID first = type.memberFirst;
+	const VariableID last = first + type.memberCount;
+
+	int semanticIndex[SEMANTICTYPE_COUNT] = { 0 };
+	int byteOffset = 0;
+	String attributes;
+
+	const usize count = last - first;
+	if( count > 0 )
+	{
+		attributes.append( "constexpr D3D11InputLayoutAttributes d3d11InputAttributesInstance_" );
+		attributes.append( type.name ).append( "[" ).append( count ).append("]  =\n{\n" );
+
+		for( usize i = first; i < last; i++ )
+		{
+			const Variable &memberVariable = parser.variables[i];
+			const D3D11InputFormatInfo *const inputFormat = d3d11_input_format( memberVariable.typeID,
+				memberVariable.format );
+			ErrorReturnIf( inputFormat == nullptr, false, "Unexpected instance input format!" );
+
+			Assert( memberVariable.semantic < SEMANTICTYPE_COUNT );
+			attributes.append( "\t" "{ \"" ).append( D3D11_SEMANTIC_NAME[memberVariable.semantic] ).append( "\", " );
+			attributes.append( semanticIndex[memberVariable.semantic] ).append( ", " );
+			semanticIndex[memberVariable.semantic]++;
+			attributes.append( inputFormat->format ).append( ", " );
+			attributes.append( byteOffset ).append( " },\n" );
+			byteOffset += inputFormat->size;
+		}
+
+		attributes.append( "};\n\n" );
+	}
+	else
+	{
+		attributes.append( "constexpr D3D11InputLayoutAttributes *d3d11InputAttributesInstance_" );
+		attributes.append( type.name ).append( " = nullptr;\n\n" );
+	}
+
+	attributes.append( "constexpr D3D11InputLayoutFormats inputLayoutFormatInstance_" );
+	attributes.append( type.name ).append( " =\n{\n\td3d11InputAttributesInstance_" );
+	attributes.append( type.name ).append( ", " ).append( count ).append( ", " ).append( byteOffset );
+	attributes.append( "\n};\n\n" );
+
+	// Write to gfx.api.generated.hpp
+	shader.header.append( attributes );
 	return true;
 }
 

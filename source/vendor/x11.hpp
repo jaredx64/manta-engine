@@ -192,7 +192,7 @@
 		XWindow window;
 		XWindow root;
 		XWindow subwindow;
-		XTime time;
+		XTime xtime;
 		int x, y;
 		int x_root, y_root;
 		unsigned int state;
@@ -209,7 +209,7 @@
 		XWindow window;
 		XWindow root;
 		XWindow subwindow;
-		XTime time;
+		XTime xtime;
 		int x, y;
 		int x_root, y_root;
 		unsigned int state;
@@ -226,7 +226,7 @@
 		XWindow window;
 		XWindow root;
 		XWindow subwindow;
-		XTime time;
+		XTime xtime;
 		int x, y;
 		int x_root, y_root;
 		unsigned int state;
@@ -277,7 +277,7 @@
 		XAtom selection;
 		XAtom target;
 		XAtom property;
-		XTime time;
+		XTime xtime;
 	};
 
 	struct XSelectionEvent
@@ -290,7 +290,7 @@
 		XAtom selection;
 		XAtom target;
 		XAtom property;
-		XTime time;
+		XTime xtime;
 	};
 
 	union XEvent

@@ -114,8 +114,6 @@ namespace CoreWindow
 		// Enable detectable key auto-repeat #include <X11/XKBlib.h>
 		XkbSetDetectableAutoRepeat( CoreWindow::display, true, 0 );
 	#endif
-
-		// Success
 		return true;
 	}
 
@@ -200,7 +198,7 @@ namespace CoreWindow
 						XEvent nextEvent;
 						XPeekEvent( CoreWindow::display, &nextEvent );
 						if( nextEvent.type == KeyPress &&
-							nextEvent.xkey.time == event.xkey.time &&
+							nextEvent.xkey.xtime == event.xkey.xtime &&
 							nextEvent.xkey.keycode == event.xkey.keycode )
 						{
 							// Ignore the KeyRelease; it's part of an auto-repeat
@@ -321,7 +319,7 @@ namespace CoreWindow
 						sendEvent.selection = request.selection;
 						sendEvent.target = request.target;
 						sendEvent.property = request.property;
-						sendEvent.time = request.time;
+						sendEvent.xtime = request.xtime;
 
 						XSendEvent( CoreWindow::display, request.requestor, 0, 0, (XEvent *)&sendEvent );
 					}
@@ -512,7 +510,6 @@ namespace Window
 		}
 	#endif
 
-		// Failure
 		return false;
 	}
 
@@ -597,7 +594,6 @@ namespace Window
 		}
 	#endif
 
-		// Failure
 		return false;
 	}
 }

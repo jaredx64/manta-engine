@@ -159,9 +159,9 @@ bool CoreGfx::init()
 #if GRAPHICS_ENABLED
 	ErrorIf( !CoreGfx::api_init(), "%s: Failed to initialize %s backend!", __FUNCTION__, BUILD_GRAPHICS );
 	ErrorIf( !CoreGfx::init_textures(), "%s: Failed to initialize textures!", __FUNCTION__ );
+	ErrorIf( !CoreGfx::init_uniform_buffers(), "%s: Failed to initialize uniform buffers!", __FUNCTION__ );
 	ErrorIf( !CoreGfx::init_shaders(), "%s: Failed to initialize shaders!", __FUNCTION__ );
 	ErrorIf( !CoreGfx::init_commands(), "%s: Failed to initialize command system!", __FUNCTION__ );
- 	ErrorIf( !CoreGfx::api_init_uniform_buffers(), "%s: Failed to initialize constant buffers!", __FUNCTION__ );
 	ErrorIf( !CoreGfx::batch.init( GFX_QUAD_BATCH_SIZE ), "%s: Failed to initialize quad batch!", __FUNCTION__ );
 #endif
 	return true;
@@ -172,9 +172,9 @@ bool CoreGfx::free()
 {
 #if GRAPHICS_ENABLED
 	ErrorIf( !CoreGfx::batch.free(), "%s: Failed to free default quad batch!", __FUNCTION__ );
-	ErrorIf( !CoreGfx::api_free_uniform_buffers(), "%s: Failed to free shaders!", __FUNCTION__ );
 	ErrorIf( !CoreGfx::free_commands(), "%s: Failed to free command system!", __FUNCTION__ );
 	ErrorIf( !CoreGfx::free_shaders(), "%s: Failed to free shaders!", __FUNCTION__ );
+	ErrorIf( !CoreGfx::free_uniform_buffers(), "%s: Failed to free uniform buffers!", __FUNCTION__ );
 	ErrorIf( !CoreGfx::free_textures(), "%s: Failed to free textures!", __FUNCTION__ );
 	ErrorIf( !CoreGfx::api_free(), "%s: Failed to free %s backend!", __FUNCTION__, BUILD_GRAPHICS );
 #endif
@@ -204,6 +204,34 @@ bool CoreGfx::free_textures()
 	for( u32 i = 0; i < CoreAssets::textureCount; i++ )
 	{
 		CoreGfx::textures[i].free();
+	}
+#endif
+
+	return true;
+}
+
+
+bool CoreGfx::init_uniform_buffers()
+{
+#if GRAPHICS_ENABLED
+	static_assert( ARRAY_LENGTH( uniformBufferInitEntries ) == uniformBufferCount, "Missing GfxUniformBuffer!" );
+	for( u32 i = 0; i < uniformBufferCount; i++ )
+	{
+		const UniformBufferInitEntry &entry = uniformBufferInitEntries[i];
+		if( !api_uniform_buffer_init( uniformBuffers[i], entry.name, i, entry.size ) ) { return false; }
+	}
+#endif
+
+	return true;
+}
+
+
+bool CoreGfx::free_uniform_buffers()
+{
+#if GRAPHICS_ENABLED
+	for( u32 i = 0; i < uniformBufferCount; i++ )
+	{
+		if( !api_uniform_buffer_free( uniformBuffers[i] ) ) { return false; }
 	}
 #endif
 
@@ -387,6 +415,7 @@ void *GfxStack::get( const usize offset, const u16 size )
 void Gfx::clear_color( const Color color )
 {
 #if GRAPHICS_ENABLED
+	AssertMsg( CoreGfx::state.renderCommandActive == nullptr, "Cannot call clear_color() within a render command!" );
 	CoreGfx::api_clear_color( color );
 #endif
 }
@@ -395,6 +424,7 @@ void Gfx::clear_color( const Color color )
 void Gfx::clear_depth( const float depth )
 {
 #if GRAPHICS_ENABLED
+	AssertMsg( CoreGfx::state.renderCommandActive == nullptr, "Cannot call clear_depth() within a render command!" );
 	CoreGfx::api_clear_depth( depth );
 #endif
 }
@@ -485,26 +515,6 @@ void CoreGfx::state_reset()
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Render State
 
-void CoreGfx::swapchain_viewport_update()
-{
-#if GRAPHICS_ENABLED
-	const u16 viewportWidth = static_cast<u16>( Window::width * Window::scale );
-	const u16 viewportHeight = static_cast<u16>( Window::height * Window::scale );
-	CoreGfx::api_swapchain_set_size( Window::width, Window::height, Window::scale );
-	CoreGfx::api_viewport_set_size( viewportWidth, viewportHeight, Window::scale );
-#endif
-}
-
-
-void Gfx::viewport_set_size( const u16 width, const u16 height )
-{
-#if GRAPHICS_ENABLED
-	state_change_break_batches();
-	CoreGfx::api_viewport_set_size( width, height, CoreGfx::state.viewport.dpi );
-#endif
-}
-
-
 void Gfx::scissor_set_state( const GfxStateScissor &state )
 {
 #if GRAPHICS_ENABLED
@@ -563,7 +573,7 @@ void Gfx::sampler_set_state( const GfxStateSampler &state )
 }
 
 
-void Gfx::sampler_set_filtering_mode( const GfxSamplerFilteringMode &mode )
+void Gfx::sampler_filtering_mode( const GfxSamplerFilteringMode &mode )
 {
 #if GRAPHICS_ENABLED
 	GfxStateSampler state = CoreGfx::state.sampler;
@@ -573,7 +583,7 @@ void Gfx::sampler_set_filtering_mode( const GfxSamplerFilteringMode &mode )
 }
 
 
-void Gfx::sampler_set_filtering_anisotropy( const int anisotropy )
+void Gfx::sampler_filtering_anisotropy( const int anisotropy )
 {
 #if GRAPHICS_ENABLED
 	GfxStateSampler state = CoreGfx::state.sampler;
@@ -583,7 +593,7 @@ void Gfx::sampler_set_filtering_anisotropy( const int anisotropy )
 }
 
 
-void Gfx::sampler_set_wrap_mode( const GfxSamplerWrapMode &mode )
+void Gfx::sampler_wrap_mode( const GfxSamplerWrapMode &mode )
 {
 #if GRAPHICS_ENABLED
 	GfxStateSampler state = CoreGfx::state.sampler;
@@ -592,10 +602,67 @@ void Gfx::sampler_set_wrap_mode( const GfxSamplerWrapMode &mode )
 #endif
 }
 
+
+void CoreGfx::swapchain_viewport_update()
+{
+#if GRAPHICS_ENABLED
+#if SWAPCHAIN_DPI_SCALED
+	const u16 widthPixels = static_cast<u16>( Window::width );
+	const u16 heightPixels = static_cast<u16>( Window::height );
+#else
+	const u16 widthPixels = static_cast<u16>( Window::width * Window::scale );
+	const u16 heightPixels = static_cast<u16>( Window::height * Window::scale );
+#endif
+	CoreGfx::api_swapchain_set_size( widthPixels, heightPixels );
+	CoreGfx::api_viewport_set_size( widthPixels, heightPixels );
+#endif
+}
+
+
+int Gfx::swapchain_width()
+{
+#if GRAPHICS_ENABLED
+	return CoreGfx::state.swapchain.width;
+#endif
+}
+
+
+int Gfx::swapchain_height()
+{
+#if GRAPHICS_ENABLED
+	return CoreGfx::state.swapchain.height;
+#endif
+}
+
+
+int Gfx::viewport_width()
+{
+#if GRAPHICS_ENABLED
+	return CoreGfx::state.viewport.width;
+#endif
+}
+
+
+int Gfx::viewport_height()
+{
+#if GRAPHICS_ENABLED
+	return CoreGfx::state.viewport.height;
+#endif
+}
+
+
+void Gfx::viewport_set_size( const u16 width, const u16 height )
+{
+#if GRAPHICS_ENABLED
+	state_change_break_batches();
+	CoreGfx::api_viewport_set_size( width, height );
+#endif
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Pipeline State
 
-void Gfx::raster_set( const GfxPipelineDescription &state )
+void Gfx::raster_set_state( const GfxPipelineDescription &state )
 {
 #if GRAPHICS_ENABLED
 	AssertMsg( CoreGfx::state.renderCommandActive, "Raster state changes must be part of a GfxRenderCommand!" );
@@ -605,27 +672,27 @@ void Gfx::raster_set( const GfxPipelineDescription &state )
 }
 
 
-void Gfx::raster_set_fill_mode( const GfxRasterFillMode &mode )
+void Gfx::raster_fill_mode( const GfxFillMode &mode )
 {
 #if GRAPHICS_ENABLED
 	GfxPipelineDescription state = CoreGfx::state.pipeline.description;
 	state.rasterFillMode = mode;
-	Gfx::raster_set( state );
+	Gfx::raster_set_state( state );
 #endif
 }
 
 
-void Gfx::raster_set_cull_mode( const GfxRasterCullMode &mode )
+void Gfx::raster_cull_mode( const GfxCullMode &mode )
 {
 #if GRAPHICS_ENABLED
 	GfxPipelineDescription state = CoreGfx::state.pipeline.description;
 	state.rasterCullMode = mode;
-	Gfx::raster_set( state );
+	Gfx::raster_set_state( state );
 #endif
 }
 
 
-void Gfx::blend_set( const GfxPipelineDescription &state )
+void Gfx::blend_set_state( const GfxPipelineDescription &state )
 {
 #if GRAPHICS_ENABLED
 	AssertMsg( CoreGfx::state.renderCommandActive, "Blend state changes must be part of a GfxRenderCommand!" );
@@ -635,17 +702,17 @@ void Gfx::blend_set( const GfxPipelineDescription &state )
 }
 
 
-void Gfx::blend_set_enabled( const bool enabled )
+void Gfx::blend_enabled( const bool enabled )
 {
 #if GRAPHICS_ENABLED
 	GfxPipelineDescription state = CoreGfx::state.pipeline.description;
 	state.blendEnabled = enabled;
-	Gfx::blend_set( state );
+	Gfx::blend_set_state( state );
 #endif
 }
 
 
-void Gfx::blend_set_mode_color( const GfxBlendFactor &srcFactor, const GfxBlendFactor &dstFactor,
+void Gfx::blend_mode_color( const GfxBlendFactor &srcFactor, const GfxBlendFactor &dstFactor,
 	const GfxBlendOperation &op )
 {
 #if GRAPHICS_ENABLED
@@ -653,12 +720,12 @@ void Gfx::blend_set_mode_color( const GfxBlendFactor &srcFactor, const GfxBlendF
 	state.blendSrcFactorColor = srcFactor;
 	state.blendDstFactorColor = dstFactor;
 	state.blendOperationColor = op;
-	Gfx::blend_set( state );
+	Gfx::blend_set_state( state );
 #endif
 }
 
 
-void Gfx::blend_set_mode_alpha( const GfxBlendFactor &srcFactor, const GfxBlendFactor &dstFactor,
+void Gfx::blend_mode_alpha( const GfxBlendFactor &srcFactor, const GfxBlendFactor &dstFactor,
 	const GfxBlendOperation &op )
 {
 #if GRAPHICS_ENABLED
@@ -666,42 +733,42 @@ void Gfx::blend_set_mode_alpha( const GfxBlendFactor &srcFactor, const GfxBlendF
 	state.blendSrcFactorAlpha = srcFactor;
 	state.blendDstFactorAlpha = dstFactor;
 	state.blendOperationAlpha = op;
-	Gfx::blend_set( state );
+	Gfx::blend_set_state( state );
 #endif
 }
 
 
-void Gfx::blend_reset_mode()
+void Gfx::blend_mode_reset()
 {
 #if GRAPHICS_ENABLED
-	Gfx::blend_reset_mode_color();
-	Gfx::blend_reset_mode_alpha();
+	Gfx::blend_mode_reset_color();
+	Gfx::blend_mode_reset_alpha();
 #endif
 }
 
 
-void Gfx::blend_reset_mode_color()
+void Gfx::blend_mode_reset_color()
 {
 #if GRAPHICS_ENABLED
-	Gfx::blend_set_mode_color( GfxBlendFactor_SRC_ALPHA, GfxBlendFactor_INV_SRC_ALPHA, GfxBlendOperation_ADD );
+	Gfx::blend_mode_color( GfxBlendFactor_SRC_ALPHA, GfxBlendFactor_INV_SRC_ALPHA, GfxBlendOperation_ADD );
 #endif
 }
 
 
-void Gfx::blend_reset_mode_alpha()
+void Gfx::blend_mode_reset_alpha()
 {
 #if GRAPHICS_ENABLED
-	Gfx::blend_set_mode_alpha( GfxBlendFactor_ONE, GfxBlendFactor_INV_SRC_ALPHA, GfxBlendOperation_ADD );
+	Gfx::blend_mode_alpha( GfxBlendFactor_ONE, GfxBlendFactor_INV_SRC_ALPHA, GfxBlendOperation_ADD );
 #endif
 }
 
 
-void Gfx::blend_set_write( const GfxBlendWrite &mask )
+void Gfx::blend_write_mask( const GfxBlendWrite &mask )
 {
 #if GRAPHICS_ENABLED
 	GfxPipelineDescription state = CoreGfx::state.pipeline.description;
 	state.blendColorWriteMask = mask;
-	Gfx::blend_set( state );
+	Gfx::blend_set_state( state );
 #endif
 }
 
@@ -716,7 +783,7 @@ void Gfx::depth_set_state( const GfxPipelineDescription &state )
 }
 
 
-void Gfx::depth_set_function( const GfxDepthFunction &function )
+void Gfx::depth_function( const GfxDepthFunction &function )
 {
 #if GRAPHICS_ENABLED
 	GfxPipelineDescription state = CoreGfx::state.pipeline.description;
@@ -726,7 +793,7 @@ void Gfx::depth_set_function( const GfxDepthFunction &function )
 }
 
 
-void Gfx::depth_set_write( const GfxDepthWrite &mask )
+void Gfx::depth_write_mask( const GfxDepthWrite &mask )
 {
 #if GRAPHICS_ENABLED
 	GfxPipelineDescription state = CoreGfx::state.pipeline.description;
@@ -906,6 +973,54 @@ const double_m44 &Gfx::get_matrix_mvp_inverse()
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Shader
 
+bool CoreGfx::shader_bind_uniform_buffers_vertex( const u32 shaderID )
+{
+	Assert( shaderID < CoreGfx::shaderCount );
+	const UniformBufferBindTable &table = uniformBufferBindTableShaderVertex[shaderID];
+	if( table.buffers == nullptr ) { return true; }
+
+	for( u32 i = 0; i < table.count; i++ )
+	{
+		const UniformBufferBindEntry &entry = table.buffers[i];
+		if( !api_uniform_buffer_bind_vertex( CoreGfx::uniformBuffers[entry.id], entry.slot ) ) { return false; }
+	}
+
+	return true;
+}
+
+
+bool CoreGfx::shader_bind_uniform_buffers_fragment( const u32 shaderID )
+{
+	Assert( shaderID < CoreGfx::shaderCount );
+	const UniformBufferBindTable &table = uniformBufferBindTableShaderFragment[shaderID];
+	if( table.buffers == nullptr ) { return true; }
+
+	for( u32 i = 0; i < table.count; i++ )
+	{
+		const UniformBufferBindEntry &entry = table.buffers[i];
+		if( !api_uniform_buffer_bind_fragment( CoreGfx::uniformBuffers[entry.id], entry.slot ) ) { return false; }
+	}
+
+	return true;
+}
+
+
+bool CoreGfx::shader_bind_uniform_buffers_compute( const u32 shaderID )
+{
+	Assert( shaderID < CoreGfx::shaderCount );
+	const UniformBufferBindTable &table = uniformBufferBindTableShaderCompute[shaderID];
+	if( table.buffers == nullptr ) { return true; }
+
+	for( u32 i = 0; i < table.count; i++ )
+	{
+		const UniformBufferBindEntry &entry = table.buffers[i];
+		if( !api_uniform_buffer_bind_compute( CoreGfx::uniformBuffers[entry.id], entry.slot ) ) { return false; }
+	}
+
+	return true;
+}
+
+
 void GfxShader::init( const u32 shaderID, const ShaderEntry &shaderEntry )
 {
 #if GRAPHICS_ENABLED
@@ -928,7 +1043,7 @@ void Gfx::set_shader_globals( const CoreGfxUniformBuffer::UniformsPipeline_t &gl
 #if GRAPHICS_ENABLED
 	if( CoreGfx::state.pipelineUniforms == globals ) { return; }
 	CoreGfx::state.pipelineUniforms = globals;
-	state_change_break_batches();
+	//state_change_break_batches();
 	globals.upload();
 #endif
 }
@@ -1110,13 +1225,13 @@ void GfxRenderTarget::copy_part( GfxRenderTarget &source,
 
 		GfxRenderPass pass;
 		pass.set_name_f( "%s%s", __FUNCTION__, " - Depth" );
-		pass.set_target( 0, *this );
+		pass.target( 0, *this );
 		Gfx::render_pass_begin( pass );
 		{
 			GfxRenderCommand cmd;
-			cmd.set_shader( Shader::SHADER_DEFAULT_COPY_DEPTH );
-			cmd.depth_set_function( GfxDepthFunction_ALWAYS );
-			cmd.depth_set_write( GfxDepthWrite_ALL );
+			cmd.shader( Shader::SHADER_DEFAULT_COPY_DEPTH );
+			cmd.depth_function( GfxDepthFunction_ALWAYS );
+			cmd.depth_write_mask( GfxDepthWrite_ALL );
 			Gfx::render_command_execute( cmd, [=]()
 				{
 					Gfx::set_matrix_mvp_2d_orthographic( 0.0, 0.0, 1.0, 0.0, dstWidth, dstHeight );
@@ -1153,7 +1268,7 @@ void GfxRenderTarget::copy_part( GfxRenderTarget &source,
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Render Command
 
-void GfxRenderCommand::set_shader( const GfxShader &shader )
+void GfxRenderCommand::shader( const GfxShader &shader )
 {
 #if GRAPHICS_ENABLED
 	Assert( shader.resource != nullptr );
@@ -1162,11 +1277,11 @@ void GfxRenderCommand::set_shader( const GfxShader &shader )
 }
 
 
-void GfxRenderCommand::set_shader( const Shader shader )
+void GfxRenderCommand::shader( const Shader shader )
 {
 #if GRAPHICS_ENABLED
 	Assert( shader < CoreGfx::shaderCount );
-	set_shader( CoreGfx::shaders[shader] );
+	this->shader( CoreGfx::shaders[shader] );
 #endif
 }
 
@@ -1179,7 +1294,7 @@ void GfxRenderCommand::set_pipeline_description( const GfxPipelineDescription &d
 }
 
 
-void GfxRenderCommand::raster_set_fill_mode( const GfxRasterFillMode &mode )
+void GfxRenderCommand::raster_fill_mode( const GfxFillMode &mode )
 {
 #if GRAPHICS_ENABLED
 	Assert( mode < GFXRASTERFILLMODE_COUNT );
@@ -1188,7 +1303,7 @@ void GfxRenderCommand::raster_set_fill_mode( const GfxRasterFillMode &mode )
 }
 
 
-void GfxRenderCommand::raster_set_cull_mode( const GfxRasterCullMode &mode )
+void GfxRenderCommand::raster_cull_mode( const GfxCullMode &mode )
 {
 #if GRAPHICS_ENABLED
 	Assert( mode < GFXRASTERCULLMODE_COUNT );
@@ -1197,7 +1312,7 @@ void GfxRenderCommand::raster_set_cull_mode( const GfxRasterCullMode &mode )
 }
 
 
-void GfxRenderCommand::blend_set_enabled( const bool enabled )
+void GfxRenderCommand::blend_enabled( const bool enabled )
 {
 #if GRAPHICS_ENABLED
 	this->pipeline.description.blendEnabled = enabled;
@@ -1205,7 +1320,7 @@ void GfxRenderCommand::blend_set_enabled( const bool enabled )
 }
 
 
-void GfxRenderCommand::blend_set_mode_color( const GfxBlendFactor &srcFactor,
+void GfxRenderCommand::blend_mode_color( const GfxBlendFactor &srcFactor,
 	const GfxBlendFactor &dstFactor, const GfxBlendOperation &operation )
 {
 #if GRAPHICS_ENABLED
@@ -1219,7 +1334,7 @@ void GfxRenderCommand::blend_set_mode_color( const GfxBlendFactor &srcFactor,
 }
 
 
-void GfxRenderCommand::blend_set_mode_alpha( const GfxBlendFactor &srcFactor,
+void GfxRenderCommand::blend_mode_alpha( const GfxBlendFactor &srcFactor,
 	const GfxBlendFactor &dstFactor, const GfxBlendOperation &operation )
 {
 #if GRAPHICS_ENABLED
@@ -1233,7 +1348,7 @@ void GfxRenderCommand::blend_set_mode_alpha( const GfxBlendFactor &srcFactor,
 }
 
 
-void GfxRenderCommand::blend_set_write( const GfxBlendWrite &mask )
+void GfxRenderCommand::blend_write_mask( const GfxBlendWrite &mask )
 {
 #if GRAPHICS_ENABLED
 	this->pipeline.description.blendColorWriteMask = mask;
@@ -1241,7 +1356,7 @@ void GfxRenderCommand::blend_set_write( const GfxBlendWrite &mask )
 }
 
 
-void GfxRenderCommand::depth_set_function( const GfxDepthFunction &mode )
+void GfxRenderCommand::depth_function( const GfxDepthFunction &mode )
 {
 #if GRAPHICS_ENABLED
 	Assert( mode < GFXDEPTHFUNCTION_COUNT );
@@ -1250,7 +1365,7 @@ void GfxRenderCommand::depth_set_function( const GfxDepthFunction &mode )
 }
 
 
-void GfxRenderCommand::depth_set_write( const GfxDepthWrite &mask )
+void GfxRenderCommand::depth_write_mask( const GfxDepthWrite &mask )
 {
 #if GRAPHICS_ENABLED
 	this->pipeline.description.depthWriteMask = mask;
@@ -1284,6 +1399,7 @@ void Gfx::render_command_execute( const GfxRenderCommand &command )
 	CoreGfx::render_command_execute_begin( command );
 	CoreGfx::api_render_command_execute( command );
 	CoreGfx::render_command_execute_end( command );
+	CoreGfx::api_render_command_execute_post( command );
 #endif
 }
 
@@ -1297,9 +1413,9 @@ List<GfxRenderCommand> &GfxRenderGraph::command_list()
 		commandList = GfxRenderGraph::renderGraphCommandListCurrent++;
 		if( commandList == GfxRenderGraph::renderGraphCommandLists.current )
 		{
-			List<GfxRenderCommand> &list = GfxRenderGraph::renderGraphCommandLists.add( List<GfxRenderCommand> { } );
+			List<GfxRenderCommand> list;
 			list.init();
-			return list;
+			return GfxRenderGraph::renderGraphCommandLists.add( static_cast<List<GfxRenderCommand> &&>( list ) );
 		}
 	}
 
@@ -1382,7 +1498,7 @@ void Gfx::render_graph_execute( const GfxRenderGraph &graph )
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Render Pass
 
-void GfxRenderPass::set_target( const int slot, const GfxRenderTarget &target )
+void GfxRenderPass::target( const int slot, const GfxRenderTarget &target )
 {
 #if GRAPHICS_ENABLED
 	Assert( slot >= 0 && slot < GFX_RENDER_TARGET_SLOT_COUNT );
@@ -1825,6 +1941,7 @@ bool Gfx::mip_generate_chain_2d_alloc( void *data, const u16 width, const u16 he
 void CoreGfx::quad_batch_frame_begin()
 {
 #if GRAPHICS_ENABLED
+	CoreGfx::batch.active = true;
 	CoreGfx::batch.batch_begin();
 #endif
 }
@@ -1834,6 +1951,7 @@ void CoreGfx::quad_batch_frame_end()
 {
 #if GRAPHICS_ENABLED
 	CoreGfx::batch.batch_end();
+	CoreGfx::batch.active = false;
 #endif
 }
 
@@ -1841,6 +1959,7 @@ void CoreGfx::quad_batch_frame_end()
 void Gfx::quad_batch_break()
 {
 #if GRAPHICS_ENABLED
+	if( !CoreGfx::batch.active ) { return; }
 	CoreGfx::batch.batch_break();
 #endif
 }
@@ -1849,6 +1968,7 @@ void Gfx::quad_batch_break()
 bool Gfx::quad_batch_can_break()
 {
 #if GRAPHICS_ENABLED
+	if( !CoreGfx::batch.active ) { return false; }
 	return CoreGfx::batch.can_break();
 #else
 	return true;
@@ -1859,6 +1979,7 @@ bool Gfx::quad_batch_can_break()
 void Gfx::quad_batch_break_check()
 {
 #if GRAPHICS_ENABLED
+	if( !CoreGfx::batch.active ) { return; }
 	CoreGfx::batch.break_check();
 #endif
 }
@@ -1868,6 +1989,8 @@ void Gfx::quad_batch_write( const GfxQuadBatch<GfxVertex::BuiltinVertex>::Quad &
 	const GfxTexture *const texture )
 {
 #if GRAPHICS_ENABLED
+	Assert( CoreGfx::batch.active );
+
 	if( LIKELY( texture != nullptr ) && CoreGfx::state.boundTexture[0] != texture->resource )
 	{
 		Gfx::bind_texture( 0, *texture );
@@ -1884,6 +2007,8 @@ void Gfx::quad_batch_write( const float x1, const float y1, const float x2, cons
 	const GfxTexture *const texture, const float depth )
 {
 #if GRAPHICS_ENABLED
+	Assert( CoreGfx::batch.active );
+
 	if( LIKELY( texture != nullptr ) && CoreGfx::state.boundTexture[0] != texture->resource )
 	{
 		Gfx::bind_texture( 0, *texture );
@@ -1909,6 +2034,8 @@ void Gfx::quad_batch_write( const float x1, const float y1, const float x2, cons
 	const GfxTexture *const texture, const float depth )
 {
 #if GRAPHICS_ENABLED
+	Assert( CoreGfx::batch.active );
+
 	if( LIKELY( texture != nullptr ) && CoreGfx::state.boundTexture[0] != texture->resource )
 	{
 		Gfx::bind_texture( 0, *texture );
@@ -1932,6 +2059,8 @@ void Gfx::quad_batch_write( const float x1, const float y1, const float x2, cons
 	const GfxTexture *const texture, const float depth )
 {
 #if GRAPHICS_ENABLED
+	Assert( CoreGfx::batch.active );
+
 	if( LIKELY( texture != nullptr ) && CoreGfx::state.boundTexture[0] != texture->resource )
 	{
 		Gfx::bind_texture( 0, *texture );
@@ -1956,6 +2085,8 @@ void Gfx::quad_batch_write( const float x1, const float y1, const float x2, cons
 	const GfxTexture *const texture, const float depth )
 {
 #if GRAPHICS_ENABLED
+	Assert( CoreGfx::batch.active );
+
 	if( LIKELY( texture != nullptr ) && CoreGfx::state.boundTexture[0] != texture->resource )
 	{
 		Gfx::bind_texture( 0, *texture );

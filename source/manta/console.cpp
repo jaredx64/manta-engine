@@ -144,7 +144,6 @@ public:
 		// Calculate Length
 		length = static_cast<u8>( strlen( string ) );
 
-		// Success
 		return indexBuffer;
 	}
 
@@ -456,8 +455,8 @@ public:
 			int_v2 { static_cast<int>( ( sizeView - size.x ) * value ), 0 };
 
 		// Mouse Interaction
-		const int mX = mouse_x;
-		const int mY = mouse_y;
+		const int mX = mouse_x_logical;
+		const int mY = mouse_y_logical;
 
 		const bool isHovering = point_in_rect( mX, mY, bounds.x, bounds.y, bounds.z, bounds.w );
 
@@ -478,8 +477,8 @@ public:
 				sliding = true;
 				if( isHoveringSlider )
 				{
-					anchorMouse = int_v2 { mouse_x - ( bounds.x + position.x + size.x / 2 ),
-					                      mouse_y - ( bounds.y + position.y + size.y / 2 ) };
+					anchorMouse = int_v2 { mouse_x_logical - ( bounds.x + position.x + size.x / 2 ),
+					                      mouse_y_logical - ( bounds.y + position.y + size.y / 2 ) };
 				}
 			}
 		}
@@ -491,9 +490,9 @@ public:
 		}
 
 		// Sliding
-		const float percentMouseX = ( ( mouse_x - anchorMouse.x ) -
+		const float percentMouseX = ( ( mouse_x_logical - anchorMouse.x ) -
 			( bounds.x + size.x / 2 ) ) / ( sizeView - size.x );
-		const float percentMouseY = ( ( mouse_y - anchorMouse.y ) -
+		const float percentMouseY = ( ( mouse_y_logical - anchorMouse.y ) -
 			( bounds.y + size.y / 2 ) ) / ( sizeView - size.y );
 		const float percentMouse = clamp( vertical ? percentMouseY : percentMouseX, 0.0f, 1.0f );
 		if( Mouse::check_released( mb_left ) )
@@ -683,7 +682,7 @@ namespace CoreConsole
 	{
 		const usize viewLimit = min(
 			candidates_count() + candidates_parameters_count(),
-			static_cast<usize>( ( Window::height - 128 ) / 24 ) );
+			static_cast<usize>( ( Window::height_logical() - 128 ) / 24 ) );
 		return max( viewLimit, 1LLU );
 	}
 
@@ -812,7 +811,6 @@ bool CoreConsole::init()
 	Thread::create( stdin_listener );
 #endif
 
-	// Success
 	return true;
 }
 
@@ -824,21 +822,15 @@ bool CoreConsole::free()
 	CoreConsole::stdinKill = true;
 	while( CoreConsole::stdinAlive ) { Thread::sleep( 1 ); }
 #endif
-
-	// Close Console
 	Console::close();
 
-	// Initalize Memory
 	for( int i = 0; i < COMMANDCOMPARE_COUNT; i++ ) { CoreConsole::candidates[i].free(); }
 	CoreConsole::history.free();
 	CoreConsole::commands.free();
 	CoreConsole::tokens.free();
 	CoreConsole::log.free();
-
-	// Init Objects & UI Context
 	ui.free();
 
-	// Success
 	CoreConsole::initialized = false;
 	return true;
 }
@@ -1092,7 +1084,7 @@ void CoreConsole::draw_input( const Delta delta )
 	// Background
 	const int bX1 = 4;
 	const int bY1 = 4;
-	const int bX2 = Window::width - 4;
+	const int bX2 = Window::width_logical() - 4;
 	const int bY2 = bY1 + 32;
 	draw_rectangle( bX1, bY1, bX2, bY2, COLOR_PANELS );
 
@@ -1101,7 +1093,7 @@ void CoreConsole::draw_input( const Delta delta )
 	region.scrollbarVisible = u8_v2 { false, false };
 	const int rX1 = 20;
 	const int rY1 = 4;
-	const int rX2 = Window::width - 8;
+	const int rX2 = Window::width_logical() - 8;
 	const int rY2 = rY1 + 32;
 	region.dimensionsView = int_v2 { rX2 - rX1, rY2 - rY1 };
 	if( CoreText::ACTIVE_TEXT_EDITOR == &CoreConsole::input )
@@ -1196,14 +1188,14 @@ void CoreConsole::draw_input( const Delta delta )
 
 void CoreConsole::draw_log( const Delta delta )
 {
-	const int mX = mouse_x;
-	const int mY = mouse_y;
+	const int mX = mouse_x_logical;
+	const int mY = mouse_y_logical;
 
 	// Background
 	const int bX1 = 4;
 	const int bY1 = 40;
-	const int bX2 = Window::width - 4;
-	const int bY2 = Window::height - 64;
+	const int bX2 = Window::width_logical() - 4;
+	const int bY2 = Window::height_logical() - 64;
 	draw_rectangle( bX1, bY1, bX2, bY2, Color { 0, 0, 0, static_cast<u8>( Console::logAlpha * 255.0f ) } );
 
 	// Region
@@ -1296,14 +1288,14 @@ void CoreConsole::draw_candidates( const Delta delta )
 	if( CoreConsole::candidates_count() == 0 ) { return; }
 	if( CoreConsole::hideCandidates ) { return; }
 	const usize parameterHintCount = CoreConsole::candidates_parameters_count();
-	const int mX = mouse_x;
-	const int mY = mouse_y;
+	const int mX = mouse_x_logical;
+	const int mY = mouse_y_logical;
 	const int widthSpace = text_dimensions( fnt_iosevka, 14, " " ).x;
 
 	// Background
 	const int bX1 = 16;
 	const int bY1 = 44;
-	const int bX2 = bX1 + ( Window::width - bX1 * 2 ) - 16;
+	const int bX2 = bX1 + ( Window::width_logical() - bX1 * 2 ) - 16;
 	const int bY2 = bY1 + 4 + CoreConsole::candidates_count_view() * 24;
 	draw_rectangle( bX1, bY1, bX2, bY2, COLOR_PANELS );
 
@@ -1971,8 +1963,8 @@ void Console::draw( const Delta delta )
 		// Activate Keyboard & Mouse
 		Keyboard::set_active( keyboard );
 		Mouse::set_active( mouse );
-		const int mX = mouse_x;
-		const int mY = mouse_y;
+		const int mX = mouse_x_logical;
+		const int mY = mouse_y_logical;
 
 		// Activate TextEditor
 		CoreConsole::input.activate();
@@ -1994,7 +1986,7 @@ void Console::draw( const Delta delta )
 		{
 			const int bX1 = 4;
 			const int bY1 = 4;
-			const int bX2 = Window::width - 4;
+			const int bX2 = Window::width_logical() - 4;
 			const int bY2 = bY1 + 32;
 
 			const bool canHover = !( ui.get_widget_hover() );
@@ -2012,7 +2004,7 @@ void Console::draw( const Delta delta )
 		{
 			const int bX1 = 16;
 			const int bY1 = 44;
-			const int bX2 = bX1 + ( Window::width - bX1 * 2 ) - 16;
+			const int bX2 = bX1 + ( Window::width_logical() - bX1 * 2 ) - 16;
 			const int bY2 = bY1 + 4 + CoreConsole::candidates_count_view() * 24;
 
 			const bool canHover = !( !Mouse::check_pressed( mb_left ) && Mouse::check( mb_left ) ) &&
@@ -2035,8 +2027,8 @@ void Console::draw( const Delta delta )
 		{
 			const int bX1 = 4;
 			const int bY1 = 40;
-			const int bX2 = Window::width - 4;
-			const int bY2 = Window::height - 64;
+			const int bX2 = Window::width_logical() - 4;
+			const int bY2 = Window::height_logical() - 64;
 			const bool canHover = !( !Mouse::check_pressed( mb_left ) && Mouse::check( mb_left ) ) &&
 				!( ui.get_widget_hover() );
 			logRegion.hover = point_in_rect( mX, mY, bX1, bY1, bX2, bY2 ) && canHover;
@@ -2089,7 +2081,7 @@ void Console::draw( const Delta delta )
 	if( Console::is_open() )
 	{
 		// Dim Window
-		draw_rectangle( 0, 0, Window::width, Window::height,
+		draw_rectangle( 0, 0, Window::width_logical(), Window::height_logical(),
 			Color { 0, 0, 0, static_cast<u8>( Console::backgroundAlpha * 255.0f ) } );
 
 		// Draw Console Line
@@ -2102,10 +2094,10 @@ void Console::draw( const Delta delta )
 		CoreConsole::draw_candidates( delta );
 
 		// Draw Info
-		draw_text( fnt_iosevka, 14, 4, Window::height - 18, c_gray, PROJECT_CAPTION );
+		draw_text( fnt_iosevka, 14, 4, Window::height_logical() - 18, c_gray, PROJECT_CAPTION );
 		if( CoreConsole::hideCandidates )
 		{
-			draw_text( fnt_iosevka, 14, 4, Window::height - 38, Color { 200, 0, 0 },
+			draw_text( fnt_iosevka, 14, 4, Window::height_logical() - 38, Color { 200, 0, 0 },
 				"suggestions hidden, ctr-h to re-enable" );
 		}
 	}
@@ -2239,7 +2231,6 @@ bool Console::command_execute( const char *command )
 		CoreConsole::update_candidates( false );
 	}
 
-	// Success
 	if( success ) { return true; }
 
 	// Error

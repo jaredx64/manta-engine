@@ -4,22 +4,18 @@
 
 bool file_time( const char *path, FileTime *result )
 {
-	// Open File
 	HANDLE file;
 	if( ( file = CreateFileA( path, GENERIC_READ, FILE_SHARE_READ, nullptr,
-	                          OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr ) ) == INVALID_HANDLE_VALUE )
+		OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr ) ) == INVALID_HANDLE_VALUE )
 	{
 		return false;
 	}
 
-	// Get File Time
 	bool success = true;
 	if( !GetFileTime( file, nullptr, nullptr, &result->time ) ) { success = false; }
 
-	// Close File
 	CloseHandle( file );
 
-	// Success?
 	return success;
 }
 

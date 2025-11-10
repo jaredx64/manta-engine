@@ -4,25 +4,25 @@
 
 vertex_input BuiltinVertexPositionColor
 {
-	float3 position semantic( POSITION ) format( FLOAT32 );
-	float4 color semantic( COLOR ) format( UNORM8 );
+	float3 position packed_as( FLOAT32 );
+	float4 color packed_as( UNORM8 );
 };
 
 vertex_output VertexOutput
 {
-	float4 position semantic( POSITION );
-	float4 color semantic( COLOR );
+	float4 position position_out;
+	float4 color;
 };
 
 fragment_input FragmentInput
 {
-	float4 position semantic( POSITION );
-	float4 color semantic( COLOR );
+	float4 position position_in;
+	float4 color;
 };
 
 fragment_output FragmentOutput
 {
-	float4 color0 semantic( COLOR ) target( 0 );
+	float4 color0 target( 0, COLOR );
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

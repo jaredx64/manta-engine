@@ -7,6 +7,7 @@
 
 #include <build/assets.hpp>
 #include <build/shaders/compiler.hpp>
+#include <build/shaders/bytecode.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -131,6 +132,28 @@ void Gfx::build()
 		path_get_filename( shaderName, sizeof( shaderName ), fileInfo.path );
 		path_remove_extension( shaderName, sizeof( shaderName ) );
 
+#if 0
+		// Compile Shader
+		for( ShaderType i = 0; i < 4; i++ )
+		{
+			Shader &shader = Gfx::shaders.add( Shader { shaderName, i } );
+
+			Timer timer;
+			if( verbose_output() )
+			{
+				PrintColor( LOG_WHITE, TAB TAB "Compile " );
+				PrintColor( LOG_CYAN, "%s", fileInfo.name );
+			}
+
+			compile_shader( shader, fileInfo.path );
+			Gfx::shadersBuilt++;
+
+			if( verbose_output() )
+			{
+				PrintLnColor( LOG_WHITE, " (%.2f ms)", timer.elapsed_ms() );
+			}
+		}
+#else
 		// Compile Shader
 		Shader &shader = Gfx::shaders.add( Shader { shaderName, shaderType } );
 
@@ -148,11 +171,37 @@ void Gfx::build()
 		{
 			PrintLnColor( LOG_WHITE, " (%.2f ms)", timer.elapsed_ms() );
 		}
+#endif
 	}
 
 	// Binary
 	for( Shader &shader : shaders )
 	{
+	#if GRAPHICS_METAL
+		// Write Vertex Shader
+		String &codeVertex = shader.outputs[ShaderStage_Vertex];
+		if( codeVertex.length_bytes() > 0 )
+		{
+			Buffer bytecode;
+			ErrorIf( !compile_shader_bytecode_metal( codeVertex, bytecode ),
+				"Failed to compile vertex shader bytecode: '%s'", shader.name.cstr() );
+			shader.size[ShaderStage_Vertex] = bytecode.size();
+			const usize binaryOffset = Gfx::binary.write( bytecode.data, bytecode.size() );
+			shader.offset[ShaderStage_Vertex] = binaryOffset;
+		}
+
+		// Write Fragment Shader
+		String &codeFragment = shader.outputs[ShaderStage_Fragment];
+		if( codeFragment.length_bytes() > 0 )
+		{
+			Buffer bytecode;
+			ErrorIf( !compile_shader_bytecode_metal( codeFragment, bytecode ),
+				"Failed to compile fragment shader bytecode: '%s'", shader.name.cstr() );
+			shader.size[ShaderStage_Fragment] = bytecode.size();
+			const usize binaryOffset = Gfx::binary.write( bytecode.data, bytecode.size() );
+			shader.offset[ShaderStage_Fragment] = binaryOffset;
+		}
+	#else
 		// Write Vertex Shader
 		String &codeVertex = shader.outputs[ShaderStage_Vertex];
 		if( codeVertex.length_bytes() > 0 )
@@ -179,6 +228,7 @@ void Gfx::build()
 			const usize binaryOffset = Gfx::binary.write( codeCompute.data, shader.size[ShaderStage_Compute] );
 			shader.offset[ShaderStage_Compute] = binaryOffset;
 		}
+	#endif
 	}
 }
 
@@ -193,8 +243,9 @@ void Gfx::codegen()
 		// Header Guard
 		String &header = Gfx::headerGfx;
 		header.append( "#pragma once\n\n" );
-		header.append( "#include <core/types.hpp>\n#include <core/memory.hpp>\n" );
-		header.append( "#include <core/math.hpp>\n\n#include <core/math.hpp>\n\n" );
+		header.append( "#include <core/types.hpp>\n" );
+		header.append( "#include <core/memory.hpp>\n" );
+		header.append( "#include <core/math.hpp>\n\n" );
 
 		header.append( COMMENT_BREAK "\n\n" );
 		{
@@ -313,7 +364,6 @@ void Gfx::codegen()
 		header.append( COMMENT_BREAK "\n\n" );
 		{
 			header.append( "namespace CoreGfx\n{\n" );
-
 			header.append( "\tconstexpr u32 uniformBufferCount = " );
 			header.append( static_cast<int>( Gfx::uniformBuffers.size() ) ).append( ";\n" );
 			header.append( "}\n\n" );
@@ -328,10 +378,26 @@ void Gfx::codegen()
 	// Source (Gfx)
 	{
 		String &source = Gfx::sourceGfx;
-		source.append( "#include <gfx.generated.hpp>\n\n" );
-		source.append( "#include <binary.generated.hpp>\n\n" );
-		source.append( "#include <core/memory.hpp>\n\n" );
+		source.append( "#include <gfx.generated.hpp>\n" );
+		source.append( "#include <binary.generated.hpp>\n" );
+		source.append( "#include <core/memory.hpp>\n" );
 		source.append( "#include <manta/gfx.hpp>\n\n" );
+
+		const char *UniformBufferBindEntriesStage[] =
+		{
+			"UniformBufferBindEntriesShaderVertex",
+			"UniformBufferBindEntriesShaderFragment",
+			"UniformBufferBindEntriesShaderCompute",
+		};
+		static_assert( ARRAY_LENGTH( UniformBufferBindEntriesStage ) == SHADERSTAGE_COUNT, "Missing stage!" );
+
+		const char *UniformBufferBindTableShaderStage[] =
+		{
+			"uniformBufferBindTableShaderVertex",
+			"uniformBufferBindTableShaderFragment",
+			"uniformBufferBindTableShaderCompute",
+		};
+		static_assert( ARRAY_LENGTH( UniformBufferBindTableShaderStage ) == SHADERSTAGE_COUNT, "Missing stage!" );
 
 		source.append( COMMENT_BREAK "\n\n" );
 		{
@@ -376,77 +442,57 @@ void Gfx::codegen()
 		{
 			source.append( "namespace CoreGfx\n{\n" );
 
-			source.append( "\tbool api_init_uniform_buffers()\n\t{\n" );
-			for( UniformBuffer &uniformBuffer : Gfx::uniformBuffers )
+			for( usize shader = 0; shader < shaders.count(); shader++ )
 			{
-				source.append( "\t\tuniformBuffers[" ).append( static_cast<int>( uniformBuffer.id ) );
-				source.append( "] = nullptr;\n" );
-				source.append( "\t\tGfxUniformBuffer::" ).append( uniformBuffer.name ).append( ".zero();\n" );
-				source.append( "\t\tif( !CoreGfx::api_uniform_buffer_init( " );
-				source.append( "uniformBuffers[" ).append( static_cast<int>( uniformBuffer.id ) );
-				source.append( "], \"t_" ).append( uniformBuffer.name );
-				source.append( "\", " ).append( static_cast<int>( uniformBuffer.id ) );
-				source.append( ", sizeof( CoreGfxUniformBuffer::" );
-				source.append( uniformBuffer.name ).append( "_t ) ) ) { return false; }\n\n" );
-			}
-			source.append( "\t\t// Success!\n" );
-			source.append( "\t\treturn true;\n" );
-			source.append( "\t}\n\n" );
-
-			source.append( "\tbool api_free_uniform_buffers()\n\t{\n" );
-			source.append( "\t\tfor( u32 i = 0; i < uniformBufferCount; i++ )\n" );
-			source.append( "\t\t{\n" );
-			source.append( "\t\t\tif( !CoreGfx::api_uniform_buffer_free( uniformBuffers[i] ) ) { return false; }\n" );
-			source.append( "\t\t}\n" );
-			source.append( "\n\t\t// Success!\n" );
-			source.append( "\t\treturn true;\n" );
-			source.append( "\t}\n\n" );
-
-			static const char *shaderStages[] =
-			{
-				"vertex",   // ShaderStage_Vertex
-				"fragment", // ShaderStage_Fragment
-				"compute",  // ShaderStage_Compute
-			};
-			static_assert( ARRAY_LENGTH( shaderStages ) == SHADERSTAGE_COUNT, "Missing ShaderStage!" );
-
-			// shader_bind_uniform_buffers_*
-			for( Shader &shader : shaders )
-			{
+				source.append( "\t// " ).append( shaders[shader].name ).append( "\n" );
 				for( ShaderStage stage = 0; stage < SHADERSTAGE_COUNT; stage++ )
 				{
-					source.append( "\tstatic bool api_shader_bind_uniform_buffers_" );
-					source.append( shaderStages[stage] ).append( "_" );
-					source.append( shader.name ).append( "()\n\t{\n" );
-					for( usize i = 0; i < shader.uniformBufferIDs[stage].size(); i++ )
+					const usize count = shaders[shader].uniformBufferIDs[stage].size();
+					if( count > 0 )
 					{
-						int uniformBufferID = shader.uniformBufferIDs[stage][i];
-						int uniformBufferSlot = shader.uniformBufferSlots[stage][i];
-						UniformBuffer &uniformBuffer = Gfx::uniformBuffers[uniformBufferID];
-						source.append( "\t\tif( !CoreGfx::api_uniform_buffer_bind_" ).append( shaderStages[stage] );
-						source.append( "( CoreGfx::uniformBuffers[" );
-						source.append( uniformBufferID ).append( "], " ).append( uniformBufferSlot );
-						source.append( " ) ) { return false; }" );
-						source.append( " // ").append( uniformBuffer.name ).append( "\n" );
+						source.append( "\tconstexpr UniformBufferBindEntry " );
+						source.append( UniformBufferBindEntriesStage[stage] );
+						source.append( shader ).append( "[] =\n\t{\n" );
+						for( usize i = 0; i < shaders[shader].uniformBufferIDs[stage].size(); i++ )
+						{
+							source.append( "\t\t{ " ).append( shaders[shader].uniformBufferIDs[stage][i] );
+							source.append( ", " ).append( shaders[shader].uniformBufferSlots[stage][i] ).append( " },\n" );
+						}
+						source.append( "\t};\n" );
 					}
-					source.append( "\t\treturn true;\n" );
-					source.append( "\t}\n\n" );
+					else
+					{
+						source.append( "\tconstexpr UniformBufferBindEntry *" );
+						source.append( UniformBufferBindEntriesStage[stage] );
+						source.append( shader ).append( " = nullptr;\n" );
+					}
 				}
+				source.append( "\n" );
 			}
 
-			// api_shader_bind_uniform_buffers_vs/fs/cs[] function pointer table
 			for( ShaderStage stage = 0; stage < SHADERSTAGE_COUNT; stage++ )
 			{
-				if( stage != 0 ) { source.append( "\n" ); }
-				source.append( "\tFUNCTION_POINTER_ARRAY( bool, api_shader_bind_uniform_buffers_" );
-				source.append( shaderStages[stage] ).append( " ) =\n\t{\n" );
-				for( Shader &shader : shaders )
+				source.append( "\tconst UniformBufferBindTable " );
+				source.append( UniformBufferBindTableShaderStage[stage] );
+				source.append( "[CoreGfx::shaderCount] =\n\t{\n" );
+				for( usize shader = 0; shader < shaders.count(); shader++ )
 				{
-					source.append( "\t\tapi_shader_bind_uniform_buffers_" ).append( shaderStages[stage] ).append( "_" );
-					source.append( shader.name ).append( ",\n" );
+					source.append( "\t\t{ " );
+					source.append( UniformBufferBindEntriesStage[stage] ).append( shader );
+					source.append( ", " ).append( shaders[shader].uniformBufferIDs[stage].size() );
+					source.append( " },\n" );
 				}
-				source.append( "\t};\n" );
+				source.append( "\t};\n\n" );
 			}
+
+			source.append( "\tconst UniformBufferInitEntry uniformBufferInitEntries[] =\n\t{\n" );
+			for( UniformBuffer &uniformBuffer : Gfx::uniformBuffers )
+			{
+				source.append( "\t\t{ \"t_" ).append( uniformBuffer.name );
+				source.append( "\", " ).append( "sizeof( CoreGfxUniformBuffer::" );
+				source.append( uniformBuffer.name ).append( "_t ) },\n" );
+			}
+			source.append( "\t};\n" );
 
 			source.append( "}\n\n" );
 		}
@@ -497,8 +543,6 @@ void Gfx::codegen()
 	// Source (API)
 	{
 		String &source = Gfx::sourceAPI;
-		source.append( "#include <gfx.api.generated.hpp>\n" );
-		source.append( "#include <gfx.generated.hpp>\n\n" );
 
 		#if GRAPHICS_OPENGL
 			write_source_api_opengl( source );
@@ -516,8 +560,15 @@ void Gfx::codegen()
 			Error( "Unsupported graphics API! (%s)", BUILD_GRAPHICS );
 		#endif
 
-		// Save
-		source.save( Gfx::pathSourceAPI );
+		if( !source.is_empty() )
+		{
+			String includes;
+			includes.append( "#include <gfx.api.generated.hpp>\n" );
+			includes.append( "#include <gfx.generated.hpp>\n\n" );
+			source.insert( 0, includes );
+
+			source.save( Gfx::pathSourceAPI );
+		}
 	}
 
 	if( verbose_output() )
@@ -539,18 +590,41 @@ void Gfx::write_header_api_opengl( String &header )
 	header.append( "namespace CoreGfx\n{\n" );
 	header.append( COMMENT_BREAK "\n\n" );
 	{
-		for( Shader &shader : shaders )
+		for( Shader &shader : shaders ) { header.append( shader.header ); }
+
+		header.append( COMMENT_BREAK "\n\n" );
+
+		header.append( "constexpr usize inputLayoutFormatsVertexCount = " );
+		header.append( vertexFormats.count() ).append( ";\n" );
+		if( vertexFormats.count() > 0 )
 		{
-			header.append( shader.header );
+			header.append( "constexpr OpenGLInputLayoutFormats inputLayoutFormatsVertex[] =\n{\n" );
+			for( VertexFormat &vertexFormat : vertexFormats )
+			{
+				header.append( "\tinputLayoutFormatVertex_" ).append( vertexFormat.name ).append( ",\n" );
+			}
+			header.append( "};\n\n" );
+		}
+		else
+		{
+			header.append( "constexpr OpenGLInputLayoutFormats *inputLayoutFormatsVertex = nullptr;\n\n" );
 		}
 
-		// Vertex Input Layout
-		header.append( "extern FUNCTION_POINTER_ARRAY( GLuint, opengl_input_layout_vertex_init, GLuint, GLuint );\n\n" );
-		header.append( "extern FUNCTION_POINTER_ARRAY( GLuint, opengl_input_layout_vertex_bind, GLuint );\n\n" );
-
-		// Instance Input Layout
-		header.append( "extern FUNCTION_POINTER_ARRAY( GLuint, opengl_input_layout_instance_init, GLuint, GLuint );\n\n" );
-		header.append( "extern FUNCTION_POINTER_ARRAY( GLuint, opengl_input_layout_instance_bind, GLuint );\n\n" );
+		header.append( "constexpr usize inputLayoutFormatsInstanceCount = " );
+		header.append( instanceFormats.count() ).append( ";\n" );
+		if( instanceFormats.count() > 0 )
+		{
+			header.append( "constexpr OpenGLInputLayoutFormats inputLayoutFormatsInstance[] =\n{\n" );
+			for( InstanceFormat &instanceFormat : instanceFormats )
+			{
+				header.append( "\tinputLayoutFormatInstance_" ).append( instanceFormat.name ).append( ",\n" );
+			}
+			header.append( "};\n\n" );
+		}
+		else
+		{
+			header.append( "constexpr OpenGLInputLayoutFormats *inputLayoutFormatsInstance = nullptr;\n\n" );
+		}
 	}
 	header.append( COMMENT_BREAK "\n" );
 	header.append( "}" );
@@ -559,71 +633,7 @@ void Gfx::write_header_api_opengl( String &header )
 
 void Gfx::write_source_api_opengl( String &source )
 {
-	// CoreGfx
-	source.append( "namespace CoreGfx\n{\n" );
-	source.append( COMMENT_BREAK "\n\n" );
-	{
-		for( Shader &shader : shaders )
-		{
-			source.append( shader.source );
-		}
-
-		// Vertex Input Layout
-		if( vertexFormats.count() > 0 )
-		{
-			source.append(
-				"FUNCTION_POINTER_ARRAY( GLuint, opengl_input_layout_vertex_init, GLuint, GLuint ) =\n{\n" );
-			for( VertexFormat &vertexFormat : vertexFormats )
-			{
-				source.append( TAB ).append( "opengl_input_layout_vertex_init_" );
-				source.append( vertexFormat.name ).append( ",\n" );
-			}
-			source.append( "};\n\n" );
-
-			source.append(
-				"FUNCTION_POINTER_ARRAY( GLuint, opengl_input_layout_vertex_bind, GLuint ) =\n{\n" );
-			for( VertexFormat &vertexFormat : vertexFormats )
-			{
-				source.append( TAB ).append( "opengl_input_layout_vertex_bind_" );
-				source.append( vertexFormat.name ).append( ",\n" );
-			}
-			source.append( "};\n\n" );
-		}
-		else
-		{
-			source.append( "GLuint ( *opengl_input_layout_vertex_init[] )( GLuint, GLuint ) = { nullptr };\n" );
-			source.append( "GLuint ( *opengl_input_layout_vertex_bind[] )( GLuint ) = { nullptr };\n\n" );
-		}
-
-		// Instance Input Layout
-		if( instanceFormats.count() > 0 )
-		{
-			source.append(
-				"FUNCTION_POINTER_ARRAY( GLuint, opengl_input_layout_instance_init, GLuint, GLuint ) =\n{\n" );
-			for( InstanceFormat &instanceFormat : instanceFormats )
-			{
-				source.append( TAB ).append( "opengl_input_layout_instance_init_" );
-				source.append( instanceFormat.name ).append( ",\n" );
-			}
-			source.append( "};\n\n" );
-
-			source.append(
-				"FUNCTION_POINTER_ARRAY( GLuint, opengl_input_layout_instance_bind, GLuint ) =\n{\n" );
-			for( InstanceFormat &instanceFormat : instanceFormats )
-			{
-				source.append( TAB ).append( "opengl_input_layout_instance_bind_" );
-				source.append( instanceFormat.name ).append( ",\n" );
-			}
-			source.append( "};\n\n" );
-		}
-		else
-		{
-			source.append( "GLuint ( *opengl_input_layout_instance_init[] )( GLuint, GLuint ) = { nullptr };\n" );
-			source.append( "GLuint ( *opengl_input_layout_instance_bind[] )( GLuint ) = { nullptr };\n\n" );
-		}
-	}
-	source.append( COMMENT_BREAK "\n" );
-	source.append( "}" );
+	// ...
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -631,30 +641,47 @@ void Gfx::write_source_api_opengl( String &source )
 void Gfx::write_header_api_d3d11( String &header )
 {
 	// D3D11 Header
-	header.append( "#include <vendor/d3d11.hpp>\n\n" );
+	header.append( "#include <manta/backend/gfx/d3d11/d3d11.hpp>\n\n" );
 
 	// CoreGfx
 	header.append( "namespace CoreGfx\n{\n" );
 	header.append( COMMENT_BREAK "\n\n" );
 	{
-		for( Shader &shader : shaders )
+		for( Shader &shader : shaders ) { header.append( shader.header ); }
+
+		header.append( COMMENT_BREAK "\n\n" );
+
+		header.append( "constexpr usize inputLayoutFormatsVertexCount = " );
+		header.append( vertexFormats.count() ).append( ";\n" );
+		if( vertexFormats.count() > 0 )
 		{
-			header.append( shader.header );
+			header.append( "constexpr D3D11InputLayoutFormats inputLayoutFormatsVertex[] =\n{\n" );
+			for( VertexFormat &vertexFormat : vertexFormats )
+			{
+				header.append( "\tinputLayoutFormatVertex_" ).append( vertexFormat.name ).append( ",\n" );
+			}
+			header.append( "};\n\n" );
+		}
+		else
+		{
+			header.append( "constexpr D3D11InputLayoutFormats *inputLayoutFormatsVertex = nullptr;\n\n" );
 		}
 
-
-		header.append( "struct D3D11InputLayoutDescription\n{\n" );
-		header.append( "\tD3D11_INPUT_ELEMENT_DESC *desc;\n" );
-		header.append( "\tint count;\n" );
-		header.append( "};\n\n" );
-
-		// Per-Vertex Input Layout
-		header.append( "extern FUNCTION_POINTER_ARRAY( void, d3d11_input_layout_desc_vertex, " );
-		header.append( "D3D11InputLayoutDescription & );\n\n" );
-
-		// Per-Instance Input Layout
-		header.append( "extern FUNCTION_POINTER_ARRAY( void, d3d11_input_layout_desc_instance, " );
-		header.append( "D3D11InputLayoutDescription & );\n\n" );
+		header.append( "constexpr usize inputLayoutFormatsInstanceCount = " );
+		header.append( instanceFormats.count() ).append( ";\n" );
+		if( instanceFormats.count() > 0 )
+		{
+			header.append( "constexpr D3D11InputLayoutFormats inputLayoutFormatsInstance[] =\n{\n" );
+			for( InstanceFormat &instanceFormat : instanceFormats )
+			{
+				header.append( "\tinputLayoutFormatInstance_" ).append( instanceFormat.name ).append( ",\n" );
+			}
+			header.append( "};\n\n" );
+		}
+		else
+		{
+			header.append( "constexpr D3D11InputLayoutFormats *inputLayoutFormatsInstance = nullptr;\n\n" );
+		}
 	}
 	header.append( COMMENT_BREAK "\n" );
 	header.append( "}" );
@@ -663,53 +690,7 @@ void Gfx::write_header_api_d3d11( String &header )
 
 void Gfx::write_source_api_d3d11( String &source )
 {
-	// CoreGfx
-	source.append( "namespace CoreGfx\n{\n" );
-	source.append( COMMENT_BREAK "\n\n" );
-	{
-		for( Shader &shader : shaders )
-		{
-			source.append( shader.source );
-		}
-
-		// Per-Vertex Input Layout
-		if( vertexFormats.count() > 0 )
-		{
-			source.append( "FUNCTION_POINTER_ARRAY( void, d3d11_input_layout_desc_vertex, " );
-			source.append( "D3D11InputLayoutDescription & ) =\n{\n" );
-			for( VertexFormat &vertexFormat : vertexFormats )
-			{
-				source.append( TAB ).append( "d3d11_input_layout_desc_vertex_" );
-				source.append( vertexFormat.name ).append( ",\n" );
-			}
-			source.append( "};\n\n" );
-		}
-		else
-		{
-			source.append( "void ( *d3d11_input_layout_desc_vertex[] )" );
-			source.append( "( D3D11InputLayoutDescription & ) = { nullptr };\n\n" );
-		}
-
-		// Per-Instance Input Layout
-		if( instanceFormats.count() > 0 )
-		{
-			source.append( "FUNCTION_POINTER_ARRAY( void, d3d11_input_layout_desc_instance, " );
-			source.append( "D3D11InputLayoutDescription & ) =\n{\n" );
-			for( InstanceFormat &instanceFormat : instanceFormats )
-			{
-				source.append( TAB ).append( "d3d11_input_layout_desc_instance_" );
-				source.append( instanceFormat.name ).append( ",\n" );
-			}
-			source.append( "};\n\n" );
-		}
-		else
-		{
-			source.append( "void ( *d3d11_input_layout_desc_instance[] )" );
-			source.append( "( D3D11InputLayoutDescription & ) = { nullptr };\n\n" );
-		}
-	}
-	source.append( COMMENT_BREAK "\n" );
-	source.append( "}" );
+	// ...
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -736,27 +717,55 @@ void Gfx::write_header_api_metal( String &header )
 
 	// CoreGfx
 	header.append( "namespace CoreGfx\n{\n" );
+	header.append( "#ifdef __OBJC__\n" );
 	header.append( COMMENT_BREAK "\n\n" );
 	{
-		// TODO
-		// ...
+		for( Shader &shader : shaders ) { header.append( shader.header ); }
+
+		header.append( COMMENT_BREAK "\n\n" );
+
+		header.append( "constexpr usize inputLayoutFormatsVertexCount = " );
+		header.append( vertexFormats.count() ).append( ";\n" );
+		if( vertexFormats.count() > 0 )
+		{
+			header.append( "constexpr MetalInputLayoutFormats inputLayoutFormatsVertex[] =\n{\n" );
+			for( VertexFormat &vertexFormat : vertexFormats )
+			{
+				header.append( "\tinputLayoutFormatVertex_" ).append( vertexFormat.name ).append( ",\n" );
+			}
+			header.append( "};\n\n" );
+		}
+		else
+		{
+			header.append( "constexpr MetalInputLayoutFormats *inputLayoutFormatsVertex = nullptr;\n\n" );
+		}
+
+		header.append( "constexpr usize inputLayoutFormatsInstanceCount = " );
+		header.append( instanceFormats.count() ).append( ";\n" );
+		if( instanceFormats.count() > 0 )
+		{
+			header.append( "constexpr MetalInputLayoutFormats inputLayoutFormatsInstance[] =\n{\n" );
+			for( InstanceFormat &instanceFormat : instanceFormats )
+			{
+				header.append( "\tinputLayoutFormatInstance_" ).append( instanceFormat.name ).append( ",\n" );
+			}
+			header.append( "};\n\n" );
+		}
+		else
+		{
+			header.append( "constexpr MetalInputLayoutFormats *inputLayoutFormatsInstance = nullptr;\n\n" );
+		}
 	}
 	header.append( COMMENT_BREAK "\n" );
+	header.append( "#endif\n" );
 	header.append( "}" );
 }
 
 
 void Gfx::write_source_api_metal( String &source )
 {
-	// CoreGfx
-	source.append( "namespace CoreGfx\n{\n" );
-	source.append( COMMENT_BREAK "\n\n" );
-	{
-		// TODO
-		// ...
-	}
-	source.append( COMMENT_BREAK "\n" );
-	source.append( "}" );
+	// path_change_extension( Gfx::pathSourceAPI, sizeof( Gfx::pathSourceAPI ),  Gfx::pathSourceAPI, ".mm" );
+	// ...
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -792,7 +801,6 @@ void Gfx::cache_read( const char *path )
 	if( !asset_file_register( codegen, pathHeaderGfx ) ) { Gfx::cache.dirty = true; return; }
 	if( !asset_file_register( codegen, pathSourceGfx ) ) { Gfx::cache.dirty = true; return; }
 	if( !asset_file_register( codegen, pathHeaderAPI ) ) { Gfx::cache.dirty = true; return; }
-	if( !asset_file_register( codegen, pathSourceAPI ) ) { Gfx::cache.dirty = true; return; }
 }
 
 

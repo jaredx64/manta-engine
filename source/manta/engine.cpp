@@ -39,7 +39,6 @@ namespace Engine
 		ErrorReturnIf( !CoreObjects::init(), false, "Engine: failed to initialize object system" );
 		ErrorReturnIf( !CoreFonts::init(), false, "Engine: failed to initialize font system" );
 		ErrorReturnIf( !CoreUI::init(), false, "Engine: failed to initialize UI system" );
-
 		return true;
 	}
 
@@ -55,7 +54,6 @@ namespace Engine
 		ErrorReturnIf( !CoreThread::free(), false, "Engine: failed to free thread" );
 		ErrorReturnIf( !CoreTime::free(), false, "Engine: failed to free timer" );
 		ErrorReturnIf( !CoreAssets::free(), false, "Engine: failed to free assets" );
-
 		return true;
 	}
 }
@@ -75,44 +73,34 @@ namespace Engine
 		// Working Directory & Binary
 		path_get_directory( WORKING_DIRECTORY, sizeof( WORKING_DIRECTORY ), argv[0] );
 
+	#if 0
 		// Log
-#if false
 		PrintColor( LOG_YELLOW, "\n>" );
 		for( int i = 0; i < argc; i++ ) { PrintColor( LOG_YELLOW, " %s", argv[i] ); }
 		Print( "\n" );
-#endif
+	#endif
 
 		// Main Loop
 		{
-			// Init Engine & Project
 			ErrorIf( !Engine::init( argc, argv ), "Failed to initialize the engine" );
 			ErrorIf( !project.init( argc, argv ), "Failed to initialize the project" );
 
-			// Main Loop
 			while( !exiting )
 			{
 				Frame::start();
 				{
 					// Pre-Engine
-					{
-						Keyboard::update( Frame::delta );
-						Mouse::update( Frame::delta );
-
-						Window::update( Frame::delta );
-
-						Keyboard::reset_active();
-						Mouse::reset_active();
-					}
+					Keyboard::update( Frame::delta );
+					Mouse::update( Frame::delta );
+					Window::update( Frame::delta );
+					Keyboard::reset_active();
+					Mouse::reset_active();
 
 					// Project
-					{
-						project.update( Frame::delta );
-					}
+					project.update( Frame::delta );
 
 					// Post-Engine
-					{
-						TextEditor::listen();
-					}
+					TextEditor::listen();
 
 					// Show the window after at least 1 frame has been rendered
 					if( !painted ) { CoreWindow::show(); painted = true; }
@@ -120,16 +108,15 @@ namespace Engine
 				Frame::end();
 			}
 
-			// Free Project & Engine (if restarting--otherwise no need to cleanup)
-			#if 0
-				ErrorIf( !project.free(), "Failed to free the project" );
-				ErrorIf( !Engine::free(), "Failed to free the engine" );
-			#else
-				Debug::memoryLeakDetection = false;
-			#endif
+		#if 0
+			// Free Project & Engine (if restarting -- otherwise no need to cleanup)
+			ErrorIf( !project.free(), "Failed to free the project" );
+			ErrorIf( !Engine::free(), "Failed to free the engine" );
+		#else
+			Debug::memoryLeakDetection = false;
+		#endif
 		}
 
-		// Return Code
 		return Debug::exitCode;
 	}
 

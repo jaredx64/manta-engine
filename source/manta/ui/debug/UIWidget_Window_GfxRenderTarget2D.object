@@ -222,7 +222,7 @@ PROTECTED void render( const Delta delta, const Alpha alpha )
 	if( showChannelG ) { flags |= GfxBlendWrite_GREEN; }
 	if( showChannelB ) { flags |= GfxBlendWrite_BLUE; }
 	if( showChannelA ) { flags |= GfxBlendWrite_ALPHA; }
-	Gfx::blend_set_write( flags );
+	Gfx::blend_write_mask( flags );
 	{
 		const u16 u1 = 0x0000;
 		const u16 v1 = showInverted ? 0xFFFF : 0x0000;
@@ -237,7 +237,7 @@ PROTECTED void render( const Delta delta, const Alpha alpha )
 			Gfx::release_texture( 0, texture );
 		}
 	}
-	Gfx::blend_set_write( GfxBlendWrite_ALL );
+	Gfx::blend_write_mask( GfxBlendWrite_ALL );
 }
 
 

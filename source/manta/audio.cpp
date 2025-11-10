@@ -566,8 +566,6 @@ static int find_bus()
 	{
 		if( CoreAudio::buses[i].available ) { return i; }
 	}
-
-	// Failure
 	return -1;
 }
 
@@ -579,8 +577,6 @@ static u16 find_voice()
 	{
 		if( CoreAudio::voices[i].idBus < 0 ) { return i; }
 	}
-
-	// Failure
 	return U16_MAX;
 }
 
@@ -593,7 +589,6 @@ static u16 find_stream()
 		if( CoreAudio::sounds[i].idBus < 0 ) { return i; }
 	}
 
-	// Failure
 	return U16_MAX;
 }
 
@@ -787,10 +782,9 @@ void CoreAudio::audio_mixer( i16 *output, u32 frames )
 
 						const u32 sample = static_cast<u32>( voice.samplePosition );
 
-						const u32 sampleThis = ( sample ); // 1 sample per frame
-						const u32 sampleNext = ( voice.description.loop ?
-							( ( sample + 1 ) % framesCount ) :
-							( ( sample + 1 ) < framesCount ? ( sample + 1 ) : sample ) );
+						const u32 sampleThis = min( sample, framesCount - 1 ); // 1 sample per frame
+						const u32 sampleNext = voice.description.loop ?
+							( ( sample + 1 ) % framesCount ) : ( min( sample + 1, framesCount - 1 ) );
 
 						const float valueThis = I16_TO_FLOAT( voice.samples[sampleThis] );
 						const float valueNext = I16_TO_FLOAT( voice.samples[sampleNext] );
@@ -814,25 +808,15 @@ void CoreAudio::audio_mixer( i16 *output, u32 frames )
 						if( !voice.description.loop && voice.samplePosition >= framesCount ) { break; }
 						const u32 sample = static_cast<u32>( voice.samplePosition );
 
-						const u32 sampleThisLeft = ( sample ) * 2;
-						u32 sampleNextLeft = ( voice.description.loop ?
-							( ( sample + 1 ) % framesCount ) :
-							( ( sample + 1 ) < framesCount ? ( sample + 1 ) : sample ) ) * 2;
+						const u32 framesCountClamped = framesCount > 0 ? framesCount - 1 : 0;
+						const u32 sampleThis = min( sample, framesCountClamped );
+						const u32 sampleNext = voice.description.loop ?
+							( ( sample + 1 ) % framesCount ) : ( min( sample + 1, framesCountClamped ) );
+
+						const u32 sampleThisLeft  = sampleThis * 2;
 						const u32 sampleThisRight = sampleThisLeft + 1;
-						u32 sampleNextRight = sampleNextLeft + 1;
-
-						if( !voice.description.loop )
-						{
-							if( UNLIKELY( sampleNextLeft >= voice.samplesCount ) )
-							{
-								sampleNextLeft = sampleThisLeft;
-							}
-
-							if( UNLIKELY( sampleNextRight >= voice.samplesCount ) )
-							{
-								sampleNextRight = sampleThisRight;
-							}
-						}
+						const u32 sampleNextLeft  = sampleNext * 2;
+						const u32 sampleNextRight = sampleNextLeft + 1;
 
 						const float valueThisLeft = I16_TO_FLOAT( voice.samples[sampleThisLeft] );
 						const float valueNextLeft = I16_TO_FLOAT( voice.samples[sampleNextLeft] );
@@ -922,11 +906,12 @@ void CoreAudio::audio_mixer( i16 *output, u32 frames )
 						const u32 sample = static_cast<u32>( stream.samplePosition );
 						const u32 frame = sample; // 1 sample per frame
 
-						const u32 frameThis = frame;
+						const u32 frameThis = min( frame, framesCount - 1 );
 						const u32 bufferThis = ( frameThis >> AUDIO_STREAM_BLOCK_DIV_EXPN ) % AUDIO_STREAM_BUFFERS;
 						const u32 sampleThis = ( frameThis & AUDIO_STREAM_BLOCK_MOD_MASK );
 
-						const u32 frameNext = frame + 1;
+						const u32 frameNext = stream.description.loop ?
+							( ( frame + 1 ) % framesCount ) : ( min( frame + 1, framesCount - 1 ) );
 						const u32 bufferNext = ( frameNext >> AUDIO_STREAM_BLOCK_DIV_EXPN ) % AUDIO_STREAM_BUFFERS;
 						const u32 sampleNext = ( frameNext & AUDIO_STREAM_BLOCK_MOD_MASK );
 
@@ -972,7 +957,8 @@ void CoreAudio::audio_mixer( i16 *output, u32 frames )
 						const u32 sampleThisRight = ( ( sampleThis & AUDIO_STREAM_BLOCK_MOD_MASK ) << 1 ) + 1;
 						const u32 bufferThis = ( ( sampleThis >> AUDIO_STREAM_BLOCK_DIV_EXPN ) % AUDIO_STREAM_BUFFERS );
 
-						const u32 sampleNext = sample + 1;
+						u32 sampleNext = sample + 1;
+						if( !stream.description.loop && sampleNext >= framesCount ) { sampleNext = framesCount - 1; }
 						const u32 sampleNextLeft = ( ( sampleNext & AUDIO_STREAM_BLOCK_MOD_MASK ) << 1 ) + 0;
 						const u32 sampleNextRight = ( ( sampleNext & AUDIO_STREAM_BLOCK_MOD_MASK ) << 1 ) + 1;
 						const u32 bufferNext = ( ( sampleNext >> AUDIO_STREAM_BLOCK_DIV_EXPN ) % AUDIO_STREAM_BUFFERS );

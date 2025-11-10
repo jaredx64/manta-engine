@@ -101,10 +101,16 @@ struct Toolchain
 
 static void linkerflags_add_library( char *buffer, const usize size, const Toolchain &tc, const char *library )
 {
+#if PIPELINE_OS_MACOS
+	CoreText::macro_strappend( size, buffer, "-framework " );
+	CoreText::macro_strappend( size, buffer, library );
+	CoreText::macro_strappend( size, buffer, " " );
+#else
 	CoreText::macro_strappend( size, buffer, tc.linkerPrefixLibrary );
 	CoreText::macro_strappend( size, buffer, library );
 	CoreText::macro_strappend( size, buffer, tc.linkerExtensionLibrary );
 	CoreText::macro_strappend( size, buffer, " " );
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

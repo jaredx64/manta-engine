@@ -58,7 +58,7 @@ static bool packet_validate_delimiter( Socket &socket )
 		packet_shift_buffer( socket, byteOffset, socket.packet_buffer.tell - byteOffset );
 		return false;
 	}
-	// Success
+
 	return true;
 #else
 	return false;
@@ -102,7 +102,7 @@ static bool packet_validate_size( Socket &socket, const usize offset )
 		socket.packet_size_validation_offset = scan_size;
 	}
 
-	// Success, no spoofing detected!
+	// No spoofing detected!
 	return true;
 #else
 	return false;

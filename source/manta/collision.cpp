@@ -17,7 +17,7 @@ static bool point_in_triangle( const double_v3 &point, const double_v3 &vert0,
 
 	const double denom = dot00 * dot11 - dot01 * dot01;
 
-	if( abs( denom ) < 1e-12 )
+	if( fabs( denom ) < 1e-12 )
 	{
 		return ( point - vert0 ).length_sqr() < 1e-12 ||
 			( point - vert1 ).length_sqr() < 1e-12 ||
@@ -89,9 +89,9 @@ static double_v3 closest_point_on_triangle( const double_v3 &point, const double
 
 bool solve_quadratic( double a, double b, double c, double max_t, double &t )
 {
-	if( abs( a ) < 1e-12 )
+	if( fabs( a ) < 1e-12 )
 	{
-		if( abs( b ) < 1e-12 ) { return false; }
+		if( fabs( b ) < 1e-12 ) { return false; }
 		t = -c / b;
 		return t >= 0.0 && t <= max_t;
 	}

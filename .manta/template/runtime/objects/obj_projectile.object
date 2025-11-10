@@ -40,7 +40,8 @@ EVENT_UPDATE
 	y += lengthdir_y( speed * delta, direction );
 
 	// Destroy
-	if( x < 0.0f || x > static_cast<float>( Window::width ) || y < 0.0f || y > static_cast<float>( Window::height ) )
+	if( x < 0.0f || x > static_cast<float>( Window::width_logical() ) ||
+		y < 0.0f || y > static_cast<float>( Window::height_logical() ) )
 	{
 		Scene::objects.destroy( id );
 		return;

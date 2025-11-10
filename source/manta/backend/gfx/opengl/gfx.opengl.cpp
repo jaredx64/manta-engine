@@ -152,21 +152,21 @@ static_assert( ARRAY_LENGTH( OpenGLPrimitiveTypes ) == GFXPRIMITIVETYPE_COUNT,
 
 static const GLenum OpenGLFillModes[] =
 {
-	GL_FILL, // GfxRasterFillMode_SOLID
-	GL_LINE, // GfxRasterFillMode_WIREFRAME
+	GL_FILL, // GfxFillMode_SOLID
+	GL_LINE, // GfxFillMode_WIREFRAME
 };
 static_assert( ARRAY_LENGTH( OpenGLFillModes ) == GFXRASTERFILLMODE_COUNT,
-	"Missing GfxRasterFillMode!" );
+	"Missing GfxFillMode!" );
 
 
 static const GLenum OpenGLCullModes[] =
 {
-	GL_FRONT_AND_BACK, // GfxRasterCullMode_NONE
-	GL_FRONT,          // GfxRasterCullMode_FRONT
-	GL_BACK,           // GfxRasterCullMode_BACK
+	GL_FRONT_AND_BACK, // GfxCullMode_NONE
+	GL_FRONT,          // GfxCullMode_FRONT
+	GL_BACK,           // GfxCullMode_BACK
 };
 static_assert( ARRAY_LENGTH( OpenGLCullModes ) == GFXRASTERCULLMODE_COUNT,
-	"Missing GfxRasterCullMode!" );
+	"Missing GfxCullMode!" );
 
 
 static const GLint OpenGLFilteringModes[][2] =
@@ -251,7 +251,6 @@ static_assert( ARRAY_LENGTH( OpenGLDepthFunctions ) == GFXDEPTHFUNCTION_COUNT,
 static const GLenum OpenGLIndexBufferFormats[] =
 {
 	GL_UNSIGNED_BYTE,  // GfxIndexBufferFormat_NONE
-	GL_UNSIGNED_BYTE,  // GfxIndexBufferFormat_U8
 	GL_UNSIGNED_SHORT, // GfxIndexBufferFormat_U16
 	GL_UNSIGNED_INT,   // GfxIndexBufferFormat_U32
 };
@@ -264,8 +263,10 @@ static_assert( ARRAY_LENGTH( OpenGLIndexBufferFormats ) == GFXINDEXBUFFERFORMAT_
 struct GfxShaderResource : public GfxResource
 {
 	static void release( GfxShaderResource *&resource );
-	u32 shaderID;
+
+	u32 shaderID = 0;
 	GLuint program = 0;
+
 	usize sizeVS = 0;
 	usize sizePS = 0;
 	usize sizeCS = 0;
@@ -275,55 +276,73 @@ struct GfxShaderResource : public GfxResource
 struct GfxVertexBufferResource : public GfxResource
 {
 	static void release( GfxVertexBufferResource *&resource );
-	GLuint vao = 0;
-	GLuint vbo = 0;
-	GfxCPUAccessMode accessMode;
+
+	GfxWriteMode writeMode;
 	bool mapped = false;
+
+	u32 vertexFormat = 0;
 	byte *data = nullptr;
+	usize size = 0;
 	u32 stride = 0; // vertex size
 	u32 offset = 0;
 	u32 current = 0;
-	u32 vertexFormat = 0;
-	usize size = 0;
+
+	usize writeRangeStart = USIZE_MAX;
+	usize writeRangeEnd = 0;
+
+	GLuint vao = 0;
+	GLuint vbo = 0;
 };
 
 
 struct GfxInstanceBufferResource : public GfxResource
 {
 	static void release( GfxInstanceBufferResource *&resource );
-	GLuint vao = 0;
-	GLuint vbo = 0;
-	GfxCPUAccessMode accessMode;
+
+	GfxWriteMode writeMode;
 	bool mapped = false;
+
+	u32 instanceFormat = 0;
 	byte *data = nullptr;
+	usize size = 0;
 	u32 stride = 0; // instance size
 	u32 offset = 0;
 	u32 current = 0;
-	u32 instanceFormat = 0;
-	usize size = 0;
+
+	usize writeRangeStart = USIZE_MAX;
+	usize writeRangeEnd = 0;
+
+	GLuint vao = 0;
+	GLuint vbo = 0;
 };
 
 
 struct GfxIndexBufferResource : public GfxResource
 {
 	static void release( GfxIndexBufferResource *&resource );
-	GLuint ebo = 0;
-	GfxCPUAccessMode accessMode = GfxCPUAccessMode_NONE;
+
+	GfxWriteMode writeMode = GfxWriteMode_NONE;
+
 	GfxIndexBufferFormat format = GfxIndexBufferFormat_U32;
 	double indicesToVerticesRatio = 1.0;
 	usize size = 0;
+
+	GLuint ebo = 0;
 };
 
 
 struct GfxUniformBufferResource : public GfxResource
 {
 	static void release( GfxUniformBufferResource *&resource );
-	GLuint ubo = 0;
+
 	bool mapped = false;
+
 	byte *data = nullptr;
 	const char *name = "";
 	int index = 0;
 	usize size = 0;
+
+	GLuint ubo = 0;
 };
 
 
@@ -396,44 +415,6 @@ static bool resources_free()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // OpenGL System
-
-static void opengl_input_layout_init( const GLuint program, const u32 vertexFormat, const u32 instanceFormat )
-{
-	GLuint location = 0;
-
-	if( vertexFormat != U32_MAX )
-	{
-		// opengl_input_layout_vertex_init[] - generated table in: gfx.api.generated.hpp
-		Assert( CoreGfx::opengl_input_layout_vertex_init[vertexFormat] != nullptr );
-		location += CoreGfx::opengl_input_layout_vertex_init[vertexFormat]( program, location );
-	}
-
-	if( instanceFormat != U32_MAX )
-	{
-		// opengl_input_layout_instance_init[] - generated table in: gfx.api.generated.hpp
-		Assert( CoreGfx::opengl_input_layout_instance_init[instanceFormat] != nullptr );
-		location += CoreGfx::opengl_input_layout_instance_init[instanceFormat]( program, location );
-	}
-}
-
-
-static GLuint opengl_input_layout_bind_vertex( const u32 vertexFormat, const GLuint location )
-{
-	if( vertexFormat == U32_MAX ) { return 0; }
-	// opengl_input_layout_vertex_bind[] - generated table in: gfx.api.generated.hpp
-	Assert( CoreGfx::opengl_input_layout_vertex_bind[vertexFormat] != nullptr );
-	return CoreGfx::opengl_input_layout_vertex_bind[vertexFormat]( location );
-}
-
-
-static GLuint opengl_input_layout_bind_instance( const u32 instanceFormat, const GLuint location )
-{
-	if( instanceFormat == U32_MAX ) { return 0; }
-	// opengl_input_layout_instance_bind[] - generated table in: gfx.api.generated.hpp
-	Assert( CoreGfx::opengl_input_layout_instance_bind[instanceFormat] != nullptr );
-	return CoreGfx::opengl_input_layout_instance_bind[instanceFormat]( location );
-}
-
 
 static GLuint opengl_uniform_buffer_uniform_block_index( GfxUniformBufferResource *const resource, const int slot )
 {
@@ -514,11 +495,11 @@ static bool bind_shader( GfxShaderResource *const resource )
 	OPENGL_CHECK_ERROR( "Failed to bind shader program: %u", resource->id );
 	PROFILE_GFX( Gfx::stats.frame.shaderBinds++ );
 
-	ErrorIf( !CoreGfx::api_shader_bind_uniform_buffers_vertex[resource->shaderID](),
+	ErrorIf( !CoreGfx::shader_bind_uniform_buffers_vertex( resource->shaderID ),
 		"Failed to bind vertex shader uniform buffers! (%u)", resource->shaderID );
-	ErrorIf( !CoreGfx::api_shader_bind_uniform_buffers_fragment[resource->shaderID](),
+	ErrorIf( !CoreGfx::shader_bind_uniform_buffers_fragment( resource->shaderID ),
 		"Failed to bind fragment shader uniform buffers! (%u)", resource->shaderID );
-	ErrorIf( !CoreGfx::api_shader_bind_uniform_buffers_compute[resource->shaderID](),
+	ErrorIf( !CoreGfx::shader_bind_uniform_buffers_compute( resource->shaderID ),
 		"Failed to bind compute shader uniform buffers! (%u)", resource->shaderID );
 
 	BITFLAG_UNSET( CoreGfx::state.dirtyFlags, GfxStateDirtyFlag_SHADER );
@@ -540,7 +521,7 @@ static bool apply_pipeline_state_raster( const GfxPipelineDescription &state )
 	if( dirty || state.rasterCullMode != stateCurrent.rasterCullMode )
 	{
 		glFrontFace( GL_CW );
-		glSetEnabled( GL_CULL_FACE, state.rasterCullMode != GfxRasterCullMode_NONE );
+		glSetEnabled( GL_CULL_FACE, state.rasterCullMode != GfxCullMode_NONE );
 		glCullFace( OpenGLCullModes[state.rasterCullMode] );
 	}
 
@@ -719,7 +700,7 @@ static bool bind_targets( GfxRenderTargetResource *const resources[] )
 	{
 		GfxRenderTargetResource *const resource = resources[slot];
 
-		if( resource != nullptr && stateBoundTargetResources[slot] != resource )
+		if( stateBoundTargetResources[slot] != nullptr && stateBoundTargetResources[slot] != resource )
 		{
 			render_target_2d_resolve_msaa( stateBoundTargetResources[slot] );
 		}
@@ -863,7 +844,7 @@ static bool bind_targets( GfxRenderTargetResource *const resources[] )
 	else
 	{
 		Gfx::set_matrix_mvp( cacheMatrixModel, cacheMatrixView, cacheMatrixPerspective );
-		Gfx::viewport_set_size( Window::width * Window::scale, Window::height * Window::scale );
+		Gfx::viewport_set_size( Gfx::swapchain_width(), Gfx::swapchain_height() );
 	}
 
 	BITFLAG_UNSET( CoreGfx::state.dirtyFlags, GfxStateDirtyFlag_TARGETS );
@@ -894,13 +875,17 @@ static void render_pass_validate()
 
 bool CoreGfx::api_init()
 {
+#if SWAPCHAIN_DPI_SCALED
 	const u16 w = Window::width;
 	const u16 h = Window::height;
-	const u16 f = Window::fullscreen;
+#else
+	const u16 w = Window::width * Window::scale;
+	const u16 h = Window::height * Window::scale;
+#endif
 
 	ErrorReturnIf( !opengl_init(), false, "%s: Failed to init OpenGL", __FUNCTION__ );
 	OPENGL_CHECK_ERRORS_SCOPE
-	ErrorReturnIf( !api_swapchain_init( w, h, f ), false, "%s: Failed to create swap chain", __FUNCTION__ );
+	ErrorReturnIf( !api_swapchain_init( w, h ), false, "%s: Failed to create swap chain", __FUNCTION__ );
 	ErrorReturnIf( !resources_init(), false, "%s: Failed to create gfx resources", __FUNCTION__ );
 
 	uniformBufferUniformBlockIndices.init();
@@ -996,13 +981,12 @@ void CoreGfx::api_clear_depth( const float depth )
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Render State
 
-bool CoreGfx::api_swapchain_init( const u16 width, const u16 height, const float dpi )
+bool CoreGfx::api_swapchain_init( const u16 width, const u16 height )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 
 	CoreGfx::state.swapchain.width = width;
 	CoreGfx::state.swapchain.height = height;
-	CoreGfx::state.swapchain.dpi = dpi;
 
 #if SWAPCHAIN_DEPTH_ENABLED
 	PROFILE_GFX( Gfx::stats.gpuMemorySwapchain +=
@@ -1016,7 +1000,7 @@ bool CoreGfx::api_swapchain_init( const u16 width, const u16 height, const float
 	// Since we use do not explicitly create any swapchain color/depth attachments, OpenGL falls back to the
 	// system supplied swapchain for the window. Therefore, we do not have to do anything resource-wise here.
 
-	CoreGfx::api_viewport_set_size( width, height, dpi );
+	CoreGfx::api_viewport_set_size( width, height );
 	return true;
 }
 
@@ -1041,17 +1025,15 @@ bool CoreGfx::api_swapchain_free()
 }
 
 
-bool CoreGfx::api_swapchain_set_size( const u16 width, const u16 height, const float dpi )
+bool CoreGfx::api_swapchain_set_size( const u16 width, const u16 height )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 
 	const u16 widthPrevious = CoreGfx::state.swapchain.width;
 	const u16 heightPrevious = CoreGfx::state.swapchain.height;
-	const float dpiPrevious = CoreGfx::state.swapchain.dpi;
 
 	CoreGfx::state.swapchain.width = width;
 	CoreGfx::state.swapchain.height = height;
-	CoreGfx::state.swapchain.dpi = dpi;
 
 	PROFILE_GFX( Gfx::stats.gpuMemorySwapchain -=
 		GFX_SIZE_IMAGE_COLOR_BYTES( widthPrevious, heightPrevious, 1, GfxColorFormat_R8G8B8A8_FLOAT ) * 2 );
@@ -1076,10 +1058,10 @@ bool CoreGfx::api_swapchain_set_size( const u16 width, const u16 height, const f
 }
 
 
-bool CoreGfx::api_viewport_init( const u16 width, const u16 height, const float dpi )
+bool CoreGfx::api_viewport_init( const u16 width, const u16 height )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
-	return api_viewport_set_size( width, height, dpi );
+	return api_viewport_set_size( width, height );
 }
 
 
@@ -1090,13 +1072,12 @@ bool CoreGfx::api_viewport_free()
 }
 
 
-bool CoreGfx::api_viewport_set_size( const u16 width, const u16 height, const float dpi )
+bool CoreGfx::api_viewport_set_size( const u16 width, const u16 height )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 
 	CoreGfx::state.viewport.width = width;
 	CoreGfx::state.viewport.height = height;
-	CoreGfx::state.viewport.dpi = dpi;
 
 	glViewport( 0, 0, width, height );
 
@@ -1229,8 +1210,31 @@ bool CoreGfx::api_shader_init( GfxShaderResource *&resource, const u32 shaderID,
 	nglAttachShader( resource->program, shaderFragment );
 	// TODO: compute shaders (must upgrade to Opengl 4.5 & deprecate it on macOS)
 
-	opengl_input_layout_init( resource->program, CoreGfx::shaderEntries[shaderID].vertexFormat,
-		CoreGfx::shaderEntries[shaderID].instanceFormat );
+	GLuint inputLayoutElementsCount = 0U;
+
+	if( shaderEntry.vertexFormat != U32_MAX )
+	{
+		Assert( shaderEntry.vertexFormat < inputLayoutFormatsVertexCount );
+		const OpenGLInputLayoutFormats &table = inputLayoutFormatsVertex[shaderEntry.vertexFormat];
+		for( GLuint i = 0; i < table.attributesCount; i++ )
+		{
+			const OpenGLInputLayoutAttributes &attributes = table.attributes[i];
+			nglBindAttribLocation( resource->program, inputLayoutElementsCount, attributes.name );
+			inputLayoutElementsCount++;
+		}
+	}
+
+	if( shaderEntry.instanceFormat != U32_MAX )
+	{
+		Assert( shaderEntry.instanceFormat < inputLayoutFormatsInstanceCount );
+		const OpenGLInputLayoutFormats &table = inputLayoutFormatsInstance[shaderEntry.instanceFormat];
+		for( GLuint i = 0; i < table.attributesCount; i++ )
+		{
+			const OpenGLInputLayoutAttributes &attributes = table.attributes[i];
+			nglBindAttribLocation( resource->program, inputLayoutElementsCount, attributes.name );
+			inputLayoutElementsCount++;
+		}
+	}
 
 	nglLinkProgram( resource->program );
 
@@ -1274,6 +1278,39 @@ bool CoreGfx::api_shader_free( GfxShaderResource *&resource )
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Buffer
+
+bool CoreGfx::api_buffer_init( GfxBufferResource *&resource, const usize capacity )
+{
+	return true;
+}
+
+
+bool CoreGfx::api_buffer_free( GfxBufferResource *&resource )
+{
+	return true;
+}
+
+
+void CoreGfx::api_buffer_write_begin( GfxBufferResource *const resource )
+{
+	// ...
+}
+
+
+void CoreGfx::api_buffer_write_end( GfxBufferResource *const resource )
+{
+	// ...
+}
+
+
+void CoreGfx::api_buffer_write( GfxBufferResource *const resource, const void *const data,
+	const usize size, const usize offset )
+{
+	// ...
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Vertex Buffer
 
 void GfxVertexBufferResource::release( GfxVertexBufferResource *&resource )
@@ -1289,24 +1326,23 @@ void GfxVertexBufferResource::release( GfxVertexBufferResource *&resource )
 }
 
 
-bool CoreGfx::api_vertex_buffer_init_dynamic( GfxVertexBufferResource *&resource, const u32 vertexFormatID,
-	const GfxCPUAccessMode accessMode, const u32 size, const u32 stride )
+bool CoreGfx::api_vertex_buffer_init( GfxVertexBufferResource *&resource, const u32 vertexFormatID,
+	const GfxWriteMode writeMode, const u32 capacity, const u32 stride )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource == nullptr );
-	Assert( accessMode == GfxCPUAccessMode_WRITE_DISCARD || accessMode == GfxCPUAccessMode_WRITE_NO_OVERWRITE );
-
 	resource = vertexBufferResources.make_new();
-	resource->stride = stride;
-	resource->accessMode = accessMode;
+	resource->writeMode = writeMode == GfxWriteMode_RING ? GfxWriteMode_OVERWRITE : writeMode; // TODO
+	resource->mapped = false;
 	resource->vertexFormat = vertexFormatID;
-	resource->size = size;
+	resource->size = capacity;
+	resource->stride = stride;
 
 	nglGenVertexArrays( 1, &resource->vao );
 	nglGenBuffers( 1, &resource->vbo );
 
 	nglBindBuffer( GL_ARRAY_BUFFER, resource->vbo );
-	nglBufferData( GL_ARRAY_BUFFER, size, nullptr, GL_STATIC_DRAW ); // TODO: GL_DYNAMIC_DRAW
+	nglBufferData( GL_ARRAY_BUFFER, capacity, nullptr, GL_STATIC_DRAW ); // TODO: GL_DYNAMIC_DRAW
 
 	if( OPENGL_ERROR() )
 	{
@@ -1315,18 +1351,6 @@ bool CoreGfx::api_vertex_buffer_init_dynamic( GfxVertexBufferResource *&resource
 	}
 
 	PROFILE_GFX( Gfx::stats.gpuMemoryVertexBuffers += resource->size );
-	return true;
-}
-
-
-bool CoreGfx::api_vertex_buffer_init_static( GfxVertexBufferResource *&resource, const u32 vertexFormatID,
-	const GfxCPUAccessMode accessMode, const void *const data,
-	const u32 size, const u32 stride )
-{
-	OPENGL_CHECK_ERRORS_SCOPE
-	Assert( resource == nullptr );
-	Assert( accessMode == GfxCPUAccessMode_WRITE_DISCARD || accessMode == GfxCPUAccessMode_WRITE_NO_OVERWRITE );
-	GRAPHICS_API_IMPLEMENTATION_WARNING // TODO: Implement this
 	return true;
 }
 
@@ -1349,34 +1373,37 @@ void CoreGfx::api_vertex_buffer_write_begin( GfxVertexBufferResource *const reso
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
-	if( resource->mapped == true ) { return; }
-
 	nglBindBuffer( GL_ARRAY_BUFFER, resource->vbo );
 	OPENGL_CHECK_ERROR( "Failed to bind vertex buffer for write begin (resource: %u)", resource->id )
 
 	GLbitfield access = 0;
-	switch( resource->accessMode )
+	switch( resource->writeMode )
 	{
-		case GfxCPUAccessMode_WRITE:
+		default:
+		case GfxWriteMode_ONCE:
 			access = GL_MAP_WRITE_BIT;
 		break;
 
-		case GfxCPUAccessMode_WRITE_DISCARD:
+		case GfxWriteMode_OVERWRITE:
 			access = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT;
 		break;
 
-		default:
-		case GfxCPUAccessMode_WRITE_NO_OVERWRITE: // TODO: Implement this
-			access = GL_MAP_WRITE_BIT;
+		case GfxWriteMode_RING:
+			access = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT; // TODO: Temporary
+			//access = GL_MAP_WRITE_BIT | GL_MAP_UNSYNCHRONIZED_BIT;
 		break;
 	}
 
+	Assert( !resource->mapped );
 	resource->data = reinterpret_cast<byte *>( nglMapBufferRange( GL_ARRAY_BUFFER, 0, resource->size, access ) );
 	OPENGL_CHECK_ERROR( "Failed to map vertex buffer for write begin (resource: %u)", resource->id )
-
 	resource->mapped = true;
+
 	resource->current = 0;
 	resource->offset = 0;
+
+	resource->writeRangeStart = USIZE_MAX;
+	resource->writeRangeEnd = 0LLU;
 }
 
 
@@ -1385,29 +1412,35 @@ void CoreGfx::api_vertex_buffer_write_end( GfxVertexBufferResource *const resour
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
-	if( resource->mapped == false ) { return; }
-
 	nglBindBuffer( GL_ARRAY_BUFFER, resource->vbo );
-	OPENGL_CHECK_ERROR( "Failed to bind vertex buffer for write end (resource: %u)", resource->id )
+	OPENGL_CHECK_ERROR( "Failed to bind vertex buffer for write end (resource: %u)", resource->id );
 
+	Assert( resource->mapped );
 	nglUnmapBuffer( GL_ARRAY_BUFFER );
-	OPENGL_CHECK_ERROR( "Failed to unmap vertex buffer for write end (resource: %u)", resource->id )
-
+	OPENGL_CHECK_ERROR( "Failed to unmap vertex buffer for write end (resource: %u)", resource->id );
 	resource->mapped = false;
+
+#if 0 // TODO: Temporary
+	if( resource->writeMode == GfxWriteMode_RING )
+	{
+		if( resource->writeRangeEnd <= resource->writeRangeStart ) { return; }
+		const GLintptr offset = static_cast<GLintptr>( resource->writeRangeStart );
+		const GLsizeiptr length = static_cast<GLsizeiptr>( resource->writeRangeEnd - resource->writeRangeStart );
+		nglFlushMappedBufferRange( GL_ARRAY_BUFFER, offset, length );
+	}
+#endif
 }
 
 
-bool CoreGfx::api_vertex_buffer_write( GfxVertexBufferResource *const resource, const void *const data, const u32 size )
+void CoreGfx::api_vertex_buffer_write( GfxVertexBufferResource *const resource, const void *const data, const u32 size )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
-	Assert( data != nullptr );
 
 	Assert( resource->mapped );
+	Assert( data != nullptr );
 	memory_copy( resource->data + resource->current, data, size );
 	resource->current += size;
-
-	return true;
 }
 
 
@@ -1435,24 +1468,23 @@ void GfxInstanceBufferResource::release( GfxInstanceBufferResource *&resource )
 }
 
 
-bool CoreGfx::api_instance_buffer_init_dynamic( GfxInstanceBufferResource *&resource,
-	const u32 instanceFormatID, const GfxCPUAccessMode accessMode, const u32 size, const u32 stride )
+bool CoreGfx::api_instance_buffer_init( GfxInstanceBufferResource *&resource,
+	const u32 instanceFormatID, const GfxWriteMode writeMode, const u32 capacity, const u32 stride )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource == nullptr );
-	Assert( accessMode == GfxCPUAccessMode_WRITE_DISCARD || accessMode == GfxCPUAccessMode_WRITE_NO_OVERWRITE );
-
 	resource = instanceBufferResources.make_new();
-	resource->stride = stride;
-	resource->accessMode = accessMode;
+	resource->writeMode = writeMode == GfxWriteMode_RING ? GfxWriteMode_OVERWRITE : writeMode;
+	resource->mapped = false;
 	resource->instanceFormat = instanceFormatID;
-	resource->size = size;
+	resource->size = capacity;
+	resource->stride = stride;
 
 	nglGenVertexArrays( 1, &resource->vao );
 	nglGenBuffers( 1, &resource->vbo );
 
 	nglBindBuffer( GL_ARRAY_BUFFER, resource->vbo );
-	nglBufferData( GL_ARRAY_BUFFER, size, nullptr, GL_STATIC_DRAW ); // TODO: GL_DYNAMIC_DRAW
+	nglBufferData( GL_ARRAY_BUFFER, capacity, nullptr, GL_STATIC_DRAW ); // TODO: GL_DYNAMIC_DRAW
 
 	if( OPENGL_ERROR() )
 	{
@@ -1461,18 +1493,6 @@ bool CoreGfx::api_instance_buffer_init_dynamic( GfxInstanceBufferResource *&reso
 	}
 
 	PROFILE_GFX( Gfx::stats.gpuMemoryInstanceBuffers += resource->size );
-	return true;
-}
-
-
-bool CoreGfx::api_instance_buffer_init_static( GfxInstanceBufferResource *&resource,
-	const u32 instanceFormatID, const GfxCPUAccessMode accessMode, const void *const data,
-	const u32 size, const u32 stride )
-{
-	OPENGL_CHECK_ERRORS_SCOPE
-	Assert( resource == nullptr );
-	Assert( accessMode == GfxCPUAccessMode_WRITE_DISCARD || accessMode == GfxCPUAccessMode_WRITE_NO_OVERWRITE );
-	GRAPHICS_API_IMPLEMENTATION_WARNING // TODO: Implement this
 	return true;
 }
 
@@ -1495,34 +1515,37 @@ void CoreGfx::api_instance_buffer_write_begin( GfxInstanceBufferResource *const 
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
-	if( resource->mapped == true ) { return; }
-
 	nglBindBuffer( GL_ARRAY_BUFFER, resource->vbo );
 	OPENGL_CHECK_ERROR( "Failed to bind instance buffer for write begin (resource: %u)", resource->id )
 
 	GLbitfield access = 0;
-	switch( resource->accessMode )
+	switch( resource->writeMode )
 	{
-		case GfxCPUAccessMode_WRITE:
+		default:
+		case GfxWriteMode_ONCE:
 			access = GL_MAP_WRITE_BIT;
 		break;
 
-		case GfxCPUAccessMode_WRITE_DISCARD:
+		case GfxWriteMode_OVERWRITE:
 			access = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT;
 		break;
 
-		default:
-		case GfxCPUAccessMode_WRITE_NO_OVERWRITE: // TODO: Implement this
-			access = GL_MAP_WRITE_BIT;
+		case GfxWriteMode_RING:
+			access = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT; // TODO: Temporary
+			//access = GL_MAP_WRITE_BIT | GL_MAP_UNSYNCHRONIZED_BIT;
 		break;
 	}
 
+	Assert( !resource->mapped );
 	resource->data = reinterpret_cast<byte *>( nglMapBufferRange( GL_ARRAY_BUFFER, 0, resource->size, access ) );
 	OPENGL_CHECK_ERROR( "Failed to map instance buffer for write begin (resource: %u)", resource->id )
-
 	resource->mapped = true;
+
 	resource->current = 0;
 	resource->offset = 0;
+
+	resource->writeRangeStart = USIZE_MAX;
+	resource->writeRangeEnd = 0LLU;
 }
 
 
@@ -1531,30 +1554,36 @@ void CoreGfx::api_instance_buffer_write_end( GfxInstanceBufferResource *const re
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
-	if( resource->mapped == false ) { return; }
-
 	nglBindBuffer( GL_ARRAY_BUFFER, resource->vbo );
 	OPENGL_CHECK_ERROR( "Failed to bind instance buffer for write end (resource: %u)", resource->id )
 
+	Assert( resource->mapped );
 	nglUnmapBuffer( GL_ARRAY_BUFFER );
 	OPENGL_CHECK_ERROR( "Failed to unmap instance buffer for write end (resource: %u)", resource->id )
-
 	resource->mapped = false;
+
+#if 0 // TODO: Temporary
+	if( resource->writeMode == GfxWriteMode_RING )
+	{
+		if( resource->writeRangeEnd <= resource->writeRangeStart ) { return; }
+		const GLintptr offset = static_cast<GLintptr>( resource->writeRangeStart );
+		const GLsizeiptr length = static_cast<GLsizeiptr>( resource->writeRangeEnd - resource->writeRangeStart );
+		nglFlushMappedBufferRange( GL_ARRAY_BUFFER, offset, length );
+	}
+#endif
 }
 
 
-bool CoreGfx::api_instance_buffer_write( GfxInstanceBufferResource *const resource,
+void CoreGfx::api_instance_buffer_write( GfxInstanceBufferResource *const resource,
 	const void *const data, const u32 size )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
-	Assert( data != nullptr );
 
 	Assert( resource->mapped );
+	Assert( data != nullptr );
 	memory_copy( resource->data + resource->current, data, size );
 	resource->current += size;
-
-	return true;
 }
 
 
@@ -1583,7 +1612,7 @@ void GfxIndexBufferResource::release( GfxIndexBufferResource *&resource )
 
 bool CoreGfx::api_index_buffer_init( GfxIndexBufferResource *&resource, void *data, const u32 size,
 	const double indToVertRatio,
-	const GfxIndexBufferFormat format, const GfxCPUAccessMode accessMode )
+	const GfxIndexBufferFormat format, const GfxWriteMode writeMode )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource == nullptr );
@@ -1591,7 +1620,7 @@ bool CoreGfx::api_index_buffer_init( GfxIndexBufferResource *&resource, void *da
 	Assert( format < GFXINDEXBUFFERFORMAT_COUNT );
 
 	resource = indexBufferResources.make_new();
-	resource->accessMode = accessMode;
+	resource->writeMode = writeMode;
 	resource->format = format;
 	resource->indicesToVerticesRatio = indToVertRatio;
 	resource->size = size;
@@ -1685,7 +1714,7 @@ void CoreGfx::api_uniform_buffer_write_begin( GfxUniformBufferResource *const re
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
-	if( resource->mapped == true ) { return; }
+	Assert( !resource->mapped );
 	resource->mapped = true;
 }
 
@@ -1695,23 +1724,21 @@ void CoreGfx::api_uniform_buffer_write_end( GfxUniformBufferResource *const reso
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
-	if( resource->mapped == false ) { return; }
+	Assert( resource->mapped );
 	resource->mapped = false;
 }
 
 
-bool CoreGfx::api_uniform_buffer_write( GfxUniformBufferResource *const resource, const void *data )
+void CoreGfx::api_uniform_buffer_write( GfxUniformBufferResource *const resource, const void *data )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
-	Assert( data != nullptr );
-	Assert( resource->mapped );
 
+	Assert( resource->mapped );
+	Assert( data != nullptr );
 	nglBindBuffer( GL_UNIFORM_BUFFER, resource->ubo );
 	nglBufferSubData( GL_UNIFORM_BUFFER, 0, static_cast<GLsizeiptr>( resource->size ), data );
 	nglBindBuffer( GL_UNIFORM_BUFFER, 0 );
-
-	return true;
 }
 
 
@@ -2000,7 +2027,6 @@ bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 			{
 				GfxTextureResource::release( resourceColor );
 				GfxRenderTargetResource::release( resource );
-				PrintLn( "%u, %u", desc.colorFormat, desc.depthFormat );
 				ErrorReturnMsg( false, "%s: failed to upload color single-sample texture data (%d)",
 					__FUNCTION__, glGetError() );
 			}
@@ -2549,20 +2575,74 @@ bool CoreGfx::api_draw(
 	}
 
 	// Bind Vertex Buffer
-	GLuint location = 0;
-	if( resourceVertex != nullptr )
+	GLuint inputLayoutElementsCount = 0U;
+
+	if( resourceVertex != nullptr && resourceVertex->vertexFormat != U32_MAX )
 	{
 		nglBindBuffer( GL_ARRAY_BUFFER, resourceVertex->vbo );
-		OPENGL_CHECK_ERROR( "Failed to bind vertex buffer for draw (resource: %u)", resourceVertex->id )
-		location = opengl_input_layout_bind_vertex( resourceVertex->vertexFormat, 0 );
+
+		Assert( resourceVertex->vertexFormat < inputLayoutFormatsVertexCount );
+		const OpenGLInputLayoutFormats &table = inputLayoutFormatsVertex[resourceVertex->vertexFormat];
+		for( GLuint i = 0; i < table.attributesCount; i++ )
+		{
+			const OpenGLInputLayoutAttributes &attributes = table.attributes[i];
+
+			switch( attributes.type )
+			{
+				case OpenGLInputAttributeType_FLOAT:
+					nglVertexAttribPointer( inputLayoutElementsCount, attributes.components, attributes.format,
+						attributes.normalized, table.stepStride, reinterpret_cast<void *>( attributes.offset ) );
+				break;
+
+				case OpenGLInputAttributeType_DOUBLE:
+					nglVertexAttribLPointer( inputLayoutElementsCount, attributes.components, attributes.format,
+						table.stepStride, reinterpret_cast<void *>( attributes.offset ) );
+				break;
+
+				case OpenGLInputAttributeType_INTEGER:
+					nglVertexAttribIPointer( inputLayoutElementsCount, attributes.components, attributes.format,
+						table.stepStride, reinterpret_cast<void *>( attributes.offset ) );
+				break;
+			}
+
+			nglEnableVertexAttribArray( inputLayoutElementsCount );
+			nglVertexAttribDivisor( inputLayoutElementsCount, 0 );
+			inputLayoutElementsCount++;
+		}
 	}
 
-	// Bind Instance Buffer
-	if( resourceInstance != nullptr )
+	if( resourceInstance != nullptr && resourceInstance->instanceFormat != U32_MAX )
 	{
 		nglBindBuffer( GL_ARRAY_BUFFER, resourceInstance->vbo );
-		OPENGL_CHECK_ERROR( "Failed to bind instance buffer for draw (resource: %u)", resourceInstance->id )
-		opengl_input_layout_bind_instance( resourceInstance->instanceFormat, location );
+
+		Assert( resourceInstance->instanceFormat < inputLayoutFormatsInstanceCount );
+		const OpenGLInputLayoutFormats &table = inputLayoutFormatsInstance[resourceInstance->instanceFormat];
+		for( GLuint i = 0; i < table.attributesCount; i++ )
+		{
+			const OpenGLInputLayoutAttributes &attributes = table.attributes[i];
+
+			switch( attributes.type )
+			{
+				case OpenGLInputAttributeType_FLOAT:
+					nglVertexAttribPointer( inputLayoutElementsCount, attributes.components, attributes.format,
+						attributes.normalized, table.stepStride, reinterpret_cast<void *>( attributes.offset ) );
+				break;
+
+				case OpenGLInputAttributeType_DOUBLE:
+					nglVertexAttribLPointer( inputLayoutElementsCount, attributes.components, attributes.format,
+						table.stepStride, reinterpret_cast<void *>( attributes.offset ) );
+				break;
+
+				case OpenGLInputAttributeType_INTEGER:
+					nglVertexAttribIPointer( inputLayoutElementsCount, attributes.components, attributes.format,
+						table.stepStride, reinterpret_cast<void *>( attributes.offset ) );
+				break;
+			}
+
+			nglEnableVertexAttribArray( inputLayoutElementsCount );
+			nglVertexAttribDivisor( inputLayoutElementsCount, 1 );
+			inputLayoutElementsCount++;
+		}
 	}
 
 	// Bind Index Buffer
@@ -2631,6 +2711,11 @@ void CoreGfx::api_render_command_execute( const GfxRenderCommand &command )
 	if( !command.workFunctionInvoker ) { return; }
 	command.workFunctionInvoker( command.workFunction,
 		GfxRenderCommand::renderCommandArgsStack.get( command.workPayloadOffset, command.workPayloadSize ) );
+}
+
+
+void CoreGfx::api_render_command_execute_post( const GfxRenderCommand &command )
+{
 }
 
 

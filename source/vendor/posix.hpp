@@ -9,6 +9,7 @@
 		#include <limits.h>
 		#include <time.h>
 		#include <libgen.h>
+		#include <sched.h>
 		#include <sys/stat.h>
 		#include <sys/mman.h>
 	#include <vendor/conflicts.hpp>
@@ -154,4 +155,6 @@
 	extern "C" int rmdir(const char *);
 
 	extern "C" char *dirname(char *);
+
+	extern "C" int sched_yield();
 #endif

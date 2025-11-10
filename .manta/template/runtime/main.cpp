@@ -41,7 +41,8 @@ namespace Project
 		Gfx::frame_begin();
 		{
 			Gfx::clear_color( { 20, 20, 40 } );
-			Gfx::set_matrix_mvp_2d_orthographic( 0.0f, 0.0f, 1.0f, 0.0f, Window::width, Window::height );
+			Gfx::set_matrix_mvp_2d_orthographic( 0.0f, 0.0f, 1.0f, 0.0f,
+				Window::width_logical(), Window::height_logical() );
 
 			// Draw Scene
 			scene_draw( delta );

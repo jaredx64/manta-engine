@@ -58,5 +58,6 @@ META( void, glFramebufferRenderbuffer, GLenum, GLenum, GLenum, GLuint )
 META( void, glTexImage2DMultisample, GLenum, GLsizei, GLint, GLsizei, GLsizei, GLboolean )
 META( void, glDrawArraysInstanced, GLenum, GLint, GLsizei, GLsizei )
 META( void, glDrawElementsInstanced, GLenum, GLsizei, GLenum, const void *, GLsizei )
+META( void, glFlushMappedBufferRange, GLenum, GLintptr, GLsizeiptr )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

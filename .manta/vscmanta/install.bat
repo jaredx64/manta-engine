@@ -5,5 +5,5 @@ xcopy syntax       extension\syntax /i
 xcopy extension.js extension
 xcopy package.json extension
 
-7z a -tzip -sdel custom.vsix extension
-code --install-extension custom.vsix && del custom.vsix
+7z a -tzip -sdel vscmanta.vsix extension
+code --install-extension vscmanta.vsix

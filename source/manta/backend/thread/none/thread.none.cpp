@@ -2,20 +2,35 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Thread::sleep( u32 milliseconds )
+void Thread::sleep( const u32 milliseconds )
 {
 }
 
 
-ThreadID Thread::id()
+void Thread::yield()
 {
-	return ThreadID { };
+}
+
+
+void Thread::pause()
+{
+}
+
+
+Thread_ID Thread::id()
+{
+	return Thread_ID { };
 }
 
 
 void *Thread::create( ThreadFunction function )
 {
 	return nullptr;
+}
+
+
+void Thread::free( void *thread )
+{
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

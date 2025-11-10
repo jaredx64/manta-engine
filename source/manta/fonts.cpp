@@ -135,7 +135,6 @@ bool CoreFonts::init()
 	bitmap = reinterpret_cast<byte *>(
 		memory_alloc( CoreFonts::FONTS_GLYPH_SIZE_MAX * CoreFonts::FONTS_GLYPH_SIZE_MAX ) );
 
-	// Success
 	return true;
 }
 
@@ -165,7 +164,6 @@ bool CoreFonts::free()
 		bitmap = nullptr;
 	}
 
-	// Success
 	return true;
 }
 

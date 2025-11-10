@@ -286,8 +286,6 @@ bool ObjectContext::init()
 		bucketCache[TYPE_BUCKET( category, bucket->type )] = bucketID;
 	}
 
-
-	// Success
 	return true;
 }
 
@@ -326,7 +324,6 @@ bool ObjectContext::free()
 	capacity = 0;
 	current = 0;
 
-	// Success
 	return true;
 }
 
@@ -351,7 +348,6 @@ bool ObjectContext::grow()
 	// Update capacity
 	capacity = static_cast<u16>( newCapacity );
 
-	// Success
 	return true;
 }
 
@@ -368,7 +364,6 @@ u16 ObjectContext::new_bucket( const u16 type )
 	if( !buckets[current].init( type ) ) { return NULL_BUCKET; }
 	buckets[current].bucketID = current;
 
-	// Success
 	return current++;
 }
 
@@ -681,8 +676,6 @@ ObjectInstance ObjectContext::ObjectBucket::new_object( void *ptr )
 
 	// Create Event
 	if( LIKELY( !context.disableEvents ) ) { object->event_create(); }
-
-	// Success
 	return object->id;
 }
 
@@ -747,8 +740,6 @@ bool ObjectContext::ObjectBucket::delete_object( const u16 index, const u16 gene
 	context.objectCount[TYPE_BUCKET( context.category, type )]--;
 	context.objectCount[NULL_TYPE]--; // total object count
 	ObjectInstance::Serialization::dirty |= ( ObjectInstance::Serialization::context == &context );
-
-	// Success
 	return true;
 }
 
@@ -799,17 +790,14 @@ bool ObjectContext::ObjectIteratorAll::find_object_ptr( ObjectIterator &itr,
 		const CoreObjects::DEFAULT_t *const object =
 			reinterpret_cast<const CoreObjects::DEFAULT_t *>( objectPtr );
 
-		// Skip dead or deactivated objects
 		if( !object->id.alive ) { continue; }
 
-		// Success
 		itr.ptr = objectPtr;
 		itr.bucketID = bucket->bucketID;
 		itr.index = static_cast<u16>( i );
 		return true;
 	}
 
-	// Failure
 	return false;
 }
 
@@ -827,17 +815,14 @@ bool ObjectContext::ObjectIteratorActive::find_object_ptr( ObjectIterator &itr,
 		const CoreObjects::DEFAULT_t *const object =
 			reinterpret_cast<const CoreObjects::DEFAULT_t *>( objectPtr );
 
-		// Skip dead or deactivated objects
 		if( !object->id.alive || object->id.deactivated ) { continue; }
 
-		// Success
 		itr.ptr = objectPtr;
 		itr.bucketID = bucket->bucketID;
 		itr.index = static_cast<u16>( i );
 		return true;
 	}
 
-	// Failure
 	return false;
 }
 

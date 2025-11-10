@@ -4,7 +4,7 @@
 
 #if USE_OFFICIAL_HEADERS
 	#include <vendor/conflicts.hpp>
-		#include <d3d11_1.h>
+		#include <d3d11_4.h>
 		#include <dxgi1_3.h>
 		#include <windows.h>
 	#include <vendor/conflicts.hpp>
@@ -13,6 +13,9 @@
 
 	#define	D3D11_SDK_VERSION 7
 	#define D3D11_FLOAT32_MAX 3.402823466e+38f
+
+	#define S_OK ((HRESULT)0L)
+	#define S_FALSE ((HRESULT)1L)
 
 	enum D3D_DRIVER_TYPE
 	{
@@ -326,6 +329,31 @@
 		D3D11_UAV_DIMENSION_TEXTURE3D = 8
 	};
 
+	enum D3D11_ASYNC_GETDATA_FLAG
+	{
+		D3D11_ASYNC_GETDATA_DONOTFLUSH = 0x1
+	};
+
+	enum D3D11_QUERY
+	{
+		D3D11_QUERY_EVENT = 0,
+		D3D11_QUERY_OCCLUSION = ( D3D11_QUERY_EVENT + 1 ),
+		D3D11_QUERY_TIMESTAMP = ( D3D11_QUERY_OCCLUSION + 1 ),
+		D3D11_QUERY_TIMESTAMP_DISJOINT = ( D3D11_QUERY_TIMESTAMP + 1 ),
+		D3D11_QUERY_PIPELINE_STATISTICS = ( D3D11_QUERY_TIMESTAMP_DISJOINT + 1 ),
+		D3D11_QUERY_OCCLUSION_PREDICATE = ( D3D11_QUERY_PIPELINE_STATISTICS + 1 ),
+		D3D11_QUERY_SO_STATISTICS = ( D3D11_QUERY_OCCLUSION_PREDICATE + 1 ),
+		D3D11_QUERY_SO_OVERFLOW_PREDICATE = ( D3D11_QUERY_SO_STATISTICS + 1 ),
+		D3D11_QUERY_SO_STATISTICS_STREAM0 = ( D3D11_QUERY_SO_OVERFLOW_PREDICATE + 1 ),
+		D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM0 = ( D3D11_QUERY_SO_STATISTICS_STREAM0 + 1 ),
+		D3D11_QUERY_SO_STATISTICS_STREAM1 = ( D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM0 + 1 ),
+		D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM1 = ( D3D11_QUERY_SO_STATISTICS_STREAM1 + 1 ),
+		D3D11_QUERY_SO_STATISTICS_STREAM2 = ( D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM1 + 1 ),
+		D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM2 = ( D3D11_QUERY_SO_STATISTICS_STREAM2 + 1 ),
+		D3D11_QUERY_SO_STATISTICS_STREAM3 = ( D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM2 + 1 ),
+		D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM3 = ( D3D11_QUERY_SO_STATISTICS_STREAM3 + 1 )
+	};
+
 	using D3D11_RECT = RECT;
 
 	struct ID3D11Asynchronous;
@@ -600,6 +628,12 @@
 		};
 	};
 
+	struct D3D11_QUERY_DESC
+	{
+		D3D11_QUERY Query;
+		UINT MiscFlags;
+	};
+
 	struct D3D11_BOX
 	{
 		UINT left;
@@ -775,13 +809,27 @@
 	};
 
 	MIDL_INTERFACE ID3DUserDefinedAnnotation : IUnknown
-    {
-    public:
-        virtual INT STD_CALL BeginEvent(LPCWSTR) = 0;
-        virtual INT STD_CALL EndEvent(void) = 0;
-        virtual void STD_CALL SetMarker(LPCWSTR Name) = 0;
-        virtual BOOL STD_CALL GetStatus( void) = 0;
-    };
+	{
+	public:
+		virtual INT STD_CALL BeginEvent(LPCWSTR) = 0;
+		virtual INT STD_CALL EndEvent(void) = 0;
+		virtual void STD_CALL SetMarker(LPCWSTR Name) = 0;
+		virtual BOOL STD_CALL GetStatus(void) = 0;
+	};
+
+	MIDL_INTERFACE ID3D11Multithread : public IUnknown
+	{
+	public:
+		virtual void STD_CALL Enter( void) = 0;
+		virtual void STD_CALL Leave(void) = 0;
+		virtual BOOL STD_CALL SetMultithreadProtected(BOOL bMTProtect) = 0;
+		virtual BOOL STD_CALL GetMultithreadProtected(void) = 0;
+	};
+
+	MIDL_INTERFACE ID3D11Asynchronous : ID3D11DeviceChild
+	{
+		virtual UINT STD_CALL GetDataSize(void) = 0;
+	};
 
 	MIDL_INTERFACE ID3D11Resource : ID3D11DeviceChild
 	{

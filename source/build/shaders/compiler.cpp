@@ -45,7 +45,6 @@ void compile_shader( Shader &shader, const char *path )
 	}
 
 	// Preprocessor
-#if 1
 	static const char *pipelineMacros[1];
 	switch( shader.type )
 	{
@@ -54,73 +53,8 @@ void compile_shader( Shader &shader, const char *path )
 		case ShaderType_METAL: pipelineMacros[0] = "SHADER_METAL"; break;
 		default: pipelineMacros[0] = ""; break;
 	}
-
 	String file;
 	preprocess_shader( pathInput, file, pipelineMacros, 1 );
-#else
-	// Invoke Official C Preprocessor
-	String file;
-	{
-		const bool useMSVC = strcmp( Build::args.toolchain, "msvc" ) == 0;
-		const bool useGNU = strcmp( Build::args.toolchain, "gnu" ) == 0;
-		const bool useLLVM = strcmp( Build::args.toolchain, "llvm" ) == 0;
-
-		char pathAPI[PATH_SIZE]; // Path to dummy "shader_api.hpp"
-		strjoin_path( pathAPI, "source", "build", "shaders", "preprocess" );
-
-		char pipelineDefines[PATH_SIZE]; pipelineDefines[0] = '\0';
-		const char *pipelineDefinePrefix = useMSVC ? "/D" : "-D";
-
-		switch( shader.type )
-		{
-			case ShaderType_HLSL:
-			{
-				strappend( pipelineDefines, pipelineDefinePrefix );
-				strappend( pipelineDefines, "SHADER_HLSL " );
-			}
-			break;
-
-			case ShaderType_GLSL:
-			{
-				strappend( pipelineDefines, pipelineDefinePrefix );
-				strappend( pipelineDefines, "SHADER_GLSL " );
-			}
-			break;
-
-			case ShaderType_METAL:
-			{
-				strappend( pipelineDefines, pipelineDefinePrefix );
-				strappend( pipelineDefines, "SHADER_METAL " );
-			}
-			break;
-		}
-
-		char commandPreprocessor[1024];
-		if( useMSVC )
-		{
-			// MSVC Preprocessor
-			strjoin( commandPreprocessor, "cl -nologo /EP /I\"", pathAPI, "\" /TP ",
-				pipelineDefines, " ", pathInput, " > ", pathPreprocessed );
-		}
-		else if( useGNU )
-		{
-			// GCC Preprocessor
-			strjoin( commandPreprocessor, "gcc -E -P -I", pathAPI, " ", pipelineDefines,
-				" -x c ", pathInput, " > ", pathPreprocessed );
-		}
-		else if( useLLVM )
-		{
-			// Clang Preprocessor
-			strjoin( commandPreprocessor, "gcc -E -P -I", pathAPI, " ", pipelineDefines,
-				" -x c ", pathInput, " > ", pathPreprocessed );
-		}
-
-		const int errorCode = system( commandPreprocessor );
-		ErrorIf( errorCode != 0, "Failed to preprocess shader '%s'", pathAPI );
-		ErrorIf( !file.load( pathPreprocessed ),
-			"Failed to load preprocessed shader code '%s'", pathPreprocessed );
-	}
-#endif
 
 	// Parse
 	ShaderCompiler::Parser parser { shader, pathPreprocessed };

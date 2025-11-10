@@ -279,8 +279,6 @@ namespace CoreWindow
 		// Check Error
 		if( handle == nullptr ) { ErrorReturnMsg( false, "Window: Failed to get window handle" ); }
 	#endif
-
-		// Success
 		return true;
 	}
 
@@ -291,7 +289,6 @@ namespace CoreWindow
 		// ...
 	#endif
 		return true;
-		// Success
 	}
 
 

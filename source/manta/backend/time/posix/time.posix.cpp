@@ -10,7 +10,6 @@ thread_local static timespec offset;
 
 bool CoreTime::init()
 {
-	// Success
 	return clock_gettime( CLOCK_MONOTONIC, &offset ) == 0;
 }
 
@@ -24,11 +23,7 @@ bool CoreTime::free()
 double Time::value()
 {
     timespec current;
-
-    // Get Absolute Offset
     clock_gettime( CLOCK_MONOTONIC, &current );
-
-	// Get Relative Offset
 	return ( current.tv_sec - offset.tv_sec ) + ( current.tv_nsec - offset.tv_nsec ) / 1e+9;
 }
 

@@ -34,8 +34,8 @@ PUBLIC bool shootSide = false;
 
 EVENT_CREATE
 {
-	x = Window::width * 0.5f;
-	y = Window::height * 0.5f;
+	x = Window::width_logical() * 0.5f;
+	y = Window::height_logical() * 0.5f;
 }
 
 EVENT_UPDATE
@@ -48,8 +48,8 @@ EVENT_UPDATE
 	speed = clamp( speed, -60.0f, 240.0f );
 
 	// Wrap around screen
-	x = wrap( x, 0.0f, static_cast<float>( Window::width ) );
-	y = wrap( y, 0.0f, static_cast<float>( Window::height ) );
+	x = wrap( x, 0.0f, static_cast<float>( Window::width_logical() ) );
+	y = wrap( y, 0.0f, static_cast<float>( Window::height_logical() ) );
 
 	// Movement
 	x += lengthdir_x( speed * delta, direction );

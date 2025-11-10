@@ -3,6 +3,10 @@
 .vscode/
 node_modules/
 
+# Clangd
+.cache/
+compile_commands.json
+
 # Manta Engine
 output/
 packages/

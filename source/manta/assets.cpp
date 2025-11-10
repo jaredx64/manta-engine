@@ -16,25 +16,19 @@ namespace Assets
 
 bool CoreAssets::init()
 {
-	// Binary Path
 	strjoin( Assets::binaryPath, WORKING_DIRECTORY, SLASH BUILD_PROJECT, ".bin" );
-
-	// Open Binary
 	Assets::binary.open( Assets::binaryPath );
+
 	PrintLn( "%s", Assets::binaryPath );
 	ErrorReturnIf( !Assets::binary, false, "Assets: Failed to open binary file: %s", Assets::binaryPath );
 
-	// Success
 	return true;
 }
 
 
 bool CoreAssets::free()
 {
-	// Close Binary File
 	Assets::binary.close();
-
-	// Success
 	return true;
 }
 

@@ -78,12 +78,10 @@ bool network_connect( Socket &socket, const char *host, const u16 port )
 		goto error;
 	}
 
-	// Success
 	freeaddrinfo( first ); // TODO: Call this?
 	return true;
 
 error:
-	// Failure
 	freeaddrinfo( first );
 	ErrorReturnMsg( false, "%s: %s", __FUNCTION__, errorMessage );
 }
@@ -201,7 +199,6 @@ bool listen_socket_init( Socket &socket, const SocketType type, const u16 port )
 		goto error;
 	}
 
-	// Success
 	PrintLn( "Listen socket success!" ); // TODO: remove
 	return true;
 

@@ -18,6 +18,52 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+namespace CoreWindow
+{
+	GameView *view;
+	NSWindow *window;
+	NSAutoreleasePool *pool;
+}
+
+#if GRAPHICS_METAL
+#include <manta/backend/gfx/metal/metal.hpp>
+
+namespace CoreWindow
+{
+	static CAMetalLayer *metalLayer;
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#if GRAPHICS_METAL
+static void metal_drawable_resize( CGFloat scaleFactor )
+{
+	CGSize sizeLogical = CoreWindow::view.bounds.size;
+    CGSize sizePixels = sizeLogical;
+    sizePixels.width  *= scaleFactor;
+    sizePixels.height *= scaleFactor;
+
+	if( sizePixels.width <= 0 || sizePixels.height <= 0 ) { return; }
+	CGSize current = [CoreWindow::metalLayer drawableSize];
+	if( fabs( current.width - sizePixels.width ) < 0.5 && fabs( current.height - sizePixels.height ) < 0.5 )
+	{
+		return;
+	}
+
+	[CoreWindow::metalLayer setDrawableSize: sizePixels];
+
+	Window::width = static_cast<int>( sizeLogical.width );
+	Window::height = static_cast<int>( sizeLogical.height );
+	Window::scale = scaleFactor;
+
+	Window::resized = true;
+	CoreGfx::swapchain_viewport_update();
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 #define WINDOW_TITLE PROJECT_CAPTION
 
 #define WINDOW_STYLE ( \
@@ -31,7 +77,6 @@
 @interface GameApplication : NSApplication @end
 @interface GameWindow : NSWindow @end
 @interface GameWindowDelegate : NSObject @end
-@interface GameView : NSView @end
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -123,7 +168,6 @@
 	BOOL isRepeat = [event isARepeat];
 	Keyboard::state().keyCurrent[event.keyCode] = true;
 	Keyboard::state().keyRepeat[event.keyCode] = isRepeat;
-	//PrintLn( "Key Hex: 0x%02X", static_cast<u8>( event.keyCode ) );
 
 	char *buffer = Keyboard::state().inputBuffer;
 	const char *input = [[event characters] UTF8String];
@@ -334,16 +378,47 @@
 #endif
 }
 
+#if GRAPHICS_METAL
+- (CALayer *)makeBackingLayer
+{
+	return [CAMetalLayer layer];
+}
+
+
+- (void)viewDidMoveToWindow
+{
+	[super viewDidMoveToWindow];
+	metal_drawable_resize( CoreWindow::window.screen.backingScaleFactor );
+}
+
+
+- (void)viewDidChangeBackingProperties
+{
+    [super viewDidChangeBackingProperties];
+    metal_drawable_resize( CoreWindow::window.screen.backingScaleFactor );
+}
+
+
+- (void)setFrameSize:(NSSize)size
+{
+    [super setFrameSize:size];
+    metal_drawable_resize( CoreWindow::window.screen.backingScaleFactor );
+}
+
+
+- (void)setBoundsSize:(NSSize)size
+{
+    [super setBoundsSize:size];
+    metal_drawable_resize( CoreWindow::window.screen.backingScaleFactor );
+}
+#endif
+
 @end
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 namespace CoreWindow
 {
-	NSView *view;
-	NSWindow *window;
-	static NSAutoreleasePool *pool;
-
 	bool init( const int defaultWidth, const int defaultHeight )
 	{
 	#if WINDOW_ENABLED
@@ -383,6 +458,7 @@ namespace CoreWindow
 
 		// Create Window View
 		CoreWindow::view = [GameView new];
+		[CoreWindow::view setWantsLayer:YES];
 
 		// Setup Window Properties
 		[CoreWindow::window setContentView:CoreWindow::view];
@@ -661,6 +737,5 @@ namespace Window
 	#endif
 		return true;
 	}
-
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

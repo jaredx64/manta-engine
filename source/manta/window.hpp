@@ -50,6 +50,11 @@ namespace Window
 	extern bool set_selection( const char *buffer );
 	extern bool get_selection( char *buffer, const usize size );
 
+	extern int width_logical();
+	extern int height_logical();
+	extern int width_pixels();
+	extern int height_pixels();
+
 	extern int width;
 	extern int height;
 	extern int widthDefault;

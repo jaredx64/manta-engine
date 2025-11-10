@@ -8,14 +8,53 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+using GLchar = char;
+using GLsizei = int;
+using GLint = int;
+using GLdouble = double;
+using GLboolean = unsigned char;
+using GLubyte = unsigned char;
+using GLuint = unsigned int;
+using GLenum = unsigned int;
+using GLbitfield = unsigned int;
+using GLfloat = float;
+using GLclampf = float;
+
 #if PIPELINE_OS_WINDOWS
-	#define GL_EXTERN DLL_IMPORT
-	#define GL_API STD_CALL
+	using GLsizeiptr = signed long long;
+	using GLintptr = signed long long;
 #else
-	#define GL_EXTERN
-	#define GL_API
-	#define GL_MAC WINDOW_COCOA
+	using GLsizeiptr = signed long;
+	using GLintptr = signed long;
 #endif
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+enum_type( OpenGLInputAttributeType, int )
+{
+	OpenGLInputAttributeType_FLOAT,
+	OpenGLInputAttributeType_DOUBLE,
+	OpenGLInputAttributeType_INTEGER,
+};
+
+
+struct OpenGLInputLayoutAttributes
+{
+	const char *name;
+	OpenGLInputAttributeType type;
+	GLint components;
+	GLenum format;
+	GLboolean normalized;
+	usize offset;
+};
+
+
+struct OpenGLInputLayoutFormats
+{
+	const OpenGLInputLayoutAttributes *attributes;
+	GLuint attributesCount;
+	GLsizei stepStride;
+};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -32,6 +71,17 @@
 #else
 	constexpr int bitsDepth = 0;
 	constexpr int bitsStencil = 0;
+#endif
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#if PIPELINE_OS_WINDOWS
+	#define GL_EXTERN DLL_IMPORT
+	#define GL_API STD_CALL
+#else
+	#define GL_EXTERN
+	#define GL_API
+	#define GL_MAC WINDOW_COCOA
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -659,27 +709,6 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-using GLchar = char;
-using GLsizei = int;
-using GLint = int;
-using GLdouble = double;
-using GLboolean = unsigned char;
-using GLubyte = unsigned char;
-using GLuint = unsigned int;
-using GLuint64 = unsigned long long;
-using GLenum = unsigned int;
-using GLbitfield = unsigned int;
-using GLfloat = float;
-using GLclampf = float;
-
-#if PIPELINE_OS_WINDOWS
-	using GLsizeiptr = signed long long;
-	using GLintptr = signed long long;
-#else
-	using GLsizeiptr = signed long;
-	using GLintptr = signed long;
-#endif
-
 #if !GL_MAC
 	#undef  META
 	#define META(type, name, ...)                            \
@@ -703,8 +732,9 @@ using GLclampf = float;
 	#define nglBindVertexArray glBindVertexArray
 	#define nglBindBuffer glBindBuffer
 	#define nglBufferData glBufferData
-	#define nglVertexAttribIPointer glVertexAttribIPointer
 	#define nglVertexAttribPointer glVertexAttribPointer
+	#define nglVertexAttribIPointer glVertexAttribIPointer
+	#define nglVertexAttribLPointer glVertexAttribLPointer
 	#define nglEnableVertexAttribArray glEnableVertexAttribArray
 	#define nglVertexAttribDivisor glVertexAttribDivisor
 	#define nglGetUniformLocation glGetUniformLocation
@@ -742,6 +772,7 @@ using GLclampf = float;
 	#define nglTexImage2DMultisample glTexImage2DMultisample
 	#define nglDrawElementsInstanced glDrawElementsInstanced
 	#define nglDrawArraysInstanced glDrawArraysInstanced
+	#define nglFlushMappedBufferRange glFlushMappedBufferRange
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

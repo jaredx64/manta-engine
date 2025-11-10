@@ -189,7 +189,8 @@ public:
 
 	bool bufferSlots[SHADER_MAX_BUFFER_SLOTS];
 	bool textureSlots[SHADER_MAX_TEXTURE_SLOTS];
-	bool targetSlots[SHADER_MAX_TARGET_SLOTS];
+	bool targetColorSlots[SHADER_MAX_TARGET_SLOTS];
+	bool targetDepthSlots[SHADER_MAX_TARGET_SLOTS];
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

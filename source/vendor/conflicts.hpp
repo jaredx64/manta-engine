@@ -10,12 +10,8 @@
 #ifndef CONFLICT_GUARD
 #define CONFLICT_GUARD
 
-	// ...
 	#define min CONFLICT_min
 	#define max CONFLICT_max
-
-	// time.h (MacOS)
-	#define time CONFLICT_time
 
 	// stdlib.h
 	#define random CONFLICT_random
@@ -24,6 +20,7 @@
 	#define Atom XAtom
 	#define Font XFont
 	#define Time XTime
+	#define time xtime
 	#define Window XWindow
 	#define Display XDisplay
 	#define Screen XScreen
@@ -34,12 +31,8 @@
 
 #else
 
-	// ...
 	#undef min
 	#undef max
-
-	// time.h (MacOS)
-	#undef time
 
 	// stdlib.h
 	#undef random
@@ -47,11 +40,13 @@
 	// x11.h
 	#undef Font
 	#undef Time
+	#undef time
 	#undef Window
 	#undef Display
 	#undef Screen
 	#undef Visual
 	#undef Cursor
+	#undef Colormap
 
 #undef CONFLICT_GUARD
 #endif

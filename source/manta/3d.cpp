@@ -483,7 +483,7 @@ static void frustum_draw( const float_v3 *corners, const Color &color, const boo
 	Assert( corners != nullptr );
 	const u8_v4 col = { color.r, color.g, color.b, color.a };
 	GfxVertexBuffer<GfxVertex::BuiltinVertex> frustum;
-	frustum.init( wireframe ? 24 : 36, GfxCPUAccessMode_WRITE_NO_OVERWRITE );
+	frustum.init( wireframe ? 24 : 36, GfxWriteMode_OVERWRITE );
 
 	frustum.write_begin();
 	if( wireframe )
@@ -535,8 +535,8 @@ static void frustum_draw( const float_v3 *corners, const Color &color, const boo
 	frustum.write_end();
 
 	GfxRenderCommand cmd;
-	cmd.set_shader( Shader::SHADER_DEFAULT );
-	cmd.depth_set_function( GfxDepthFunction_NONE );
+	cmd.shader( Shader::SHADER_DEFAULT );
+	cmd.depth_function( GfxDepthFunction_NONE );
 	Gfx::render_command_execute( cmd, GfxWorkCapture
 		{
 			Gfx::bind_texture( 0, Texture::TEXTURE_DEFAULT );
@@ -571,7 +571,7 @@ void draw_axis_3d( int x, int y, u16 width, u16 height, float_v3 forward, float_
 {
 	// Initialize Vertices
 	GfxVertexBuffer<GfxVertex::BuiltinVertexPositionColor> vertexBuffer;
-	vertexBuffer.init( 36 * 3, GfxCPUAccessMode_WRITE_NO_OVERWRITE );
+	vertexBuffer.init( 36 * 3, GfxWriteMode_OVERWRITE );
 	vertexBuffer.write_begin();
 	{
 		auto write_cube = [&]( float_v3 min, float_v3 max, u8_v4 color )
@@ -626,7 +626,7 @@ void draw_axis_3d( int x, int y, u16 width, u16 height, float_v3 forward, float_
 
 	// Draw XYZ Gizmo
 	GfxRenderPass pass;
-	pass.set_target( 0, rt );
+	pass.target( 0, rt );
 	pass.set_name( "XYZ Gizmo" );
 	Gfx::render_pass_begin( pass );
 	{
@@ -634,9 +634,9 @@ void draw_axis_3d( int x, int y, u16 width, u16 height, float_v3 forward, float_
 		Gfx::clear_depth();
 
 		GfxRenderCommand cmd;
-		cmd.set_shader( Shader::SHADER_DEFAULT_RGB );
-		cmd.depth_set_function( GfxDepthFunction_LESS_EQUALS );
-		cmd.raster_set_cull_mode( GfxRasterCullMode_NONE );
+		cmd.shader( Shader::SHADER_DEFAULT_RGB );
+		cmd.depth_function( GfxDepthFunction_LESS_EQUALS );
+		cmd.raster_cull_mode( GfxCullMode_NONE );
 		Gfx::render_command_execute( cmd, GfxWorkCapture
 			{
 				const double_m44 matrixView = double_m44_build_lookat(
@@ -660,7 +660,7 @@ void draw_axis_3d( int x, int y, u16 width, u16 height, float_v3 forward, float_
 
 	// Draw Render Target
 	GfxRenderCommand cmd;
-	cmd.set_shader( Shader::SHADER_DEFAULT );
+	cmd.shader( Shader::SHADER_DEFAULT );
 	Gfx::render_command_execute( cmd, GfxWorkCapture
 		{
 			Gfx::bind_texture( 0, rt.textureColor );

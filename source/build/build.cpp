@@ -713,6 +713,7 @@ void BuilderCore::compile_engine()
 		// root/projects/<project>/output/generated/*.cpp
 		strjoin( path, Build::pathOutput, SLASH "generated" );
 		numSources += Build::compile_add_sources( path, false, ".cpp", Build::tc.linkerExtensionObj );
+		numSources += Build::compile_add_sources( path, false, ".mm", Build::tc.linkerExtensionObj );
 
 		// root/source/*.cpp
 		strjoin( path, Build::pathEngine );
@@ -1329,10 +1330,9 @@ void BuilderCore::executable_run_gpu_capture( int argc, char **argv )
 
 	// Delete captures
 	for( FileInfo &file : files ) { file_delete( file.path ); }
-
 #else
 	// GPU captures only supported on windows, pass through to run
-	PrintLn( "\n" ); Warning( "Failed to launch GPU capture (windows only)" );
+	PrintLn( "\n" ); Warning( "Command line GPU capture not supported on this OS!" );
 	executable_run( argc, argv );
 #endif
 }

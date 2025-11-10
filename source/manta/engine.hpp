@@ -10,18 +10,20 @@ class ProjectCallbacks
 {
 public:
 	ProjectCallbacks( bool ( *init )( int, char ** ), bool ( *free )(), void ( *update )( const Delta ) ) :
-		callback_init{ init },
-		callback_free{ free },
-		callback_update{ update } { }
+		callback_init { init },
+		callback_free { free },
+		callback_update { update } { }
 
 	bool init( int argc, char **argv ) const
 	{
-		return callback_init != nullptr ? callback_init( argc, argv ) : true;
+		if( callback_init == nullptr ) { return true; }
+		return callback_init( argc, argv );
 	}
 
 	bool free() const
 	{
-		return callback_free != nullptr ? callback_free() : true;
+		if( callback_free == nullptr ) { return true; }
+		return callback_free();
 	}
 
 	void update( const Delta delta ) const

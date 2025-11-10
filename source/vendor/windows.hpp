@@ -261,7 +261,6 @@
 	using PROC = int(CALLBACK *)();
 	using WNDPROC = LRESULT(CALLBACK *)(HWND, UINT, WPARAM, LPARAM);
 	using LPTHREAD_START_ROUTINE = DWORD(CALLBACK *)(void *);
-
 	using HGLOBAL = HANDLE;
 
 	struct RECT
@@ -459,6 +458,20 @@
 		ULONGLONG QuadPart;
 	};
 
+	// intrin.h
+#if defined( _MSC_VER ) && !defined( _INTRIN_DEFINED )
+	extern "C" short __cdecl _InterlockedCompareExchange16(short volatile* Destination, short Exchange, short Comparand);
+	#pragma intrinsic( _InterlockedCompareExchange16 )
+	extern "C" long __cdecl _InterlockedCompareExchange(long volatile *Destination, long Exchange, long Comparand);
+	#pragma intrinsic( _InterlockedCompareExchange )
+	extern "C" long long __cdecl _InterlockedCompareExchange64(long long volatile *Destination, long long Exchange, long long Comparand);
+	#pragma intrinsic( _InterlockedCompareExchange64 )
+	extern "C" long __cdecl _InterlockedExchange(long volatile *Target, long Value);
+	#pragma intrinsic( _InterlockedExchange )
+	extern "C" long long __cdecl _InterlockedExchange64(long long volatile *Target, long long Value);
+	#pragma intrinsic( _InterlockedExchange64 )
+#endif
+
 	// kernel32.dll
 	extern "C" DLL_IMPORT BOOL STD_CALL CloseHandle(HANDLE);
 	extern "C" DLL_IMPORT BOOL STD_CALL CreateDirectoryA(LPCSTR, struct SECURITY_ATTRIBUTES *);
@@ -502,6 +515,7 @@
 	extern "C" DLL_IMPORT BOOL STD_CALL SetConsoleTextAttribute(HANDLE, WORD);
 	extern "C" DLL_IMPORT DWORD STD_CALL SetFilePointer(HANDLE, LONG, LONG *, DWORD);
 	extern "C" DLL_IMPORT void STD_CALL Sleep(DWORD);
+	extern "C" DLL_IMPORT BOOL STD_CALL SwitchToThread();
 	extern "C" DLL_IMPORT BOOL STD_CALL RemoveDirectoryA(LPCSTR);
 	extern "C" DLL_IMPORT BOOL STD_CALL UnmapViewOfFile(const void *);
 	extern "C" DLL_IMPORT void *STD_CALL VirtualAlloc(void *, SIZE_T, DWORD, DWORD);
