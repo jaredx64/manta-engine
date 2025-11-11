@@ -62,29 +62,30 @@ Note: by default, boot.sh builds with LLVM. You can also pass `-toolchain=gnu`. 
 
 </details>
 
-### 3. (Optional) Manta VS Code Plugin
+### 3. (Optional) Manta Engine VS Code Plugin + Clangd
 ```
-VS Code -> Extensions -> Install from VSIX -> manta-engine\.manta\vscmanta\output\vscmanta.vsix
+VS Code -> Extensions -> Install from VSIX -> manta-engine\.manta\vscmanta\vscmanta.vsix
 ```
 <details>
-<summary><span>Helpful keybindings (add to keybindings.json)</span></summary>
+<summary><span>Helpful plugin commands (that can be bound to hotkeys in keybindings.json):</span></summary>
 
 ```
-{ "key": "f5", "when": "resourceExists('.manta')", "command": "vscmanta.buildAndRun" },
-{ "key": "f6", "when": "resourceExists('.manta')", "command": "vscmanta.debugRuntime" },
-{ "key": "f7", "when": "resourceExists('.manta')", "command": "vscmanta.renderdoc" },
-{ "key": "f8", "when": "resourceExists('.manta')", "command": "vscmanta.build" },
-{ "key": "f9", "when": "resourceExists('.manta')", "command": "vscmanta.insertCommentBreak" },
-{ "key": "ctrl+shift+c", "when": "resourceExists('.manta')", "command": "vscmanta.cleanProject" },
+"vscmanta.buildAndRun" - Builds & runs the current project
+"vscmanta.debugRuntime" - Builds & runs the current project with VS Code C++ debugger attached
+"vscmanta.renderdoc" - Builds & runs with RenderDoc (Windows/Linux only -- RenderDoc must be in the system PATH)
+"vscmanta.build" - Build only
+"vscmanta.cleanProject" - Clears project build cache (deletes output fulders)
 ```
 
 </details><br>
 
-Note: Source for plugin can be found at `manta-engine\.manta\vscmanta\extension.js`
+Note: Source for plugin can be found at `manta-engine\.manta\vscmanta\extension.js` and built by executing `manta-engine\.manta\vscmanta\install.bat`
 
 VSCManta is essentially a wrapper around explicit calls to the `manta-engine\boot` script. It scans the engine & project repository and generates build commands. It can also be bound to hotkeys in VS Code.
 
 Windows Only: If using the RenderDoc button (`boot -run=2`), RenderDoc must be added to system PATH environment variables (e.g. `C:\Program Files\RenderDoc`)
+
+**Clangd**: VSCManta plugin also generates `compile_commands.json` for Clangd C++ language server/intellisense. Clangd is significantly more responsive than Microsoft's C/C++ extension so I highly recommend using it! (https://marketplace.visualstudio.com/items?itemName=llvm-vs-code-extensions.vscode-clangd)
 
 # Engine Repository Structure:
 
