@@ -74,7 +74,7 @@ VS Code -> Extensions -> Install from VSIX -> manta-engine\.manta\vscmanta\vscma
 "vscmanta.debugRuntime" - Builds & runs the current project with VS Code C++ debugger attached
 "vscmanta.renderdoc" - Builds & runs with RenderDoc (Windows/Linux only -- RenderDoc must be in the system PATH)
 "vscmanta.build" - Build only
-"vscmanta.cleanProject" - Clears project build cache (deletes output fulders)
+"vscmanta.cleanProject" - Clears project build cache (deletes output folders)
 ```
 
 </details><br>
@@ -163,19 +163,19 @@ In general terms, `source\boot`, `source\build`, and `source\manta` are separate
 
 # Additional Build Information:
 
-Manta does not use precompiled headers or static/dynamic linkage for the engine "library." Rather, sources are compiled directly as a part of the project executable.
+Manta does not use precompiled headers or static/dynamic linkage for the engine "library." Rather, engine sources are compiled directly into the project executable.
 
 The reasons for this are:
 
-- Caching of builds is already done in the boot.exe and build.exe stages (with C++ compilation caching provided by ninja)
+- Build caching is already done in the boot.exe and build.exe stages (with C++ compilation caching managed by ninja)
 - The build tool generates C++ boilerplate for various runtime systems (assets, objects, graphics backend) which would cause frequent rebuilds of precompiled headers
-- The engine library code will likely be updated continously alongside project code (until the engine matures)
+- The engine library code will likely update continously alongside project code (until the engine matures)
 - Compile times are already quite fast due to restrictions on C++ STL includes, "unofficial" C headers for development builds (USE_OFFICIAL_HEADERS = 0), and general project structure
 - It is easier to reason about, understand, and maintain a system when it is simpler
 
 This may change in later versions of the engine, but for now it is structured this way.
 
-Anecdotally (on my machine) I can do a clean build + compile (no cache) of boot.exe, build.exe, and the game.exe in roughly 500ms (~100 translation units) with both MSVC and Clang++ on the "release" configuration.
+Anecdotally (on my machine) I can do a clean build + compile (no cache) of boot.exe, build.exe, and the game.exe in roughly 1 second (~100 translation units) with both MSVC and Clang++ on the "release" configuration.
 
 
 # Graphics System
@@ -188,7 +188,9 @@ Shader files are translated at build time into either GLSL, HLSL, or Metal depen
 
 The generated shader code (hlsl/glsl/metal) is written to `projects\<project>\output\generated\shaders\`, along with the associated graphics system C++ boilerplate in `projects\<project>\output\generated\gfx.generated.hpp`.
 
-In an editor, basic syntax highlighting and IntelliSense is possible by optionally including `#include <shader_api.hpp>` in the shader file. That header is compatible with a typical C++ language server and provides a reference to the features/keywords of the shader language.
+In an editor, basic syntax highlighting and IntelliSense is possible by optionally including `#include <shader_api.hpp>` in the shader file. That header is compatible with a C++ language server and provides a reference to the features/keywords of the shader language.
+
+The language is not complete, but the intention is to fully support raster (vertex + fragment), compute, and raytracing pipelines.
 
 **Example `.shader` code (Simple Phong):**
 ```c++
