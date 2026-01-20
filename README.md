@@ -87,6 +87,8 @@ VSCManta is essentially a wrapper around explicit calls to the `manta-engine\boo
 
 **Clangd**: VSCManta plugin also generates `compile_commands.json` for Clangd C++ language server/intellisense. Clangd is significantly more responsive than Microsoft's C/C++ extension so I highly recommend using it! (https://marketplace.visualstudio.com/items?itemName=llvm-vs-code-extensions.vscode-clangd)
 
+**Clangd**: VSCManta plugin also generates `compile_commands.json` for Clangd C++ language server/intellisense. Clangd is significantly more responsive than Microsoft's C/C++ extension so I highly recommend using it! (https://marketplace.visualstudio.com/items?itemName=llvm-vs-code-extensions.vscode-clangd)
+
 # Engine Repository Structure:
 
 1. `manta-engine\.manta\`
