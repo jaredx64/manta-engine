@@ -34,11 +34,11 @@ struct Font
 
 struct Fonts
 {
-	usize gather( const char *path, const bool recurse = true );
+	usize gather( const char *path, bool recurse = true );
 	void process( const char *path );
 	void build();
 
-	Font &operator[]( const u32 fontID ) { return fonts[fontID]; }
+	Font &operator[]( u32 fontID ) { return fonts[fontID]; }
 
 	List<TTF> ttfs;
 	List<Font> fonts;

@@ -31,7 +31,7 @@ struct Thread_ID
 #if THREAD_WINDOWS
 	DWORD id;
 	Thread_ID() { };
-	Thread_ID( const DWORD id ) : id { id } { }
+	Thread_ID( DWORD id ) : id { id } { }
 	bool operator==( const Thread_ID &other ) const { return ( id == other.id ); }
 	bool operator!=( const Thread_ID &other ) const { return ( id != other.id ); }
 #elif THREAD_POSIX
@@ -62,7 +62,7 @@ namespace CoreThread
 
 namespace Thread
 {
-	extern void sleep( const u32 milliseconds );
+	extern void sleep( u32 milliseconds );
 	extern void pause();
 	extern void yield();
 	extern struct Thread_ID id();
@@ -74,7 +74,7 @@ namespace Thread
 
 namespace Thread
 {
-	template <typename F> bool wait_until( F condition, const int timeoutMS )
+	template <typename F> bool wait_until( F condition, int timeoutMS )
 	{
 		Assert( timeoutMS > 0 );
 
@@ -175,16 +175,16 @@ struct Condition
 
 struct Atomic_U16
 {
-	void init( const u16 value = 0 ) { v = value; }
+	void init( u16 value = 0 ) { v = value; }
 	u16 load() const;
-	void store( const u16 value );
-	u16 fetch_add( const u16 value );
-	u16 fetch_sub( const u16 value );
-	u16 fetch_or( const u16 value );
-	u16 fetch_and( const u16 value );
-	u16 fetch_xor( const u16 value );
-	u16 exchange( const u16 value );
-	bool compare_exchange_strong( u16 &expected, const u16 desired );
+	void store( u16 value );
+	u16 fetch_add( u16 value );
+	u16 fetch_sub( u16 value );
+	u16 fetch_or( u16 value );
+	u16 fetch_and( u16 value );
+	u16 fetch_xor( u16 value );
+	u16 exchange( u16 value );
+	bool compare_exchange_strong( u16 &expected, u16 desired );
 	void increment() { fetch_add( 1 ); }
 	void decrement() { fetch_sub( 1 ); }
 	alignas( 2 ) volatile u16 v;
@@ -193,16 +193,16 @@ struct Atomic_U16
 
 struct Atomic_U32
 {
-	void init( const u32 value = 0 ) { v = value; }
+	void init( u32 value = 0 ) { v = value; }
 	u32 load() const;
-	void store( const u32 value );
-	u32 fetch_add( const u32 value );
-	u32 fetch_sub( const u32 value );
-	u32 fetch_or( const u32 value );
-	u32 fetch_and( const u32 value );
-	u32 fetch_xor( const u32 value );
-	u32 exchange( const u32 value );
-	bool compare_exchange_strong( u32 &expected, const u32 desired );
+	void store( u32 value );
+	u32 fetch_add( u32 value );
+	u32 fetch_sub( u32 value );
+	u32 fetch_or( u32 value );
+	u32 fetch_and( u32 value );
+	u32 fetch_xor( u32 value );
+	u32 exchange( u32 value );
+	bool compare_exchange_strong( u32 &expected, u32 desired );
 	void increment() { fetch_add( 1 ); }
 	void decrement() { fetch_sub( 1 ); }
 	alignas( 4 ) volatile u32 v;
@@ -211,16 +211,16 @@ struct Atomic_U32
 
 struct Atomic_U64
 {
-	void init( const u64 value = 0 ) { v = value; }
+	void init( u64 value = 0 ) { v = value; }
 	u64 load() const;
-	void store( const u64 value);
-	u64 fetch_add( const u64 value );
-	u64 fetch_sub( const u64 value );
-	u64 fetch_or( const u64 value );
-	u64 fetch_and( const u64 value );
-	u64 fetch_xor( const u64 value );
-	u64 exchange( const u64 value );
-	bool compare_exchange_strong( u64 &expected, const u64 desired );
+	void store( u64 value);
+	u64 fetch_add( u64 value );
+	u64 fetch_sub( u64 value );
+	u64 fetch_or( u64 value );
+	u64 fetch_and( u64 value );
+	u64 fetch_xor( u64 value );
+	u64 exchange( u64 value );
+	bool compare_exchange_strong( u64 &expected, u64 desired );
 	void increment() { fetch_add( 1LLU ); }
 	void decrement() { fetch_sub( 1LLU ); }
 #if defined( _MSC_VER )
@@ -238,7 +238,7 @@ struct Semaphore
 	Condition condition;
 	int count;
 
-	void init( const int initialCount );
+	void init( int initialCount );
 	void free();
 
 	void wait();
@@ -251,7 +251,7 @@ struct Semaphore
 template <typename T> struct ConcurrentQueue
 {
 public:
-	bool init( const usize reserve = 1 )
+	bool init( usize reserve = 1 )
 	{
 		Assert( reserve > 0 );
 		capacity = reserve;
@@ -298,11 +298,19 @@ public:
 		return true;
 	}
 
-	bool dequeue( T &outElement )
+	bool dequeue( T &outElement, bool blocking = false )
 	{
 		mutex.lock();
 		{
-			while( count == 0 ) { notEmpty.sleep( mutex ); }
+			if( blocking )
+			{
+				while( count == 0 ) { notEmpty.sleep( mutex ); }
+			}
+			else if( count == 0 )
+			{
+				mutex.unlock();
+				return false;
+			}
 
 			outElement = data[front];
 			front = ( front + 1 ) % capacity;
@@ -370,8 +378,8 @@ public:
 	};
 
 public:
-	bool init( T *resources, const int resourceCount, const usize resourceCapacity,
-		const WriteMode writeMode, const bool bufferedWrites = true )
+	bool init( T *resources, int resourceCount, usize resourceCapacity, WriteMode writeMode,
+		bool bufferedWrites = true )
 	{
 		constexpr usize s = sizeof( ResourceState );
 
@@ -421,7 +429,7 @@ public:
 		return true;
 	}
 
-	bool free( const bool stall = true )
+	bool free( bool stall = true )
 	{
 		Assert( initialized );
 
@@ -462,7 +470,7 @@ public:
 		return true;
 	}
 
-	bool write_begin( const bool stall = true )
+	bool write_begin( bool stall = true )
 	{
 		const int resourceIndex = static_cast<int>( resourceIndexNext % resourceCount );
 
@@ -531,7 +539,7 @@ public:
 		return true;
 	}
 
-	bool write( const void *const data, const usize size, const int alignment = 1 )
+	bool write( const void *data, usize size, int alignment = 1 )
 	{
 		Assert( initialized );
 
@@ -582,7 +590,7 @@ public:
 		return true;
 	}
 
-	CommitResult commit( u64 commitID = U64_MAX, const bool stall = true )
+	CommitResult commit( u64 commitID = U64_MAX, bool stall = true )
 	{
 		Assert( initialized );
 
@@ -681,7 +689,7 @@ public:
 		return result;
 	}
 
-	void release( const u64 commitID )
+	void release( u64 commitID )
 	{
 		const int index = find_commit_resource( commitID );
 		if( index < 0 ) { return; }
@@ -707,7 +715,7 @@ public:
 	}
 
 private:
-	void track_commit( const u64 commitID, const int resourceIndex )
+	void track_commit( u64 commitID, int resourceIndex )
 	{
 		const int slot = static_cast<int>( commitID % MAX_COMMIT_TRACKING );
 
@@ -729,7 +737,7 @@ private:
 			MAX_COMMIT_TRACKING );
 	}
 
-	int find_commit_resource( const u64 commitID )
+	int find_commit_resource( u64 commitID )
 	{
 		const int slot = static_cast<int>( commitID % MAX_COMMIT_TRACKING );
 
@@ -747,7 +755,7 @@ private:
 		return -1;
 	}
 
-	void untrack_commit( const u64 commitID )
+	void untrack_commit( u64 commitID )
 	{
 		const int slot = static_cast<int>( commitID % MAX_COMMIT_TRACKING );
 
@@ -776,7 +784,7 @@ private:
 		return -1;
 	}
 
-	int find_next_available_resource( const int currentIndex )
+	int find_next_available_resource( int currentIndex )
 	{
 		for( int i = 1; i < resourceCount; i++ )
 		{

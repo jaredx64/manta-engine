@@ -95,18 +95,16 @@
 	double Time::value()
 	{
 		timespec current;
-
-		// Get Absolute Offset
 		clock_gettime( CLOCK_MONOTONIC, &current );
-
-		// Get Relative Offset
 		return ( current.tv_sec - offset.tv_sec ) + ( current.tv_nsec - offset.tv_nsec ) / 1e+9;
 	}
 
 
 	u64 Time::seed()
 	{
-		return static_cast<u64>( offset.tv_nsec );
+		timespec current;
+		clock_gettime( CLOCK_MONOTONIC, &current );
+		return static_cast<u64>( current.tv_nsec ^ current.tv_sec );
 	}
 
 #endif

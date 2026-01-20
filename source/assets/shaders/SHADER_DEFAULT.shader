@@ -25,7 +25,7 @@ fragment_input FragmentInput
 
 fragment_output FragmentOutput
 {
-	float4 color0 target( 0, COLOR );
+	float4 color target( 0, COLOR );
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -57,9 +57,9 @@ void vertex_main( BuiltinVertex In, VertexOutput Out, UniformsPipeline Pipeline 
 
 void fragment_main( FragmentInput In, FragmentOutput Out )
 {
-	float4 tex = texture_sample_2d( textureColor, In.uv );
-	if( tex.a <= 0.0 ) { discard; }
-	Out.color0 = tex * In.color;
+	float4 colorTexture = texture_sample_2d( textureColor, In.uv );
+	if( colorTexture.a <= 0.0 ) { discard; }
+	Out.color = colorTexture * In.color;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

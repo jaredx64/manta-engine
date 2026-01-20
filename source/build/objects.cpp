@@ -22,27 +22,27 @@ void ObjectFile::ERROR_HANDLER_FUNCTION_DECL
 	if( Debug::exitCode != 0 ) { return; }
 
 	// Print Label
-	PrintColor( LOG_RED, "\n\nOBJECT FILE ERROR:\n\n" );
+	Print( PrintColor_Red, "\n\nOBJECT FILE ERROR:\n\n" );
 
 	// Print Message
 	va_list args;
 	va_start( args, message );
-	PrintColor( LOG_WHITE, "    " );
-	Debug::print_formatted_variadic_color( true, LOG_WHITE, message, args );
+	Print( PrintColor_White, "    " );
+	Debug::print_formatted_variadic_color( true, PrintColor_White, message, args );
 	va_end( args );
 
 	// Print File
-	PrintColor( LOG_RED, "    %s\n", name.cstr() );
+	Print( PrintColor_Red, "    %s\n", name.cstr() );
 	if( line >= 0 )
 	{
-		PrintColor( LOG_RED, "    %s:%d\n", path.cstr(), line );
-		PrintColor( LOG_RED, "    line: %d\n", line );
+		Print( PrintColor_Red, "    %s:%d\n", path.cstr(), line );
+		Print( PrintColor_Red, "    line: %d\n", line );
 	}
 	else
 	{
-		PrintColor( LOG_RED, "    %s:", path.cstr() );
+		Print( PrintColor_Red, "    %s:", path.cstr() );
 	}
-	PrintColor( LOG_RED, "\n" );
+	Print( PrintColor_Red, "\n" );
 
 	// Exit
 	Debug::exit( 1 );
@@ -55,13 +55,13 @@ void Objects::ERROR_HANDLER_FUNCTION_DECL
 	if( Debug::exitCode != 0 ) { return; }
 
 	// Print Label
-	PrintColor( LOG_RED, "\n\nOBJECT ERROR:\n\n" );
+	Print( PrintColor_Red, "\n\nOBJECT ERROR:\n\n" );
 
 	// Print Message
 	va_list args;
 	va_start( args, message );
-	PrintColor( LOG_WHITE, "    " );
-	Debug::print_formatted_variadic_color( true, LOG_RED, message, args );
+	Print( PrintColor_White, "    " );
+	Debug::print_formatted_variadic_color( true, PrintColor_Red, message, args );
 	va_end( args );
 
 	// Exit
@@ -282,7 +282,8 @@ static usize find_closing_brace( const String &buffer, usize start = 0, usize en
 }
 
 
-static bool find_keyword_parentheses( const String &buffer, usize start, usize end, usize &parenOpen, usize &parenClose )
+static bool find_keyword_parentheses( const String &buffer, usize start, usize end,
+	usize &parenOpen, usize &parenClose )
 {
 	parenOpen = buffer.find( "(", start, end );
 	if( parenOpen > end ) { return false; }
@@ -408,7 +409,8 @@ void ObjectFile::parse_keywords_values( const String &buffer )
 			case KeywordID_OBJECT:
 			{
 				name = keyword_PARENTHESES_string( buffer, keyword );
-				ErrorIfLine( name.length_bytes() == 0, line, "%s() must be a valid string!", g_KEYWORDS[KeywordID_OBJECT] );
+				ErrorIfLine( name.length_bytes() == 0, line,
+				"%s() must be a valid string!", g_KEYWORDS[KeywordID_OBJECT] );
 				type = name;
 				type.append( "_t" );
 				ErrorIfLine( !Objects::objectTypes.add( type.hash(), type ), line, "duplicate object name!" );
@@ -420,7 +422,8 @@ void ObjectFile::parse_keywords_values( const String &buffer )
 			{
 				nameParent = keyword_PARENTHESES_string( buffer, keyword );
 				if( nameParent.length_bytes() == 0 ) { nameParent = "DEFAULT"; }
-				ErrorIfLine( nameParent.length_bytes() == 0, line, "%s() must be a valid string!", g_KEYWORDS[KeywordID_PARENT] );
+				ErrorIfLine( nameParent.length_bytes() == 0, line,
+				"%s() must be a valid string!", g_KEYWORDS[KeywordID_PARENT] );
 				typeParent = nameParent;
 				typeParent.append( "_t" );
 				typeParentFull = "CoreObjects::";
@@ -432,8 +435,10 @@ void ObjectFile::parse_keywords_values( const String &buffer )
 			case KeywordID_COUNT:
 			{
 				const i64 value = keyword_PARENTHESES_i64( buffer, keyword );
-				ErrorIfLine( value < 0 || value > U32_MAX, line, "%s() must be range 1 - %u", g_KEYWORDS[KeywordID_COUNT], U32_MAX );
-				ErrorIfLine( value == 0, line, "%s() must be range 1 - %u. Use %s( true ) if desired size is 0",
+				ErrorIfLine( value < 0 || value > U32_MAX, line,
+					"%s() must be range 1 - %u", g_KEYWORDS[KeywordID_COUNT], U32_MAX );
+				ErrorIfLine( value == 0, line,
+					"%s() must be range 1 - %u. Use %s( true ) if desired size is 0",
 					g_KEYWORDS[KeywordID_COUNT], U32_MAX, g_KEYWORDS[KeywordID_ABSTRACT] );
 				countMax = static_cast<usize>( value );
 			}
@@ -456,7 +461,8 @@ void ObjectFile::parse_keywords_values( const String &buffer )
 			case KeywordID_HASH:
 			{
 				hash = keyword_PARENTHESES_string( buffer, keyword );
-				ErrorIfLine( hash.length_bytes() == 0, line, "%s() must be a valid string!", g_KEYWORDS[KeywordID_HASH] );
+				ErrorIfLine( hash.length_bytes() == 0, line,
+				"%s() must be a valid string!", g_KEYWORDS[KeywordID_HASH] );
 			}
 			break;
 
@@ -671,7 +677,7 @@ void ObjectFile::keyword_READ( const String &buffer, Keyword &keyword )
 
 	// Header
 	String &header = readHeader;
-	header.append( "void _read( class Buffer &buffer );" );
+	header.append( "bool _read( class Buffer &buffer );" );
 
 	// Flag
 	hasWriteRead = true;
@@ -713,7 +719,7 @@ void ObjectFile::keyword_DESERIALIZE( const String &buffer, Keyword &keyword )
 	if( deserializeSource.length_bytes() == 0 ) { deserializeSource.append( "// ..." ); }
 
 	// Header
-	deserializeHeader.append( "void _deserialize( class Buffer &buffer );" );
+	deserializeHeader.append( "bool _deserialize( class Buffer &buffer );" );
 
 	// Flag
 	hasSerialize = true;
@@ -802,7 +808,8 @@ void ObjectFile::keyword_PRIVATE_PUBLIC_GLOBAL( const String &buffer, Keyword &k
 	if( keyword.id != KeywordID_GLOBAL )
 	{
 		// Helper Lambda
-		auto list_ref = []( KeywordID id, List<String> &priv, List<String> &prot, List<String> &publ ) -> List<String> &
+		auto list_ref = []( KeywordID id, List<String> &priv,
+			List<String> &prot, List<String> &publ ) -> List<String> &
 		{
 			if( id == KeywordID_PRIVATE ) { return priv; }
 			if( id == KeywordID_PROTECTED ) { return prot; }
@@ -813,8 +820,10 @@ void ObjectFile::keyword_PRIVATE_PUBLIC_GLOBAL( const String &buffer, Keyword &k
 		if( isFunction )
 		{
 			// Output
-			List<String> &header = list_ref( keyword.id, privateFunctionHeader, protectedFunctionHeader, publicFunctionHeader );
-			List<String> &source = list_ref( keyword.id, privateFunctionSource, protectedFunctionSource, publicFunctionSource );
+			List<String> &header = list_ref(
+				keyword.id, privateFunctionHeader, protectedFunctionHeader, publicFunctionHeader );
+			List<String> &source = list_ref(
+				keyword.id, privateFunctionSource, protectedFunctionSource, publicFunctionSource );
 
 			// Update 'end'
 			end = closingBrace + 1;
@@ -822,19 +831,22 @@ void ObjectFile::keyword_PRIVATE_PUBLIC_GLOBAL( const String &buffer, Keyword &k
 			// Copy function
 			String functionSource = buffer.substr( start, end ).trim();
 			const usize openBrace = buffer.find( "{", start, end );
-			ErrorIfLine( openBrace == USIZE_MAX, line_at( buffer, start ), "function declaration: invalid/missing scope" );
+			ErrorIfLine( openBrace == USIZE_MAX, line_at( buffer, start ),
+				"function declaration: invalid/missing scope" );
 			String functionHeader = buffer.substr( start, openBrace ).trim();
 			String functionInherited = functionHeader;
 
 			// Format source function (e.g. source.cpp: "int OBJECT::foo() { ... }" )
 			functionSource.append( "\n" );
 			usize current = functionSource.find( "(", 0, functionSource.find( "{" ) ) - 1;
-			ErrorIfLine( current == USIZE_MAX - 1, line_at( buffer, start ), "function declaration: invalid/missing parameter parentheses" );
+			ErrorIfLine( current == USIZE_MAX - 1, line_at( buffer, start ),
+				"function declaration: invalid/missing parameter parentheses" );
 			bool onName = false;
 			for( ;; )
 			{
-				ErrorIfLine( current == 0, line_at( buffer, keyword.start ), "function declaration: no return type" );
-				const bool whitespace = char_whitespace( functionSource[current] );
+				ErrorIfLine( current == 0, line_at( buffer, keyword.start ),
+					"function declaration: no return type" );
+				const bool whitespace = char_is_whitespace( functionSource[current] );
 				if( whitespace && onName ) { current++; break; }
 				current--;
 				onName |= !whitespace;
@@ -854,11 +866,13 @@ void ObjectFile::keyword_PRIVATE_PUBLIC_GLOBAL( const String &buffer, Keyword &k
 		// VARIABLE / DATA
 		{
 			// Output
-			List<String> &header = list_ref( keyword.id, privateVariableHeader, protectedVariableHeader, publicVariableHeader );
+			List<String> &header = list_ref(
+				keyword.id, privateVariableHeader, protectedVariableHeader, publicVariableHeader );
 
 			// Update 'end'
 			end = buffer.find( ";", start, end );
-			ErrorIfLine( end == USIZE_MAX, line_at( buffer, keyword.start ), "declaration: missing terminating semicolon" );
+			ErrorIfLine( end == USIZE_MAX, line_at( buffer, keyword.start ),
+				"declaration: missing terminating semicolon" );
 			end++;
 
 			// Variable?
@@ -869,7 +883,8 @@ void ObjectFile::keyword_PRIVATE_PUBLIC_GLOBAL( const String &buffer, Keyword &k
 			if( !isVariable )
 			{
 				end = find_closing_brace( buffer, start );
-				ErrorIfLine( end == USIZE_MAX, line_at( buffer, keyword.start ), "declaration: missing scope braces" );
+				ErrorIfLine( end == USIZE_MAX, line_at( buffer, keyword.start ),
+					"declaration: missing scope braces" );
 				end += 2;
 			}
 
@@ -904,7 +919,8 @@ void ObjectFile::keyword_PRIVATE_PUBLIC_GLOBAL( const String &buffer, Keyword &k
 
 			// Format header function (e.g. header.hpp: "extern int foo();" )
 			const usize openBrace = functionSource.find( "{" );
-			ErrorIfLine( openBrace == USIZE_MAX, line_at( buffer, keyword.start ), "function declaration: invalid/missing scope" );
+			ErrorIfLine( openBrace == USIZE_MAX, line_at( buffer, keyword.start ),
+				"function declaration: invalid/missing scope" );
 			String functionHeader = functionSource.substr( 0, openBrace ).trim();
 			functionHeader.insert( 0, "extern " );
 			functionHeader.append( ";\n" );
@@ -922,18 +938,20 @@ void ObjectFile::keyword_PRIVATE_PUBLIC_GLOBAL( const String &buffer, Keyword &k
 
 			// Update 'end'
 			end = buffer.find( ";", start, end );
-			ErrorIfLine( end == USIZE_MAX, line_at( buffer, keyword.start ), "declaration: missing terminating semicolon" );
+			ErrorIfLine( end == USIZE_MAX, line_at( buffer, keyword.start ),
+				"declaration: missing terminating semicolon" );
 			end++;
 
 			// Variable?
 			const bool isVariable = !( buffer.find( "struct", start, end ) != USIZE_MAX ||
-									   buffer.find( "class", start, end ) != USIZE_MAX ||
-									   buffer.find( "enum", start, end ) != USIZE_MAX ||
-									   buffer.find( "enum_type", start, end ) != USIZE_MAX );
+				buffer.find( "class", start, end ) != USIZE_MAX ||
+				buffer.find( "enum", start, end ) != USIZE_MAX ||
+				buffer.find( "enum_type", start, end ) != USIZE_MAX );
 			if( !isVariable )
 			{
 				end = find_closing_brace( buffer, start );
-				ErrorIfLine( end == USIZE_MAX, line_at( buffer, keyword.start ), "declaration: missing scope braces" );
+				ErrorIfLine( end == USIZE_MAX, line_at( buffer, keyword.start ),
+					"declaration: missing scope braces" );
 				end += 2;
 			}
 
@@ -950,14 +968,14 @@ void ObjectFile::keyword_PRIVATE_PUBLIC_GLOBAL( const String &buffer, Keyword &k
 				const usize endBrace = expressionHeader.find( "{" );
 				const usize endSemicolon = expressionHeader.find( ";" );
 				const usize endAssignment = expressionHeader.find( "=" );
-				ErrorIfLine( endAssignment == USIZE_MAX && endSemicolon == USIZE_MAX && endSemicolon == USIZE_MAX,
+				ErrorIfLine(
+					endAssignment == USIZE_MAX && endSemicolon == USIZE_MAX && endSemicolon == USIZE_MAX,
 					line_at( buffer, keyword.start ), "declaration: missing '{ }', '=', or ';'" );
 				const usize endIndex = min( endBrace, min( endSemicolon, endAssignment ) );
 				expressionHeader.remove( endIndex, expressionHeader.length_bytes() - endIndex );
 
-
 				// DVAR?
-				PrintLnColor( LOG_MAGENTA, "%s", expressionHeader.cstr() );
+				PrintLn( PrintColor_Magenta, "%s", expressionHeader.cstr() );
 				if( expressionHeader.contains_at( "DVAR", 0 ) )
 				{
 					// Handle DVAR macros
@@ -1010,7 +1028,8 @@ void ObjectFile::keyword_CATEGORY( const String &buffer, Keyword &keyword )
 	usize current = 0LLU;
 	usize end = 0LLU;
 	const bool found = find_keyword_parentheses( buffer, keyword.start, keyword.end, current, end );
-	ErrorIfLine( !found, line_at( buffer, keyword.start ), "%s(...) must not be empty!", g_KEYWORDS[KeywordID_CATEGORY] );
+	ErrorIfLine( !found, line_at( buffer, keyword.start ),
+		"%s(...) must not be empty!", g_KEYWORDS[KeywordID_CATEGORY] );
 
 	usize delimiter = min( buffer.find( ",", current + 1, end ), end );
 	for( ;; )
@@ -1037,7 +1056,8 @@ void ObjectFile::keyword_VERSIONS( const String &buffer, Keyword &keyword )
 	usize current = 0LLU;
 	usize end = 0LLU;
 	const bool found = find_keyword_parentheses( buffer, keyword.start, keyword.end, current, end );
-	ErrorIfLine( !found, line_at( buffer, keyword.start ), "%s(...) must not be empty!", g_KEYWORDS[KeywordID_VERSIONS] );
+	ErrorIfLine( !found, line_at( buffer, keyword.start ),
+		"%s(...) must not be empty!", g_KEYWORDS[KeywordID_VERSIONS] );
 
 	String &header = versionsHeader;
 	header.append( "\tenum\n\t{\n\t\t" );
@@ -1057,53 +1077,55 @@ void ObjectFile::keyword_VERSIONS( const String &buffer, Keyword &keyword )
 }
 
 
-String ObjectFile::keyword_PARENTHESES_string( const String &buffer, Keyword &keyword, const bool requireParentheses )
+String ObjectFile::keyword_PARENTHESES_string( const String &buffer, Keyword &keyword, bool requireParentheses )
 {
 	// Find parentheses
 	usize open = 0;
 	usize close = 0;
 	const bool found = find_keyword_parentheses( buffer, keyword.start, keyword.end, open, close );
 	if( found ) { return buffer.substr( open + 1, close ).trim(); }
-	ErrorIfLine( requireParentheses, line_at( buffer, keyword.start ), "%s(...) must not be empty!", g_KEYWORDS[keyword.id] );
+	ErrorIfLine( requireParentheses, line_at( buffer, keyword.start ),
+		"%s(...) must not be empty!", g_KEYWORDS[keyword.id] );
 	return "";
 }
 
 
-int ObjectFile::keyword_PARENTHESES_int( const String &buffer, Keyword &keyword, const bool requireParentheses )
+int ObjectFile::keyword_PARENTHESES_int( const String &buffer, Keyword &keyword, bool requireParentheses )
 {
 	const String string = keyword_PARENTHESES_string( buffer, keyword );
 	return string.length_bytes() == 0 ? 0 : atoi( string.cstr() );
 }
 
 
-i64 ObjectFile::keyword_PARENTHESES_i64( const String &buffer, Keyword &keyword, const bool requireParentheses )
+i64 ObjectFile::keyword_PARENTHESES_i64( const String &buffer, Keyword &keyword, bool requireParentheses )
 {
 	const String string = keyword_PARENTHESES_string( buffer, keyword );
 	return string.length_bytes() == 0 ? 0 : atoll( string.cstr() );
 }
 
 
-double ObjectFile::keyword_PARENTHESES_double( const String &buffer, Keyword &keyword, const bool requireParentheses )
+double ObjectFile::keyword_PARENTHESES_double( const String &buffer, Keyword &keyword, bool requireParentheses )
 {
 	const String string = keyword_PARENTHESES_string( buffer, keyword );
 	return string.length_bytes() == 0 ? 0.0 : atof( string.cstr() );
 }
 
 
-float ObjectFile::keyword_PARENTHESES_float( const String &buffer, Keyword &keyword, const bool requireParentheses )
+float ObjectFile::keyword_PARENTHESES_float( const String &buffer, Keyword &keyword, bool requireParentheses )
 {
 	const String string = keyword_PARENTHESES_string( buffer, keyword );
 	return string.length_bytes() == 0 ? 0.0f : static_cast<float>( atof( string.cstr() ) );
 }
 
 
-bool ObjectFile::keyword_PARENTHESES_bool( const String &buffer, Keyword &keyword, const bool requireParentheses )
+bool ObjectFile::keyword_PARENTHESES_bool( const String &buffer, Keyword &keyword, bool requireParentheses )
 {
 	const String string = keyword_PARENTHESES_string( buffer, keyword );
 	if( string.length_bytes() == 0 ) { return true; }
 	if( string == "true" || string == "1" ) { return true; }
 	if( string == "false" || string == "0" ) { return false; }
-	ErrorIfLine( true, line_at( buffer, keyword.start ), "invalid boolean parentheses for keyword %s", string.cstr() );
+	ErrorIfLine( true, line_at( buffer, keyword.start ),
+		"invalid boolean parentheses for keyword %s", string.cstr() );
 	return false;
 }
 
@@ -1129,8 +1151,8 @@ void ObjectFile::parse()
 	// Console
 	if( verbose_output() )
 	{
-		PrintColor( LOG_WHITE, TAB TAB "Parse " );
-		PrintColor( LOG_CYAN, "%s", path.length_bytes() == 0 ? "DEFAULT" : path.cstr() );
+		Print( PrintColor_White, TAB TAB "Parse " );
+		Print( PrintColor_Cyan, "%s", path.length_bytes() == 0 ? "DEFAULT" : path.cstr() );
 	}
 
 	Timer timer;
@@ -1147,7 +1169,7 @@ void ObjectFile::parse()
 
 	if( verbose_output() )
 	{
-		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+		PrintLn( PrintColor_White, " (%.3f ms)", timer.elapsed_ms() );
 	}
 }
 
@@ -1205,7 +1227,8 @@ void ObjectFile::validate()
 		// Networked Requirement
 		ErrorIf( networked && ( serializeSource.length_bytes() == 0 || deserializeSource.length_bytes() == 0 ),
 			"%s marked as %s, but missing required %s & %s functions",
-			name.cstr(), g_KEYWORDS[KeywordID_NETWORKED], g_KEYWORDS[KeywordID_SERIALIZE], g_KEYWORDS[KeywordID_DESERIALIZE] );
+			name.cstr(), g_KEYWORDS[KeywordID_NETWORKED], g_KEYWORDS[KeywordID_SERIALIZE],
+			g_KEYWORDS[KeywordID_DESERIALIZE] );
 	}
 }
 
@@ -1250,7 +1273,10 @@ void ObjectFile::write_header()
 				}
 
 				// Public Functions
-				for( String &func : publicFunctionHeader ) { output.append( "\tvirtual " ).append( func ).append( "\n" ); }
+				for( String &func : publicFunctionHeader )
+				{
+					output.append( "\tvirtual " ).append( func ).append( "\n" );
+				}
 
 				// Public Events
 				for( u8 eventID = 0; eventID < EVENT_COUNT; eventID++ )
@@ -1274,7 +1300,10 @@ void ObjectFile::write_header()
 				}
 
 				// Protected Functions
-				for( String &func : protectedFunctionHeader ) { output.append( "\tvirtual " ).append( func ).append( "\n" ); }
+				for( String &func : protectedFunctionHeader )
+				{
+					output.append( "\tvirtual " ).append( func ).append( "\n" );
+				}
 			}
 
 			// Private
@@ -1298,10 +1327,16 @@ void ObjectFile::write_header()
 				}
 
 				// Private Variables
-				for( String &var : privateVariableHeader ) { output.append( "\t" ).append( var ).append( "\n" ); }
+				for( String &var : privateVariableHeader )
+				{
+					output.append( "\t" ).append( var ).append( "\n" );
+				}
 
 				// Private Functions
-				for( String &func : privateFunctionHeader ) { output.append( "\t" ).append( func ).append( "\n" ); }
+				for( String &func : privateFunctionHeader )
+				{
+					output.append( "\t" ).append( func ).append( "\n" );
+				}
 
 				// Disabled Events
 				for( u8 eventID = 0; eventID < EVENT_COUNT; eventID++ )
@@ -1339,14 +1374,14 @@ void ObjectFile::write_header()
 	{
 		output.append( "\tstatic void write( class Buffer &buffer, const ObjectHandle<Object::" );
 		output.append( name ).append( "> &handle );\n" );
-		output.append( "\tstatic void read( class Buffer &buffer, ObjectHandle<Object::" );
+		output.append( "\tstatic bool read( class Buffer &buffer, ObjectHandle<Object::" );
 		output.append( name ).append( "> &handle );\n" );
 	}
 	if( hasSerialize )
 	{
 		output.append( "\tstatic void serialize( class Buffer &buffer, const ObjectHandle<Object::" );
 		output.append( name ).append( "> &handle );\n" );
-		output.append( "\tstatic void deserialize( class Buffer &buffer, ObjectHandle<Object::" );
+		output.append( "\tstatic bool deserialize( class Buffer &buffer, ObjectHandle<Object::" );
 		output.append( name ).append( "> &handle );\n" );
 	}
 	output.append( "};\n" );
@@ -1381,21 +1416,21 @@ void ObjectFile::write_source()
 	// Encoder
 	output.append( "template <> struct CoreObjects::OBJECT_ENCODER<Object::" ).append( name );
 	output.append(">\n{\n" );
-	output.append( "\tOBJECT_ENCODER( void *data ) : object{ *reinterpret_cast<" ).append( type );
+	output.append( "\tOBJECT_ENCODER( void *data ) : object { *reinterpret_cast<" ).append( type );
 	output.append( " *>( data ) } { } " ).append( type ).append( " &object;\n" );
 	if( hasWriteRead )
 	{
 		output.append( "\tstatic void write( class Buffer &buffer, const OBJECT_ENCODER<Object::" );
 		output.append( name ).append( "> &context ) { context.object._write( buffer ); }\n" );
-		output.append( "\tstatic void read( class Buffer &buffer, OBJECT_ENCODER<Object::" );
-		output.append( name ).append( "> &context ) { context.object._read( buffer ); }\n" );
+		output.append( "\tstatic bool read( class Buffer &buffer, OBJECT_ENCODER<Object::" );
+		output.append( name ).append( "> &context ) { return context.object._read( buffer ); }\n" );
 	}
 	if( hasSerialize )
 	{
 		output.append( "\tstatic void serialize( class Buffer &buffer, const OBJECT_ENCODER<Object::" );
 		output.append( name ).append( "> &context ) { context.object._serialize( buffer ); }\n" );
-		output.append( "\tstatic void deserialize( class Buffer &buffer, OBJECT_ENCODER<Object::" );
-		output.append( name ).append( "> &context ) { context.object._deserialize( buffer ); }\n" );
+		output.append( "\tstatic bool deserialize( class Buffer &buffer, OBJECT_ENCODER<Object::" );
+		output.append( name ).append( "> &context ) { return context.object._deserialize( buffer ); }\n" );
 	}
 	output.append( "};\n\n" );
 
@@ -1417,8 +1452,8 @@ void ObjectFile::write_source()
 
 	if( readSource.length_bytes() > 0 )
 	{
-		output.append( "void CoreObjects::" ).append( type ).append( "::_read( Buffer &buffer )\n{\n" );
-		output.append( readSource ).append( "}\n\n" );
+		output.append( "bool CoreObjects::" ).append( type ).append( "::_read( Buffer &buffer )\n{\n" );
+		output.append( readSource ).append( "\treturn true;\n}\n\n" );
 	}
 
 	// Serializer
@@ -1436,7 +1471,6 @@ void ObjectFile::write_source()
 		output.append( "> &handle )\n{\n" );
 		output.append( "\tAssert( handle.data != nullptr );\n" );
 		output.append( "\tSerializer serializer; serializer.begin( buffer, 0 );\n" );
-		output.append( "\tserializer.write<bool>( \"deactivated\", static_cast<bool>( handle->id.deactivated ) );\n" );
 		for( ObjectFile *par = this; par != nullptr; par = par->parent )
 		{
 			if( !par->hasSerialize ) { continue; }
@@ -1451,27 +1485,25 @@ void ObjectFile::write_source()
 	if( hasSerialize )
 	{
 		// object_t::serialize
-		output.append( "void CoreObjects::" ).append( type ).append( "::_deserialize( Buffer &buffer )\n{\n" );
+		output.append( "bool CoreObjects::" ).append( type ).append( "::_deserialize( Buffer &buffer )\n{\n" );
 		output.append( "\tDeserializer deserializer;\n\tdeserializer.begin( buffer, VERSION_COUNT - 1 );\n\t" );
 		output.append( deserializeSource );
-		output.append( "\n\tdeserializer.end();\n}\n\n" );
+		output.append( "\n\tdeserializer.end();\n\treturn true;\n}\n\n" );
 
 		// ObjectHandle<Object>::deserialize
-		output.append( "void ObjectHandle<Object::" ).append( name );
+		output.append( "bool ObjectHandle<Object::" ).append( name );
 		output.append( ">::deserialize( Buffer &buffer, ObjectHandle<Object::" ).append( name );
 		output.append( "> &handle )\n{\n" );
 		output.append( "\tAssert( handle.data != nullptr );\n" );
 		output.append( "\tDeserializer deserializer; deserializer.begin( buffer, 0 );\n" );
-		output.append( "\tbool deactivated; deserializer.read( \"deactivated\", deactivated ); " );
-		output.append( "handle->id.deactivated = deactivated;\n" );
 		for( ObjectFile *par = this; par != nullptr; par = par->parent )
 		{
 			if( !par->hasSerialize ) { continue; }
 			output.append( "\t{ CoreObjects::OBJECT_ENCODER<Object::" ).append( par->name );
-			output.append( "> slice { handle.data }; deserializer.read( " );
-			output.append( par->hashHex ).append( ", slice ); }\n" );
+			output.append( "> slice { handle.data }; if( !deserializer.read( " );
+			output.append( par->hashHex ).append( ", slice ) ) { return false; }; }\n" );
 		}
-		output.append( "\tdeserializer.end();\n}\n\n" );
+		output.append( "\tdeserializer.end();\n\treturn true;\n}\n\n" );
 	}
 
 	// Events
@@ -1577,7 +1609,7 @@ void Objects::end()
 }
 
 
-usize Objects::gather( const char *directory, const bool recurse )
+usize Objects::gather( const char *directory, bool recurse )
 {
 	// Iterate Directories
 	Timer timer;
@@ -1619,7 +1651,7 @@ void Objects::resolve()
 {
 	if( verbose_output() )
 	{
-		PrintColor( LOG_WHITE, TAB TAB "Resolve Inheritance" );
+		Print( PrintColor_White, TAB TAB "Resolve Inheritance" );
 	}
 
 	Timer timer;
@@ -1638,7 +1670,6 @@ void Objects::resolve()
 				ErrorIf( parent.name == object.name, "%s(%s) attempting to inherit itself\n\t > %s",
 					g_KEYWORDS[KeywordID_OBJECT], object.name.cstr(), object.path.cstr() );
 
-				// Success
 				object.parent = &parent;
 				parent.children.add( &object );
 				break;
@@ -1726,12 +1757,12 @@ void Objects::resolve()
 	// Log
 	if( verbose_output() )
 	{
-		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+		PrintLn( PrintColor_White, " (%.3f ms)", timer.elapsed_ms() );
 	}
 };
 
 
-void Objects::sort_objects( ObjectFile *object, const u16 depth, List<ObjectFile *> &outList )
+void Objects::sort_objects( ObjectFile *object, u16 depth, List<ObjectFile *> &outList )
 {
 	// This performs a "topological sort" of the ObjectFiles based on the inheritance tree
 	// The output ensures that parents always precede children
@@ -1788,8 +1819,8 @@ void Objects::codegen()
 	{
 		if( verbose_output() )
 		{
-			PrintColor( LOG_WHITE, TAB TAB "Write " );
-			PrintColor( LOG_CYAN, "%s", pathIntelliSense );
+			Print( PrintColor_White, TAB TAB "Write " );
+			Print( PrintColor_Cyan, "%s", pathIntelliSense );
 		}
 
 		Timer timer;
@@ -1797,7 +1828,7 @@ void Objects::codegen()
 
 		if( verbose_output() )
 		{
-			PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+			PrintLn( PrintColor_White, " (%.3f ms)", timer.elapsed_ms() );
 		}
 	}
 
@@ -1806,8 +1837,8 @@ void Objects::codegen()
 	{
 		if( verbose_output() )
 		{
-			PrintColor( LOG_WHITE, TAB TAB "Write " );
-			PrintColor( LOG_CYAN, "%s", pathHeaderSystem );
+			Print( PrintColor_White, TAB TAB "Write " );
+			Print( PrintColor_Cyan, "%s", pathHeaderSystem );
 		}
 
 		Timer timer;
@@ -1815,7 +1846,7 @@ void Objects::codegen()
 
 		if( verbose_output() )
 		{
-			PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+			PrintLn( PrintColor_White, " (%.3f ms)", timer.elapsed_ms() );
 		}
 	}
 
@@ -1824,8 +1855,8 @@ void Objects::codegen()
 	{
 		if( verbose_output() )
 		{
-			PrintColor( LOG_WHITE, TAB TAB "Write " );
-			PrintColor( LOG_CYAN, "%s", pathHeaderObjects );
+			Print( PrintColor_White, TAB TAB "Write " );
+			Print( PrintColor_Cyan, "%s", pathHeaderObjects );
 		}
 
 		Timer timer;
@@ -1833,7 +1864,7 @@ void Objects::codegen()
 
 		if( verbose_output() )
 		{
-			PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+			PrintLn( PrintColor_White, " (%.3f ms)", timer.elapsed_ms() );
 		}
 	}
 
@@ -1842,8 +1873,8 @@ void Objects::codegen()
 	{
 		if( verbose_output() )
 		{
-			PrintColor( LOG_WHITE, TAB TAB "Write " );
-			PrintColor( LOG_CYAN, "%s", pathSourceObjects );
+			Print( PrintColor_White, TAB TAB "Write " );
+			Print( PrintColor_Cyan, "%s", pathSourceObjects );
 		}
 
 		Timer timer;
@@ -1851,7 +1882,7 @@ void Objects::codegen()
 
 		if( verbose_output() )
 		{
-			PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+			PrintLn( PrintColor_White, " (%.3f ms)", timer.elapsed_ms() );
 		}
 	}
 }
@@ -1862,8 +1893,8 @@ void Objects::codegen_intellisense( String &output )
 {
 	if( verbose_output() )
 	{
-		PrintColor( LOG_WHITE, TAB TAB "Generate " );
-		PrintColor( LOG_CYAN, "output/generated/objects.generated.intellisense" );
+		Print( PrintColor_White, TAB TAB "Generate " );
+		Print( PrintColor_Cyan, "output/generated/objects.generated.intellisense" );
 	}
 
 	Timer timer;
@@ -1917,7 +1948,7 @@ void Objects::codegen_intellisense( String &output )
 	// Logging
 	if( verbose_output() )
 	{
-		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+		PrintLn( PrintColor_White, " (%.3f ms)", timer.elapsed_ms() );
 	}
 }
 
@@ -1937,7 +1968,7 @@ void Objects::codegen_header_system( String &output )
 	output.append( COMMENT_BREAK "\n\n" );
 
 	// Object Types
-	output.append( "enum_class_type\n(\n\tObject, u16,\n\n" );
+	output.append( "enum_class\n(\n\tObject, u16,\n\n" );
 	for( ObjectFile *object : objectFilesSorted )
 	{
 		output.append( "\t" ).append( object->name ).append( ",\n" );
@@ -1951,7 +1982,7 @@ void Objects::codegen_header_system( String &output )
 
 	// ObjectContext Categories
 	output.append( COMMENT_BREAK "\n\n" );
-	output.append( "enum_class_type\n(\n\tObjectCategory, u16,\n\n" );
+	output.append( "enum_class\n(\n\tObjectCategory, u16,\n\n" );
 	output.append( "\tDEFAULT,\n" );
 	for( auto &category : objectCategories )
 	{
@@ -2128,13 +2159,14 @@ void Objects::generate_source_system( String &output )
 	output.append( "}\n\n" );
 
 	// Deserialize
-	output.append( "void CoreObjects::deserialize( Deserializer &deserializer, ObjectContext &context )\n{\n" );
+	output.append( "bool CoreObjects::deserialize( Deserializer &deserializer, ObjectContext &context )\n{\n" );
 	for( ObjectFile *object : objectFilesSorted )
 	{
 		if( !object->hasSerialize ) { continue; }
 		output.append( "\t{ ObjectContextDeserializerA<Object::" ).append( object->name );
 		output.append( "> type { context }; " );
-		output.append( "deserializer.read( " ).append( object->hashHex ).append( ", type ); }\n" );
+		output.append( "if( !deserializer.read( " ).append( object->hashHex );
+		output.append( ", type ) ) { return false; } }\n" );
 	}
 	output.append( "\tObjectInstance::Serialization::prepare( context );\n" );
 	for( ObjectFile *object : objectFilesSorted )
@@ -2142,9 +2174,10 @@ void Objects::generate_source_system( String &output )
 		if( !object->hasSerialize ) { continue; }
 		output.append( "\t{ ObjectContextDeserializerB<Object::" ).append( object->name );
 		output.append( "> type { context }; " );
-		output.append( "deserializer.read( " ).append( object->hashHex ).append( ", type ); }\n" );
+		output.append( "if( !deserializer.read( " ).append( object->hashHex );
+		output.append( ", type ) ) { return false; } }\n" );
 	}
-	output.append( "}\n\n" );
+	output.append( "\treturn true;\n}\n\n" );
 }
 
 
@@ -2221,8 +2254,8 @@ void Objects::codegen_header_objects( String &output )
 	// Log
 	if( verbose_output() )
 	{
-		PrintColor( LOG_WHITE, TAB TAB "Generate " );
-		PrintColor( LOG_CYAN, "output/generated/objects.generated.hpp" );
+		Print( PrintColor_White, TAB TAB "Generate " );
+		Print( PrintColor_Cyan, "output/generated/objects.generated.hpp" );
 	}
 	Timer timer;
 
@@ -2280,7 +2313,7 @@ void Objects::codegen_header_objects( String &output )
 	// Logging
 	if( verbose_output() )
 	{
-		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+		PrintLn( PrintColor_White, " (%.3f ms)", timer.elapsed_ms() );
 	}
 }
 
@@ -2290,8 +2323,8 @@ void Objects::codegen_source_objects( String &output )
 	// Log
 	if( verbose_output() )
 	{
-		PrintColor( LOG_WHITE, TAB TAB "Generate " );
-		PrintColor( LOG_CYAN, "output/generated/objects.generated.cpp" );
+		Print( PrintColor_White, TAB TAB "Generate " );
+		Print( PrintColor_Cyan, "output/generated/objects.generated.cpp" );
 	}
 	Timer timer;
 
@@ -2346,7 +2379,7 @@ void Objects::codegen_source_objects( String &output )
 	// Logging
 	if( verbose_output() )
 	{
-		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+		PrintLn( PrintColor_White, " (%.3f ms)", timer.elapsed_ms() );
 	}
 };
 
@@ -2397,7 +2430,7 @@ void Objects::generate_source_objects_events( String &output )
 }
 
 
-String Objects::generate_source_objects_events_category( String &output, const u8 eventID, const String &category )
+String Objects::generate_source_objects_events_category( String &output, u8 eventID, const String &category )
 {
 	String event;
 	bool generated = false;

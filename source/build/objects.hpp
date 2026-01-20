@@ -133,12 +133,12 @@ struct ObjectFile
 	void parse_keywords_values( const String &buffer );
 	void parse_keywords_code( const String &buffer );
 
-	String keyword_PARENTHESES_string( const String &buffer, Keyword &keyword, const bool requireParentheses = true );
-	int keyword_PARENTHESES_int( const String &buffer, Keyword &keyword, const bool requireParentheses = true );
-	i64 keyword_PARENTHESES_i64( const String &buffer, Keyword &keyword, const bool requireParentheses = true );
-	double keyword_PARENTHESES_double( const String &buffer, Keyword &keyword, const bool requireParentheses = true );
-	float keyword_PARENTHESES_float( const String &buffer, Keyword &keyword, const bool requireParentheses = true );
-	bool keyword_PARENTHESES_bool( const String &buffer, Keyword &keyword, const bool requireParentheses = true );
+	String keyword_PARENTHESES_string( const String &buffer, Keyword &keyword, bool requireParentheses = true );
+	int keyword_PARENTHESES_int( const String &buffer, Keyword &keyword, bool requireParentheses = true );
+	i64 keyword_PARENTHESES_i64( const String &buffer, Keyword &keyword, bool requireParentheses = true );
+	double keyword_PARENTHESES_double( const String &buffer, Keyword &keyword, bool requireParentheses = true );
+	float keyword_PARENTHESES_float( const String &buffer, Keyword &keyword, bool requireParentheses = true );
+	bool keyword_PARENTHESES_bool( const String &buffer, Keyword &keyword, bool requireParentheses = true );
 
 	void keyword_INCLUDES( const String &buffer, Keyword &keyword );
 	void keyword_CONSTRUCTOR( const String &buffer, Keyword &keyword );
@@ -258,7 +258,7 @@ namespace Objects
 	// Stages
 	extern void begin();
 	extern void end();
-	extern usize gather( const char *directory, const bool recurse );
+	extern usize gather( const char *directory, bool recurse );
 	extern void parse();
 	extern void resolve();
 	extern void validate();

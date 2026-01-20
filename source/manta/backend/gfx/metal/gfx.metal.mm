@@ -80,9 +80,9 @@ static const MTLPixelFormat MetalColorFormats[] =
 	MTLPixelFormatRGBA8Unorm,   // GfxColorFormat_R8G8B8A8_FLOAT
 	MTLPixelFormatRGBA8Uint,    // GfxColorFormat_R8G8B8A8_UINT
 	MTLPixelFormatRGB10A2Unorm, // GfxColorFormat_R10G10B10A2_FLOAT
-	MTLPixelFormatR8Unorm,      // GfxColorFormat_R8
+	MTLPixelFormatR8Uint,       // GfxColorFormat_R8_UINT
 	MTLPixelFormatRG8Unorm,     // GfxColorFormat_R8G8
-	MTLPixelFormatR16Uint,      // GfxColorFormat_R16
+	MTLPixelFormatR16Uint,      // GfxColorFormat_R16_UINT
 	MTLPixelFormatR16Float,     // GfxColorFormat_R16_FLOAT
 	MTLPixelFormatRG16Uint,     // GfxColorFormat_R16G16
 	MTLPixelFormatRG16Float,    // GfxColorFormat_R16G16F_FLOAT
@@ -260,11 +260,11 @@ struct GfxBufferResource : public GfxResource
 
 struct GfxBuffer
 {
-	bool init( const usize capacity ) { return CoreGfx::api_buffer_init( resource, capacity ); }
+	bool init( usize capacity ) { return CoreGfx::api_buffer_init( resource, capacity ); }
 	bool free() { GfxBufferResource::release( resource ); return true; }
 	void write_begin() { CoreGfx::api_buffer_write_begin( resource ); }
 	void write_end() { CoreGfx::api_buffer_write_end( resource ); }
-	void write( const void *const data, const usize size, const usize offset )
+	void write( const void *data, usize size, usize offset )
 	{
 		CoreGfx::api_buffer_write( resource, data, size, offset );
 	}
@@ -497,7 +497,7 @@ static void metal_command_buffer_begin()
 }
 
 
-static void metal_command_buffer_commit( const bool present = false )
+static void metal_command_buffer_commit( bool present = false )
 {
 	Assert( mtlCommandBuffer != nil );
 	Assert( mtlEncoder == nil );
@@ -619,14 +619,14 @@ static void apply_clear_depth()
 }
 
 
-void CoreGfx::api_clear_color( const Color color )
+void CoreGfx::api_clear_color( Color color )
 {
 	hasClearColor = true;
 	clearColor = color;
 }
 
 
-void CoreGfx::api_clear_depth( const float depth )
+void CoreGfx::api_clear_depth( float depth )
 {
 	hasClearDepth = true;
 	clearDepth = depth;
@@ -976,6 +976,18 @@ static void metal_prepare_sampler_state( const GfxStateSampler &state )
 			mtlSamplerDescriptor.mipFilter = MTLSamplerMipFilterLinear;
 		break;
 
+		case GfxSamplerFilteringMode_MAG_NEAREST_MIN_LINEAR:
+			mtlSamplerDescriptor.minFilter = MTLSamplerMinMagFilterLinear;
+			mtlSamplerDescriptor.magFilter = MTLSamplerMinMagFilterNearest;
+			mtlSamplerDescriptor.mipFilter = MTLSamplerMipFilterLinear;
+		break;
+
+		case GfxSamplerFilteringMode_MAG_LINEAR_MIN_NEAREST:
+			mtlSamplerDescriptor.minFilter = MTLSamplerMinMagFilterNearest;
+			mtlSamplerDescriptor.magFilter = MTLSamplerMinMagFilterLinear;
+			mtlSamplerDescriptor.mipFilter = MTLSamplerMipFilterLinear;
+		break;
+
 		case GfxSamplerFilteringMode_ANISOTROPIC:
 			mtlSamplerDescriptor.minFilter = MTLSamplerMinMagFilterLinear;
 			mtlSamplerDescriptor.magFilter = MTLSamplerMinMagFilterLinear;
@@ -1115,7 +1127,7 @@ static void metal_prepare_encoder( const GfxStatePipeline &pipelineState )
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Metal Render State
 
-static void render_target_2d_resolve_msaa( GfxRenderTargetResource *const resource )
+static void render_target_2d_resolve_msaa( GfxRenderTargetResource *resource )
 {
 	if( resource == nullptr ) { return; }
 	if( resource->desc.sampleCount <= 1 ) { return; }
@@ -1142,7 +1154,7 @@ static void render_target_2d_resolve_msaa( GfxRenderTargetResource *const resour
 }
 
 
-static bool bind_targets( GfxRenderTargetResource *const resources[] )
+static bool bind_targets( GfxRenderTargetResource *const *resources )
 {
 	static u16 cacheViewportWidth;
 	static u16 cacheViewportHeight;
@@ -1384,7 +1396,7 @@ void CoreGfx::api_frame_end()
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Render State
 
-bool CoreGfx::api_swapchain_init( const u16 width, const u16 height )
+bool CoreGfx::api_swapchain_init( u16 width, u16 height )
 {
 	CoreGfx::state.swapchain.width = width;
 	CoreGfx::state.swapchain.height = height;
@@ -1413,7 +1425,7 @@ bool CoreGfx::api_swapchain_init( const u16 width, const u16 height )
 
 	Assert( swapchainTextureDepth == nil );
 	swapchainTextureDepth = [device newTextureWithDescriptor: depthDescriptor];
-	ErrorReturnIf( swapchainTextureDepth == nil, "Failed to initialize swapchain depth buffer!" );
+	ErrorReturnIf( swapchainTextureDepth == nil, false, "Failed to initialize swapchain depth buffer!" );
 
 	PROFILE_GFX( Gfx::stats.gpuMemorySwapchain +=
 		GFX_SIZE_IMAGE_DEPTH_BYTES( width, height, 1, SWAPCHAIN_DEPTH_FORMAT ) * 2 );
@@ -1435,7 +1447,7 @@ bool CoreGfx::api_swapchain_free()
 }
 
 
-bool CoreGfx::api_swapchain_set_size( const u16 width, const u16 height )
+bool CoreGfx::api_swapchain_set_size( u16 width, u16 height )
 {
 	const u16 widthPrevious = CoreGfx::state.swapchain.width;
 	const u16 heightPrevious = CoreGfx::state.swapchain.height;
@@ -1475,7 +1487,7 @@ bool CoreGfx::api_swapchain_set_size( const u16 width, const u16 height )
 }
 
 
-bool CoreGfx::api_viewport_init( const u16 width, const u16 height )
+bool CoreGfx::api_viewport_init( u16 width, u16 height )
 {
 	return api_viewport_set_size( width, height );
 }
@@ -1487,7 +1499,7 @@ bool CoreGfx::api_viewport_free()
 }
 
 
-bool CoreGfx::api_viewport_set_size( const u16 width, const u16 height )
+bool CoreGfx::api_viewport_set_size( u16 width, u16 height )
 {
 	CoreGfx::state.viewport.width = width;
 	CoreGfx::state.viewport.height = height;
@@ -1578,7 +1590,8 @@ void GfxShaderResource::release( GfxShaderResource *&resource )
 }
 
 
-bool CoreGfx::api_shader_init( GfxShaderResource *&resource, const u32 shaderID, const struct ShaderEntry &shaderEntry )
+bool CoreGfx::api_shader_init( GfxShaderResource *&resource, u32 shaderID,
+	const struct ShaderEntry &shaderEntry )
 {
 	Assert( resource == nullptr );
 	Assert( shaderID < CoreGfx::shaderCount );
@@ -1590,7 +1603,8 @@ bool CoreGfx::api_shader_init( GfxShaderResource *&resource, const u32 shaderID,
 
 	// Vertex
 	{
-		const char *bytecodeData = reinterpret_cast<const char *>( Assets::binary.data + shaderEntry.offsetVertex );
+		const char *bytecodeData = reinterpret_cast<const char *>(
+			Assets::binary.data + shaderEntry.offsetVertex + BINARY_OFFSET_GFX );
 		const usize bytecodeSize = shaderEntry.sizeVertex;
 		NSError *error = nil;
 		dispatch_data_t data = dispatch_data_create( bytecodeData, bytecodeSize, NULL, DISPATCH_DATA_DESTRUCTOR_DEFAULT );
@@ -1602,7 +1616,8 @@ bool CoreGfx::api_shader_init( GfxShaderResource *&resource, const u32 shaderID,
 
 	// Fragment
 	{
-		const char *bytecodeData = reinterpret_cast<const char *>( Assets::binary.data + shaderEntry.offsetFragment );
+		const char *bytecodeData = reinterpret_cast<const char *>(
+			Assets::binary.data + shaderEntry.offsetFragment + BINARY_OFFSET_GFX );
 		const usize bytecodeSize = shaderEntry.sizeFragment;
 		NSData *libraryData = [NSData dataWithBytes: bytecodeData length: bytecodeSize];
 		NSError *error = nil;
@@ -1651,7 +1666,7 @@ void GfxBufferResource::release( GfxBufferResource *&resource )
 }
 
 
-bool CoreGfx::api_buffer_init( GfxBufferResource *&resource, const usize capacity )
+bool CoreGfx::api_buffer_init( GfxBufferResource *&resource, usize capacity )
 {
 	Assert( resource == nullptr );
 
@@ -1683,7 +1698,7 @@ bool CoreGfx::api_buffer_free( GfxBufferResource *&resource )
 }
 
 
-void CoreGfx::api_buffer_write_begin( GfxBufferResource *const resource )
+void CoreGfx::api_buffer_write_begin( GfxBufferResource *resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
@@ -1695,7 +1710,7 @@ void CoreGfx::api_buffer_write_begin( GfxBufferResource *const resource )
 }
 
 
-void CoreGfx::api_buffer_write_end( GfxBufferResource *const resource )
+void CoreGfx::api_buffer_write_end( GfxBufferResource *resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
@@ -1710,8 +1725,7 @@ void CoreGfx::api_buffer_write_end( GfxBufferResource *const resource )
 }
 
 
-void CoreGfx::api_buffer_write( GfxBufferResource *const resource, const void *const data,
-	const usize size, const usize offset )
+void CoreGfx::api_buffer_write( GfxBufferResource *resource, const void *data, usize size, usize offset )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
@@ -1737,8 +1751,8 @@ void GfxVertexBufferResource::release( GfxVertexBufferResource *&resource )
 }
 
 
-bool CoreGfx::api_vertex_buffer_init( GfxVertexBufferResource *&resource, const u32 vertexFormatID,
-	const GfxWriteMode writeMode, const u32 capacity, const u32 stride )
+bool CoreGfx::api_vertex_buffer_init( GfxVertexBufferResource *&resource, u32 vertexFormatID,
+	GfxWriteMode writeMode, u32 capacity, u32 stride )
 {
 	Assert( resource == nullptr );
 	resource = vertexBufferResources.make_new();
@@ -1783,7 +1797,7 @@ bool CoreGfx::api_vertex_buffer_free( GfxVertexBufferResource *&resource )
 }
 
 
-void CoreGfx::api_vertex_buffer_write_begin( GfxVertexBufferResource *const resource )
+void CoreGfx::api_vertex_buffer_write_begin( GfxVertexBufferResource *resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
@@ -1794,7 +1808,7 @@ void CoreGfx::api_vertex_buffer_write_begin( GfxVertexBufferResource *const reso
 }
 
 
-void CoreGfx::api_vertex_buffer_write_end( GfxVertexBufferResource *const resource )
+void CoreGfx::api_vertex_buffer_write_end( GfxVertexBufferResource *resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
@@ -1804,8 +1818,7 @@ void CoreGfx::api_vertex_buffer_write_end( GfxVertexBufferResource *const resour
 }
 
 
-void CoreGfx::api_vertex_buffer_write( GfxVertexBufferResource *const resource,
-	const void *const data, const u32 size )
+void CoreGfx::api_vertex_buffer_write( GfxVertexBufferResource *resource, const void *data, u32 size )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
@@ -1815,7 +1828,7 @@ void CoreGfx::api_vertex_buffer_write( GfxVertexBufferResource *const resource,
 }
 
 
-u32 CoreGfx::api_vertex_buffer_current( const GfxVertexBufferResource *const resource )
+u32 CoreGfx::api_vertex_buffer_current( const GfxVertexBufferResource *resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	return resource->current;
@@ -1835,8 +1848,8 @@ void GfxInstanceBufferResource::release( GfxInstanceBufferResource *&resource )
 }
 
 
-bool CoreGfx::api_instance_buffer_init( GfxInstanceBufferResource *&resource, const u32 instanceFormatID,
-	const GfxWriteMode writeMode, const u32 capacity, const u32 stride )
+bool CoreGfx::api_instance_buffer_init( GfxInstanceBufferResource *&resource, u32 instanceFormatID,
+	GfxWriteMode writeMode, u32 capacity, u32 stride )
 {
 	Assert( resource == nullptr );
 	resource = instanceBufferResources.make_new();
@@ -1881,7 +1894,7 @@ bool CoreGfx::api_instance_buffer_free( GfxInstanceBufferResource *&resource )
 }
 
 
-void CoreGfx::api_instance_buffer_write_begin( GfxInstanceBufferResource *const resource )
+void CoreGfx::api_instance_buffer_write_begin( GfxInstanceBufferResource *resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
@@ -1892,7 +1905,7 @@ void CoreGfx::api_instance_buffer_write_begin( GfxInstanceBufferResource *const 
 }
 
 
-void CoreGfx::api_instance_buffer_write_end( GfxInstanceBufferResource *const resource )
+void CoreGfx::api_instance_buffer_write_end( GfxInstanceBufferResource *resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
@@ -1902,8 +1915,8 @@ void CoreGfx::api_instance_buffer_write_end( GfxInstanceBufferResource *const re
 }
 
 
-void CoreGfx::api_instance_buffer_write( GfxInstanceBufferResource *const resource,
-	const void *const data, const u32 size )
+void CoreGfx::api_instance_buffer_write( GfxInstanceBufferResource *resource,
+	const void *data, u32 size )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
@@ -1913,7 +1926,7 @@ void CoreGfx::api_instance_buffer_write( GfxInstanceBufferResource *const resour
 }
 
 
-u32 CoreGfx::api_instance_buffer_current( const GfxInstanceBufferResource *const resource )
+u32 CoreGfx::api_instance_buffer_current( const GfxInstanceBufferResource *resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	return resource->current;
@@ -1938,8 +1951,7 @@ void GfxIndexBufferResource::release( GfxIndexBufferResource *&resource )
 
 
 bool CoreGfx::api_index_buffer_init( GfxIndexBufferResource *&resource,
-	void *data, const u32 capacity, const double indicesToVerticesRatio,
-	const GfxIndexBufferFormat format, const GfxWriteMode writeMode )
+	void *data, u32 capacity, double indicesToVerticesRatio, GfxIndexBufferFormat format, GfxWriteMode writeMode )
 {
 	Assert( resource == nullptr );
 	Assert( format != GfxIndexBufferFormat_NONE );
@@ -2001,7 +2013,7 @@ void GfxUniformBufferResource::release( GfxUniformBufferResource *&resource )
 
 
 bool CoreGfx::api_uniform_buffer_init( GfxUniformBufferResource *&resource, const char *name,
-	const int index, const u32 capacity )
+	int index, u32 capacity )
 {
 	Assert( resource == nullptr );
 	resource = uniformBufferResources.make_new();
@@ -2029,7 +2041,7 @@ bool CoreGfx::api_uniform_buffer_free( GfxUniformBufferResource *&resource )
 }
 
 
-void CoreGfx::api_uniform_buffer_write_begin( GfxUniformBufferResource *const resource )
+void CoreGfx::api_uniform_buffer_write_begin( GfxUniformBufferResource *resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
@@ -2039,7 +2051,7 @@ void CoreGfx::api_uniform_buffer_write_begin( GfxUniformBufferResource *const re
 }
 
 
-void CoreGfx::api_uniform_buffer_write_end( GfxUniformBufferResource *const resource )
+void CoreGfx::api_uniform_buffer_write_end( GfxUniformBufferResource *resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
@@ -2049,7 +2061,7 @@ void CoreGfx::api_uniform_buffer_write_end( GfxUniformBufferResource *const reso
 }
 
 
-void CoreGfx::api_uniform_buffer_write( GfxUniformBufferResource *const resource, const void *data )
+void CoreGfx::api_uniform_buffer_write( GfxUniformBufferResource *resource, const void *data )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
@@ -2071,7 +2083,7 @@ bool CoreGfx::api_uniform_buffer_bind_vertex( GfxUniformBufferResource *const re
 }
 
 
-bool CoreGfx::api_uniform_buffer_bind_fragment( GfxUniformBufferResource *const resource, const int slot )
+bool CoreGfx::api_uniform_buffer_bind_fragment( GfxUniformBufferResource *resource, int slot )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	Assert( slot >= 0 );
@@ -2084,7 +2096,7 @@ bool CoreGfx::api_uniform_buffer_bind_fragment( GfxUniformBufferResource *const 
 }
 
 
-bool CoreGfx::api_uniform_buffer_bind_compute( GfxUniformBufferResource *const resource, const int slot )
+bool CoreGfx::api_uniform_buffer_bind_compute( GfxUniformBufferResource *resource, int slot )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	Assert( slot >= 0 );
@@ -2120,7 +2132,7 @@ void GfxTextureResource::release( GfxTextureResource *&resource )
 
 
 bool CoreGfx::api_texture_init( GfxTextureResource *&resource, void *pixels,
-	const u16 width, const u16 height, const u16 levels, const GfxColorFormat &format )
+	u16 width, u16 height, u16 levels, const GfxColorFormat &format )
 {
 	Assert( resource == nullptr );
 
@@ -2196,7 +2208,7 @@ bool CoreGfx::api_texture_free( GfxTextureResource *&resource )
 }
 
 
-bool CoreGfx::api_texture_bind( GfxTextureResource *const resource, const int slot )
+bool CoreGfx::api_texture_bind( GfxTextureResource *resource, int slot )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	Assert( slot >= 0 && slot < GFX_TEXTURE_SLOT_COUNT );
@@ -2216,7 +2228,7 @@ bool CoreGfx::api_texture_bind( GfxTextureResource *const resource, const int sl
 }
 
 
-bool CoreGfx::api_texture_release( GfxTextureResource *const resource, const int slot )
+bool CoreGfx::api_texture_release( GfxTextureResource *resource, int slot )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	Assert( slot >= 0 && slot < GFX_TEXTURE_SLOT_COUNT );
@@ -2246,8 +2258,7 @@ void GfxRenderTargetResource::release( GfxRenderTargetResource *&resource )
 
 bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 	GfxTextureResource *&resourceColor, GfxTextureResource *&resourceDepth,
-	const u16 width, const u16 height,
-	const GfxRenderTargetDescription &desc )
+	u16 width, u16 height, const GfxRenderTargetDescription &desc )
 {
 	Assert( resource == nullptr );
 	Assert( resourceColor == nullptr );
@@ -2382,6 +2393,71 @@ bool CoreGfx::api_render_target_free( GfxRenderTargetResource *&resource,
 }
 
 
+bool CoreGfx::api_render_target_copy_color(
+	GfxRenderTargetResource *&srcResource, GfxTextureResource *&srcResourceColor,
+	GfxRenderTargetResource *&dstResource, GfxTextureResource *&dstResourceColor )
+{
+	if( !srcResource || !dstResource ) { return false; }
+
+	id<MTLCommandBuffer> cmd = [mtlCommandQueue commandBuffer];
+	id<MTLBlitCommandEncoder> blit = [cmd blitCommandEncoder];
+
+	if( srcResource->textureColorSS && dstResource->textureColorSS )
+	{
+		[blit
+			copyFromTexture: mtlTextures[srcResource->textureColorSS->id]
+			sourceSlice: 0
+			sourceLevel: 0
+			sourceOrigin: MTLOriginMake( 0, 0, 0 )
+			sourceSize: MTLSizeMake( srcResource->width, srcResource->height, 1 )
+			toTexture: mtlTextures[dstResource->textureColorSS->id]
+			destinationSlice: 0
+			destinationLevel: 0
+			destinationOrigin: MTLOriginMake( 0, 0, 0 )];
+	}
+
+	[blit endEncoding];
+	[cmd commit];
+	[cmd waitUntilCompleted];
+
+	return true;
+}
+
+
+bool CoreGfx::api_render_target_copy_depth(
+	GfxRenderTargetResource *&srcResource, GfxTextureResource *&srcResourceDepth,
+	GfxRenderTargetResource *&dstResource, GfxTextureResource *&dstResourceDepth )
+{
+	if( !srcResource || !dstResource ) { return false; }
+
+	id<MTLCommandBuffer> cmd = [mtlCommandQueue commandBuffer];
+	id<MTLBlitCommandEncoder> blit = [cmd blitCommandEncoder];
+
+#if 0
+	if( srcResource->textureDepthSS && dstResource->textureDepthSS )
+	{
+		// TODO: Evaluate this -- Metal doesn't like copying depth
+		[blit
+			copyFromTexture: mtlTextures[srcResource->textureDepthSS->id]
+			sourceSlice: 0
+			sourceLevel: 0
+			sourceOrigin: MTLOriginMake( 0, 0, 0 )
+			sourceSize: MTLSizeMake( srcResource->width, srcResource->height, 1 )
+			toTexture: mtlTextures[dstResource->textureDepthSS->id]
+			destinationSlice: 0
+			destinationLevel: 0
+			destinationOrigin: MTLOriginMake( 0, 0, 0 )];
+	}
+#endif
+
+	[blit endEncoding];
+	[cmd commit];
+	[cmd waitUntilCompleted];
+
+	return true;
+}
+
+
 bool CoreGfx::api_render_target_copy(
 	GfxRenderTargetResource *&srcResource,
 	GfxTextureResource *&srcResourceColor, GfxTextureResource *&srcResourceDepth,
@@ -2492,18 +2568,54 @@ bool CoreGfx::api_render_target_buffer_read_color( GfxRenderTargetResource *&res
 }
 
 
+bool CoreGfx::api_render_target_buffer_read_color_async_request( GfxRenderTargetResource *&resource,
+	GfxTextureResource *&resourceColor,
+	void *buffer, u32 size )
+{
+	GRAPHICS_API_IMPLEMENTATION_WARNING // TODO: Implement this
+	return true;
+}
+
+
+bool CoreGfx::api_render_target_buffer_read_color_async_poll( GfxRenderTargetResource *&resource,
+	GfxTextureResource *&resourceColor,
+	void *buffer, u32 size )
+{
+	GRAPHICS_API_IMPLEMENTATION_WARNING // TODO: Implement this
+	return true;
+}
+
+
 bool api_render_target_buffer_read_depth( GfxRenderTargetResource *&resource,
 	GfxTextureResource *&resourceDepth,
-	void *buffer, const u32 size )
+	void *buffer, u32 size )
 {
 	GRAPHICS_API_IMPLEMENTATION_WARNING;
 	return true;
 }
 
 
+bool CoreGfx::api_render_target_buffer_read_depth_async_request( GfxRenderTargetResource *&resource,
+	GfxTextureResource *&resourceDepth,
+	void *buffer, u32 size )
+{
+	GRAPHICS_API_IMPLEMENTATION_WARNING // TODO: Implement this
+	return true;
+}
+
+
+bool CoreGfx::api_render_target_buffer_read_depth_async_poll( GfxRenderTargetResource *&resource,
+	GfxTextureResource *&resourceDepth,
+	void *buffer, u32 size )
+{
+	GRAPHICS_API_IMPLEMENTATION_WARNING // TODO: Implement this
+	return true;
+}
+
+
 bool CoreGfx::api_render_target_buffer_write_color( GfxRenderTargetResource *&resource,
 	GfxTextureResource *&resourceColor,
-	const void *const buffer, const u32 size )
+	const void *buffer, u32 size )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	Assert( resourceColor != nullptr && resourceColor->id != GFX_RESOURCE_ID_NULL );
@@ -2533,7 +2645,7 @@ bool CoreGfx::api_render_target_buffer_write_color( GfxRenderTargetResource *&re
 
 bool CoreGfx::api_render_target_buffer_write_depth( GfxRenderTargetResource *&resource,
 	GfxTextureResource *&resourceDepth,
-	const void *const buffer, const u32 size )
+	const void *buffer, u32 size )
 {
 	GRAPHICS_API_IMPLEMENTATION_WARNING;
 	return true;
@@ -2542,8 +2654,8 @@ bool CoreGfx::api_render_target_buffer_write_depth( GfxRenderTargetResource *&re
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Draw
 
-static void metal_draw( const NSUInteger vertexCount, const NSUInteger vertexStartLocation,
-	const GfxPrimitiveType primitiveType )
+static void metal_draw( NSUInteger vertexCount, NSUInteger vertexStartLocation,
+	GfxPrimitiveType primitiveType )
 {
 	[mtlEncoder drawPrimitives: MetalPrimitiveTypes[primitiveType]
 		vertexStart: vertexStartLocation
@@ -2554,9 +2666,9 @@ static void metal_draw( const NSUInteger vertexCount, const NSUInteger vertexSta
 }
 
 
-static void metal_draw_instanced( const NSUInteger vertexCount, const NSUInteger instanceCount,
-	const NSUInteger vertexStartLocation, const NSUInteger instanceStartLocation,
-	const GfxPrimitiveType primitiveType)
+static void metal_draw_instanced( NSUInteger vertexCount, NSUInteger instanceCount,
+	NSUInteger vertexStartLocation, NSUInteger instanceStartLocation,
+	GfxPrimitiveType primitiveType)
 {
 	[mtlEncoder drawPrimitives: MetalPrimitiveTypes[primitiveType]
 		vertexStart: vertexStartLocation
@@ -2569,9 +2681,9 @@ static void metal_draw_instanced( const NSUInteger vertexCount, const NSUInteger
 }
 
 
-static void metal_draw_indexed( const NSUInteger indexCount, const GfxIndexBufferFormat indexFormat,
-	id<MTLBuffer> indexBuffer, const NSUInteger indexBufferOffset, const NSUInteger indexStartLocation,
-	const GfxPrimitiveType primitiveType )
+static void metal_draw_indexed( NSUInteger indexCount, GfxIndexBufferFormat indexFormat,
+	id<MTLBuffer> indexBuffer, NSUInteger indexBufferOffset, NSUInteger indexStartLocation,
+	GfxPrimitiveType primitiveType )
 {
 	NSUInteger indexStrides[] =
 	{
@@ -2593,10 +2705,10 @@ static void metal_draw_indexed( const NSUInteger indexCount, const GfxIndexBuffe
 }
 
 
-static void metal_draw_instanced_indexed( const NSUInteger indexCount, const GfxIndexBufferFormat indexFormat,
-	id<MTLBuffer> indexBuffer, const NSUInteger indexBufferOffset, const NSUInteger indexStartLocation,
-	const NSUInteger instanceCount, const NSUInteger instanceStartLocation,
-	const GfxPrimitiveType primitiveType )
+static void metal_draw_instanced_indexed( NSUInteger indexCount, GfxIndexBufferFormat indexFormat,
+	id<MTLBuffer> indexBuffer, NSUInteger indexBufferOffset, NSUInteger indexStartLocation,
+	NSUInteger instanceCount, NSUInteger instanceStartLocation,
+	GfxPrimitiveType primitiveType )
 {
 	NSUInteger indexStrides[] =
 	{
@@ -2622,10 +2734,10 @@ static void metal_draw_instanced_indexed( const NSUInteger indexCount, const Gfx
 
 
 bool CoreGfx::api_draw(
-	const GfxVertexBufferResource *const resourceVertex, const u32 vertexCount,
-	const GfxInstanceBufferResource *const resourceInstance, const u32 instanceCount,
-	const GfxIndexBufferResource *const resourceIndex,
-	const GfxPrimitiveType type )
+	const GfxVertexBufferResource *resourceVertex, u32 vertexCount,
+	const GfxInstanceBufferResource *resourceInstance, u32 instanceCount,
+	const GfxIndexBufferResource *resourceIndex,
+	GfxPrimitiveType type )
 {
 	Assert( resourceVertex == nullptr || resourceVertex->id != GFX_RESOURCE_ID_NULL );
 	Assert( resourceInstance == nullptr || resourceInstance->id != GFX_RESOURCE_ID_NULL );
@@ -2731,7 +2843,7 @@ bool CoreGfx::api_draw(
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool CoreGfx::api_dispatch( const u32 x, const u32 y, const u32 z )
+bool CoreGfx::api_dispatch( u32 x, u32 y, u32 z )
 {
 	// TODO
 	return true;

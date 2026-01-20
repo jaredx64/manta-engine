@@ -20,19 +20,6 @@ CATEGORY( UI )
 BUCKET_SIZE( 64 )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// INTERNAL STATE
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// PUBLIC STATE
-
-PUBLIC GfxRenderTarget *rt = nullptr;
-
-PUBLIC bool showChannelR = true;
-PUBLIC bool showChannelG = true;
-PUBLIC bool showChannelB = true;
-PUBLIC bool showChannelA = true;
-PUBLIC bool showDepth = false;
-PUBLIC bool showInverted = false;
 
 PUBLIC ObjectInstance widgetChannelR;
 PUBLIC ObjectInstance widgetChannelG;
@@ -42,9 +29,16 @@ PUBLIC ObjectInstance widgetDepth;
 PUBLIC ObjectInstance widgetInverted;
 
 PUBLIC const char *name;
+PUBLIC GfxRenderTarget *rt = nullptr;
+
+PUBLIC bool showChannelR = true;
+PUBLIC bool showChannelG = true;
+PUBLIC bool showChannelB = true;
+PUBLIC bool showChannelA = true;
+PUBLIC bool showDepth = false;
+PUBLIC bool showInverted = false;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// CORE EVENTS
 
 PROTECTED void init()
 {
@@ -135,7 +129,6 @@ PROTECTED void init()
 
 PROTECTED void free()
 {
-	// Widgets
 	Assert( widgetChannelR ); context->destroy_widget( widgetChannelR );
 	Assert( widgetChannelG ); context->destroy_widget( widgetChannelG );
 	Assert( widgetChannelB ); context->destroy_widget( widgetChannelB );
@@ -198,7 +191,7 @@ PROTECTED void render( const Delta delta, const Alpha alpha )
 	height = max( static_cast<int>( 68 + ( rt->height * scale ) ), heightMin );
 
 	// Name
-	draw_text_f( fnt_iosevka.bold(), 14, c1.x + 4, c1.y + 4, c_white, name );
+	draw_text_f( fnt_iosevka.bold(), 14, c1.x + 4, c1.y + 4, c_white, "%s", name );
 
 	// Format
 	char format[256];
@@ -222,22 +215,24 @@ PROTECTED void render( const Delta delta, const Alpha alpha )
 	if( showChannelG ) { flags |= GfxBlendWrite_GREEN; }
 	if( showChannelB ) { flags |= GfxBlendWrite_BLUE; }
 	if( showChannelA ) { flags |= GfxBlendWrite_ALPHA; }
-	Gfx::blend_write_mask( flags );
-	{
-		const u16 u1 = 0x0000;
-		const u16 v1 = showInverted ? 0xFFFF : 0x0000;
-		const u16 u2 = 0xFFFF;
-		const u16 v2 = showInverted ? 0x0000 : 0xFFFF;
 
-		GfxTexture &texture = showDepth ? rt->textureDepth : rt->textureColor;
-		if( texture.resource != nullptr )
+	GfxRenderCommand cmd;
+	cmd.shader( Shader::SHADER_DEFAULT );
+	cmd.blend_write_mask( flags );
+	Gfx::render_command_execute( cmd, [&]()
 		{
-			Gfx::bind_texture( 0, texture );
-			draw_quad_uv( x1, y1, x2, y2, u1, v1, u2, v2 );
-			Gfx::release_texture( 0, texture );
-		}
-	}
-	Gfx::blend_write_mask( GfxBlendWrite_ALL );
+			const u16 u1 = 0x0000;
+			const u16 v1 = showInverted ? 0xFFFF : 0x0000;
+			const u16 u2 = 0xFFFF;
+			const u16 v2 = showInverted ? 0x0000 : 0xFFFF;
+
+			GfxTexture &texture = showDepth ? rt->textureDepth : rt->textureColor;
+			if( texture.resource != nullptr )
+			{
+				Gfx::bind_texture( 0, texture );
+				draw_quad_uv( x1, y1, x2, y2, u1, v1, u2, v2 );
+			}
+		} );
 }
 
 
@@ -247,4 +242,3 @@ PROTECTED void render( const Delta delta, const Alpha alpha )
 // PROTECTED bool contains_point( const float_v2 point ) { }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// PUBLIC API

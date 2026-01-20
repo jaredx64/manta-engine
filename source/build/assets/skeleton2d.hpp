@@ -23,11 +23,11 @@ struct Skeleton2Ds
 {
 	void make_new( const Skeleton2D &skeleton );
 
-	usize gather( const char *path, const bool recurse = true );
+	usize gather( const char *path, bool recurse = true );
 	void process( const char *path );
 	void build();
 
-	Skeleton2D &operator[]( const u32 skeletonID ) { return skeletons[skeletonID]; }
+	Skeleton2D &operator[]( u32 skeletonID ) { return skeletons[skeletonID]; }
 
 	List<Skeleton2D> skeletons;
 };

@@ -38,7 +38,7 @@ struct Glyphs
 
 	void build();
 
-	Glyph &operator[]( const GlyphID id ) { return glyphs[id]; }
+	Glyph &operator[]( GlyphID id ) { return glyphs[id]; }
 
 	List<Glyph> glyphs;
 };

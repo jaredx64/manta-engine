@@ -23,6 +23,7 @@
 		virtual SIZE_T STD_CALL GetBufferSize() = 0;
 	};
 
-	extern "C" DLL_IMPORT HRESULT STD_CALL D3DCompile(const void *, SIZE_T, LPCSTR, const struct D3D_SHADER_MACRO *, struct ID3DInclude *, LPCSTR, LPCSTR, UINT, UINT, ID3D10Blob **, ID3D10Blob **);
+	extern "C" DLL_IMPORT HRESULT STD_CALL D3DCompile(const void *, SIZE_T, LPCSTR, const struct D3D_SHADER_MACRO *,
+		struct ID3DInclude *, LPCSTR, LPCSTR, UINT, UINT, ID3D10Blob **, ID3D10Blob **);
 	extern "C" DLL_IMPORT HRESULT STD_CALL D3DStripShader(const void *, SIZE_T, UINT, ID3D10Blob **);
 #endif

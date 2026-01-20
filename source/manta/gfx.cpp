@@ -70,7 +70,7 @@ static void format_integer( char *buffer, usize size, int num )
 
 
 #include <manta/draw.hpp>
-void debug_overlay_gfx( const float x, const float y )
+void debug_overlay_gfx( float x, float y )
 {
 	float drawX = x;
 	float drawY = y;
@@ -149,6 +149,8 @@ void debug_overlay_gfx( const float x, const float y )
 		"  Render Targets: %.4f mb", MB( stats.gpuMemoryRenderTargets ) );
 	drawY += 20.0f;
 }
+#else
+void debug_overlay_gfx( float x, float y ) { }
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -345,7 +347,7 @@ void Gfx::frame_end()
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Stack
 
-void GfxStack::init( const usize reserve )
+void GfxStack::init( usize reserve )
 {
 	MemoryAssert( data == nullptr );
 	Assert( reserve > 0 );
@@ -383,7 +385,7 @@ void GfxStack::clear()
 }
 
 
-usize GfxStack::add( const void *buffer, const u16 size, const u16 alignment )
+usize GfxStack::add( const void *buffer, u16 size, u16 alignment )
 {
 	MemoryAssert( data != nullptr );
 
@@ -403,7 +405,7 @@ usize GfxStack::add( const void *buffer, const u16 size, const u16 alignment )
 }
 
 
-void *GfxStack::get( const usize offset, const u16 size )
+void *GfxStack::get( usize offset, u16 size )
 {
 	Assert( offset + size <= current );
 	return size > 0 ? reinterpret_cast<void *>( &data[offset] ) : nullptr;
@@ -412,19 +414,19 @@ void *GfxStack::get( const usize offset, const u16 size )
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Clear
 
-void Gfx::clear_color( const Color color )
+void Gfx::clear_color( Color color )
 {
 #if GRAPHICS_ENABLED
-	AssertMsg( CoreGfx::state.renderCommandActive == nullptr, "Cannot call clear_color() within a render command!" );
+	//AssertMsg( CoreGfx::state.renderCommandActive == nullptr, "Cannot call clear_color() within a render command!" );
 	CoreGfx::api_clear_color( color );
 #endif
 }
 
 
-void Gfx::clear_depth( const float depth )
+void Gfx::clear_depth( float depth )
 {
 #if GRAPHICS_ENABLED
-	AssertMsg( CoreGfx::state.renderCommandActive == nullptr, "Cannot call clear_depth() within a render command!" );
+	//AssertMsg( CoreGfx::state.renderCommandActive == nullptr, "Cannot call clear_depth() within a render command!" );
 	CoreGfx::api_clear_depth( depth );
 #endif
 }
@@ -524,7 +526,7 @@ void Gfx::scissor_set_state( const GfxStateScissor &state )
 }
 
 
-void Gfx::scissor_set( const u16 x1, const u16 y1, const u16 x2, const u16 y2 )
+void Gfx::scissor_set( u16 x1, u16 y1, u16 x2, u16 y2 )
 {
 #if GRAPHICS_ENABLED
 	GfxStateScissor scissor = CoreGfx::state.scissor;
@@ -537,11 +539,12 @@ void Gfx::scissor_set( const u16 x1, const u16 y1, const u16 x2, const u16 y2 )
 }
 
 
-void Gfx::scissor_set_nested( const u16 x1, const u16 y1, const u16 x2, const u16 y2 )
+void Gfx::scissor_set_nested( u16 x1, u16 y1, u16 x2, u16 y2 )
 {
 #if GRAPHICS_ENABLED
 	GfxStateScissor scissor = CoreGfx::state.scissor;
 	if( !scissor.is_enabled() ) { Gfx::scissor_set( x1, y1, x2, y2 ); return; }
+	if( x1 >= scissor.x2 || x2 < scissor.x1 || y1 >= scissor.y2 || y2 < scissor.y1 ) { return; }
 	scissor.x1 = max( scissor.x1, x1 );
 	scissor.y1 = max( scissor.y1, y1 );
 	scissor.x2 = min( scissor.x2, x2 );
@@ -583,7 +586,7 @@ void Gfx::sampler_filtering_mode( const GfxSamplerFilteringMode &mode )
 }
 
 
-void Gfx::sampler_filtering_anisotropy( const int anisotropy )
+void Gfx::sampler_filtering_anisotropy( int anisotropy )
 {
 #if GRAPHICS_ENABLED
 	GfxStateSampler state = CoreGfx::state.sampler;
@@ -621,37 +624,29 @@ void CoreGfx::swapchain_viewport_update()
 
 int Gfx::swapchain_width()
 {
-#if GRAPHICS_ENABLED
 	return CoreGfx::state.swapchain.width;
-#endif
 }
 
 
 int Gfx::swapchain_height()
 {
-#if GRAPHICS_ENABLED
 	return CoreGfx::state.swapchain.height;
-#endif
 }
 
 
 int Gfx::viewport_width()
 {
-#if GRAPHICS_ENABLED
 	return CoreGfx::state.viewport.width;
-#endif
 }
 
 
 int Gfx::viewport_height()
 {
-#if GRAPHICS_ENABLED
 	return CoreGfx::state.viewport.height;
-#endif
 }
 
 
-void Gfx::viewport_set_size( const u16 width, const u16 height )
+void Gfx::viewport_set_size( u16 width, u16 height )
 {
 #if GRAPHICS_ENABLED
 	state_change_break_batches();
@@ -702,7 +697,7 @@ void Gfx::blend_set_state( const GfxPipelineDescription &state )
 }
 
 
-void Gfx::blend_enabled( const bool enabled )
+void Gfx::blend_enabled( bool enabled )
 {
 #if GRAPHICS_ENABLED
 	GfxPipelineDescription state = CoreGfx::state.pipeline.description;
@@ -837,8 +832,8 @@ void CoreGfx::update_matrix_mvp()
 };
 
 
-void Gfx::set_matrix_mvp_2d_orthographic( const double x, const double y, const double zoom, const double angle,
-	const double width, const double height, const double znear, const double zfar )
+void Gfx::set_matrix_mvp_2d_orthographic( double x, double y, double zoom, double angle,
+	double width, double height, double znear, double zfar )
 {
 #if GRAPHICS_ENABLED
 	CoreGfx::state.matrixModel = double_m44_build_identity();
@@ -858,9 +853,9 @@ void Gfx::set_matrix_mvp_2d_orthographic( const double x, const double y, const 
 }
 
 
-void Gfx::set_matrix_mvp_3d_perspective( const double fov, const double aspect, const double znear, const double zfar,
-	const double x, const double y, const double z, const double xto, const double yto,
-	const double zto, const double xup, const double yup, const double zup )
+void Gfx::set_matrix_mvp_3d_perspective( double fov, double aspect, double znear, double zfar,
+	double x, double y, double z, double xto, double yto,
+	double zto, double xup, double yup, double zup )
 {
 #if GRAPHICS_ENABLED
 	AssertMsg( znear > 0.0, "znear must be > 0.0!" );
@@ -973,7 +968,7 @@ const double_m44 &Gfx::get_matrix_mvp_inverse()
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Shader
 
-bool CoreGfx::shader_bind_uniform_buffers_vertex( const u32 shaderID )
+bool CoreGfx::shader_bind_uniform_buffers_vertex( u32 shaderID )
 {
 	Assert( shaderID < CoreGfx::shaderCount );
 	const UniformBufferBindTable &table = uniformBufferBindTableShaderVertex[shaderID];
@@ -989,7 +984,7 @@ bool CoreGfx::shader_bind_uniform_buffers_vertex( const u32 shaderID )
 }
 
 
-bool CoreGfx::shader_bind_uniform_buffers_fragment( const u32 shaderID )
+bool CoreGfx::shader_bind_uniform_buffers_fragment( u32 shaderID )
 {
 	Assert( shaderID < CoreGfx::shaderCount );
 	const UniformBufferBindTable &table = uniformBufferBindTableShaderFragment[shaderID];
@@ -1005,7 +1000,7 @@ bool CoreGfx::shader_bind_uniform_buffers_fragment( const u32 shaderID )
 }
 
 
-bool CoreGfx::shader_bind_uniform_buffers_compute( const u32 shaderID )
+bool CoreGfx::shader_bind_uniform_buffers_compute( u32 shaderID )
 {
 	Assert( shaderID < CoreGfx::shaderCount );
 	const UniformBufferBindTable &table = uniformBufferBindTableShaderCompute[shaderID];
@@ -1021,7 +1016,7 @@ bool CoreGfx::shader_bind_uniform_buffers_compute( const u32 shaderID )
 }
 
 
-void GfxShader::init( const u32 shaderID, const ShaderEntry &shaderEntry )
+void GfxShader::init( u32 shaderID, const ShaderEntry &shaderEntry )
 {
 #if GRAPHICS_ENABLED
 	this->id = shaderID;
@@ -1060,7 +1055,7 @@ void Gfx::set_shader_globals( const CoreGfxUniformBuffer::UniformsPipeline_t &gl
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Texture
 
-void GfxTexture::init_2d( void *data, const u16 width, const u16 height, const GfxColorFormat &format )
+void GfxTexture::init_2d( void *data, u16 width, u16 height, const GfxColorFormat &format )
 {
 #if GRAPHICS_ENABLED
 	ErrorIf( !CoreGfx::api_texture_init( resource, data, width, height, 1, format ),
@@ -1069,8 +1064,7 @@ void GfxTexture::init_2d( void *data, const u16 width, const u16 height, const G
 }
 
 
-void GfxTexture::init_2d( void *data, const u16 width, const u16 height, const u16 levels,
-	const GfxColorFormat &format )
+void GfxTexture::init_2d( void *data, u16 width, u16 height, u16 levels, const GfxColorFormat &format )
 {
 #if GRAPHICS_ENABLED
 	ErrorIf( levels == 0,
@@ -1091,7 +1085,7 @@ void GfxTexture::free()
 }
 
 
-void Gfx::bind_texture( const int slot, const GfxTexture &texture )
+void Gfx::bind_texture( int slot, const GfxTexture &texture )
 {
 #if GRAPHICS_ENABLED
 	Assert( slot >= 0 && slot < GFX_RENDER_TARGET_SLOT_COUNT );
@@ -1105,7 +1099,7 @@ void Gfx::bind_texture( const int slot, const GfxTexture &texture )
 }
 
 
-void Gfx::bind_texture( const int slot, const Texture texture )
+void Gfx::bind_texture( int slot, Texture texture )
 {
 #if GRAPHICS_ENABLED
 	Assert( texture < CoreAssets::textureCount );
@@ -1114,7 +1108,7 @@ void Gfx::bind_texture( const int slot, const Texture texture )
 }
 
 
-void Gfx::release_texture( const int slot, const GfxTexture &texture )
+void Gfx::release_texture( int slot, const GfxTexture &texture )
 {
 #if GRAPHICS_ENABLED
 	Assert( slot >= 0 && slot < GFX_RENDER_TARGET_SLOT_COUNT );
@@ -1128,7 +1122,7 @@ void Gfx::release_texture( const int slot, const GfxTexture &texture )
 }
 
 
-void Gfx::release_texture( const int slot, const Texture texture )
+void Gfx::release_texture( int slot, Texture texture )
 {
 #if GRAPHICS_ENABLED
 	Assert( texture < CoreAssets::textureCount );
@@ -1139,7 +1133,7 @@ void Gfx::release_texture( const int slot, const Texture texture )
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Render Target
 
-void GfxRenderTarget::init( const u16 width, const u16 height, const GfxRenderTargetDescription &desc )
+void GfxRenderTarget::init( u16 width, u16 height, const GfxRenderTargetDescription &desc )
 {
 #if GRAPHICS_ENABLED
 	ErrorIf( !CoreGfx::api_render_target_init( resource,
@@ -1164,7 +1158,7 @@ void GfxRenderTarget::free()
 }
 
 
-void GfxRenderTarget::resize( const u16 width, const u16 height )
+void GfxRenderTarget::resize( u16 width, u16 height )
 {
 #if GRAPHICS_ENABLED
 	ErrorIf( resource == nullptr, "Attempting to resize RenderTarget2D that does not exist!" );
@@ -1183,6 +1177,36 @@ void GfxRenderTarget::copy( GfxRenderTarget &source )
 	const bool success = CoreGfx::api_render_target_copy(
 		source.resource, source.textureColor.resource, source.textureDepth.resource,
 		resource, textureColor.resource, textureDepth.resource );
+
+	ErrorIf( !success, "Copy GfxRenderTarget failed!" );
+#endif
+}
+
+
+void GfxRenderTarget::copy_color( GfxRenderTarget &source )
+{
+#if GRAPHICS_ENABLED
+	ErrorIf( resource == nullptr, "Attempting to copy GfxRenderTarget that does not exist!" );
+	ErrorIf( source.resource == nullptr, "Attempting to copy from GfxRenderTarget that does not exist!" );
+
+	const bool success = CoreGfx::api_render_target_copy_color(
+		source.resource, source.textureColor.resource,
+		resource, textureColor.resource );
+
+	ErrorIf( !success, "Copy GfxRenderTarget failed!" );
+#endif
+}
+
+
+void GfxRenderTarget::copy_depth( GfxRenderTarget &source )
+{
+#if GRAPHICS_ENABLED
+	ErrorIf( resource == nullptr, "Attempting to copy GfxRenderTarget that does not exist!" );
+	ErrorIf( source.resource == nullptr, "Attempting to copy from GfxRenderTarget that does not exist!" );
+
+	const bool success = CoreGfx::api_render_target_copy_depth(
+		source.resource, source.textureDepth.resource,
+		resource, textureDepth.resource );
 
 	ErrorIf( !success, "Copy GfxRenderTarget failed!" );
 #endif
@@ -1277,7 +1301,7 @@ void GfxRenderCommand::shader( const GfxShader &shader )
 }
 
 
-void GfxRenderCommand::shader( const Shader shader )
+void GfxRenderCommand::shader( Shader shader )
 {
 #if GRAPHICS_ENABLED
 	Assert( shader < CoreGfx::shaderCount );
@@ -1312,7 +1336,7 @@ void GfxRenderCommand::raster_cull_mode( const GfxCullMode &mode )
 }
 
 
-void GfxRenderCommand::blend_enabled( const bool enabled )
+void GfxRenderCommand::blend_enabled( bool enabled )
 {
 #if GRAPHICS_ENABLED
 	this->pipeline.description.blendEnabled = enabled;
@@ -1498,7 +1522,7 @@ void Gfx::render_graph_execute( const GfxRenderGraph &graph )
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Render Pass
 
-void GfxRenderPass::target( const int slot, const GfxRenderTarget &target )
+void GfxRenderPass::target( int slot, const GfxRenderTarget &target )
 {
 #if GRAPHICS_ENABLED
 	Assert( slot >= 0 && slot < GFX_RENDER_TARGET_SLOT_COUNT );
@@ -1559,7 +1583,7 @@ void Gfx::render_pass_end( const GfxRenderPass &pass )
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Utility
 
-byte *CoreGfx::scratch_buffer( const usize size )
+byte *CoreGfx::scratch_buffer( usize size )
 {
 #if GRAPHICS_ENABLED
 	static byte *scratchData = nullptr;
@@ -1607,8 +1631,7 @@ bool Gfx::mip_level_validate_2d( u16 width, u16 height, u16 levels )
 }
 
 
-usize Gfx::mip_buffer_size_2d( u16 width, u16 height, u16 levels,
-	const GfxColorFormat format )
+usize Gfx::mip_buffer_size_2d( u16 width, u16 height, u16 levels, const GfxColorFormat format )
 {
 	ErrorReturnIf( format >= GFXCOLORFORMAT_COUNT, 0,
 		"%s: invalid GfxColorFormat: %u", __FUNCTION__, format );
@@ -1630,8 +1653,8 @@ usize Gfx::mip_buffer_size_2d( u16 width, u16 height, u16 levels,
 }
 
 
-bool Gfx::mip_generate_next_2d( void *data, const u16 width, const u16 height,
-	const GfxColorFormat format, void *dest, const usize size )
+bool Gfx::mip_generate_next_2d( const void *data, u16 width, u16 height, GfxColorFormat format,
+	void *dest, usize size )
 {
 	ErrorReturnIf( format >= GFXCOLORFORMAT_COUNT, false,
 		"%s: invalid GfxColorFormat: %u", __FUNCTION__, format );
@@ -1658,16 +1681,16 @@ bool Gfx::mip_generate_next_2d( void *data, const u16 width, const u16 height,
 		u32 srcX = x * 2;
 		u32 srcY = y * 2;
 
-		const u8 *p00 = static_cast<u8 *>( data ) + ( ( srcY + 0 ) * width + ( srcX + 0 ) ) * pixelSizeBytes;
-		const u8 *p10 = static_cast<u8 *>( data ) + ( ( srcY + 0 ) * width + ( srcX + 1 ) ) * pixelSizeBytes;
-		const u8 *p01 = static_cast<u8 *>( data ) + ( ( srcY + 1 ) * width + ( srcX + 0 ) ) * pixelSizeBytes;
-		const u8 *p11 = static_cast<u8 *>( data ) + ( ( srcY + 1 ) * width + ( srcX + 1 ) ) * pixelSizeBytes;
+		const u8 *p00 = static_cast<const u8 *>( data ) + ( ( srcY + 0 ) * width + ( srcX + 0 ) ) * pixelSizeBytes;
+		const u8 *p10 = static_cast<const u8 *>( data ) + ( ( srcY + 0 ) * width + ( srcX + 1 ) ) * pixelSizeBytes;
+		const u8 *p01 = static_cast<const u8 *>( data ) + ( ( srcY + 1 ) * width + ( srcX + 0 ) ) * pixelSizeBytes;
+		const u8 *p11 = static_cast<const u8 *>( data ) + ( ( srcY + 1 ) * width + ( srcX + 1 ) ) * pixelSizeBytes;
 
 		u8 *out = static_cast<u8 *>( dest ) + ( y * mipWidth + x ) * pixelSizeBytes;
 
 		switch( format )
 		{
-			case GfxColorFormat_R8:
+			case GfxColorFormat_R8_UINT:
 			{
 				u32 v = p00[0] + p10[0] + p01[0] + p11[0];
 				out[0] = static_cast<u8>( v / 4 );
@@ -1693,7 +1716,7 @@ bool Gfx::mip_generate_next_2d( void *data, const u16 width, const u16 height,
 			}
 			break;
 
-			case GfxColorFormat_R16:
+			case GfxColorFormat_R16_UINT:
 			case GfxColorFormat_R16_FLOAT:
 			{
 				u16 *o = reinterpret_cast<u16 *>( out );
@@ -1832,8 +1855,8 @@ bool Gfx::mip_generate_next_2d( void *data, const u16 width, const u16 height,
 }
 
 
-bool Gfx::mip_generate_next_2d_alloc( void *data, const u16 width, const u16 height,
-	const GfxColorFormat format, void *&outData, usize &outSize )
+bool Gfx::mip_generate_next_2d_alloc( const void *data, u16 width, u16 height, GfxColorFormat format,
+	void *&outData, usize &outSize )
 {
 	ErrorReturnIf( format >= GFXCOLORFORMAT_COUNT, false,
 		"%s: invalid GfxColorFormat: %u", __FUNCTION__, format );
@@ -1864,8 +1887,8 @@ bool Gfx::mip_generate_next_2d_alloc( void *data, const u16 width, const u16 hei
 }
 
 
-bool Gfx::mip_generate_chain_2d( void *data, const u16 width, const u16 height,
-	const GfxColorFormat format, void *dest, const usize size )
+bool Gfx::mip_generate_chain_2d( const void *data, u16 width, u16 height, GfxColorFormat format,
+	void *dest, usize size )
 {
 	ErrorReturnIf( format >= GFXCOLORFORMAT_COUNT, false,
 		"%s: invalid GfxColorFormat: %u", __FUNCTION__, format );
@@ -1885,7 +1908,7 @@ bool Gfx::mip_generate_chain_2d( void *data, const u16 width, const u16 height,
 		__FUNCTION__, size, mipSizeBytes );
 
 	// Full Resolution
-	byte *mipSrc = reinterpret_cast<byte *>( data );
+	const byte *mipSrc = reinterpret_cast<const byte *>( data );
 	byte *mipDst = reinterpret_cast<byte *>( dest );
 	memory_copy( mipDst, mipSrc, pixelSizeBytes * width * height );
 	mipDst += pixelSizeBytes * width * height;
@@ -1904,8 +1927,8 @@ bool Gfx::mip_generate_chain_2d( void *data, const u16 width, const u16 height,
 }
 
 
-bool Gfx::mip_generate_chain_2d_alloc( void *data, const u16 width, const u16 height,
-	const GfxColorFormat format, void *&outData, usize &outSize )
+bool Gfx::mip_generate_chain_2d_alloc( const void *data, u16 width, u16 height, GfxColorFormat format,
+	void *&outData, usize &outSize )
 {
 	// Generates a mip level half the size of width, height
 	Assert( format < GFXCOLORFORMAT_COUNT );
@@ -2001,10 +2024,9 @@ void Gfx::quad_batch_write( const GfxQuadBatch<GfxVertex::BuiltinVertex>::Quad &
 }
 
 
-void Gfx::quad_batch_write( const float x1, const float y1, const float x2, const float y2,
-	const u16 u1, const u16 v1, const u16 u2, const u16 v2,
-	const Color c1, const Color c2, const Color c3, const Color c4,
-	const GfxTexture *const texture, const float depth )
+void Gfx::quad_batch_write( float x1, float y1, float x2, float y2,
+	u16 u1, u16 v1, u16 u2, u16 v2, Color c1, Color c2, Color c3, Color c4,
+	const GfxTexture *texture, float depth )
 {
 #if GRAPHICS_ENABLED
 	Assert( CoreGfx::batch.active );
@@ -2027,11 +2049,11 @@ void Gfx::quad_batch_write( const float x1, const float y1, const float x2, cons
 }
 
 
-void Gfx::quad_batch_write( const float x1, const float y1, const float x2, const float y2,
-	const float x3, const float y3, const float x4, const float y4,
-	const u16 u1, const u16 v1, const u16 u2, const u16 v2,
-	const Color c1, const Color c2, const Color c3, const Color c4,
-	const GfxTexture *const texture, const float depth )
+void Gfx::quad_batch_write( float x1, float y1, float x2, float y2,
+	float x3, float y3, float x4, float y4,
+	u16 u1, u16 v1, u16 u2, u16 v2,
+	Color c1, Color c2, Color c3, Color c4,
+	const GfxTexture *texture, float depth )
 {
 #if GRAPHICS_ENABLED
 	Assert( CoreGfx::batch.active );
@@ -2054,9 +2076,9 @@ void Gfx::quad_batch_write( const float x1, const float y1, const float x2, cons
 }
 
 
-void Gfx::quad_batch_write( const float x1, const float y1, const float x2, const float y2,
-	const u16 u1, const u16 v1, const u16 u2, const u16 v2, const Color color,
-	const GfxTexture *const texture, const float depth )
+void Gfx::quad_batch_write( float x1, float y1, float x2, float y2,
+	u16 u1, u16 v1, u16 u2, u16 v2, Color color,
+	const GfxTexture *texture, float depth )
 {
 #if GRAPHICS_ENABLED
 	Assert( CoreGfx::batch.active );
@@ -2079,10 +2101,10 @@ void Gfx::quad_batch_write( const float x1, const float y1, const float x2, cons
 }
 
 
-void Gfx::quad_batch_write( const float x1, const float y1, const float x2, const float y2,
-	const float x3, const float y3, const float x4, const float y4,
-	const u16 u1, const u16 v1, const u16 u2, const u16 v2, const Color color,
-	const GfxTexture *const texture, const float depth )
+void Gfx::quad_batch_write( float x1, float y1, float x2, float y2,
+	float x3, float y3, float x4, float y4,
+	u16 u1, u16 v1, u16 u2, u16 v2, Color color,
+	const GfxTexture *texture, float depth )
 {
 #if GRAPHICS_ENABLED
 	Assert( CoreGfx::batch.active );

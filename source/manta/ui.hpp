@@ -33,23 +33,25 @@ namespace UI
 {
 	extern ObjectInstance hoverWidgetID;
 	extern UIContext *hoverWidgetContext;
-	extern void update( const Delta delta );
+	extern void update( Delta delta );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 struct UIScissor
 {
-	UIScissor() : scissoring{ false }, x1{ 0 }, y1{ 0 }, x2{ 0 }, y2{ 0 } { };
-	UIScissor( int x1, int y1, int x2, int y2 ) : scissoring{ true }, x1{ x1 }, y1{ y1 }, x2{ x2 }, y2{ y2 } { }
+	UIScissor() :
+		scissoring { false }, x1 { 0 }, y1 { 0 }, x2 { 0 }, y2 { 0 } { };
+	UIScissor( int x1, int y1, int x2, int y2 ) :
+		scissoring { true }, x1 { x1 }, y1 { y1 }, x2 { x2 }, y2 { y2 } { }
 
 	bool operator==( const UIScissor &s ) const
 	{
 		return scissoring == s.scissoring &&
-		       x1 == s.x1 &&
-		       y1 == s.y1 &&
-		       x2 == s.x2 &&
-		       y2 == s.y2;
+			x1 == s.x1 &&
+			y1 == s.y1 &&
+			x2 == s.x2 &&
+			y2 == s.y2;
 	}
 
 	bool scissoring;
@@ -97,7 +99,7 @@ public:
 		bool resizable = true, ObjectInstance parent = { } );
 
 	ObjectInstance create_widget_scrollable_region( u16 type, int x, int y, int width, int height,
-		const bool hasVerticalScrollbar, const bool hasHorizontalScrollbar, ObjectInstance parent = { } );
+		bool hasVerticalScrollbar, bool hasHorizontalScrollbar, ObjectInstance parent = { } );
 
 	ObjectInstance create_widget_button( u16 type, int x, int y, int width, int height,
 		ObjectInstance parent = { } );
@@ -138,24 +140,24 @@ public:
 	void scissor_set_nested( const UIScissor &scissor );
 	void scissor_set_nested( int x1, int y1, int x2, int y2 ) { scissor_set_nested( UIScissor { x1, y1, x2, y2 } ); }
 
-	float_v2 position_float_v2( const float x, const float y );
-	int_v2 position_i32( const int x, const int y );
+	float_v2 position_float_v2( float x, float y );
+	int_v2 position_i32( int x, int y );
 
 	void widget_send_top( ObjectInstance widget );
 	ObjectInstance get_widget_hover();
 	ObjectInstance get_widget_top();
 
-	void update_widgets( const Delta delta );
-	void render_widgets( const Delta delta, const Alpha alpha = { } );
+	void update_widgets( Delta delta );
+	void render_widgets( Delta delta, Alpha alpha = { } );
 
-	void update_widget( const ObjectInstance &widget, const Delta delta );
-	void render_widget( const ObjectInstance &widget, const Delta delta, const Alpha alpha );
+	void update_widget( const ObjectInstance &widget, Delta delta );
+	void render_widget( const ObjectInstance &widget, Delta delta, Alpha alpha );
 
 private:
 	ObjectInstance instantiate_widget( u16 type, ObjectInstance parent );
 
-	void update_widget( ObjectHandle<Object::UIWidget> &widgetHandle, const Delta delta );
-	void render_widget( ObjectHandle<Object::UIWidget> &widgetHandle, const Delta delta, const Alpha alpha );
+	void update_widget( ObjectHandle<Object::UIWidget> &widgetHandle, Delta delta );
+	void render_widget( ObjectHandle<Object::UIWidget> &widgetHandle, Delta delta, Alpha alpha );
 
 	bool test_widget( ObjectHandle<Object::UIWidget> &widgetHandle );
 	void register_widget( const ObjectInstance &widget );

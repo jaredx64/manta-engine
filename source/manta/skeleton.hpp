@@ -15,11 +15,11 @@ class EasedFloat
 {
 public:
 	EasedFloat() { };
-	EasedFloat( const float value ) { set_value( value, 0.0 ); }
-	EasedFloat( const float value, const float ease ) { set_value( value, ease ); }
+	EasedFloat( float value ) { set_value( value, 0.0 ); }
+	EasedFloat( float value, float ease ) { set_value( value, ease ); }
 
-	void update( const Delta delta );
-	void set_value( const float value, const float ease = 0.0f );
+	void update( Delta delta );
+	void set_value( float value, float ease = 0.0f );
 	float get_value() const;
 
 private:
@@ -38,6 +38,7 @@ struct BinKeyframe
 };
 
 constexpr int numKeyframes = 17;
+
 static BinKeyframe binKeyframes[numKeyframes] =
 {
 	{ .time = 0.00f, .value = 0.0f },
@@ -165,10 +166,10 @@ static SkeletonEntry skeletonEntries[numSkeletons] =
 class Animation
 {
 public:
-	void update( const Delta delta );
+	void update( Delta delta );
 
-	float get_value( const Timeline timeline ) const;
-	float get_rotation( const Timeline timeline ) const;
+	float get_value( Timeline timeline ) const;
+	float get_rotation( Timeline timeline ) const;
 
 private:
 	friend class Bone;
@@ -185,13 +186,13 @@ private:
 class Attachment
 {
 public:
-	void set_sprite( const int sprite, int subimg );
-	void set_color( const Color color );
-	void set_scale( const float scale );
-	void set_rotation( const float angleDegrees );
-	void set_translation( const float x, const float y );
+	void set_sprite( int sprite, int subimg );
+	void set_color( Color color );
+	void set_scale( float scale );
+	void set_rotation( float angleDegrees );
+	void set_translation( float x, float y );
 
-	void draw( const class Bone &bone, const Delta delta, float x, float y, Color color, float depth = 0.0f );
+	void draw( const class Bone &bone, Delta delta, float x, float y, Color color, float depth = 0.0f );
 
 private:
 	friend class Bone;
@@ -220,22 +221,22 @@ public:
 	bool attachment_clear( u8 attachmentIndex );
 	Attachment &get_attachment( u8 attachmentIndex );
 
-	void set_color( const Color color );
+	void set_color( Color color );
 	Color get_color() const;
 
-	void set_scale( const float scaleX, const float scaleY );
+	void set_scale( float scaleX, float scaleY );
 	float get_scale_x() const;
 	float get_scale_y() const;
 
-	void set_rotation( const float angleDegrees );
+	void set_rotation( float angleDegrees );
 	float get_rotation() const;
 
-	void set_translation( const float x, const float y );
+	void set_translation( float x, float y );
 	float get_translation_x() const;
 	float get_translation_y() const;
 
-	void update( const BoneEntry &boneEntry, const Delta delta );
-	void draw( const Delta delta, float x, float y, Color color, float depth = 0.0f );
+	void update( const BoneEntry &boneEntry, Delta delta );
+	void draw( Delta delta, float x, float y, Color color, float depth = 0.0f );
 
 private:
 	friend class Skeleton2D;
@@ -272,7 +273,7 @@ public:
 	bool init( SkeletonID type );
 	bool free();
 
-	Bone &get_bone( const BoneID boneID );
+	Bone &get_bone( BoneID boneID );
 
 	bool animation_start( AnimationID animation, bool loop = true, float weight = 1.0, float ease = 0.0f );
 	void animation_stop( AnimationID animation, bool ease = 0.0f );
@@ -281,13 +282,13 @@ public:
 	void animation_speed( AnimationID animation, float speed );
 	void animation_time( AnimationID animation, float time );
 
-	void set_color( const Color color );
-	void set_scale( const float scaleX, const float scaleY );
-	void set_rotation( const float angle );
-	void set_translation( const float x, const float y );
+	void set_color( Color color );
+	void set_scale( float scaleX, float scaleY );
+	void set_rotation( float angle );
+	void set_translation( float x, float y );
 
-	void update( const Delta delta );
-	void draw( const Delta delta, float x, float y, Color color, float depth = 0.0f );
+	void update( Delta delta );
+	void draw( Delta delta, float x, float y, Color color, float depth = 0.0f );
 
 public:
 	u32 type = U32_MAX;

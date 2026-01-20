@@ -20,7 +20,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static void glSetEnabled( GLenum cap, const bool enable )
+static void glSetEnabled( GLenum cap, bool enable )
 {
 	if( enable ) { glEnable( cap ); return; }
 	glDisable( cap );
@@ -107,9 +107,9 @@ static const OpenGLColorFormat OpenGLColorFormats[] =
 	{ GL_RGBA, GL_RGBA8, GL_UNSIGNED_BYTE },              // GfxColorFormat_R8G8B8A8_FLOAT
 	{ GL_RGBA_INTEGER, GL_RGBA8UI,    },                  // GfxColorFormat_R8G8B8A8_UINT
 	{ GL_RGBA, GL_RGB10_A2, GL_UNSIGNED_INT_10_10_10_2 }, // GfxColorFormat_R10G10B10A2_FLOAT
-	{ GL_RED, GL_R8, GL_UNSIGNED_BYTE },                  // GfxColorFormat_R8
+	{ GL_RED_INTEGER, GL_R8UI, GL_UNSIGNED_BYTE },        // GfxColorFormat_R8_UINT
 	{ GL_RG, GL_RG8, GL_UNSIGNED_BYTE },                  // GfxColorFormat_R8G8
-	{ GL_RED, GL_R16UI, GL_UNSIGNED_SHORT },              // GfxColorFormat_R16
+	{ GL_RED_INTEGER, GL_R16UI, GL_UNSIGNED_SHORT },      // GfxColorFormat_R16_UINT
 	{ GL_RED, GL_R16F, GL_FLOAT },                        // GfxColorFormat_R16_FLOAT
 	{ GL_RG, GL_RG16UI, GL_UNSIGNED_SHORT },              // GfxColorFormat_R16G16
 	{ GL_RG, GL_RG16F, GL_FLOAT },                        // GfxColorFormat_R16G16F_FLOAT
@@ -169,11 +169,14 @@ static_assert( ARRAY_LENGTH( OpenGLCullModes ) == GFXRASTERCULLMODE_COUNT,
 	"Missing GfxCullMode!" );
 
 
-static const GLint OpenGLFilteringModes[][2] =
+static const GLint OpenGLFilteringModes[][3] =
 {
-	{ GL_NEAREST, GL_NEAREST_MIPMAP_LINEAR }, // GfxSamplerFilteringMode_NEAREST
-	{ GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR },   // GfxSamplerFilteringMode_LINEAR
-	{ GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR },   // GfxSamplerFilteringMode_ANISOTROPIC (TODO: Support anisotrophic)
+	// Mag, Min, Mip
+	{ GL_NEAREST, GL_NEAREST, GL_NEAREST_MIPMAP_LINEAR }, // GfxSamplerFilteringMode_NEAREST
+	{ GL_LINEAR, GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR },    // GfxSamplerFilteringMode_LINEAR
+	{ GL_NEAREST, GL_LINEAR, GL_NEAREST_MIPMAP_LINEAR },  // GfxSamplerFilteringMode_MAG_NEAREST_MIN_LINEAR
+	{ GL_LINEAR, GL_NEAREST, GL_NEAREST_MIPMAP_LINEAR },  // GfxSamplerFilteringMode_MAG_LINEAR_MIN_NEAREST
+	{ GL_LINEAR, GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR },    // GfxSamplerFilteringMode_ANISOTROPIC (TODO: Support anisotrophic)
 };
 static_assert( ARRAY_LENGTH( OpenGLFilteringModes ) == GFXSAMPLERFILTERINGMODE_COUNT,
 	"Missing GfxSamplerFilteringMode!" );
@@ -370,6 +373,8 @@ struct GfxRenderTargetResource : public GfxResource
 	GLuint pboDepth = 0;
 	GfxTextureResource *resourceColor = nullptr;
 	GfxTextureResource *resourceDepth = nullptr;
+	GLsync syncObj = nullptr;
+	bool asyncReadback = false;
 	GfxRenderTargetDescription desc = { };
 	u16 width = 0;
 	u16 height = 0;
@@ -416,7 +421,7 @@ static bool resources_free()
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // OpenGL System
 
-static GLuint opengl_uniform_buffer_uniform_block_index( GfxUniformBufferResource *const resource, const int slot )
+static GLuint opengl_uniform_buffer_uniform_block_index( GfxUniformBufferResource *resource, int slot )
 {
 	// Get hash "key" from uniformBuffer index, slot, and shader program
 	char buffer[64];
@@ -449,7 +454,7 @@ static GLuint opengl_uniform_buffer_uniform_block_index( GfxUniformBufferResourc
 }
 
 
-static GLint opengl_texture_uniform_location( HashMap<u32, GLint> &cache, const int slot )
+static GLint opengl_texture_uniform_location( HashMap<u32, GLint> &cache, int slot )
 {
 	// Get hash "key" from uniformBuffer index, slot, and shader program
 	char buffer[64];
@@ -482,7 +487,7 @@ static GLint opengl_texture_uniform_location( HashMap<u32, GLint> &cache, const 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // OpenGL Render State
 
-static bool bind_shader( GfxShaderResource *const resource )
+static bool bind_shader( GfxShaderResource *resource )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 
@@ -684,7 +689,7 @@ static void render_target_2d_resolve_msaa( GfxRenderTargetResource *const resour
 }
 
 
-static bool bind_targets( GfxRenderTargetResource *const resources[] )
+static bool bind_targets( GfxRenderTargetResource *const *resources )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	static double_m44 cacheMatrixModel;
@@ -962,7 +967,7 @@ void CoreGfx::api_frame_end()
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Clear
 
-void CoreGfx::api_clear_color( const Color color )
+void CoreGfx::api_clear_color( Color color )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	static constexpr float INV_255 = 1.0f / 255.0f;
@@ -971,7 +976,7 @@ void CoreGfx::api_clear_color( const Color color )
 }
 
 
-void CoreGfx::api_clear_depth( const float depth )
+void CoreGfx::api_clear_depth( float depth )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	glDepthMask( true );
@@ -981,7 +986,7 @@ void CoreGfx::api_clear_depth( const float depth )
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Render State
 
-bool CoreGfx::api_swapchain_init( const u16 width, const u16 height )
+bool CoreGfx::api_swapchain_init( u16 width, u16 height )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 
@@ -1025,7 +1030,7 @@ bool CoreGfx::api_swapchain_free()
 }
 
 
-bool CoreGfx::api_swapchain_set_size( const u16 width, const u16 height )
+bool CoreGfx::api_swapchain_set_size( u16 width, u16 height )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 
@@ -1058,7 +1063,7 @@ bool CoreGfx::api_swapchain_set_size( const u16 width, const u16 height )
 }
 
 
-bool CoreGfx::api_viewport_init( const u16 width, const u16 height )
+bool CoreGfx::api_viewport_init( u16 width, u16 height )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	return api_viewport_set_size( width, height );
@@ -1072,7 +1077,7 @@ bool CoreGfx::api_viewport_free()
 }
 
 
-bool CoreGfx::api_viewport_set_size( const u16 width, const u16 height )
+bool CoreGfx::api_viewport_set_size( u16 width, u16 height )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 
@@ -1092,7 +1097,7 @@ bool CoreGfx::api_sampler_set_state( const GfxStateSampler &state )
 	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,
 		OpenGLFilteringModes[state.filterMode][0] );
 	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
-		OpenGLFilteringModes[state.filterMode][isFilterModeMipmapping] );
+		OpenGLFilteringModes[state.filterMode][isFilterModeMipmapping ? 2 : 1] );
 
 	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,
 		OpenGLUVWrapModes[state.wrapMode] );
@@ -1155,7 +1160,8 @@ void GfxShaderResource::release( GfxShaderResource *&resource )
 }
 
 
-bool CoreGfx::api_shader_init( GfxShaderResource *&resource, const u32 shaderID, const struct ShaderEntry &shaderEntry )
+bool CoreGfx::api_shader_init( GfxShaderResource *&resource, u32 shaderID,
+	const struct ShaderEntry &shaderEntry )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource == nullptr );
@@ -1170,11 +1176,11 @@ bool CoreGfx::api_shader_init( GfxShaderResource *&resource, const u32 shaderID,
 	GLuint shaderFragment = nglCreateShader( GL_FRAGMENT_SHADER );
 	GLuint shaderCompute; // TODO
 
-	const byte *codeVertex = Assets::binary.data + shaderEntry.offsetVertex;
+	const byte *codeVertex = Assets::binary.data + shaderEntry.offsetVertex + BINARY_OFFSET_GFX;
 	nglShaderSource( shaderVertex, 1, reinterpret_cast<const GLchar **>( &codeVertex ),
 		reinterpret_cast<const GLint *>( &shaderEntry.sizeVertex ) );
 
-	const byte *codeFragment = Assets::binary.data + shaderEntry.offsetFragment;
+	const byte *codeFragment = Assets::binary.data + shaderEntry.offsetFragment + BINARY_OFFSET_GFX;
 	nglShaderSource( shaderFragment, 1, reinterpret_cast<const GLchar **>( &codeFragment ),
 		reinterpret_cast<const GLint *>( &shaderEntry.sizeFragment ) );
 
@@ -1280,7 +1286,7 @@ bool CoreGfx::api_shader_free( GfxShaderResource *&resource )
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Buffer
 
-bool CoreGfx::api_buffer_init( GfxBufferResource *&resource, const usize capacity )
+bool CoreGfx::api_buffer_init( GfxBufferResource *&resource, usize capacity )
 {
 	return true;
 }
@@ -1292,20 +1298,19 @@ bool CoreGfx::api_buffer_free( GfxBufferResource *&resource )
 }
 
 
-void CoreGfx::api_buffer_write_begin( GfxBufferResource *const resource )
+void CoreGfx::api_buffer_write_begin( GfxBufferResource *resource )
 {
 	// ...
 }
 
 
-void CoreGfx::api_buffer_write_end( GfxBufferResource *const resource )
+void CoreGfx::api_buffer_write_end( GfxBufferResource *resource )
 {
 	// ...
 }
 
 
-void CoreGfx::api_buffer_write( GfxBufferResource *const resource, const void *const data,
-	const usize size, const usize offset )
+void CoreGfx::api_buffer_write( GfxBufferResource *resource, const void *data, usize size, usize offset )
 {
 	// ...
 }
@@ -1326,8 +1331,8 @@ void GfxVertexBufferResource::release( GfxVertexBufferResource *&resource )
 }
 
 
-bool CoreGfx::api_vertex_buffer_init( GfxVertexBufferResource *&resource, const u32 vertexFormatID,
-	const GfxWriteMode writeMode, const u32 capacity, const u32 stride )
+bool CoreGfx::api_vertex_buffer_init( GfxVertexBufferResource *&resource, u32 vertexFormatID,
+	GfxWriteMode writeMode, u32 capacity, u32 stride )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource == nullptr );
@@ -1368,7 +1373,7 @@ bool CoreGfx::api_vertex_buffer_free( GfxVertexBufferResource *&resource )
 }
 
 
-void CoreGfx::api_vertex_buffer_write_begin( GfxVertexBufferResource *const resource )
+void CoreGfx::api_vertex_buffer_write_begin( GfxVertexBufferResource *resource )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
@@ -1407,7 +1412,7 @@ void CoreGfx::api_vertex_buffer_write_begin( GfxVertexBufferResource *const reso
 }
 
 
-void CoreGfx::api_vertex_buffer_write_end( GfxVertexBufferResource *const resource )
+void CoreGfx::api_vertex_buffer_write_end( GfxVertexBufferResource *resource )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
@@ -1432,7 +1437,7 @@ void CoreGfx::api_vertex_buffer_write_end( GfxVertexBufferResource *const resour
 }
 
 
-void CoreGfx::api_vertex_buffer_write( GfxVertexBufferResource *const resource, const void *const data, const u32 size )
+void CoreGfx::api_vertex_buffer_write( GfxVertexBufferResource *resource, const void *data, u32 size )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
@@ -1444,7 +1449,7 @@ void CoreGfx::api_vertex_buffer_write( GfxVertexBufferResource *const resource, 
 }
 
 
-u32 CoreGfx::api_vertex_buffer_current( const GfxVertexBufferResource *const resource )
+u32 CoreGfx::api_vertex_buffer_current( const GfxVertexBufferResource *resource )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
@@ -1469,7 +1474,7 @@ void GfxInstanceBufferResource::release( GfxInstanceBufferResource *&resource )
 
 
 bool CoreGfx::api_instance_buffer_init( GfxInstanceBufferResource *&resource,
-	const u32 instanceFormatID, const GfxWriteMode writeMode, const u32 capacity, const u32 stride )
+	u32 instanceFormatID, GfxWriteMode writeMode, u32 capacity, u32 stride )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource == nullptr );
@@ -1510,7 +1515,7 @@ bool CoreGfx::api_instance_buffer_free( GfxInstanceBufferResource *&resource )
 }
 
 
-void CoreGfx::api_instance_buffer_write_begin( GfxInstanceBufferResource *const resource )
+void CoreGfx::api_instance_buffer_write_begin( GfxInstanceBufferResource *resource )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
@@ -1549,7 +1554,7 @@ void CoreGfx::api_instance_buffer_write_begin( GfxInstanceBufferResource *const 
 }
 
 
-void CoreGfx::api_instance_buffer_write_end( GfxInstanceBufferResource *const resource )
+void CoreGfx::api_instance_buffer_write_end( GfxInstanceBufferResource *resource )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
@@ -1574,8 +1579,7 @@ void CoreGfx::api_instance_buffer_write_end( GfxInstanceBufferResource *const re
 }
 
 
-void CoreGfx::api_instance_buffer_write( GfxInstanceBufferResource *const resource,
-	const void *const data, const u32 size )
+void CoreGfx::api_instance_buffer_write( GfxInstanceBufferResource *resource, const void *data, u32 size )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
@@ -1587,7 +1591,7 @@ void CoreGfx::api_instance_buffer_write( GfxInstanceBufferResource *const resour
 }
 
 
-u32 CoreGfx::api_instance_buffer_current( const GfxInstanceBufferResource *const resource )
+u32 CoreGfx::api_instance_buffer_current( const GfxInstanceBufferResource *resource )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
@@ -1610,9 +1614,8 @@ void GfxIndexBufferResource::release( GfxIndexBufferResource *&resource )
 }
 
 
-bool CoreGfx::api_index_buffer_init( GfxIndexBufferResource *&resource, void *data, const u32 size,
-	const double indToVertRatio,
-	const GfxIndexBufferFormat format, const GfxWriteMode writeMode )
+bool CoreGfx::api_index_buffer_init( GfxIndexBufferResource *&resource, void *data, u32 size,
+	double indToVertRatio, GfxIndexBufferFormat format, GfxWriteMode writeMode )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource == nullptr );
@@ -1668,7 +1671,7 @@ void GfxUniformBufferResource::release( GfxUniformBufferResource *&resource )
 
 
 bool CoreGfx::api_uniform_buffer_init( GfxUniformBufferResource *&resource, const char *name,
-	const int index, const u32 size )
+	int index, u32 size )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource == nullptr );
@@ -1709,7 +1712,7 @@ bool CoreGfx::api_uniform_buffer_free( GfxUniformBufferResource *&resource )
 }
 
 
-void CoreGfx::api_uniform_buffer_write_begin( GfxUniformBufferResource *const resource )
+void CoreGfx::api_uniform_buffer_write_begin( GfxUniformBufferResource *resource )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
@@ -1719,7 +1722,7 @@ void CoreGfx::api_uniform_buffer_write_begin( GfxUniformBufferResource *const re
 }
 
 
-void CoreGfx::api_uniform_buffer_write_end( GfxUniformBufferResource *const resource )
+void CoreGfx::api_uniform_buffer_write_end( GfxUniformBufferResource *resource )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
@@ -1729,7 +1732,7 @@ void CoreGfx::api_uniform_buffer_write_end( GfxUniformBufferResource *const reso
 }
 
 
-void CoreGfx::api_uniform_buffer_write( GfxUniformBufferResource *const resource, const void *data )
+void CoreGfx::api_uniform_buffer_write( GfxUniformBufferResource *resource, const void *data )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
@@ -1742,7 +1745,7 @@ void CoreGfx::api_uniform_buffer_write( GfxUniformBufferResource *const resource
 }
 
 
-bool CoreGfx::api_uniform_buffer_bind_vertex( GfxUniformBufferResource *const resource, const int slot )
+bool CoreGfx::api_uniform_buffer_bind_vertex( GfxUniformBufferResource *resource, int slot )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
@@ -1759,7 +1762,7 @@ bool CoreGfx::api_uniform_buffer_bind_vertex( GfxUniformBufferResource *const re
 }
 
 
-bool CoreGfx::api_uniform_buffer_bind_fragment( GfxUniformBufferResource *const resource, const int slot )
+bool CoreGfx::api_uniform_buffer_bind_fragment( GfxUniformBufferResource *resource, int slot )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
@@ -1776,7 +1779,7 @@ bool CoreGfx::api_uniform_buffer_bind_fragment( GfxUniformBufferResource *const 
 }
 
 
-bool CoreGfx::api_uniform_buffer_bind_compute( GfxUniformBufferResource *const resource, const int slot )
+bool CoreGfx::api_uniform_buffer_bind_compute( GfxUniformBufferResource *resource, int slot )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
@@ -1813,7 +1816,7 @@ void GfxTextureResource::release( GfxTextureResource *&resource )
 
 
 bool CoreGfx::api_texture_init( GfxTextureResource *&resource, void *pixels,
-	const u16 width, const u16 height, const u16 levels, const GfxColorFormat &format )
+	u16 width, u16 height, u16 levels, const GfxColorFormat &format )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource == nullptr );
@@ -1919,7 +1922,7 @@ bool CoreGfx::api_texture_free( GfxTextureResource *&resource )
 }
 
 
-bool CoreGfx::api_texture_bind( GfxTextureResource *const resource, const int slot )
+bool CoreGfx::api_texture_bind( GfxTextureResource *resource, int slot )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
@@ -1941,7 +1944,7 @@ bool CoreGfx::api_texture_bind( GfxTextureResource *const resource, const int sl
 }
 
 
-bool CoreGfx::api_texture_release( GfxTextureResource *const resource, const int slot )
+bool CoreGfx::api_texture_release( GfxTextureResource *resource, int slot )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
@@ -1973,8 +1976,7 @@ void GfxRenderTargetResource::release( GfxRenderTargetResource *&resource )
 
 bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 	GfxTextureResource *&resourceColor, GfxTextureResource *&resourceDepth,
-	const u16 width, const u16 height,
-	const GfxRenderTargetDescription &desc )
+	u16 width, u16 height, const GfxRenderTargetDescription &desc )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource == nullptr );
@@ -2283,6 +2285,100 @@ bool CoreGfx::api_render_target_free( GfxRenderTargetResource *&resource,
 }
 
 
+bool CoreGfx::api_render_target_copy_color(
+	GfxRenderTargetResource *&srcResource, GfxTextureResource *&srcResourceDepth,
+	GfxRenderTargetResource *&dstResource, GfxTextureResource *&dstResourceDepth )
+{
+	OPENGL_CHECK_ERRORS_SCOPE
+	if( srcResource == nullptr || dstResource == nullptr ) { return false; }
+
+	// Ensure equal dimensions
+	if( srcResource->width != dstResource->width ||
+		srcResource->height != dstResource->height )
+	{
+		return false;
+	}
+
+	GLbitfield flags = 0;
+
+	if( srcResource->desc.colorFormat != GfxColorFormat_NONE &&
+		dstResource->desc.colorFormat != GfxColorFormat_NONE )
+	{
+		flags |= GL_COLOR_BUFFER_BIT;
+	}
+
+	if( flags )
+	{
+		GLint fboReadPrevious, fboDrawPrevious;
+		glGetIntegerv( GL_READ_FRAMEBUFFER_BINDING, &fboReadPrevious );
+		glGetIntegerv( GL_DRAW_FRAMEBUFFER_BINDING, &fboDrawPrevious );
+		nglBindFramebuffer( GL_READ_FRAMEBUFFER, srcResource->fboSS );
+		nglBindFramebuffer( GL_DRAW_FRAMEBUFFER, dstResource->fboSS );
+		nglBlitFramebuffer(
+			static_cast<GLint>( 0 ),
+			static_cast<GLint>( 0 ),
+			static_cast<GLint>( srcResource->width ),
+			static_cast<GLint>( srcResource->height ),
+			static_cast<GLint>( 0 ),
+			static_cast<GLint>( 0 ),
+			static_cast<GLint>( dstResource->width ),
+			static_cast<GLint>( dstResource->height ),
+			flags, GL_NEAREST );
+		nglBindFramebuffer( GL_READ_FRAMEBUFFER, fboReadPrevious );
+		nglBindFramebuffer( GL_DRAW_FRAMEBUFFER, fboDrawPrevious );
+	}
+
+	return true;
+}
+
+
+bool CoreGfx::api_render_target_copy_depth(
+	GfxRenderTargetResource *&srcResource, GfxTextureResource *&srcResourceColor,
+	GfxRenderTargetResource *&dstResource, GfxTextureResource *&dstResourceColor )
+{
+	OPENGL_CHECK_ERRORS_SCOPE
+	if( srcResource == nullptr || dstResource == nullptr ) { return false; }
+
+	// Ensure equal dimensions
+	if( srcResource->width != dstResource->width ||
+		srcResource->height != dstResource->height )
+	{
+		return false;
+	}
+
+	GLbitfield flags = 0;
+
+	if( srcResource->desc.depthFormat != GfxDepthFormat_NONE &&
+		dstResource->desc.depthFormat != GfxDepthFormat_NONE )
+	{
+		flags |= GL_DEPTH_BUFFER_BIT;
+	}
+
+	if( flags )
+	{
+		GLint fboReadPrevious, fboDrawPrevious;
+		glGetIntegerv( GL_READ_FRAMEBUFFER_BINDING, &fboReadPrevious );
+		glGetIntegerv( GL_DRAW_FRAMEBUFFER_BINDING, &fboDrawPrevious );
+		nglBindFramebuffer( GL_READ_FRAMEBUFFER, srcResource->fboSS );
+		nglBindFramebuffer( GL_DRAW_FRAMEBUFFER, dstResource->fboSS );
+		nglBlitFramebuffer(
+			static_cast<GLint>( 0 ),
+			static_cast<GLint>( 0 ),
+			static_cast<GLint>( srcResource->width ),
+			static_cast<GLint>( srcResource->height ),
+			static_cast<GLint>( 0 ),
+			static_cast<GLint>( 0 ),
+			static_cast<GLint>( dstResource->width ),
+			static_cast<GLint>( dstResource->height ),
+			flags, GL_NEAREST );
+		nglBindFramebuffer( GL_READ_FRAMEBUFFER, fboReadPrevious );
+		nglBindFramebuffer( GL_DRAW_FRAMEBUFFER, fboDrawPrevious );
+	}
+
+	return true;
+}
+
+
 bool CoreGfx::api_render_target_copy(
 	GfxRenderTargetResource *&srcResource,
 	GfxTextureResource *&srcResourceColor, GfxTextureResource *&srcResourceDepth,
@@ -2392,7 +2488,7 @@ bool CoreGfx::api_render_target_copy_part(
 
 bool CoreGfx::api_render_target_buffer_read_color( GfxRenderTargetResource *&resource,
 	GfxTextureResource *&resourceColor,
-	void *buffer, const u32 size )
+	void *buffer, u32 size )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
@@ -2449,6 +2545,112 @@ bool CoreGfx::api_render_target_buffer_read_color( GfxRenderTargetResource *&res
 }
 
 
+bool CoreGfx::api_render_target_buffer_read_color_async_request( GfxRenderTargetResource *&resource,
+	GfxTextureResource *&resourceColor,
+	void *buffer, u32 size )
+{
+	OPENGL_CHECK_ERRORS_SCOPE
+
+	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
+	Assert( resourceColor != nullptr && resourceColor->id != GFX_RESOURCE_ID_NULL );
+	Assert( resource->pboColor != 0 );
+
+	ErrorIf( !resource->desc.cpuAccess,
+		"Trying to CPU access a render target that does not have CPU access flag!" );
+
+	// Bind read framebuffer
+	GLint fboReadPrevious;
+	glGetIntegerv( GL_READ_FRAMEBUFFER_BINDING, &fboReadPrevious );
+	nglBindFramebuffer( GL_READ_FRAMEBUFFER, resource->fboSS );
+	GLint bufferReadPrevious;
+	glGetIntegerv( GL_READ_BUFFER, &bufferReadPrevious );
+	glReadBuffer( GL_COLOR_ATTACHMENT0 );
+
+	// Bind PBO
+	nglBindBuffer( GL_PIXEL_PACK_BUFFER, resource->pboColor );
+	const GLenum glFormat = OpenGLColorFormats[resource->desc.colorFormat].format;
+	const GLenum glFormatType = OpenGLColorFormats[resource->desc.colorFormat].formatType;
+
+	// Launch async DMA transfer to PBO
+	glReadPixels( 0, 0, resource->width, resource->height, glFormat, glFormatType, nullptr );
+
+	// Insert a fence for completion
+	if( resource->syncObj ) { nglDeleteSync( resource->syncObj ); }
+	resource->syncObj = nglFenceSync( GL_SYNC_GPU_COMMANDS_COMPLETE, 0 );
+
+	nglBindBuffer( GL_PIXEL_PACK_BUFFER, 0 );
+	nglBindFramebuffer( GL_READ_FRAMEBUFFER, fboReadPrevious );
+	glReadBuffer( bufferReadPrevious );
+
+	Assert( !resource->asyncReadback );
+	resource->asyncReadback = true;
+	return true;
+}
+
+
+bool CoreGfx::api_render_target_buffer_read_color_async_poll( GfxRenderTargetResource *&resource,
+	GfxTextureResource *&resourceColor,
+	void *buffer, u32 size )
+{
+	OPENGL_CHECK_ERRORS_SCOPE
+
+	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
+	Assert( resourceColor != nullptr && resourceColor->id != GFX_RESOURCE_ID_NULL );
+	Assert( resource->pboColor != 0 );
+
+	ErrorIf( !resource->desc.cpuAccess,
+		"Trying to CPU access a render target that does not have CPU access flag!" );
+
+	const u32 sizeSource = GFX_SIZE_IMAGE_COLOR_BYTES(
+		resource->width, resource->height, 1, resource->desc.colorFormat );
+
+	Assert( sizeSource <= size );
+	Assert( buffer != nullptr );
+
+	GLint fboReadPrevious;
+	glGetIntegerv( GL_READ_FRAMEBUFFER_BINDING, &fboReadPrevious );
+	nglBindFramebuffer( GL_READ_FRAMEBUFFER, resource->fboSS );
+	GLint bufferReadPrevious;
+	glGetIntegerv( GL_READ_BUFFER, &bufferReadPrevious );
+	glReadBuffer( GL_COLOR_ATTACHMENT0 );
+
+	Assert( resource->asyncReadback );
+	GLenum r = nglClientWaitSync( resource->syncObj, 0, 0 );
+	if( r == GL_TIMEOUT_EXPIRED || r == GL_WAIT_FAILED ) { return false; }
+
+	nglBindBuffer( GL_PIXEL_PACK_BUFFER, resource->pboColor);
+	void *data = nglMapBuffer( GL_PIXEL_PACK_BUFFER, GL_READ_ONLY );
+	if( !data )
+	{
+		nglBindBuffer( GL_PIXEL_PACK_BUFFER, 0 );
+		return false;
+	}
+
+#if true
+	// Flip the texture vertically
+	const usize stride = resource->width * colorFormatPixelSizeBytes[resource->desc.colorFormat];
+	byte *flipped = reinterpret_cast<byte *>( buffer );
+	byte *source = static_cast<byte *>( data );
+	for( u16 y = 0; y < resource->height; y++ )
+	{
+		memory_copy( &flipped[y * stride], &source[( resource->height - 1 - y ) * stride], stride );
+	}
+#else
+	memory_copy( buffer, data, size );
+#endif
+
+	nglUnmapBuffer( GL_PIXEL_PACK_BUFFER );
+	nglBindBuffer( GL_PIXEL_PACK_BUFFER, 0 );
+	nglBindFramebuffer( GL_READ_FRAMEBUFFER, fboReadPrevious );
+	glReadBuffer( bufferReadPrevious );
+
+	nglDeleteSync( resource->syncObj );
+	resource->syncObj = nullptr;
+	resource->asyncReadback = false;
+	return true;
+}
+
+
 bool api_render_target_buffer_read_depth( GfxRenderTargetResource *&resource,
 	GfxTextureResource *&resourceDepth,
 	void *buffer, const u32 size )
@@ -2459,9 +2661,29 @@ bool api_render_target_buffer_read_depth( GfxRenderTargetResource *&resource,
 }
 
 
+bool CoreGfx::api_render_target_buffer_read_depth_async_request( GfxRenderTargetResource *&resource,
+	GfxTextureResource *&resourceDepth,
+	void *buffer, u32 size )
+{
+	OPENGL_CHECK_ERRORS_SCOPE
+	GRAPHICS_API_IMPLEMENTATION_WARNING // TODO: Implement this
+	return true;
+}
+
+
+bool CoreGfx::api_render_target_buffer_read_depth_async_poll( GfxRenderTargetResource *&resource,
+	GfxTextureResource *&resourceDepth,
+	void *buffer, u32 size )
+{
+	OPENGL_CHECK_ERRORS_SCOPE
+	GRAPHICS_API_IMPLEMENTATION_WARNING // TODO: Implement this
+	return true;
+}
+
+
 bool CoreGfx::api_render_target_buffer_write_color( GfxRenderTargetResource *&resource,
 	GfxTextureResource *&resourceColor,
-	const void *const buffer, const u32 size )
+	const void *buffer, u32 size )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	GRAPHICS_API_IMPLEMENTATION_WARNING // TODO: Implement this
@@ -2471,7 +2693,7 @@ bool CoreGfx::api_render_target_buffer_write_color( GfxRenderTargetResource *&re
 
 bool CoreGfx::api_render_target_buffer_write_depth( GfxRenderTargetResource *&resource,
 	GfxTextureResource *&resourceDepth,
-	const void *const buffer, const u32 size )
+	const void *buffer, u32 size )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	GRAPHICS_API_IMPLEMENTATION_WARNING // TODO: Implement this
@@ -2481,8 +2703,7 @@ bool CoreGfx::api_render_target_buffer_write_depth( GfxRenderTargetResource *&re
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Draw
 
-static void opengl_draw( const GLsizei vertexCount, const GLuint startVertexLocation,
-	const GfxPrimitiveType type )
+static void opengl_draw( GLsizei vertexCount, GLuint startVertexLocation, GfxPrimitiveType type )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( type < GFXPRIMITIVETYPE_COUNT );
@@ -2494,8 +2715,8 @@ static void opengl_draw( const GLsizei vertexCount, const GLuint startVertexLoca
 }
 
 
-static void opengl_draw_instanced( const GLsizei vertexCount, const GLuint startVertexLocation,
-	const GLsizei instanceCount, const GfxPrimitiveType type )
+static void opengl_draw_instanced( GLsizei vertexCount, GLuint startVertexLocation,
+	GLsizei instanceCount, GfxPrimitiveType type )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( type < GFXPRIMITIVETYPE_COUNT );
@@ -2507,8 +2728,8 @@ static void opengl_draw_instanced( const GLsizei vertexCount, const GLuint start
 }
 
 
-static void opengl_draw_indexed( const GLsizei vertexCount, const GLuint startVertexLocation,
-	const GLuint baseVertexLocation, const GfxIndexBufferFormat format, const GfxPrimitiveType type )
+static void opengl_draw_indexed( GLsizei vertexCount, GLuint startVertexLocation,
+	GLuint baseVertexLocation, GfxIndexBufferFormat format, GfxPrimitiveType type )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( type < GFXPRIMITIVETYPE_COUNT );
@@ -2520,9 +2741,9 @@ static void opengl_draw_indexed( const GLsizei vertexCount, const GLuint startVe
 }
 
 
-static void opengl_draw_instanced_indexed( const GLsizei vertexCount, const GLuint startVertexLocation,
-	const GLsizei instanceCount, const GLuint baseVertexLocation,
-	const GfxIndexBufferFormat format, const GfxPrimitiveType type )
+static void opengl_draw_instanced_indexed( GLsizei vertexCount, GLuint startVertexLocation,
+	GLsizei instanceCount, GLuint baseVertexLocation,
+	GfxIndexBufferFormat format, GfxPrimitiveType type )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( type < GFXPRIMITIVETYPE_COUNT );
@@ -2536,10 +2757,10 @@ static void opengl_draw_instanced_indexed( const GLsizei vertexCount, const GLui
 
 
 bool CoreGfx::api_draw(
-	const GfxVertexBufferResource *const resourceVertex, const u32 vertexCount,
-	const GfxInstanceBufferResource *const resourceInstance, const u32 instanceCount,
-	const GfxIndexBufferResource *const resourceIndex,
-	const GfxPrimitiveType type )
+	const GfxVertexBufferResource *resourceVertex, u32 vertexCount,
+	const GfxInstanceBufferResource *resourceInstance, u32 instanceCount,
+	const GfxIndexBufferResource *resourceIndex,
+	GfxPrimitiveType type )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resourceVertex == nullptr || resourceVertex->id != GFX_RESOURCE_ID_NULL );
@@ -2684,11 +2905,16 @@ bool CoreGfx::api_draw(
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Dispatch
 
-bool CoreGfx::api_dispatch( const u32 x, const u32 y, const u32 z )
+bool CoreGfx::api_dispatch( u32 x, u32 y, u32 z )
 {
+#if !OS_MACOS
 	OPENGL_CHECK_ERRORS_SCOPE
 	GRAPHICS_API_IMPLEMENTATION_WARNING // TODO: Implement this
 	return true;
+#else
+	GRAPHICS_API_IMPLEMENTATION_WARNING // TODO: Compute not supported on MacOS!
+	return true;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -10,7 +10,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void *memory_alloc( const usize size )
+void *memory_alloc( usize size )
 {
 	void *ptr = malloc( size );
 	ErrorIf( ptr == nullptr, "Memory allocation failure! Out of memory?" );
@@ -18,7 +18,7 @@ void *memory_alloc( const usize size )
 }
 
 
-void *memory_realloc( void *block, const usize size )
+void *memory_realloc( void *block, usize size )
 {
 	Assert( block != nullptr );
 	void *ptr = realloc( block, size );
@@ -27,7 +27,7 @@ void *memory_realloc( void *block, const usize size )
 }
 
 
-void memory_copy( void *dst, const void *src, const usize size )
+void memory_copy( void *dst, const void *src, usize size )
 {
 	Assert( dst != nullptr );
 	Assert( src != nullptr );
@@ -35,7 +35,7 @@ void memory_copy( void *dst, const void *src, const usize size )
 }
 
 
-void memory_move( void *dst, const void *src, const usize size )
+void memory_move( void *dst, const void *src, usize size )
 {
 	Assert( dst != nullptr );
 	Assert( src != nullptr );
@@ -43,14 +43,14 @@ void memory_move( void *dst, const void *src, const usize size )
 }
 
 
-void memory_set( void *block, int c, const usize length )
+void memory_set( void *block, int c, usize length )
 {
 	Assert( block != nullptr );
 	memset( block, c, length );
 }
 
 
-int memory_compare( const void *a, const void *b, const usize size )
+int memory_compare( const void *a, const void *b, usize size )
 {
 	return memcmp( a, b, size );
 }

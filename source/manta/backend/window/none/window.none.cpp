@@ -20,7 +20,13 @@ namespace CoreWindow
 	{
 	}
 
+
 	void poll()
+	{
+	}
+
+
+	void terminal_init()
 	{
 	}
 

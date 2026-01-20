@@ -30,7 +30,7 @@ void Materials::make_new( const Material &material )
 }
 
 
-usize Materials::gather( const char *path, const bool recurse )
+usize Materials::gather( const char *path, bool recurse )
 {
 	// Gather Materials
 	List<FileInfo> files;
@@ -169,7 +169,7 @@ void Materials::build()
 		assets_group( header );
 
 		// Enums
-		header.append( "enum_class_type\n(\n\tMaterial, u32,\n\n" );
+		header.append( "enum_class\n(\n\tMaterial, u32,\n\n" );
 		for( Material &material : materials ) { header.append( "\t" ).append( material.name ).append( ",\n" ); }
 		header.append( "\n\tNull = 0,\n" );
 		header.append( ");\n\n" );
@@ -220,8 +220,8 @@ void Materials::build()
 	if( verbose_output() )
 	{
 		const usize count = materials.size();
-		PrintColor( LOG_WHITE, TAB TAB "Wrote %d material%s", count, count == 1 ? "" : "s" );
-		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+		Print( PrintColor_White, TAB TAB "Wrote %d material%s", count, count == 1 ? "" : "s" );
+		PrintLn( PrintColor_White, " (%.3f ms)", timer.elapsed_ms() );
 	}
 }
 

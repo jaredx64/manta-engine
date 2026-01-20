@@ -12,10 +12,10 @@ extern bool ray_intersect_triangle( const float_r3 &ray,
 	const double_v3 &v0, const double_v3 &v1, const double_v3 &v2, float_r3::hit &hit );
 
 extern bool ray_intersect_triangle_list( const float_r3 &ray,
-	const float_v3 *verts, const usize count, float_r3::hit &hit );
+	const float_v3 *verts, usize count, float_r3::hit &hit );
 
 extern bool ray_intersect_triangle_list( const float_r3 &ray,
-	const double_v3 *verts, const usize count, float_r3::hit &hit );
+	const double_v3 *verts, usize count, float_r3::hit &hit );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -26,10 +26,10 @@ extern bool ray_intersect_triangle( const double_r3 &ray,
 	const float_v3 &v0, const float_v3 &v1, const float_v3 &v2, double_r3::hit &hit );
 
 extern bool ray_intersect_triangle_list( const double_r3 &ray,
-	const double_v3 *verts, const usize count, double_r3::hit &hit );
+	const double_v3 *verts, usize count, double_r3::hit &hit );
 
 extern bool ray_intersect_triangle_list( const double_r3 &ray,
-	const float_v3 *verts, const usize count, double_r3::hit &hit );
+	const float_v3 *verts, usize count, double_r3::hit &hit );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -139,9 +139,9 @@ extern bool frustum_contains_point( const FrustumFloat &frustum, const float_v3 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-extern void frustum_draw( const FrustumDouble &frustum, const Color &color = c_red, const bool wireframe = true );
+extern void frustum_draw( const FrustumDouble &frustum, const Color &color = c_red, bool wireframe = true );
 
-extern void frustum_draw( const FrustumFloat &frustum, const Color &color = c_red, const bool wireframe = true );
+extern void frustum_draw( const FrustumFloat &frustum, const Color &color = c_red, bool wireframe = true );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

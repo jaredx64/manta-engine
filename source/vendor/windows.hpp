@@ -7,6 +7,7 @@
 		#include <windowsx.h>
 		#include <Winuser.h>
 		#include <WinBase.h>
+		#include <ShlObj.h>
 	#include <vendor/conflicts.hpp>
 
 	#define WS_EX_NOREDIRECTIONBITMAP 0x00200000L
@@ -14,6 +15,8 @@
 	#include <vendor/vendor.hpp>
 
 	#define ENABLE_VIRTUAL_TERMINAL_PROCESSING  0x0004
+
+	#define STILL_ACTIVE ((DWORD)0x00000103L)
 
 	#define T3XT(x) L##x
 	#define TEXT(x) T3XT(x)
@@ -460,151 +463,175 @@
 
 	// intrin.h
 #if defined( _MSC_VER ) && !defined( _INTRIN_DEFINED )
-	extern "C" short __cdecl _InterlockedCompareExchange16(short volatile* Destination, short Exchange, short Comparand);
+	extern "C" short __cdecl _InterlockedCompareExchange16( short volatile *, short, short );
 	#pragma intrinsic( _InterlockedCompareExchange16 )
-	extern "C" long __cdecl _InterlockedCompareExchange(long volatile *Destination, long Exchange, long Comparand);
+	extern "C" long __cdecl _InterlockedCompareExchange( long volatile *, long, long );
 	#pragma intrinsic( _InterlockedCompareExchange )
-	extern "C" long long __cdecl _InterlockedCompareExchange64(long long volatile *Destination, long long Exchange, long long Comparand);
+	extern "C" long long __cdecl _InterlockedCompareExchange64( long long volatile *, long long, long long );
 	#pragma intrinsic( _InterlockedCompareExchange64 )
-	extern "C" long __cdecl _InterlockedExchange(long volatile *Target, long Value);
+	extern "C" long __cdecl _InterlockedExchange( long volatile *, long );
 	#pragma intrinsic( _InterlockedExchange )
-	extern "C" long long __cdecl _InterlockedExchange64(long long volatile *Target, long long Value);
+	extern "C" long long __cdecl _InterlockedExchange64( long long volatile *, long long );
 	#pragma intrinsic( _InterlockedExchange64 )
 #endif
 
 	// kernel32.dll
-	extern "C" DLL_IMPORT BOOL STD_CALL CloseHandle(HANDLE);
-	extern "C" DLL_IMPORT BOOL STD_CALL CreateDirectoryA(LPCSTR, struct SECURITY_ATTRIBUTES *);
-	extern "C" DLL_IMPORT HANDLE STD_CALL CreateEventW(struct SECURITY_ATTRIBUTES *, BOOL, BOOL, LPCWSTR);
-	extern "C" DLL_IMPORT HANDLE STD_CALL CreateFileA(LPCSTR, DWORD, DWORD, struct SECURITY_ATTRIBUTES *, DWORD, DWORD, HANDLE);
-	extern "C" DLL_IMPORT HANDLE STD_CALL CreateFileMappingW(HANDLE, struct SECURITY_ATTRIBUTES *, DWORD, DWORD, DWORD, LPCWSTR);
-	extern "C" DLL_IMPORT BOOL STD_CALL CreateProcessA(LPCSTR lpApplicationName, LPSTR lpCommandLine, struct SECURITY_ATTRIBUTES *lpProcessAttributes, struct SECURITY_ATTRIBUTES *lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, void *lpEnvironment, LPCSTR lpCurrentDirectory, STARTUPINFOA *lpStartupInfo, PROCESS_INFORMATION *lpProcessInformation);
-	extern "C" DLL_IMPORT HANDLE STD_CALL CreateThread(struct SECURITY_ATTRIBUTES *, SIZE_T, LPTHREAD_START_ROUTINE, void *, DWORD, DWORD *);
-	extern "C" DLL_IMPORT BOOL STD_CALL MoveFileA(LPCSTR, LPCSTR);
-	extern "C" DLL_IMPORT BOOL STD_CALL DeleteFileA(LPCSTR);
-	extern "C" DLL_IMPORT NO_RETURN void STD_CALL ExitProcess(UINT);
-	extern "C" DLL_IMPORT BOOL STD_CALL FindClose(HANDLE);
-	extern "C" DLL_IMPORT HANDLE STD_CALL FindFirstFileA(LPCSTR, WIN32_FIND_DATAA *);
-	extern "C" DLL_IMPORT BOOL STD_CALL FindNextFileA(HANDLE, WIN32_FIND_DATAA *);
-	extern "C" DLL_IMPORT BOOL STD_CALL FreeLibrary(HMODULE);
+	extern "C" DLL_IMPORT BOOL STD_CALL CloseHandle( HANDLE );
+	extern "C" DLL_IMPORT BOOL STD_CALL CreateDirectoryA( LPCSTR, struct SECURITY_ATTRIBUTES * );
+	extern "C" DLL_IMPORT HANDLE STD_CALL CreateEventW( struct SECURITY_ATTRIBUTES *, BOOL, BOOL, LPCWSTR );
+	extern "C" DLL_IMPORT HANDLE STD_CALL CreateFileA( LPCSTR, DWORD, DWORD, struct SECURITY_ATTRIBUTES *,
+		DWORD, DWORD, HANDLE );
+	extern "C" DLL_IMPORT HANDLE STD_CALL CreateFileMappingW(HANDLE, struct SECURITY_ATTRIBUTES *, DWORD,
+		DWORD, DWORD, LPCWSTR );
+	extern "C" DLL_IMPORT BOOL STD_CALL CreateProcessA( LPCSTR, LPSTR, struct SECURITY_ATTRIBUTES *,
+		struct SECURITY_ATTRIBUTES *, BOOL, DWORD, void *, LPCSTR,
+		STARTUPINFOA *, PROCESS_INFORMATION * );
+	extern "C" DLL_IMPORT HANDLE STD_CALL CreateThread( struct SECURITY_ATTRIBUTES *, SIZE_T,
+		LPTHREAD_START_ROUTINE, void *, DWORD, DWORD * );
+	extern "C" DLL_IMPORT BOOL STD_CALL MoveFileA( LPCSTR, LPCSTR );
+	extern "C" DLL_IMPORT BOOL STD_CALL DeleteFileA( LPCSTR );
+	extern "C" DLL_IMPORT NO_RETURN void STD_CALL ExitProcess( UINT );
+	extern "C" DLL_IMPORT BOOL STD_CALL FindClose( HANDLE );
+	extern "C" DLL_IMPORT HANDLE STD_CALL FindFirstFileA( LPCSTR, WIN32_FIND_DATAA * );
+	extern "C" DLL_IMPORT BOOL STD_CALL FindNextFileA( HANDLE, WIN32_FIND_DATAA * );
+	extern "C" DLL_IMPORT BOOL STD_CALL FreeLibrary( HMODULE );
 	extern "C" DLL_IMPORT LPSTR STD_CALL GetCommandLineA();
-	extern "C" DLL_IMPORT BOOL STD_CALL GetConsoleScreenBufferInfo(HANDLE, CONSOLE_SCREEN_BUFFER_INFO *);
-	extern "C" DLL_IMPORT DWORD STD_CALL GetFileAttributesA(LPCSTR);
-	extern "C" DLL_IMPORT DWORD STD_CALL GetFileSize(HANDLE, DWORD *);
-	extern "C" DLL_IMPORT BOOL STD_CALL GetFileSizeEx(HANDLE, LARGE_INTEGER *);
-	extern "C" DLL_IMPORT BOOL STD_CALL GetFileTime(HANDLE, FILETIME *, FILETIME *, FILETIME *);
-	extern "C" DLL_IMPORT BOOL STD_CALL FileTimeToLocalFileTime(FILETIME *, FILETIME *);
-	extern "C" DLL_IMPORT BOOL STD_CALL FileTimeToSystemTime(FILETIME *, SYSTEMTIME *);
-	extern "C" DLL_IMPORT DWORD STD_CALL GetFullPathNameA(LPCSTR, DWORD, LPSTR, LPSTR *);
-	extern "C" DLL_IMPORT DWORD STD_CALL GetModuleFileNameA(HMODULE, LPSTR, DWORD);
-	extern "C" DLL_IMPORT DWORD STD_CALL GetModuleFileNameW(HMODULE, LPWSTR, DWORD);
-	extern "C" DLL_IMPORT HMODULE STD_CALL GetModuleHandleW(LPCWSTR);
-	extern "C" DLL_IMPORT void *STD_CALL GetProcAddress(HMODULE, LPCSTR);
+	extern "C" DLL_IMPORT BOOL STD_CALL GetConsoleScreenBufferInfo( HANDLE, CONSOLE_SCREEN_BUFFER_INFO * );
+	extern "C" DLL_IMPORT DWORD STD_CALL GetFileAttributesA( LPCSTR );
+	extern "C" DLL_IMPORT DWORD STD_CALL GetFileSize( HANDLE, DWORD * );
+	extern "C" DLL_IMPORT BOOL STD_CALL GetFileSizeEx( HANDLE, LARGE_INTEGER * );
+	extern "C" DLL_IMPORT BOOL STD_CALL GetFileTime( HANDLE, FILETIME *, FILETIME *, FILETIME * );
+	extern "C" DLL_IMPORT BOOL STD_CALL FileTimeToLocalFileTime( FILETIME *, FILETIME * );
+	extern "C" DLL_IMPORT BOOL STD_CALL FileTimeToSystemTime( FILETIME *, SYSTEMTIME * );
+	extern "C" DLL_IMPORT DWORD STD_CALL GetFullPathNameA( LPCSTR, DWORD, LPSTR, LPSTR * );
+	extern "C" DLL_IMPORT DWORD STD_CALL GetModuleFileNameA( HMODULE, LPSTR, DWORD );
+	extern "C" DLL_IMPORT DWORD STD_CALL GetModuleFileNameW( HMODULE, LPWSTR, DWORD );
+	extern "C" DLL_IMPORT HMODULE STD_CALL GetModuleHandleW( LPCWSTR );
+	extern "C" DLL_IMPORT void *STD_CALL GetProcAddress( HMODULE, LPCSTR );
 	extern "C" DLL_IMPORT HANDLE STD_CALL GetProcessHeap();
-	extern "C" DLL_IMPORT HANDLE STD_CALL GetStdHandle(DWORD);
-	extern "C" DLL_IMPORT MALLOC_LIKE void *STD_CALL HeapAlloc(HANDLE, DWORD, SIZE_T);
-	extern "C" DLL_IMPORT BOOL STD_CALL HeapFree(HANDLE, DWORD, void *);
-	extern "C" DLL_IMPORT void *STD_CALL HeapReAlloc(HANDLE, DWORD, void *, SIZE_T);
-	extern "C" DLL_IMPORT HMODULE STD_CALL LoadLibraryA(LPCSTR);
-	extern "C" DLL_IMPORT HMODULE STD_CALL GetModuleHandleA(LPCSTR);
-	extern "C" DLL_IMPORT void *STD_CALL MapViewOfFile(HANDLE, DWORD, DWORD, DWORD, SIZE_T);
-	extern "C" DLL_IMPORT int STD_CALL MultiByteToWideChar(UINT, DWORD, LPCSTR, int, LPWSTR, int);
-	extern "C" DLL_IMPORT BOOL STD_CALL QueryPerformanceCounter(LARGE_INTEGER *);
-	extern "C" DLL_IMPORT BOOL STD_CALL QueryPerformanceFrequency(LARGE_INTEGER *);
-	extern "C" DLL_IMPORT BOOL STD_CALL ReadFile(HANDLE, void *, DWORD, DWORD *, struct OVERLAPPED *);
-	extern "C" DLL_IMPORT BOOL STD_CALL SetConsoleTextAttribute(HANDLE, WORD);
-	extern "C" DLL_IMPORT DWORD STD_CALL SetFilePointer(HANDLE, LONG, LONG *, DWORD);
-	extern "C" DLL_IMPORT void STD_CALL Sleep(DWORD);
+	extern "C" DLL_IMPORT HANDLE STD_CALL GetStdHandle( DWORD );
+	extern "C" DLL_IMPORT MALLOC_LIKE void *STD_CALL HeapAlloc( HANDLE, DWORD, SIZE_T );
+	extern "C" DLL_IMPORT BOOL STD_CALL HeapFree( HANDLE, DWORD, void * );
+	extern "C" DLL_IMPORT void *STD_CALL HeapReAlloc( HANDLE, DWORD, void *, SIZE_T );
+	extern "C" DLL_IMPORT HMODULE STD_CALL LoadLibraryA( LPCSTR );
+	extern "C" DLL_IMPORT HMODULE STD_CALL GetModuleHandleA( LPCSTR );
+	extern "C" DLL_IMPORT void *STD_CALL MapViewOfFile( HANDLE, DWORD, DWORD, DWORD, SIZE_T );
+	extern "C" DLL_IMPORT int STD_CALL MultiByteToWideChar( UINT, DWORD, LPCSTR, int, LPWSTR, int );
+	extern "C" DLL_IMPORT BOOL STD_CALL QueryPerformanceCounter( LARGE_INTEGER * );
+	extern "C" DLL_IMPORT BOOL STD_CALL QueryPerformanceFrequency( LARGE_INTEGER * );
+	extern "C" DLL_IMPORT BOOL STD_CALL ReadFile( HANDLE, void *, DWORD, DWORD *, struct OVERLAPPED * );
+	extern "C" DLL_IMPORT BOOL STD_CALL SetConsoleTextAttribute( HANDLE, WORD );
+	extern "C" DLL_IMPORT DWORD STD_CALL SetFilePointer( HANDLE, LONG, LONG *, DWORD );
+	extern "C" DLL_IMPORT void STD_CALL Sleep( DWORD );
 	extern "C" DLL_IMPORT BOOL STD_CALL SwitchToThread();
-	extern "C" DLL_IMPORT BOOL STD_CALL RemoveDirectoryA(LPCSTR);
-	extern "C" DLL_IMPORT BOOL STD_CALL UnmapViewOfFile(const void *);
-	extern "C" DLL_IMPORT void *STD_CALL VirtualAlloc(void *, SIZE_T, DWORD, DWORD);
-	extern "C" DLL_IMPORT BOOL STD_CALL VirtualFree(void *, SIZE_T, DWORD);
-	extern "C" DLL_IMPORT BOOL STD_CALL VirtualProtect(void *, SIZE_T, DWORD, DWORD *);
-	extern "C" DLL_IMPORT DWORD STD_CALL WaitForMultipleObjects(DWORD, const HANDLE *, BOOL, DWORD);
-	extern "C" DLL_IMPORT DWORD STD_CALL WaitForSingleObject(HANDLE, DWORD);
-	extern "C" DLL_IMPORT int STD_CALL WideCharToMultiByte(UINT, DWORD, LPCWSTR, int, LPSTR, int, LPSTR, BOOL *);
-	extern "C" DLL_IMPORT BOOL STD_CALL WriteConsoleA(HANDLE, const void *, DWORD, DWORD *, void *);
-	extern "C" DLL_IMPORT BOOL STD_CALL WriteFile(HANDLE, const void *, DWORD, DWORD *, struct OVERLAPPED *);
-	extern "C" DLL_IMPORT BOOL STD_CALL WriteFile(HANDLE, const void *, DWORD, DWORD *, struct OVERLAPPED *);
-	extern "C" DLL_IMPORT HANDLE STD_CALL CreateMutexA(struct SECURITY_ATTRIBUTES *, BOOL, LPCSTR);
-	extern "C" DLL_IMPORT HANDLE STD_CALL CreateMutexW(struct SECURITY_ATTRIBUTES *, BOOL, LPCWSTR);
-	extern "C" DLL_IMPORT BOOL STD_CALL ReleaseMutex(HANDLE);
-	extern "C" DLL_IMPORT void STD_CALL InitializeCriticalSection(CRITICAL_SECTION *);
-	extern "C" DLL_IMPORT void STD_CALL DeleteCriticalSection(CRITICAL_SECTION *);
-	extern "C" DLL_IMPORT void STD_CALL EnterCriticalSection(CRITICAL_SECTION *);
-	extern "C" DLL_IMPORT void STD_CALL LeaveCriticalSection(CRITICAL_SECTION *);
-	extern "C" DLL_IMPORT void STD_CALL InitializeConditionVariable(CONDITION_VARIABLE *);
-	extern "C" DLL_IMPORT BOOL STD_CALL SleepConditionVariableCS(CONDITION_VARIABLE *, CRITICAL_SECTION *, DWORD);
-	extern "C" DLL_IMPORT void STD_CALL WakeConditionVariable(CONDITION_VARIABLE *);
-	extern "C" DLL_IMPORT void STD_CALL WakeAllConditionVariable(CONDITION_VARIABLE *);
+	extern "C" DLL_IMPORT BOOL STD_CALL RemoveDirectoryA( LPCSTR );
+	extern "C" DLL_IMPORT BOOL STD_CALL UnmapViewOfFile( const void * );
+	extern "C" DLL_IMPORT void *STD_CALL VirtualAlloc( void *, SIZE_T, DWORD, DWORD );
+	extern "C" DLL_IMPORT BOOL STD_CALL VirtualFree( void *, SIZE_T, DWORD );
+	extern "C" DLL_IMPORT BOOL STD_CALL VirtualProtect( void *, SIZE_T, DWORD, DWORD * );
+	extern "C" DLL_IMPORT DWORD STD_CALL WaitForMultipleObjects( DWORD, const HANDLE *, BOOL, DWORD );
+	extern "C" DLL_IMPORT DWORD STD_CALL WaitForSingleObject( HANDLE, DWORD );
+	extern "C" DLL_IMPORT int STD_CALL WideCharToMultiByte( UINT, DWORD, LPCWSTR, int, LPSTR, int, LPSTR, BOOL * );
+	extern "C" DLL_IMPORT BOOL STD_CALL WriteConsoleA( HANDLE, const void *, DWORD, DWORD *, void * );
+	extern "C" DLL_IMPORT BOOL STD_CALL WriteFile( HANDLE, const void *, DWORD, DWORD *, struct OVERLAPPED * );
+	extern "C" DLL_IMPORT BOOL STD_CALL WriteFile( HANDLE, const void *, DWORD, DWORD *, struct OVERLAPPED * );
+	extern "C" DLL_IMPORT HANDLE STD_CALL CreateMutexA( struct SECURITY_ATTRIBUTES *, BOOL, LPCSTR );
+	extern "C" DLL_IMPORT HANDLE STD_CALL CreateMutexW( struct SECURITY_ATTRIBUTES *, BOOL, LPCWSTR );
+	extern "C" DLL_IMPORT BOOL STD_CALL ReleaseMutex( HANDLE );
+	extern "C" DLL_IMPORT void STD_CALL InitializeCriticalSection( CRITICAL_SECTION * );
+	extern "C" DLL_IMPORT void STD_CALL DeleteCriticalSection( CRITICAL_SECTION * );
+	extern "C" DLL_IMPORT void STD_CALL EnterCriticalSection( CRITICAL_SECTION * );
+	extern "C" DLL_IMPORT void STD_CALL LeaveCriticalSection( CRITICAL_SECTION * );
+	extern "C" DLL_IMPORT void STD_CALL InitializeConditionVariable( CONDITION_VARIABLE * );
+	extern "C" DLL_IMPORT BOOL STD_CALL SleepConditionVariableCS( CONDITION_VARIABLE *, CRITICAL_SECTION *, DWORD );
+	extern "C" DLL_IMPORT void STD_CALL WakeConditionVariable( CONDITION_VARIABLE * );
+	extern "C" DLL_IMPORT void STD_CALL WakeAllConditionVariable( CONDITION_VARIABLE * );
 	extern "C" DLL_IMPORT DWORD STD_CALL GetCurrentThreadId();
 	extern "C" DLL_IMPORT HANDLE STD_CALL GetCurrentProcess();
 	extern "C" DLL_IMPORT DWORD STD_CALL GetCurrentProcessId();
 
 	// user32.dll
-	extern "C" DLL_IMPORT BOOL STD_CALL AdjustWindowRect(RECT *, DWORD, BOOL);
-	extern "C" DLL_IMPORT BOOL STD_CALL ClientToScreen(HWND, POINT *);
-	extern "C" DLL_IMPORT BOOL STD_CALL BringWindowToTop(HWND);
-	extern "C" DLL_IMPORT HWND STD_CALL CreateWindowExW(DWORD, LPCWSTR, LPCWSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, void *);
-	extern "C" DLL_IMPORT LRESULT STD_CALL DefWindowProcW(HWND, UINT, WPARAM, LPARAM);
-	extern "C" DLL_IMPORT LRESULT STD_CALL DispatchMessageW(const MSG *);
-	extern "C" DLL_IMPORT HDC STD_CALL GetDC(HWND);
-	extern "C" DLL_IMPORT BOOL STD_CALL GetMonitorInfoW(HMONITOR, MONITORINFO *);
-	extern "C" DLL_IMPORT int STD_CALL GetSystemMetrics(int);
-	extern "C" DLL_IMPORT HCURSOR STD_CALL LoadCursorW(HINSTANCE, LPCWSTR);
-	extern "C" DLL_IMPORT int STD_CALL MessageBoxA(HWND, LPCSTR, LPCSTR, UINT);
-	extern "C" DLL_IMPORT int STD_CALL MessageBoxW(HWND, LPCWSTR, LPCWSTR, UINT);
-	extern "C" DLL_IMPORT HMONITOR STD_CALL MonitorFromWindow(HWND, DWORD);
-	extern "C" DLL_IMPORT BOOL STD_CALL PeekMessageW(MSG *, HWND, UINT, UINT, UINT);
-	extern "C" DLL_IMPORT ATOM STD_CALL RegisterClassW(const WNDCLASSW *);
+	extern "C" DLL_IMPORT BOOL STD_CALL AdjustWindowRect( RECT *, DWORD, BOOL );
+	extern "C" DLL_IMPORT BOOL STD_CALL ClientToScreen( HWND, POINT * );
+	extern "C" DLL_IMPORT BOOL STD_CALL BringWindowToTop( HWND );
+	extern "C" DLL_IMPORT HWND STD_CALL CreateWindowExW( DWORD, LPCWSTR, LPCWSTR, DWORD, int, int, int, int,
+		HWND, HMENU, HINSTANCE, void * );
+	extern "C" DLL_IMPORT LRESULT STD_CALL DefWindowProcW( HWND, UINT, WPARAM, LPARAM );
+	extern "C" DLL_IMPORT LRESULT STD_CALL DispatchMessageW( const MSG * );
+	extern "C" DLL_IMPORT HDC STD_CALL GetDC( HWND );
+	extern "C" DLL_IMPORT BOOL STD_CALL GetMonitorInfoW( HMONITOR, MONITORINFO * );
+	extern "C" DLL_IMPORT int STD_CALL GetSystemMetrics( int );
+	extern "C" DLL_IMPORT HCURSOR STD_CALL LoadCursorW( HINSTANCE, LPCWSTR );
+	extern "C" DLL_IMPORT int STD_CALL MessageBoxA( HWND, LPCSTR, LPCSTR, UINT );
+	extern "C" DLL_IMPORT int STD_CALL MessageBoxW( HWND, LPCWSTR, LPCWSTR, UINT );
+	extern "C" DLL_IMPORT HMONITOR STD_CALL MonitorFromWindow( HWND, DWORD );
+	extern "C" DLL_IMPORT BOOL STD_CALL PeekMessageW( MSG *, HWND, UINT, UINT, UINT );
+	extern "C" DLL_IMPORT ATOM STD_CALL RegisterClassW( const WNDCLASSW * );
 	extern "C" DLL_IMPORT BOOL STD_CALL ReleaseCapture();
-	extern "C" DLL_IMPORT HWND STD_CALL SetCapture(HWND);
-	extern "C" DLL_IMPORT HCURSOR STD_CALL SetCursor(HCURSOR);
-	extern "C" DLL_IMPORT BOOL STD_CALL SetCursorPos(int, int);
-	extern "C" DLL_IMPORT BOOL STD_CALL SetWindowPos(HWND, HWND, int, int, int, int, UINT);
-	extern "C" DLL_IMPORT BOOL STD_CALL SetWindowTextW(HWND, LPCWSTR);
-	extern "C" DLL_IMPORT BOOL STD_CALL ShowWindow(HWND, int);
-	extern "C" DLL_IMPORT BOOL STD_CALL TranslateMessage(const MSG *);
+	extern "C" DLL_IMPORT HWND STD_CALL SetCapture( HWND );
+	extern "C" DLL_IMPORT HCURSOR STD_CALL SetCursor( HCURSOR );
+	extern "C" DLL_IMPORT BOOL STD_CALL SetCursorPos( int, int );
+	extern "C" DLL_IMPORT BOOL STD_CALL SetWindowPos( HWND, HWND, int, int, int, int, UINT );
+	extern "C" DLL_IMPORT BOOL STD_CALL SetWindowTextW( HWND, LPCWSTR );
+	extern "C" DLL_IMPORT BOOL STD_CALL ShowWindow( HWND, int );
+	extern "C" DLL_IMPORT BOOL STD_CALL TranslateMessage( const MSG * );
 
 	#if PIPELINE_ARCHITECTURE_X64 || PIPELINE_ARCHITECTURE_ARM64
-		extern "C" DLL_IMPORT LONG_PTR STD_CALL SetWindowLongPtrW(HWND, int, LONG_PTR);
+		extern "C" DLL_IMPORT LONG_PTR STD_CALL SetWindowLongPtrW( HWND, int, LONG_PTR );
 	#else
-		// extern "C" DLL_IMPORT  LONG STD_CALL SetWindowLongW(HWND, int, LONG); (32-bit)
+		// extern "C" DLL_IMPORT  LONG STD_CALL SetWindowLongW( HWND, int, LONG ); (32-bit)
 		// #define SetWindowLongPtrW SetWindowLongW
 	#endif
 
 	// shell32.dll
-	extern "C" DLL_IMPORT HICON STD_CALL ExtractIconW(HINSTANCE, LPCWSTR, UINT);
-	extern "C" DLL_IMPORT HRESULT STD_CALL SHGetFolderPathA(HWND, int, HANDLE, DWORD, LPSTR);
+	extern "C" DLL_IMPORT HICON STD_CALL ExtractIconW( HINSTANCE, LPCWSTR, UINT );
+	extern "C" DLL_IMPORT HRESULT STD_CALL SHGetFolderPathA( HWND, int, HANDLE, DWORD, LPSTR );
 
 	// winmm.dll
-	extern "C" DLL_IMPORT MMRESULT STD_CALL timeBeginPeriod(UINT);
+	extern "C" DLL_IMPORT MMRESULT STD_CALL timeBeginPeriod( UINT );
 
 	// ntdll.dll
-	extern "C" DLL_IMPORT WORD STD_CALL RtlCaptureStackBackTrace(DWORD, DWORD, PVOID *, DWORD *);
+	extern "C" DLL_IMPORT WORD STD_CALL RtlCaptureStackBackTrace( DWORD, DWORD, PVOID *, DWORD * );
 
 	// Winuser.h
-	extern "C" DLL_IMPORT BOOL STD_CALL OpenClipboard(HWND);
-	extern "C" DLL_IMPORT BOOL STD_CALL CloseClipboard(VOID);
-	extern "C" DLL_IMPORT BOOL STD_CALL EmptyClipboard(VOID);
-	extern "C" DLL_IMPORT BOOL STD_CALL IsClipboardFormatAvailable(UINT);
-	extern "C" DLL_IMPORT HANDLE STD_CALL GetClipboardData(UINT);
-	extern "C" DLL_IMPORT HANDLE STD_CALL SetClipboardData(UINT, HANDLE);
-	extern "C" DLL_IMPORT BOOL STD_CALL SystemParametersInfoA(UINT, UINT, PVOID, UINT);
-	extern "C" DLL_IMPORT BOOL STD_CALL SystemParametersInfoW(UINT, UINT, PVOID, UINT);
-	extern "C" DLL_IMPORT int STD_CALL ReleaseDC(HWND, HDC);
-	extern "C" DLL_IMPORT BOOL STD_CALL DestroyWindow(HWND);
-	extern "C" DLL_IMPORT BOOL STD_CALL UnregisterClassW(LPCWSTR, HINSTANCE);
-	extern "C" DLL_IMPORT int STD_CALL ShowCursor(BOOL);
+	extern "C" DLL_IMPORT BOOL STD_CALL OpenClipboard( HWND );
+	extern "C" DLL_IMPORT BOOL STD_CALL CloseClipboard( VOID );
+	extern "C" DLL_IMPORT BOOL STD_CALL EmptyClipboard( VOID );
+	extern "C" DLL_IMPORT BOOL STD_CALL IsClipboardFormatAvailable( UINT );
+	extern "C" DLL_IMPORT HANDLE STD_CALL GetClipboardData( UINT );
+	extern "C" DLL_IMPORT HANDLE STD_CALL SetClipboardData( UINT, HANDLE );
+	extern "C" DLL_IMPORT BOOL STD_CALL SystemParametersInfoA( UINT, UINT, PVOID, UINT );
+	extern "C" DLL_IMPORT BOOL STD_CALL SystemParametersInfoW( UINT, UINT, PVOID, UINT );
+	extern "C" DLL_IMPORT int STD_CALL ReleaseDC( HWND, HDC );
+	extern "C" DLL_IMPORT BOOL STD_CALL DestroyWindow( HWND );
+	extern "C" DLL_IMPORT BOOL STD_CALL UnregisterClassW( LPCWSTR, HINSTANCE );
+	extern "C" DLL_IMPORT int STD_CALL ShowCursor( BOOL );
 
 	// WinBase.h
-	extern "C" DLL_IMPORT LPVOID STD_CALL GlobalLock(HGLOBAL);
-	extern "C" DLL_IMPORT BOOL STD_CALL GlobalUnlock(HGLOBAL);
-	extern "C" DLL_IMPORT HGLOBAL STD_CALL GlobalFree(HGLOBAL);
-	extern "C" DLL_IMPORT HGLOBAL STD_CALL GlobalAlloc(UINT, SIZE_T);
+	extern "C" int WinMain( HINSTANCE, HINSTANCE, LPSTR, int );
+	extern "C" DLL_IMPORT LPVOID STD_CALL GlobalLock( HGLOBAL );
+	extern "C" DLL_IMPORT BOOL STD_CALL GlobalUnlock( HGLOBAL );
+	extern "C" DLL_IMPORT HGLOBAL STD_CALL GlobalFree( HGLOBAL );
+	extern "C" DLL_IMPORT HGLOBAL STD_CALL GlobalAlloc( UINT, SIZE_T );
 
 	// conesoleapi.h
-	extern "C" DLL_IMPORT BOOL STD_CALL GetConsoleMode(HANDLE hConsoleHandle, DWORD *lpMode);
-	extern "C" DLL_IMPORT BOOL STD_CALL SetConsoleMode(HANDLE hConsoleHandle, DWORD dwMode);
+	#define ATTACH_PARENT_PROCESS ((DWORD)-1)
+
+	extern "C" DLL_IMPORT BOOL STD_CALL GetConsoleMode( HANDLE, DWORD * );
+	extern "C" DLL_IMPORT BOOL STD_CALL SetConsoleMode( HANDLE, DWORD );
+	extern "C" DLL_IMPORT BOOL STD_CALL AllocConsole( VOID );
+	extern "C" DLL_IMPORT BOOL STD_CALL FreeConsole( VOID );
+	extern "C" DLL_IMPORT BOOL STD_CALL AttachConsole( DWORD );
+
+	// processthreadsapi.h
+	extern "C" DLL_IMPORT BOOL STD_CALL GetExitCodeProcess( HANDLE, DWORD * );
+
+	// synchapi.h
+	extern "C" DLL_IMPORT DWORD STD_CALL WaitForSingleObject( HANDLE, DWORD );
+
+	// shlobj.h
+	extern "C" DLL_IMPORT HRESULT STD_CALL SHGetKnownFolderPath( const struct GUID &, DWORD, HANDLE, WCHAR ** );
+
+	// com.h
+	#include <vendor/com.hpp>
 #endif

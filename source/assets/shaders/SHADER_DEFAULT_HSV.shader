@@ -25,7 +25,7 @@ fragment_input FragmentInput
 
 fragment_output FragmentOutput
 {
-	float4 color0 target( 0, COLOR );
+	float4 color target( 0, COLOR );
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -73,7 +73,7 @@ float3 hsv_to_rgb( float h, float s, float v )
 
 void fragment_main( FragmentInput In, FragmentOutput Out )
 {
-    Out.color0 = float4( hsv_to_rgb( In.color.r, In.color.g, In.color.b ), In.color.a );
+    Out.color = float4( hsv_to_rgb( In.color.r, In.color.g, In.color.b ), In.color.a );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

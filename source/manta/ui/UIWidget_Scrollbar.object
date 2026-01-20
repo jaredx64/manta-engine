@@ -70,23 +70,19 @@ PROTECTED void update( const Delta delta )
 	const bool isHovering = isInteractable && is_hovering();
 
 	// Tweens
-	tween( tweenAlert, 0.0f, 0.1f, delta, 0.01f );
-	tween( tweenError, 0.0f, 0.1f, delta, 0.01f );
-	tween( tweenClick, 0.0f, 0.1f, delta, 0.01f );
+	tweenf( tweenAlert, 0.0f, 0.1f, delta, 0.01f );
+	tweenf( tweenError, 0.0f, 0.1f, delta, 0.01f );
+	tweenf( tweenClick, 0.0f, 0.1f, delta, 0.01f );
 
 	// Positions
 	const int_v2 sliderDim = slider_dimensions();
 	const int_v2 sliderPos = slider_position( sliderDim );
-	const float_v2 b1 = float_v2( x, y ).multiply( context->matrix_get() );
-	const float_v2 s1 = float_v2( x + sliderPos.x,
-	                            y + sliderPos.y ).multiply( context->matrix_get() );
-	const float_v2 s2 = float_v2( x + sliderPos.x + sliderDim.x,
-								y + sliderPos.y + sliderDim.y ).multiply( context->matrix_get() );
-
-	// Mouse Interaction
-	const float percentMouseX = ( ( mouse_x - anchorMouse.x ) - ( b1.x + sliderDim.x / 2 ) ) / ( width - sliderDim.x );
-	const float percentMouseY = ( ( mouse_y - anchorMouse.y ) - ( b1.y + sliderDim.y / 2 ) ) / ( height - sliderDim.y );
-	const float percentMouse = clamp( vertical ? percentMouseY : percentMouseX, 0.0f, 1.0f );
+	const float_v2 b1 =
+		float_v2( x, y ).multiply( context->matrix_get() );
+	const float_v2 s1 =
+		float_v2( x + sliderPos.x, y + sliderPos.y ).multiply( context->matrix_get() );
+	const float_v2 s2 =
+		float_v2( x + sliderPos.x + sliderDim.x, y + sliderPos.y + sliderDim.y ).multiply( context->matrix_get() );
 
 	// Hover & Slider Click
 	const bool isHoveringSlider = isHovering && point_in_rect( mouse_x, mouse_y, s1.x, s1.y, s2.x, s2.y );
@@ -94,24 +90,34 @@ PROTECTED void update( const Delta delta )
 	if( isHovering )
 	{
 		// Tween
-		tween( tweenSlider, isHoveringSlider ? 1.0f : 0.0f, 0.1f, delta, 0.01f );
-		tween( tweenHover, sliding || !isHoveringSlider ? 1.0f : 0.0f, 0.1f, delta, 0.01f );
+		tweenf( tweenSlider, isHoveringSlider ? 1.0f : 0.0f, 0.1f, delta, 0.01f );
+		tweenf( tweenHover, sliding || !isHoveringSlider ? 1.0f : 0.0f, 0.1f, delta, 0.01f );
 
 		// Activate Sliding
 		if( Mouse::check_pressed( mb_left ) )
 		{
 			sliding = true;
 			tweenClick = 1.0f;
-			if( isHoveringSlider ) { anchorMouse = int_v2 { mouse_x - ( s1.x + s2.x ) / 2,
-			                                               mouse_y - ( s1.y + s2.y ) / 2 }; }
+			if( isHoveringSlider )
+			{
+				anchorMouse = int_v2 { mouse_x - ( s1.x + s2.x ) / 2, mouse_y - ( s1.y + s2.y ) / 2 };
+			}
 		}
 	}
 	else
 	{
 		// No hover
-		tween( tweenSlider, 0.0f, 1.0f, delta, 0.01f );
-		tween( tweenHover, 0.0f, 1.0f, delta, 0.01f );
+		tweenf( tweenSlider, 0.0f, 1.0f, delta, 0.01f );
+		tweenf( tweenHover, 0.0f, 1.0f, delta, 0.01f );
 	}
+
+	// Mouse Interaction
+	const float percentMouseX =
+		( ( mouse_x - anchorMouse.x ) - ( b1.x + sliderDim.x / 2 ) ) / ( width - sliderDim.x );
+	const float percentMouseY =
+		( ( mouse_y - anchorMouse.y ) - ( b1.y + sliderDim.y / 2 ) ) / ( height - sliderDim.y );
+	const float percentMouse =
+		clamp( vertical ? percentMouseY : percentMouseX, 0.0f, 1.0f );
 
 	// Interact Callback
 	if( callbackOnInteract && sliding ) { callbackOnInteract( *context, id ); }
@@ -130,7 +136,7 @@ PROTECTED void update( const Delta delta )
 	}
 
 	// Scrollbar Position
-	tween( value, valueTo, 0.025f, delta, 0.01f );
+	tweenf( value, valueTo, 0.025f, delta, 0.01f );
 }
 
 
@@ -145,9 +151,9 @@ PROTECTED void render( const Delta delta, const Alpha alpha )
 	const int_v2 sliderPosition = slider_position( sliderDimensions );
 
 	const int_v2 s1 = int_v2( x + sliderPosition.x,
-	                        y + sliderPosition.y ).multiply( context->matrix_get() );
+		y + sliderPosition.y ).multiply( context->matrix_get() );
 	const int_v2 s2 = int_v2( x + sliderPosition.x + sliderDimensions.x,
-	                        y + sliderPosition.y + sliderDimensions.y ).multiply( context->matrix_get() );
+		y + sliderPosition.y + sliderDimensions.y ).multiply( context->matrix_get() );
 
 	// Colors
 	const Color colorMain = color_mix( color_mix( color, c_white, tweenSlider * 0.50f ), c_lime, tweenClick );
@@ -171,9 +177,7 @@ PROTECTED void render( const Delta delta, const Alpha alpha )
 
 // PROTECTED bool contains_point( const float_v2 point ) { }
 
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// PUBLIC API
 
 PUBLIC void scroll_percent( const float increment )
 {
@@ -256,7 +260,6 @@ PUBLIC void set_scrollable_area( const int sView, const int sArea )
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// PRIVATE HELPERS
 
 PRIVATE int_v2 slider_dimensions()
 {
@@ -269,7 +272,7 @@ PRIVATE int_v2 slider_dimensions()
 PRIVATE int_v2 slider_position( const int_v2 &dimensions )
 {
 	return int_v2 { vertical ? 0 : ( width - dimensions.x ) * value,
-	               vertical ? ( height - dimensions.y ) * value : 0 };
+		vertical ? ( height - dimensions.y ) * value : 0 };
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

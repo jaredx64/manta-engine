@@ -126,8 +126,8 @@ bool solve_quadratic( double a, double b, double c, double max_t, double &t )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-CollisionResult sweep_sphere_vs_triangles( const double_v3 &center, const double radius,
-	const double_v3 &displacement, const double_v3 *vertices, const usize count )
+CollisionResult sweep_sphere_vs_triangles( const double_v3 &center, double radius,
+	const double_v3 &displacement, const double_v3 *vertices, usize count )
 {
 	const double radiusSqr = radius * radius;
 

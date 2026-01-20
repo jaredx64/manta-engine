@@ -19,6 +19,30 @@ namespace Time
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void Ticker::start()
+{
+	lastTimeS = Time::value();
+	accumulatorMS = 0.0;
+}
+
+
+int Ticker::tick( double intervalMS )
+{
+	const double nowS = Time::value();
+	if( UNLIKELY( lastTimeS == 0.0 ) ) { lastTimeS = nowS; }
+	const double deltaMS = ( nowS - lastTimeS ) * 1000.0;
+	lastTimeS = nowS;
+
+	accumulatorMS += deltaMS;
+
+	const int ticks = static_cast<int>( accumulatorMS / intervalMS );
+	if( ticks > 0 ) { accumulatorMS -= ticks * intervalMS; }
+
+	return ticks;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 namespace Frame
 {
 	u32 fps = 0;

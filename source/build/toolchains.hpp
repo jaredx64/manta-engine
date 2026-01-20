@@ -30,6 +30,7 @@ struct Toolchain
 			linkerExtensionObj = ".obj";
 			linkerExtensionLibrary = ".lib";
 			linkerPrefixLibrary = "";
+			linkerPrefixLibraryPath = "/LIBPATH:";
 		}
 		// LLVM
 		else if( strcmp( args.toolchain, "llvm" ) == 0 )
@@ -55,6 +56,7 @@ struct Toolchain
 			linkerExtensionObj = ".o";
 			linkerExtensionLibrary = "";
 			linkerPrefixLibrary = "-l";
+			linkerPrefixLibraryPath = "-L";
 		}
 		// GNU
 		else if( strcmp( args.toolchain, "gnu" ) == 0 )
@@ -76,6 +78,7 @@ struct Toolchain
 			linkerExtensionObj = ".o";
 			linkerExtensionLibrary = "";
 			linkerPrefixLibrary = "-l";
+			linkerPrefixLibraryPath = "-L";
 		}
 		else
 		{
@@ -98,6 +101,7 @@ struct Toolchain
 	const char *linkerExtensionObj;
 	const char *linkerExtensionLibrary;
 	const char *linkerPrefixLibrary;
+	const char *linkerPrefixLibraryPath;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -106,10 +110,10 @@ static const char *ninja_path()
 {
 	auto ninja_warning = [&]()
 	{
-		PrintLnColor( LOG_YELLOW, "\nWARNING:\n" );
-		PrintLnColor( LOG_YELLOW, "Ninja: unrecognized operating system or architecture!" );
-		PrintLnColor( LOG_YELLOW, "Attempting system installed ninja..." );
-		PrintLnColor( LOG_YELLOW, "If ninja fails, download: https://github.com/ninja-build/ninja/releases\n" );
+		PrintLn( PrintColor_Yellow, "\nWARNING:\n" );
+		PrintLn( PrintColor_Yellow, "Ninja: unrecognized operating system or architecture!" );
+		PrintLn( PrintColor_Yellow, "Attempting system installed ninja..." );
+		PrintLn( PrintColor_Yellow, "If ninja fails, download: https://github.com/ninja-build/ninja/releases\n" );
 	};
 
 	// Windows

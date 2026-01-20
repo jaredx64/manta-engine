@@ -12,7 +12,7 @@
 
 namespace CoreText
 {
-	inline void macro_strjoin( const usize size, char *buffer, ... )
+	inline void macro_strjoin( usize size, char *buffer, ... )
 	{
 		if( buffer == nullptr || size == 0 ) { return; }
 
@@ -40,7 +40,7 @@ namespace CoreText
 	}
 
 
-	inline void _filepath( const usize size, char *buffer, ... )
+	inline void _filepath( usize size, char *buffer, ... )
 	{
 		if( buffer == nullptr || size == 0 ) { return; }
 		const usize slashLength = strlen( SLASH );
@@ -75,7 +75,7 @@ namespace CoreText
 	}
 
 
-	inline void macro_strappend( const usize size, char *buffer, const char *string )
+	inline void macro_strappend( usize size, char *buffer, const char *string )
 	{
 		if( buffer == nullptr || string == nullptr || size == 0 ) { return; }
 

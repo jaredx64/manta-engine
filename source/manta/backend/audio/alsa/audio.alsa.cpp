@@ -9,16 +9,9 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// The number of channels to output.
 #define CHANNELS 2
-
-// The number of samples per second to output.
 #define SAMPLE_RATE 44100
-
-// The minimum acceptable sound latency in milliseconds.
 #define LATENCY_MS 30
-
-// The minimum size of the shared buffer between us and ALSA.
 #define BUFFER_SIZE static_cast<int>( LATENCY_MS * ( SAMPLE_RATE / 1000.0 ) )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -160,10 +153,10 @@ static THREAD_FUNCTION ( audio_mixer_thread )
     // Mixer Loop
     for( ;; )
     {
-        // Wait until the interface is ready for data.
+        // Wait until the interface is ready for data
         if( snd_pcm_wait( device, -1 ) < 0 ) { break; }
 
-        // Find out how much space is available for playback data.
+        // Find out how much space is available for playback data
         snd_pcm_sframes_t frames;
         if( ( frames = snd_pcm_avail_update( device ) ) < 0 ) { break; }
 

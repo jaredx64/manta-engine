@@ -50,9 +50,9 @@ int main( int argc, char **argv )
 
 	// Print Args
 	Debug::console_enable_colors();
-	PrintColor( LOG_YELLOW, "\n>" );
+	Print( PrintColor_Yellow, "\n>" );
 	const u32 exeArgsCount = args.verbose_output() ? argc : 1;
-	for( int i = 0; i < exeArgsCount; i++ ) { PrintColor( LOG_YELLOW, " %s", argv[i] ); }
+	for( int i = 0; i < exeArgsCount; i++ ) { Print( PrintColor_Yellow, " %s", argv[i] ); }
 	Print( "\n" );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -129,13 +129,13 @@ int main( int argc, char **argv )
 
 	if( !args.verbose_output() )
 	{
-		PrintColor( LOG_WHITE, "Project: " );
-		PrintColor( LOG_MAGENTA, "%s ", args.project );
-		PrintLnColor( LOG_BLUE, "(%s, %s)", args.config, args.toolchain );
+		Print( PrintColor_White, "Project: " );
+		Print( PrintColor_Magenta, "%s ", args.project );
+		PrintLn( PrintColor_Blue, "(%s, %s)", args.config, args.toolchain );
 	}
 
-	PrintColor( LOG_WHITE, "Boot Cache... " );
-	PrintLnColor( cacheDirty ? LOG_RED : LOG_GREEN, cacheDirty ? "dirty" : "clean" );
+	Print( PrintColor_White, "Boot Cache... " );
+	PrintLn( cacheDirty ? PrintColor_Red : PrintColor_Green, cacheDirty ? "dirty" : "clean" );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Output Directories

@@ -80,7 +80,7 @@ void Gfx::end()
 }
 
 
-u32 Gfx::gather( const char *path, const bool recurse )
+u32 Gfx::gather( const char *path, bool recurse )
 {
 	// Gather Shaders
 	const usize start = shaderFiles.size();
@@ -141,8 +141,8 @@ void Gfx::build()
 			Timer timer;
 			if( verbose_output() )
 			{
-				PrintColor( LOG_WHITE, TAB TAB "Compile " );
-				PrintColor( LOG_CYAN, "%s", fileInfo.name );
+				Print( PrintColor_White, TAB TAB "Compile " );
+				Print( PrintColor_Cyan, "%s", fileInfo.name );
 			}
 
 			compile_shader( shader, fileInfo.path );
@@ -150,7 +150,7 @@ void Gfx::build()
 
 			if( verbose_output() )
 			{
-				PrintLnColor( LOG_WHITE, " (%.2f ms)", timer.elapsed_ms() );
+				PrintLn( PrintColor_White, " (%.2f ms)", timer.elapsed_ms() );
 			}
 		}
 #else
@@ -160,8 +160,8 @@ void Gfx::build()
 		Timer timer;
 		if( verbose_output() )
 		{
-			PrintColor( LOG_WHITE, TAB TAB "Compile " );
-			PrintColor( LOG_CYAN, "%s", fileInfo.name );
+			Print( PrintColor_White, TAB TAB "Compile " );
+			Print( PrintColor_Cyan, "%s", fileInfo.name );
 		}
 
 		compile_shader( shader, fileInfo.path );
@@ -169,7 +169,7 @@ void Gfx::build()
 
 		if( verbose_output() )
 		{
-			PrintLnColor( LOG_WHITE, " (%.2f ms)", timer.elapsed_ms() );
+			PrintLn( PrintColor_White, " (%.2f ms)", timer.elapsed_ms() );
 		}
 #endif
 	}
@@ -257,11 +257,23 @@ void Gfx::codegen()
 				"usize sizeFragment;",
 				"usize offsetCompute;",
 				"usize sizeCompute;",
+				"usize offsetRayGenerate;",
+				"usize sizeRayGenerate;",
+				"usize offsetRayHitAny;",
+				"usize sizeRayHitAny;",
+				"usize offsetRayHitClosest;",
+				"usize sizeRayHitClosest;",
+				"usize offsetRayMiss;",
+				"usize sizeRayMiss;",
+				"usize offsetRayIntersection;",
+				"usize sizeRayIntersection;",
+				"usize offsetRayCallable;",
+				"usize sizeRayCallable;",
 				"u32 vertexFormat;",
 				"u32 instanceFormat;",
 				"const char *name;" );
 
-			header.append( "enum_class_type\n(\n\tShader, u32,\n\n" );
+			header.append( "enum_class\n(\n\tShader, u32,\n\n" );
 			for( Shader &shader : shaders )
 			{
 				header.append( "\t" ).append( shader.name ).append( ",\n" );
@@ -388,6 +400,12 @@ void Gfx::codegen()
 			"UniformBufferBindEntriesShaderVertex",
 			"UniformBufferBindEntriesShaderFragment",
 			"UniformBufferBindEntriesShaderCompute",
+			"UniformBufferBindEntriesShaderRayGenerate",
+			"UniformBufferBindEntriesShaderRayHitAny",
+			"UniformBufferBindEntriesShaderRayHitClosest",
+			"UniformBufferBindEntriesShaderRayMiss",
+			"UniformBufferBindEntriesShaderRayIntersection",
+			"UniformBufferBindEntriesShaderRayCallable",
 		};
 		static_assert( ARRAY_LENGTH( UniformBufferBindEntriesStage ) == SHADERSTAGE_COUNT, "Missing stage!" );
 
@@ -396,6 +414,12 @@ void Gfx::codegen()
 			"uniformBufferBindTableShaderVertex",
 			"uniformBufferBindTableShaderFragment",
 			"uniformBufferBindTableShaderCompute",
+			"uniformBufferBindTableShaderRayGenerate",
+			"uniformBufferBindTableShaderRayHitAny",
+			"uniformBufferBindTableShaderRayHitClosest",
+			"uniformBufferBindTableShaderRayMiss",
+			"uniformBufferBindTableShaderRayIntersection",
+			"uniformBufferBindTableShaderRayCallable",
 		};
 		static_assert( ARRAY_LENGTH( UniformBufferBindTableShaderStage ) == SHADERSTAGE_COUNT, "Missing stage!" );
 
@@ -403,25 +427,53 @@ void Gfx::codegen()
 		{
 			source.append( "namespace CoreGfx\n{\n" );
 
-			char buffer[PATH_SIZE];
-			source.append( "#define OFFSET ( BINARY_OFFSET_GFX )\n" );
+			char buffer[256];
 			source.append( "\tconst ShaderEntry shaderEntries[shaderCount] =\n\t{\n" );
 			for( Shader &shader : shaders )
 			{
-				snprintf( buffer, PATH_SIZE,
-					"\t\t{ OFFSET + %llu, %llu, OFFSET + %llu, %llu, OFFSET + %llu, %llu, %u, %u, \"%s\" },",
-					shader.offset[ShaderStage_Vertex],
-					shader.size[ShaderStage_Vertex],
-					shader.offset[ShaderStage_Fragment],
-					shader.size[ShaderStage_Fragment],
-					shader.offset[ShaderStage_Compute],
-					shader.size[ShaderStage_Compute],
-					shader.vertexFormatID,
-					shader.instanceFormatID,
-					shader.name.cstr() );
+				source.append( "\t\t{ " );
 
+				snprintf( buffer, sizeof( buffer ), "%lluLLU, %lluLLU, ",
+					shader.offset[ShaderStage_Vertex], shader.size[ShaderStage_Vertex] );
 				source.append( buffer );
-				source.append( " // " ).append( shader.name ).append( "\n" );
+
+				snprintf( buffer, sizeof( buffer ), "%lluLLU, %lluLLU, ",
+					shader.offset[ShaderStage_Fragment], shader.size[ShaderStage_Fragment] );
+				source.append( buffer );
+
+				snprintf( buffer, sizeof( buffer ), "%lluLLU, %lluLLU, ",
+					shader.offset[ShaderStage_Compute], shader.size[ShaderStage_Compute] );
+				source.append( buffer );
+
+				snprintf( buffer, sizeof( buffer ), "%lluLLU, %lluLLU, ",
+					shader.offset[ShaderStage_RayGenerate], shader.size[ShaderStage_RayGenerate] );
+				source.append( buffer );
+
+				snprintf( buffer, sizeof( buffer ), "%lluLLU, %lluLLU, ",
+					shader.offset[ShaderStage_RayHitAny], shader.size[ShaderStage_RayHitAny] );
+				source.append( buffer );
+
+				snprintf( buffer, sizeof( buffer ), "%lluLLU, %lluLLU, ",
+					shader.offset[ShaderStage_RayHitClosest], shader.size[ShaderStage_RayHitClosest] );
+				source.append( buffer );
+
+				snprintf( buffer, sizeof( buffer ), "%lluLLU, %lluLLU, ",
+					shader.offset[ShaderStage_RayMiss], shader.size[ShaderStage_RayMiss] );
+				source.append( buffer );
+
+				snprintf( buffer, sizeof( buffer ), "%lluLLU, %lluLLU, ",
+					shader.offset[ShaderStage_RayIntersection], shader.size[ShaderStage_RayIntersection] );
+				source.append( buffer );
+
+				snprintf( buffer, sizeof( buffer ), "%lluLLU, %lluLLU, ",
+					shader.offset[ShaderStage_RayCallable], shader.size[ShaderStage_RayCallable] );
+				source.append( buffer );
+
+				snprintf( buffer, sizeof( buffer ), "%uU, %uU, \"%s\" ",
+					shader.vertexFormatID, shader.instanceFormatID, shader.name.cstr() );
+				source.append( buffer );
+
+				source.append( " }, // " ).append( shader.name ).append( "\n" );
 			}
 			source.append( "\t};\n" );
 			source.append( "}\n\n" );
@@ -441,7 +493,6 @@ void Gfx::codegen()
 		source.append( COMMENT_BREAK "\n\n" );
 		{
 			source.append( "namespace CoreGfx\n{\n" );
-
 			for( usize shader = 0; shader < shaders.count(); shader++ )
 			{
 				source.append( "\t// " ).append( shaders[shader].name ).append( "\n" );
@@ -456,7 +507,8 @@ void Gfx::codegen()
 						for( usize i = 0; i < shaders[shader].uniformBufferIDs[stage].size(); i++ )
 						{
 							source.append( "\t\t{ " ).append( shaders[shader].uniformBufferIDs[stage][i] );
-							source.append( ", " ).append( shaders[shader].uniformBufferSlots[stage][i] ).append( " },\n" );
+							source.append( ", " ).append( shaders[shader].uniformBufferSlots[stage][i] );
+							source.append( " },\n" );
 						}
 						source.append( "\t};\n" );
 					}
@@ -574,8 +626,8 @@ void Gfx::codegen()
 	if( verbose_output() )
 	{
 		const usize count = shaders.size();
-		PrintColor( LOG_WHITE, TAB TAB "Wrote %d shaders%s", count, count == 1 ? "s" : "" );
-		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+		Print( PrintColor_White, TAB TAB "Wrote %d shaders%s", count, count == 1 ? "s" : "" );
+		PrintLn( PrintColor_White, " (%.3f ms)", timer.elapsed_ms() );
 	}
 }
 
@@ -772,15 +824,13 @@ void Gfx::write_source_api_metal( String &source )
 
 void Gfx::write_header_api_vulkan( String &header )
 {
-	// TODO
-	Error( "Vulkan unsupported!" );
+	// ...
 }
 
 
 void Gfx::write_source_api_vulkan( String &source )
 {
-	// TODO
-	Error( "Vulkan unsupported!" );
+	// ...
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

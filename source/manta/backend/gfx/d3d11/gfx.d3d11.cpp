@@ -33,16 +33,13 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static const GUID IID_IDXGIFactory
+const GUID IID_IDXGIFactory
 	{ 0x7B7166EC, 0x21C7, 0x44AE, { 0xB2, 0x1A, 0xC9, 0xAE, 0x32, 0x1A, 0xE3, 0x69 } };
-
-static const GUID IID_ID3D11Texture2D
+const GUID IID_ID3D11Texture2D
 	{ 0x6F15AAF2, 0xD208, 0x4E89, { 0x9A, 0xB4, 0x48, 0x95, 0x35, 0xD3, 0x4F, 0x9C } };
-
-static const GUID IID_ID3DUserDefinedAnnotation
+const GUID IID_ID3DUserDefinedAnnotation
 	{ 0xB2DAAD8B, 0x03D4, 0x4DBF, { 0x95, 0xEB, 0x32, 0xAB, 0x4B, 0x63, 0xD0, 0xAB } };
-
-static const GUID IID_ID3D11Multithread
+const GUID IID_ID3D11Multithread
 	{ 0x9B7E4E00, 0x342C, 0x4106, { 0xA1, 0x9F, 0x4F, 0x27, 0x04, 0xF6, 0x89, 0xF0 } };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -74,9 +71,9 @@ static const DXGI_FORMAT D3D11ColorFormats[] =
 	DXGI_FORMAT_R8G8B8A8_UNORM,     // GfxColorFormat_R8G8B8A8_FLOAT
 	DXGI_FORMAT_R8G8B8A8_UINT,      // GfxColorFormat_R8G8B8A8_UINT
 	DXGI_FORMAT_R10G10B10A2_UNORM,  // GfxColorFormat_R10G10B10A2_FLOAT
-	DXGI_FORMAT_R8_UNORM,           // GfxColorFormat_R8
+	DXGI_FORMAT_R8_UINT,            // GfxColorFormat_R8_UINT
 	DXGI_FORMAT_R8G8_UNORM,         // GfxColorFormat_R8G8
-	DXGI_FORMAT_R16_UNORM,          // GfxColorFormat_R16
+	DXGI_FORMAT_R16_UINT,           // GfxColorFormat_R16_UINT
 	DXGI_FORMAT_R16_FLOAT,          // GfxColorFormat_R16_FLOAT
 	DXGI_FORMAT_R16G16_UNORM,       // GfxColorFormat_R16G16
 	DXGI_FORMAT_R16G16_FLOAT,       // GfxColorFormat_R16G16F_FLOAT
@@ -145,9 +142,11 @@ static_assert( ARRAY_LENGTH( D3D11CullModes ) == GFXRASTERCULLMODE_COUNT,
 
 static const D3D11_FILTER D3D11FilteringModes[] =
 {
-	D3D11_FILTER_MIN_MAG_POINT_MIP_LINEAR, // GfxSamplerFilteringMode_NEAREST
-	D3D11_FILTER_MIN_MAG_MIP_LINEAR,       // GfxSamplerFilteringMode_LINEAR
-	D3D11_FILTER_ANISOTROPIC,              // GfxSamplerFilteringMode_ANISOTROPIC
+	D3D11_FILTER_MIN_MAG_POINT_MIP_LINEAR,        // GfxSamplerFilteringMode_NEAREST
+	D3D11_FILTER_MIN_MAG_MIP_LINEAR,              // GfxSamplerFilteringMode_LINEAR
+	D3D11_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR, // GfxSamplerFilteringMode_MAG_NEAREST_MIN_LINEAR
+	D3D11_FILTER_MIN_POINT_MAG_MIP_LINEAR,        // GfxSamplerFilteringMode_MAG_LINEAR_MIN_NEAREST
+	D3D11_FILTER_ANISOTROPIC,                     // GfxSamplerFilteringMode_ANISOTROPIC
 };
 static_assert( ARRAY_LENGTH( D3D11FilteringModes ) == GFXSAMPLERFILTERINGMODE_COUNT,
 	"Missing GfxSamplerFilteringMode!" );
@@ -258,10 +257,10 @@ struct GfxShaderResource : public GfxResource
 {
 	static void release( GfxShaderResource *&resource );
 
-	ID3D11ComputeShader *cs = nullptr;
+	ID3D11InputLayout *il = nullptr;
 	ID3D11VertexShader *vs = nullptr;
 	ID3D11PixelShader *ps = nullptr;
-	ID3D11InputLayout *il = nullptr;
+	ID3D11ComputeShader *cs = nullptr;
 
 	UINT sizeVS = 0;
 	UINT sizePS = 0;
@@ -360,6 +359,8 @@ struct GfxRenderTargetResource : public GfxResource
 	ID3D11Texture2D *textureDepthMS = nullptr;
 	ID3D11Texture2D *textureColorStaging = nullptr;
 	ID3D11Texture2D *textureDepthStaging = nullptr;
+	ID3D11Query *asyncReadbackQuery = nullptr;
+	bool asyncReadback = false;
 
 	GfxRenderTargetDescription desc = { };
 	u16 width = 0;
@@ -623,7 +624,7 @@ static bool d3d11_factory_free()
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // D3D11 Render State
 
-static bool bind_shader( GfxShaderResource *const resource )
+static bool bind_shader_pipeline( GfxShaderResource *const resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	const bool dirty = BITFLAG_IS_SET( CoreGfx::state.dirtyFlags, GfxStateDirtyFlag_SHADER );
@@ -639,6 +640,22 @@ static bool bind_shader( GfxShaderResource *const resource )
 		"Failed to bind vertex shader uniform buffers! (%u)", resource->shaderID );
 	ErrorIf( !CoreGfx::shader_bind_uniform_buffers_fragment( resource->shaderID ),
 		"Failed to bind fragment shader uniform buffers! (%u)", resource->shaderID );
+
+	BITFLAG_UNSET( CoreGfx::state.dirtyFlags, GfxStateDirtyFlag_SHADER );
+	return true;
+}
+
+
+static bool bind_shader_compute( GfxShaderResource *const resource )
+{
+	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
+	const bool dirty = BITFLAG_IS_SET( CoreGfx::state.dirtyFlags, GfxStateDirtyFlag_SHADER );
+	if( !dirty && resource == CoreGfx::state.pipeline.shader ) { return true; }
+
+	CoreGfx::state.compute.shader = resource;
+	context->CSSetShader( resource->cs, nullptr, 0 );
+	PROFILE_GFX( Gfx::stats.frame.shaderBinds++ );
+
 	ErrorIf( !CoreGfx::shader_bind_uniform_buffers_compute( resource->shaderID ),
 		"Failed to bind compute shader uniform buffers! (%u)", resource->shaderID );
 
@@ -780,7 +797,7 @@ static bool apply_state_scissor( const GfxStateScissor &state )
 }
 
 
-static bool bind_targets( GfxRenderTargetResource *const resources[] )
+static bool bind_targets( GfxRenderTargetResource *const *resources )
 {
 	static double_m44 cacheMatrixModel;
 	static double_m44 cacheMatrixView;
@@ -951,17 +968,17 @@ THREAD_FUNCTION( d3d11_async_work_completion_listener )
 }
 
 
-static void d3d11_work_commit( const u64 commitID )
+static void d3d11_work_commit( u64 commitID )
 {
 #if MULTITHREADED_DEVICE_CONTEXT
 	D3D11Work work = { };
 	work.id = commitID;
 
-	D3D11_QUERY_DESC qd = { D3D11_QUERY_EVENT, 0 };
+	D3D11_QUERY_DESC queryDesc = { D3D11_QUERY_EVENT, 0 };
 
 	d3d11WorkInFlightMutex.lock();
 	{
-		device->CreateQuery( &qd, &work.query );
+		device->CreateQuery( &queryDesc, &work.query );
 		context->End( reinterpret_cast<ID3D11Asynchronous *>( work.query ) );
 		d3d11WorkInFlight.add( work );
 	}
@@ -1052,7 +1069,7 @@ bool CoreGfx::api_free()
 
 void CoreGfx::api_frame_begin()
 {
-	bind_shader( CoreGfx::shaders[Shader::SHADER_DEFAULT].resource );
+	bind_shader_pipeline( CoreGfx::shaders[Shader::SHADER_DEFAULT].resource );
 
 	BITFLAG_SET( CoreGfx::state.dirtyFlags, GfxStateDirtyFlag_TARGETS );
 	render_targets_reset();
@@ -1081,7 +1098,7 @@ void CoreGfx::api_frame_end()
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Clear
 
-void CoreGfx::api_clear_color( const Color color )
+void CoreGfx::api_clear_color( Color color )
 {
 	static constexpr float INV_255 = 1.0f / 255.0f;
 	const FLOAT rgba[4] = { color.r * INV_255, color.g * INV_255, color.b * INV_255, color.a * INV_255 };
@@ -1094,7 +1111,7 @@ void CoreGfx::api_clear_color( const Color color )
 }
 
 
-void CoreGfx::api_clear_depth( const float depth )
+void CoreGfx::api_clear_depth( float depth )
 {
 	if( stateBoundViewDepth == nullptr ) { return; }
 	context->ClearDepthStencilView( stateBoundViewDepth, D3D11_CLEAR_DEPTH, depth, 0 );
@@ -1103,7 +1120,7 @@ void CoreGfx::api_clear_depth( const float depth )
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Render State
 
-bool CoreGfx::api_swapchain_init( const u16 width, const u16 height )
+bool CoreGfx::api_swapchain_init( u16 width, u16 height )
 {
 	const GfxColorFormat colorFormat = GfxColorFormat_R8G8B8A8_FLOAT; // TODO: Support other formats
 
@@ -1249,7 +1266,7 @@ bool CoreGfx::api_swapchain_free()
 }
 
 
-bool CoreGfx::api_swapchain_set_size( const u16 width, const u16 height )
+bool CoreGfx::api_swapchain_set_size( u16 width, u16 height )
 {
 	const GfxColorFormat colorFormat = GfxColorFormat_R8G8B8A8_FLOAT; // TODO: Support other formats
 
@@ -1351,13 +1368,13 @@ bool CoreGfx::api_swapchain_set_size( const u16 width, const u16 height )
 	BITFLAG_SET( CoreGfx::state.dirtyFlags, GfxStateDirtyFlag_TARGETS );
 	render_targets_reset();
 	BITFLAG_SET( CoreGfx::state.dirtyFlags, GfxStateDirtyFlag_SHADER );
-	bind_shader( CoreGfx::state.pipeline.shader );
+	bind_shader_pipeline( CoreGfx::state.pipeline.shader );
 
 	return true;
 }
 
 
-bool CoreGfx::api_viewport_init( const u16 width, const u16 height )
+bool CoreGfx::api_viewport_init( u16 width, u16 height )
 {
 	return api_viewport_set_size( width, height );
 }
@@ -1370,7 +1387,7 @@ bool CoreGfx::api_viewport_free()
 }
 
 
-bool CoreGfx::api_viewport_set_size( const u16 width, const u16 height )
+bool CoreGfx::api_viewport_set_size( u16 width, u16 height )
 {
 	CoreGfx::state.viewport.width = width;
 	CoreGfx::state.viewport.height = height;
@@ -1475,7 +1492,7 @@ void GfxShaderResource::release( GfxShaderResource *&resource )
 }
 
 
-bool CoreGfx::api_shader_init( GfxShaderResource *&resource, const u32 shaderID,
+bool CoreGfx::api_shader_init( GfxShaderResource *&resource, u32 shaderID,
 	const struct ShaderEntry &shaderEntry )
 {
 	Assert( resource == nullptr );
@@ -1494,7 +1511,8 @@ bool CoreGfx::api_shader_init( GfxShaderResource *&resource, const u32 shaderID,
 	// Vertex Shader
 	if( shaderEntry.sizeVertex > 0 )
 	{
-		const void *codeVertex = reinterpret_cast<const void *>( Assets::binary.data + shaderEntry.offsetVertex );
+		const void *codeVertex = reinterpret_cast<const void *>(
+			Assets::binary.data + shaderEntry.offsetVertex + BINARY_OFFSET_GFX );
 		if( FAILED( D3DCompile( codeVertex, shaderEntry.sizeVertex, nullptr, nullptr, nullptr,
 			"vs_main", "vs_4_0", D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &vsCode, &info ) ) )
 		{
@@ -1577,7 +1595,8 @@ bool CoreGfx::api_shader_init( GfxShaderResource *&resource, const u32 shaderID,
 	// Fragment Shader
 	if( shaderEntry.sizeFragment > 0 )
 	{
-		const void *codeFragment = reinterpret_cast<const void *>( Assets::binary.data + shaderEntry.offsetFragment );
+		const void *codeFragment = reinterpret_cast<const void *>(
+			Assets::binary.data + shaderEntry.offsetFragment + BINARY_OFFSET_GFX );
 		if( FAILED( D3DCompile( codeFragment, shaderEntry.sizeFragment, nullptr, nullptr, nullptr,
 			"ps_main", "ps_5_0", D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &psCode, &info ) ) )
 		{
@@ -1655,7 +1674,7 @@ bool CoreGfx::api_shader_free( GfxShaderResource *&resource )
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Buffer
 
-bool CoreGfx::api_buffer_init( GfxBufferResource *&resource, const usize capacity )
+bool CoreGfx::api_buffer_init( GfxBufferResource *&resource, usize capacity )
 {
 	return true;
 }
@@ -1667,20 +1686,20 @@ bool CoreGfx::api_buffer_free( GfxBufferResource *&resource )
 }
 
 
-void CoreGfx::api_buffer_write_begin( GfxBufferResource *const resource )
+void CoreGfx::api_buffer_write_begin( GfxBufferResource *resource )
 {
 	// ...
 }
 
 
-void CoreGfx::api_buffer_write_end( GfxBufferResource *const resource )
+void CoreGfx::api_buffer_write_end( GfxBufferResource *resource )
 {
 	// ...
 }
 
 
-void CoreGfx::api_buffer_write( GfxBufferResource *const resource, const void *const data,
-	const usize size, const usize offset )
+void CoreGfx::api_buffer_write( GfxBufferResource *resource, const void *data,
+	usize size, usize offset )
 {
 	// ...
 }
@@ -1699,8 +1718,8 @@ void GfxVertexBufferResource::release( GfxVertexBufferResource *&resource )
 }
 
 
-bool CoreGfx::api_vertex_buffer_init( GfxVertexBufferResource *&resource, const u32 vertexFormatID,
-	const GfxWriteMode writeMode, const u32 capacity, const u32 stride )
+bool CoreGfx::api_vertex_buffer_init( GfxVertexBufferResource *&resource, u32 vertexFormatID,
+	GfxWriteMode writeMode, u32 capacity, u32 stride )
 {
 	Assert( resource == nullptr );
 	resource = vertexBufferResources.make_new();
@@ -1741,7 +1760,7 @@ bool CoreGfx::api_vertex_buffer_free( GfxVertexBufferResource *&resource )
 }
 
 
-void CoreGfx::api_vertex_buffer_write_begin( GfxVertexBufferResource *const resource )
+void CoreGfx::api_vertex_buffer_write_begin( GfxVertexBufferResource *resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
@@ -1759,7 +1778,7 @@ void CoreGfx::api_vertex_buffer_write_begin( GfxVertexBufferResource *const reso
 }
 
 
-void CoreGfx::api_vertex_buffer_write_end( GfxVertexBufferResource *const resource )
+void CoreGfx::api_vertex_buffer_write_end( GfxVertexBufferResource *resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
@@ -1769,8 +1788,7 @@ void CoreGfx::api_vertex_buffer_write_end( GfxVertexBufferResource *const resour
 }
 
 
-void CoreGfx::api_vertex_buffer_write( GfxVertexBufferResource *const resource,
-	const void *const data, const u32 size )
+void CoreGfx::api_vertex_buffer_write( GfxVertexBufferResource *resource, const void *data, u32 size )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
@@ -1780,7 +1798,7 @@ void CoreGfx::api_vertex_buffer_write( GfxVertexBufferResource *const resource,
 }
 
 
-u32 CoreGfx::api_vertex_buffer_current( const GfxVertexBufferResource *const resource )
+u32 CoreGfx::api_vertex_buffer_current( const GfxVertexBufferResource *resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	return resource->current;
@@ -1800,8 +1818,8 @@ void GfxInstanceBufferResource::release( GfxInstanceBufferResource *&resource )
 }
 
 
-bool CoreGfx::api_instance_buffer_init( GfxInstanceBufferResource *&resource, const u32 instanceFormatID,
-	const GfxWriteMode writeMode, const u32 capacity, const u32 stride )
+bool CoreGfx::api_instance_buffer_init( GfxInstanceBufferResource *&resource, u32 instanceFormatID,
+	GfxWriteMode writeMode, u32 capacity, u32 stride )
 {
 	Assert( resource == nullptr );
 	resource = instanceBufferResources.make_new();
@@ -1842,7 +1860,7 @@ bool CoreGfx::api_instance_buffer_free( GfxInstanceBufferResource *&resource )
 }
 
 
-void CoreGfx::api_instance_buffer_write_begin( GfxInstanceBufferResource *const resource )
+void CoreGfx::api_instance_buffer_write_begin( GfxInstanceBufferResource *resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
@@ -1860,18 +1878,17 @@ void CoreGfx::api_instance_buffer_write_begin( GfxInstanceBufferResource *const 
 }
 
 
-void CoreGfx::api_instance_buffer_write_end( GfxInstanceBufferResource *const resource )
+void CoreGfx::api_instance_buffer_write_end( GfxInstanceBufferResource *resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
-	Assert( !resource->mapped );
+	Assert( resource->mapped );
 	context->Unmap( resource->buffer, 0 );
 	resource->mapped = false;
 }
 
 
-void CoreGfx::api_instance_buffer_write( GfxInstanceBufferResource *const resource,
-	const void *const data, const u32 size )
+void CoreGfx::api_instance_buffer_write( GfxInstanceBufferResource *resource, const void *data, u32 size )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
@@ -1881,7 +1898,7 @@ void CoreGfx::api_instance_buffer_write( GfxInstanceBufferResource *const resour
 }
 
 
-u32 CoreGfx::api_instance_buffer_current( const GfxInstanceBufferResource *const resource )
+u32 CoreGfx::api_instance_buffer_current( const GfxInstanceBufferResource *resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	return resource->current;
@@ -1902,8 +1919,7 @@ void GfxIndexBufferResource::release( GfxIndexBufferResource *&resource )
 
 
 bool CoreGfx::api_index_buffer_init( GfxIndexBufferResource *&resource,
-	void *data, const u32 size, const double indicesToVerticesRatio,
-	const GfxIndexBufferFormat format, const GfxWriteMode writeMode )
+	void *data, u32 size, double indicesToVerticesRatio, GfxIndexBufferFormat format, GfxWriteMode writeMode )
 {
 	Assert( resource == nullptr );
 	Assert( format != GfxIndexBufferFormat_NONE );
@@ -1962,8 +1978,7 @@ void GfxUniformBufferResource::release( GfxUniformBufferResource *&resource )
 }
 
 
-bool CoreGfx::api_uniform_buffer_init( GfxUniformBufferResource *&resource, const char *name,
-	const int index, const u32 size )
+bool CoreGfx::api_uniform_buffer_init( GfxUniformBufferResource *&resource, const char *name, int index, u32 size )
 {
 	Assert( resource == nullptr );
 
@@ -2003,7 +2018,7 @@ bool CoreGfx::api_uniform_buffer_free( GfxUniformBufferResource *&resource )
 }
 
 
-void CoreGfx::api_uniform_buffer_write_begin( GfxUniformBufferResource *const resource )
+void CoreGfx::api_uniform_buffer_write_begin( GfxUniformBufferResource *resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
@@ -2015,7 +2030,7 @@ void CoreGfx::api_uniform_buffer_write_begin( GfxUniformBufferResource *const re
 }
 
 
-void CoreGfx::api_uniform_buffer_write_end( GfxUniformBufferResource *const resource )
+void CoreGfx::api_uniform_buffer_write_end( GfxUniformBufferResource *resource )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
@@ -2025,7 +2040,7 @@ void CoreGfx::api_uniform_buffer_write_end( GfxUniformBufferResource *const reso
 }
 
 
-void CoreGfx::api_uniform_buffer_write( GfxUniformBufferResource *const resource, const void *data )
+void CoreGfx::api_uniform_buffer_write( GfxUniformBufferResource *resource, const void *data )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 
@@ -2035,7 +2050,7 @@ void CoreGfx::api_uniform_buffer_write( GfxUniformBufferResource *const resource
 }
 
 
-bool CoreGfx::api_uniform_buffer_bind_vertex( GfxUniformBufferResource *const resource, const int slot )
+bool CoreGfx::api_uniform_buffer_bind_vertex( GfxUniformBufferResource *resource, int slot )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	Assert( slot >= 0 );
@@ -2046,7 +2061,7 @@ bool CoreGfx::api_uniform_buffer_bind_vertex( GfxUniformBufferResource *const re
 }
 
 
-bool CoreGfx::api_uniform_buffer_bind_fragment( GfxUniformBufferResource *const resource, const int slot )
+bool CoreGfx::api_uniform_buffer_bind_fragment( GfxUniformBufferResource *resource, int slot )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	Assert( slot >= 0 );
@@ -2057,7 +2072,7 @@ bool CoreGfx::api_uniform_buffer_bind_fragment( GfxUniformBufferResource *const 
 }
 
 
-bool CoreGfx::api_uniform_buffer_bind_compute( GfxUniformBufferResource *const resource, const int slot )
+bool CoreGfx::api_uniform_buffer_bind_compute( GfxUniformBufferResource *resource, int slot )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	Assert( slot >= 0 );
@@ -2087,7 +2102,7 @@ void GfxTextureResource::release( GfxTextureResource *&resource )
 
 
 bool CoreGfx::api_texture_init( GfxTextureResource *&resource, void *pixels,
-	const u16 width, const u16 height, const u16 levels, const GfxColorFormat &format )
+	u16 width, u16 height, u16 levels, const GfxColorFormat &format )
 {
 	Assert( resource == nullptr );
 
@@ -2173,7 +2188,7 @@ bool CoreGfx::api_texture_free( GfxTextureResource *&resource )
 }
 
 
-bool CoreGfx::api_texture_bind( GfxTextureResource *const resource, const int slot )
+bool CoreGfx::api_texture_bind( GfxTextureResource *resource, int slot )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	Assert( slot >= 0 && slot < GFX_TEXTURE_SLOT_COUNT );
@@ -2189,7 +2204,7 @@ bool CoreGfx::api_texture_bind( GfxTextureResource *const resource, const int sl
 }
 
 
-bool CoreGfx::api_texture_release( GfxTextureResource *const resource, const int slot )
+bool CoreGfx::api_texture_release( GfxTextureResource *resource, int slot )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	Assert( slot >= 0 && slot < GFX_TEXTURE_SLOT_COUNT );
@@ -2214,6 +2229,8 @@ void GfxRenderTargetResource::release( GfxRenderTargetResource *&resource )
 	if( resource->textureDepthMS != nullptr ) { resource->textureDepthMS->Release(); }
 	if( resource->textureColorStaging != nullptr ) { resource->textureColorStaging->Release(); }
 	if( resource->textureDepthStaging != nullptr ) { resource->textureDepthStaging->Release(); }
+	if( resource->asyncReadbackQuery != nullptr ) { resource->asyncReadbackQuery->Release(); }
+	resource->asyncReadback = false;
 
 	renderTargetResources.remove( resource->id );
 	resource = nullptr;
@@ -2222,8 +2239,7 @@ void GfxRenderTargetResource::release( GfxRenderTargetResource *&resource )
 
 bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 	GfxTextureResource *&resourceColor, GfxTextureResource *&resourceDepth,
-	const u16 width, const u16 height,
-	const GfxRenderTargetDescription &desc )
+	u16 width, u16 height, const GfxRenderTargetDescription &desc )
 {
 	Assert( resource == nullptr );
 	Assert( resourceColor == nullptr );
@@ -2336,6 +2352,10 @@ bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 				ErrorReturnMsg( false, "%s: Failed to create color CPU staging texture", __FUNCTION__ );
 			}
 			resource->size += GFX_SIZE_IMAGE_COLOR_BYTES( width, height, 1, desc.colorFormat );
+
+			DECL_ZERO( D3D11_QUERY_DESC, queryDesc );
+			queryDesc.Query = D3D11_QUERY_EVENT;
+			device->CreateQuery( &queryDesc, &resource->asyncReadbackQuery );
 		}
 	}
 
@@ -2486,11 +2506,9 @@ bool CoreGfx::api_render_target_free( GfxRenderTargetResource *&resource,
 }
 
 
-bool CoreGfx::api_render_target_copy(
-	GfxRenderTargetResource *&srcResource,
-	GfxTextureResource *&srcResourceColor, GfxTextureResource *&srcResourceDepth,
-	GfxRenderTargetResource *&dstResource,
-	GfxTextureResource *&dstResourceColor, GfxTextureResource *&dstResourceDepth )
+bool CoreGfx::api_render_target_copy_color(
+	GfxRenderTargetResource *&srcResource, GfxTextureResource *&srcResourceColor,
+	GfxRenderTargetResource *&dstResource, GfxTextureResource *&dstResourceColor )
 {
 	if( srcResource == nullptr || dstResource == nullptr ) { return false; }
 	if( srcResource->width != dstResource->width || srcResource->height != dstResource->height ) { return false; }
@@ -2506,6 +2524,17 @@ bool CoreGfx::api_render_target_copy(
 		dstD3D11ResourceColor->Release();
 	}
 
+	return true;
+}
+
+
+bool CoreGfx::api_render_target_copy_depth(
+	GfxRenderTargetResource *&srcResource, GfxTextureResource *&srcResourceDepth,
+	GfxRenderTargetResource *&dstResource, GfxTextureResource *&dstResourceDepth )
+{
+	if( srcResource == nullptr || dstResource == nullptr ) { return false; }
+	if( srcResource->width != dstResource->width || srcResource->height != dstResource->height ) { return false; }
+
 	if( srcResource->dsv && dstResource->dsv )
 	{
 		ID3D11Resource *srcD3D11ResourceDepth;
@@ -2515,6 +2544,26 @@ bool CoreGfx::api_render_target_copy(
 		context->CopySubresourceRegion( dstD3D11ResourceDepth, 0, 0, 0, 0, srcD3D11ResourceDepth, 0, nullptr );
 		srcD3D11ResourceDepth->Release();
 		dstD3D11ResourceDepth->Release();
+	}
+
+	return true;
+}
+
+
+bool CoreGfx::api_render_target_copy(
+	GfxRenderTargetResource *&srcResource,
+	GfxTextureResource *&srcResourceColor, GfxTextureResource *&srcResourceDepth,
+	GfxRenderTargetResource *&dstResource,
+	GfxTextureResource *&dstResourceColor, GfxTextureResource *&dstResourceDepth )
+{
+	if( !api_render_target_copy_color( srcResource, srcResourceColor, dstResource, dstResourceColor ) )
+	{
+		return false;
+	}
+
+	if( !api_render_target_copy_depth( srcResource, srcResourceDepth, dstResource, dstResourceDepth ) )
+	{
+		return false;
 	}
 
 	return true;
@@ -2564,7 +2613,7 @@ bool CoreGfx::api_render_target_copy_part(
 
 bool CoreGfx::api_render_target_buffer_read_color( GfxRenderTargetResource *&resource,
 	GfxTextureResource *&resourceColor,
-	void *buffer, const u32 size )
+	void *buffer, u32 size )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	Assert( resource->textureColorStaging != nullptr );
@@ -2603,9 +2652,65 @@ bool CoreGfx::api_render_target_buffer_read_color( GfxRenderTargetResource *&res
 }
 
 
+bool CoreGfx::api_render_target_buffer_read_color_async_request( GfxRenderTargetResource *&resource,
+	GfxTextureResource *&resourceColor,
+	void *buffer, u32 size )
+{
+	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
+	Assert( resource->textureColorStaging != nullptr );
+	Assert( resourceColor != nullptr && resourceColor->id != GFX_RESOURCE_ID_NULL );
+
+	ErrorIf( !resource->desc.cpuAccess,
+		"Trying to CPU access a render target that does not have CPU access flag!" );
+
+	const u32 sizeSource = GFX_SIZE_IMAGE_COLOR_BYTES( resource->width, resource->height, 1, resource->desc.colorFormat );
+	Assert( size > 0 && sizeSource <= size );
+	Assert( buffer != nullptr );
+
+	// Copy Data to Staging Texture
+	ID3D11Resource *srcResource;
+	resourceColor->srv->GetResource( &srcResource );
+	context->CopyResource( resource->textureColorStaging, srcResource );
+	srcResource->Release();
+
+	// Add Query
+	Assert( !resource->asyncReadback );
+	context->End( resource->asyncReadbackQuery );
+	resource->asyncReadback = true;
+	return true;
+}
+
+
+bool CoreGfx::api_render_target_buffer_read_color_async_poll( GfxRenderTargetResource *&resource,
+	GfxTextureResource *&resourceColor,
+	void *buffer, const u32 size )
+{
+	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
+	Assert( resource->textureColorStaging != nullptr );
+	Assert( resourceColor != nullptr && resourceColor->id != GFX_RESOURCE_ID_NULL );
+
+	ErrorIf( !resource->desc.cpuAccess,
+		"Trying to CPU access a render target that does not have CPU access flag!" );
+
+	Assert( resource->asyncReadback == true );
+	HRESULT hr = context->GetData( resource->asyncReadbackQuery, nullptr, 0, 0 );
+	if( hr == S_FALSE ) { return false; }
+	if( hr != S_OK ) { return false; }
+
+	DECL_ZERO( D3D11_MAPPED_SUBRESOURCE, mappedResource );
+	HRESULT mapped = context->Map( resource->textureColorStaging, 0, D3D11_MAP_READ, 0, &mappedResource );
+	if( FAILED( mapped ) ) { return false; }
+	memory_copy( buffer, mappedResource.pData, size );
+	context->Unmap( resource->textureColorStaging, 0 );
+
+	resource->asyncReadback = false;
+	return true;
+}
+
+
 bool api_render_target_buffer_read_depth( GfxRenderTargetResource *&resource,
 	GfxTextureResource *&resourceDepth,
-	void *buffer, const u32 size )
+	void *buffer, u32 size )
 {
 	// TODO: Implement this
 	GRAPHICS_API_IMPLEMENTATION_WARNING
@@ -2613,9 +2718,27 @@ bool api_render_target_buffer_read_depth( GfxRenderTargetResource *&resource,
 }
 
 
+bool CoreGfx::api_render_target_buffer_read_depth_async_request( GfxRenderTargetResource *&resource,
+	GfxTextureResource *&resourceDepth,
+	void *buffer, u32 size )
+{
+	GRAPHICS_API_IMPLEMENTATION_WARNING // TODO: Implement this
+	return true;
+}
+
+
+bool CoreGfx::api_render_target_buffer_read_depth_async_poll( GfxRenderTargetResource *&resource,
+	GfxTextureResource *&resourceDepth,
+	void *buffer, u32 size )
+{
+	GRAPHICS_API_IMPLEMENTATION_WARNING // TODO: Implement this
+	return true;
+}
+
+
 bool CoreGfx::api_render_target_buffer_write_color( GfxRenderTargetResource *&resource,
 	GfxTextureResource *&resourceColor,
-	const void *const buffer, const u32 size )
+	const void *buffer, u32 size )
 {
 	Assert( resource != nullptr && resource->id != GFX_RESOURCE_ID_NULL );
 	Assert( resource->textureColorStaging != nullptr );
@@ -2645,7 +2768,7 @@ bool CoreGfx::api_render_target_buffer_write_color( GfxRenderTargetResource *&re
 
 bool CoreGfx::api_render_target_buffer_write_depth( GfxRenderTargetResource *&resource,
 	GfxTextureResource *&resourceDepth,
-	const void *const buffer, const u32 size )
+	const void *buffer, u32 size )
 {
 	// TODO: Implement this
 	GRAPHICS_API_IMPLEMENTATION_WARNING
@@ -2655,7 +2778,7 @@ bool CoreGfx::api_render_target_buffer_write_depth( GfxRenderTargetResource *&re
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Draw
 
-static void d3d11_draw( const UINT vertexCount, const UINT vertexStartLocation )
+static void d3d11_draw( UINT vertexCount, UINT vertexStartLocation )
 {
 	context->Draw( vertexCount, vertexStartLocation );
 	PROFILE_GFX( Gfx::stats.frame.drawCalls++ );
@@ -2663,8 +2786,8 @@ static void d3d11_draw( const UINT vertexCount, const UINT vertexStartLocation )
 }
 
 
-static void d3d11_draw_instanced( const UINT vertexCount, const UINT instanceCount,
-	const UINT vertexStartLocation, const UINT instanceStartLocation )
+static void d3d11_draw_instanced( UINT vertexCount, UINT instanceCount,
+	UINT vertexStartLocation, UINT instanceStartLocation )
 {
 	context->DrawInstanced( vertexCount, instanceCount, vertexStartLocation, instanceStartLocation );
 	PROFILE_GFX( Gfx::stats.frame.drawCalls++ );
@@ -2672,7 +2795,7 @@ static void d3d11_draw_instanced( const UINT vertexCount, const UINT instanceCou
 }
 
 
-static void d3d11_draw_indexed( const UINT vertexCount, const UINT vertexStartLocation, const INT baseVertexLocation )
+static void d3d11_draw_indexed( UINT vertexCount, UINT vertexStartLocation, INT baseVertexLocation )
 {
 	context->DrawIndexed( vertexCount, vertexStartLocation, baseVertexLocation );
 	PROFILE_GFX( Gfx::stats.frame.drawCalls++ );
@@ -2680,8 +2803,8 @@ static void d3d11_draw_indexed( const UINT vertexCount, const UINT vertexStartLo
 }
 
 
-static void d3d11_draw_instanced_indexed( const UINT vertexCount, const UINT instanceCount,
-	const UINT vertexStartLocation, const UINT instanceStartLocation, const INT baseVertexLocation )
+static void d3d11_draw_instanced_indexed( UINT vertexCount, UINT instanceCount,
+	UINT vertexStartLocation, UINT instanceStartLocation, INT baseVertexLocation )
 {
 	context->DrawIndexedInstanced( vertexCount, instanceCount, vertexStartLocation,
 		baseVertexLocation, instanceStartLocation );
@@ -2691,10 +2814,10 @@ static void d3d11_draw_instanced_indexed( const UINT vertexCount, const UINT ins
 
 
 bool CoreGfx::api_draw(
-	const GfxVertexBufferResource *const resourceVertex, const u32 vertexCount,
-	const GfxInstanceBufferResource *const resourceInstance, const u32 instanceCount,
-	const GfxIndexBufferResource *const resourceIndex,
-	const GfxPrimitiveType type )
+	const GfxVertexBufferResource *resourceVertex, u32 vertexCount,
+	const GfxInstanceBufferResource *resourceInstance, u32 instanceCount,
+	const GfxIndexBufferResource *resourceIndex,
+	GfxPrimitiveType type )
 {
 	Assert( resourceVertex == nullptr || resourceVertex->id != GFX_RESOURCE_ID_NULL );
 	Assert( resourceInstance == nullptr || resourceInstance->id != GFX_RESOURCE_ID_NULL );
@@ -2783,10 +2906,11 @@ bool CoreGfx::api_draw(
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Dispatch
 
-bool CoreGfx::api_dispatch( const u32 x, const u32 y, const u32 z )
+bool CoreGfx::api_dispatch( u32 x, u32 y, u32 z )
 {
-	GRAPHICS_API_IMPLEMENTATION_WARNING
-	//context->Dispatch( static_cast<UINT>( x ), static_cast<UINT>( y ), static_cast<UINT>( z ) );
+	Assert( CoreGfx::state.compute.shader != nullptr );
+	Assert( CoreGfx::state.compute.shader->cs != nullptr );
+	context->Dispatch( x, y, z );
 	return true;
 }
 
@@ -2797,7 +2921,7 @@ void CoreGfx::api_render_command_execute( const GfxRenderCommand &command )
 {
 	render_pass_validate();
 
-	bind_shader( command.pipeline.shader );
+	bind_shader_pipeline( command.pipeline.shader );
 	apply_pipeline_state_raster( command.pipeline.description );
 	apply_pipeline_state_blend( command.pipeline.description );
 	apply_pipeline_state_depth( command.pipeline.description );

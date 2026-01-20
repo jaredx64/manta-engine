@@ -105,8 +105,6 @@ enum_type( TokenType, int )
 	Primitive_VertexOutput,
 	Primitive_FragmentInput,
 	Primitive_FragmentOutput,
-	Primitive_ComputeInput,
-	Primitive_ComputeOutput,
 
 	// Built-in Keywords
 	TOKENTYPE_KEYWORD_FIRST,
@@ -138,8 +136,6 @@ enum_type( TokenType, int )
 	TokenType_VertexOutput,
 	TokenType_FragmentInput,
 	TokenType_FragmentOutput,
-	TokenType_ComputeInput,
-	TokenType_ComputeOutput,
 	TokenType_Texture1D,
 	TokenType_Texture1DArray,
 	TokenType_Texture2D,
@@ -352,8 +348,6 @@ enum_type( StructType, u32 )
 	StructType_VertexOutput,
 	StructType_FragmentInput,
 	StructType_FragmentOutput,
-	StructType_ComputeInput,
-	StructType_ComputeOutput,
 	STRUCTTYPE_COUNT,
 };
 
@@ -546,8 +540,6 @@ struct NodeBuffer
 		byte *ptr = data + current;
 		memory_copy( ptr, &node, sizeof( T ) );
 		current += sizeof( T );
-
-		// Success
 		return reinterpret_cast<Node *>( ptr );
 	}
 
@@ -664,6 +656,12 @@ enum_type( FunctionType, u32 )
 	FunctionType_MainVertex,
 	FunctionType_MainFragment,
 	FunctionType_MainCompute,
+	FunctionType_MainRayGenerate,
+	FunctionType_MainRayHitAny,
+	FunctionType_MainRayHitClosest,
+	FunctionType_MainRayMiss,
+	FunctionType_MainRayIntersection,
+	FunctionType_MainRayCallable,
 	FUNCTIONTYPE_COUNT,
 };
 
@@ -684,7 +682,8 @@ struct NodeStatement : public Node
 
 struct NodeStatementBlock : public NodeStatement
 {
-	NodeStatementBlock( Node *expr ) : expr{ expr }
+	NodeStatementBlock( Node *expr ) :
+		expr { expr }
 	{
 		nodeType = NodeType_Statement;
 		statementType = StatementType_Block;
@@ -697,7 +696,8 @@ struct NodeStatementBlock : public NodeStatement
 
 struct NodeStatementExpression : public NodeStatement
 {
-	NodeStatementExpression( Node *expr ) : expr{ expr }
+	NodeStatementExpression( Node *expr ) :
+		expr { expr }
 	{
 		nodeType = NodeType_Statement;
 		statementType = StatementType_Expression;
@@ -711,7 +711,7 @@ struct NodeStatementExpression : public NodeStatement
 struct NodeStatementIf : public NodeStatement
 {
 	NodeStatementIf( Node *expr, Node *blockIf, Node *blockElse ) :
-		expr{ expr }, blockIf{ blockIf }, blockElse{ blockElse }
+		expr { expr }, blockIf { blockIf }, blockElse { blockElse }
 	{
 		nodeType = NodeType_Statement;
 		statementType = StatementType_If;
@@ -725,7 +725,8 @@ struct NodeStatementIf : public NodeStatement
 
 struct NodeStatementElse : public NodeStatement
 {
-	NodeStatementElse( Node *block ) : block{ block }
+	NodeStatementElse( Node *block ) :
+		block{ block }
 	{
 		nodeType = NodeType_Statement;
 		statementType = StatementType_Else;
@@ -737,7 +738,8 @@ struct NodeStatementElse : public NodeStatement
 
 struct NodeStatementWhile : public NodeStatement
 {
-	NodeStatementWhile( Node *expr, Node *block ) : expr{ expr }, block{ block }
+	NodeStatementWhile( Node *expr, Node *block ) :
+		expr { expr }, block { block }
 	{
 		nodeType = NodeType_Statement;
 		statementType = StatementType_While;
@@ -750,7 +752,8 @@ struct NodeStatementWhile : public NodeStatement
 
 struct NodeStatementDoWhile : public NodeStatement
 {
-	NodeStatementDoWhile( Node *expr, Node *block ) : expr{ expr }, block{ block }
+	NodeStatementDoWhile( Node *expr, Node *block ) :
+		expr { expr }, block { block }
 	{
 		nodeType = NodeType_Statement;
 		statementType = StatementType_DoWhile;
@@ -764,7 +767,7 @@ struct NodeStatementDoWhile : public NodeStatement
 struct NodeStatementFor : public NodeStatement
 {
 	NodeStatementFor( Node *expr1, Node *expr2, Node *expr3, Node *block ) :
-		expr1{ expr1 }, expr2{ expr2 }, expr3{ expr3 }, block{ block }
+		expr1 { expr1 }, expr2 { expr2 }, expr3 { expr3 }, block { block }
 	{
 		nodeType = NodeType_Statement;
 		statementType = StatementType_For;
@@ -779,7 +782,8 @@ struct NodeStatementFor : public NodeStatement
 
 struct NodeStatementSwitch : public NodeStatement
 {
-	NodeStatementSwitch( Node *expr, Node *block ) : expr{ expr }, block{ block }
+	NodeStatementSwitch( Node *expr, Node *block ) :
+		expr { expr }, block { block }
 	{
 		nodeType = NodeType_Statement;
 		statementType = StatementType_Switch;
@@ -792,7 +796,8 @@ struct NodeStatementSwitch : public NodeStatement
 
 struct NodeStatementCase : public NodeStatement
 {
-	NodeStatementCase( Node *expr, Node *block ) : expr{ expr }, block{ block }
+	NodeStatementCase( Node *expr, Node *block ) :
+		expr { expr }, block { block }
 	{
 		nodeType = NodeType_Statement;
 		statementType = StatementType_Case;
@@ -805,7 +810,8 @@ struct NodeStatementCase : public NodeStatement
 
 struct NodeStatementDefault : public NodeStatement
 {
-	NodeStatementDefault( Node *block ) : block{ block }
+	NodeStatementDefault( Node *block ) :
+		block { block }
 	{
 		nodeType = NodeType_Statement;
 		statementType = StatementType_Default;
@@ -817,7 +823,8 @@ struct NodeStatementDefault : public NodeStatement
 
 struct NodeStatementReturn : public NodeStatement
 {
-	NodeStatementReturn( Node *expr ) : expr{ expr }
+	NodeStatementReturn( Node *expr ) :
+		expr { expr }
 	{
 		nodeType = NodeType_Statement;
 		statementType = StatementType_Return;
@@ -860,7 +867,8 @@ struct NodeStatementDiscard : public NodeStatement
 
 struct NodeExpressionUnary : public Node
 {
-	NodeExpressionUnary( ExpressionUnaryType exprType, Node *expr ) : exprType{ exprType }, expr{ expr }
+	NodeExpressionUnary( ExpressionUnaryType exprType, Node *expr ) :
+		exprType { exprType }, expr { expr }
 	{
 		nodeType = NodeType_ExpressionUnary;
 	}
@@ -872,7 +880,8 @@ struct NodeExpressionUnary : public Node
 
 struct NodeExpressionList : public Node
 {
-	NodeExpressionList( Node *expr ) : expr{ expr }
+	NodeExpressionList( Node *expr ) :
+		expr { expr }
 	{
 		nodeType = NodeType_ExpressionListNode;
 	}
@@ -914,8 +923,8 @@ struct NodeExpressionTernary : public Node
 
 struct NodeFunctionDeclaration : public Node
 {
-	NodeFunctionDeclaration( FunctionType functionType, const FunctionID functionID, Node *block ) :
-		functionType{ functionType }, functionID{ functionID }, block{ block }
+	NodeFunctionDeclaration( FunctionType functionType, FunctionID functionID, Node *block ) :
+		functionType { functionType }, functionID { functionID }, block { block }
 	{
 		nodeType = NodeType_FunctionDeclaration;
 	}
@@ -928,7 +937,8 @@ struct NodeFunctionDeclaration : public Node
 
 struct NodeFunctionCall : public Node
 {
-	NodeFunctionCall( const FunctionID functionID, Node *param ) : functionID{ functionID }, param{ param }
+	NodeFunctionCall( FunctionID functionID, Node *param ) :
+		functionID { functionID }, param { param }
 	{
 		nodeType = NodeType_FunctionCall;
 	}
@@ -940,7 +950,8 @@ struct NodeFunctionCall : public Node
 
 struct NodeCast : public Node
 {
-	NodeCast( const TypeID typeID, Node *param ) : typeID{ typeID }, param{ param }
+	NodeCast( TypeID typeID, Node *param ) :
+		typeID{ typeID }, param{ param }
 	{
 		nodeType = NodeType_Cast;
 	}
@@ -952,8 +963,8 @@ struct NodeCast : public Node
 
 struct NodeVariableDeclaration : public Node
 {
-	NodeVariableDeclaration( const VariableID variableID, Node *assignment ) :
-		variableID{ variableID }, assignment{ assignment }
+	NodeVariableDeclaration( VariableID variableID, Node *assignment ) :
+		variableID { variableID }, assignment { assignment }
 	{
 		nodeType = NodeType_VariableDeclaration;
 	}
@@ -976,7 +987,8 @@ struct NodeGroup : public Node
 
 struct NodeVariable : public Node
 {
-	NodeVariable( const VariableID variableID ) : variableID{ variableID }
+	NodeVariable( VariableID variableID ) :
+		variableID { variableID }
 	{
 		nodeType = NodeType_Variable;
 	}
@@ -987,7 +999,8 @@ struct NodeVariable : public Node
 
 struct NodeSwizzle : public Node
 {
-	NodeSwizzle( const SwizzleID swizzleID ) : swizzleID{ swizzleID }
+	NodeSwizzle( SwizzleID swizzleID ) :
+		swizzleID { swizzleID }
 	{
 		nodeType = NodeType_Swizzle;
 	}
@@ -998,7 +1011,8 @@ struct NodeSwizzle : public Node
 
 struct NodeSVSemantic : public Node
 {
-	NodeSVSemantic( const SVSemanticType svSemanticType ) : svSemanticType{ svSemanticType }
+	NodeSVSemantic( SVSemanticType svSemanticType ) :
+		svSemanticType { svSemanticType }
 	{
 		nodeType = NodeType_SVSemantic;
 	}
@@ -1009,7 +1023,8 @@ struct NodeSVSemantic : public Node
 
 struct NodeInteger : public Node
 {
-	NodeInteger( const u64 integer ) : integer{ integer }
+	NodeInteger( u64 integer ) :
+		integer { integer }
 	{
 		nodeType = NodeType_Integer;
 	}
@@ -1020,7 +1035,8 @@ struct NodeInteger : public Node
 
 struct NodeNumber : public Node
 {
-	NodeNumber( const double number ) : number{ number }
+	NodeNumber( double number ) :
+		number { number }
 	{
 		nodeType = NodeType_Number;
 	}
@@ -1031,7 +1047,8 @@ struct NodeNumber : public Node
 
 struct NodeBoolean : public Node
 {
-	NodeBoolean( const bool boolean ) : boolean{ boolean }
+	NodeBoolean( bool boolean ) :
+		boolean { boolean }
 	{
 		nodeType = NodeType_Boolean;
 	}
@@ -1042,8 +1059,8 @@ struct NodeBoolean : public Node
 
 struct NodeStruct : public Node
 {
-	NodeStruct( const StructType structType, const StructID structID ) :
-		structType{ structType }, structID{ structID }
+	NodeStruct( StructType structType, StructID structID ) :
+		structType { structType }, structID { structID }
 	{
 		nodeType = NodeType_Struct;
 	}
@@ -1055,8 +1072,8 @@ struct NodeStruct : public Node
 
 struct NodeTexture : public Node
 {
-	NodeTexture( const TextureType textureType, const TextureID textureID ) :
-		textureType{ textureType }, textureID{ textureID }
+	NodeTexture( TextureType textureType, TextureID textureID ) :
+		textureType { textureType }, textureID { textureID }
 	{
 		nodeType = NodeType_Texture;
 	}

@@ -22,8 +22,8 @@
 			#else
 				#define va_start(a, v) __builtin_va_start(a, v)
 			#endif
-
-			#define va_arg(a, t) ((sizeof(t) > 8 || (sizeof(t) & (sizeof(t) - 1))) ? **(t **)((a += 8) - 8) : *(t *)((a += 8) - 8))
+			#define va_arg(a, t) ((sizeof(t) > 8 || (sizeof(t) & (sizeof(t) - 1))) ? \
+				**(t **)((a += 8) - 8) : *(t *)((a += 8) - 8))
 			#define va_end(a)
 		#else
 			using va_list = __builtin_va_list;

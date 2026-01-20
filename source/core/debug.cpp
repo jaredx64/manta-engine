@@ -31,7 +31,7 @@ namespace Debug
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static void str_append( char *buffer, const usize size, const char *string )
+static void str_append( char *buffer, usize size, const char *string )
 {
 	if( buffer == nullptr || string == nullptr || size == 0 ) { return; }
 	const usize bufferLength = strlen( buffer );
@@ -48,39 +48,92 @@ void Debug::exit( int code )
 }
 
 
-void Debug::print_formatted( const bool newline, const char *format, ... )
+void Debug::print_formatted( bool newline, const char *format, ... )
 {
+#if COMPILE_TERMINAL
 	va_list args;
 	va_start( args, format );
 	vprintf( format, args );
 	if( newline ) { printf( "\n" ); }
 	va_end( args );
+#endif
 }
 
 
-void Debug::print_formatted_variadic( const bool newline, const char *format, va_list args )
+void Debug::print_formatted_variadic( bool newline, const char *format, va_list args )
 {
+#if COMPILE_TERMINAL
 	vprintf( format, args );
 	if( newline ) { printf( "\n" ); }
+#endif
 }
 
 
-void Debug::print_formatted_color( const bool newline, int color, const char *format, ... )
+void Debug::print_formatted_color( bool newline, int color, const char *format, ... )
 {
+#if COMPILE_TERMINAL
 	va_list args;
 	va_start( args, format );
 	printf( "\x1b[%dm", color );
 	vprintf( format, args );
-	printf( newline ? "\x1b[%dm\n" : "\x1b[%dm", LOG_DEFAULT );
+	printf( newline ? "\x1b[%dm\n" : "\x1b[%dm", PrintColor_Default );
 	va_end( args );
+#endif
 }
 
 
-void Debug::print_formatted_variadic_color( const bool newline, int color, const char *format, va_list args )
+void Debug::print_formatted_variadic_color( bool newline, int color, const char *format, va_list args )
 {
+#if COMPILE_TERMINAL
 	printf( "\x1b[%dm", color );
 	vprintf( format, args );
-	printf( newline ? "\x1b[%dm\n" : "\x1b[%dm", LOG_DEFAULT );
+	printf( newline ? "\x1b[%dm\n" : "\x1b[%dm", PrintColor_Default );
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Print( const char *format, ... )
+{
+#if COMPILE_TERMINAL
+	va_list args;
+	va_start( args, format );
+	Debug::print_formatted_variadic( false, format, args );
+	va_end( args );
+#endif
+}
+
+
+void Print( PrintColor color, const char *format, ... )
+{
+#if COMPILE_TERMINAL
+	va_list args;
+	va_start( args, format );
+	Debug::print_formatted_variadic_color( false, color, format, args );
+	va_end( args );
+#endif
+}
+
+
+void PrintLn( const char *format, ... )
+{
+#if COMPILE_TERMINAL
+	va_list args;
+	va_start( args, format );
+	Debug::print_formatted_variadic( true, format, args );
+	va_end( args );
+#endif
+}
+
+
+void PrintLn( PrintColor color, const char *format, ... )
+{
+#if COMPILE_TERMINAL
+	va_list args;
+	va_start( args, format );
+	Debug::print_formatted_variadic_color( true, color, format, args );
+	va_end( args );
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -108,11 +161,11 @@ void ERROR_HANDLER_FUNCTION_DECL
 	}
 
 	// Print Condition
-	PrintColor( LOG_RED, "\n\nERROR:\n\n" );
+	Print( PrintColor_Red, "\n\nERROR:\n\n" );
 	if( condition[0] != '\0' )
 	{
 		snprintf( conditionLine, sizeof( conditionLine ), "%s( %s )", caller, condition );
-		PrintColor( LOG_YELLOW, "    %s\n\n", conditionLine );
+		Print( PrintColor_Yellow, "    %s\n\n", conditionLine );
 	}
 
 	// Print Message
@@ -123,9 +176,9 @@ void ERROR_HANDLER_FUNCTION_DECL
 		vsnprintf( messageLine, sizeof( messageLine ), message, args );
 		va_end( args );
 
-		PrintColor( LOG_WHITE, "    " );
-		PrintColor( LOG_WHITE, messageLine );
-		PrintColor( LOG_WHITE, "\n\n" );
+		Print( PrintColor_White, "    " );
+		Print( PrintColor_White, messageLine );
+		Print( PrintColor_White, "\n\n" );
 	}
 
 	// Retrieve Callstack
@@ -135,9 +188,9 @@ void ERROR_HANDLER_FUNCTION_DECL
 	}
 
 	// Print Callstack
-	PrintColor( LOG_RED, "    CALLSTACK:\n" );
-	PrintColor( LOG_RED, callstack );
-	PrintColor( LOG_RED, "\n" );
+	Print( PrintColor_Red, "    CALLSTACK:\n" );
+	Print( PrintColor_Red, callstack );
+	Print( PrintColor_Red, "\n" );
 
 	// Error Message Box
 #if SHOW_ERROR_MESSAGES
@@ -196,11 +249,11 @@ void ASSERT_HANLDER_FUNCTION_DECL
 	}
 
 	// Print Condition
-	PrintColor( LOG_RED, "\n\n%s\n\n", label );
+	Print( PrintColor_Red, "\n\n%s\n\n", label );
 	if( condition[0] != '\0' )
 	{
 		snprintf( conditionLine, sizeof( conditionLine ), "%s( %s )", caller, condition );
-		PrintColor( LOG_YELLOW, "    %s\n\n", conditionLine );
+		Print( PrintColor_Yellow, "    %s\n\n", conditionLine );
 	}
 
 	// Print Message
@@ -211,9 +264,9 @@ void ASSERT_HANLDER_FUNCTION_DECL
 		vsnprintf( messageLine, sizeof( messageLine ), message, args );
 		va_end( args );
 
-		PrintColor( LOG_WHITE, "    " );
-		PrintColor( LOG_WHITE, messageLine );
-		PrintColor( LOG_WHITE, "\n\n" );
+		Print( PrintColor_White, "    " );
+		Print( PrintColor_White, messageLine );
+		Print( PrintColor_White, "\n\n" );
 	}
 
 	// Retrieve Callstack
@@ -223,9 +276,9 @@ void ASSERT_HANLDER_FUNCTION_DECL
 	}
 
 	// Print Callstack
-	PrintColor( LOG_RED, "    CALLSTACK:\n" );
-	PrintColor( LOG_RED, callstack );
-	PrintColor( LOG_RED, "\n" );
+	Print( PrintColor_Red, "    CALLSTACK:\n" );
+	Print( PrintColor_Red, callstack );
+	Print( PrintColor_Red, "\n" );
 
 	// Error Message Box
 #if SHOW_ERROR_MESSAGES
@@ -268,7 +321,7 @@ void SEGMENTATION_FAULT_HANLDER_FUNCTION_DECL
 	char callstack[2048]; callstack[0] = '\0';
 
 	// Print Condition
-	PrintColor( LOG_RED, "\n\nSEGMENTATION FAULT %d\n\n", code );
+	Print( PrintColor_Red, "\n\nSEGMENTATION FAULT %d\n\n", code );
 
 	// Retrieve Callstack
 	if( !Debug::snprint_callstack( callstack, sizeof( callstack ), 2, "    > ", "SEGMENTATION FAULT" ) )
@@ -278,9 +331,9 @@ void SEGMENTATION_FAULT_HANLDER_FUNCTION_DECL
 
 	// Print Callstack
 #if COMPILE_DEBUG
-	PrintColor( LOG_RED, "    CALLSTACK:\n" );
-	PrintColor( LOG_RED, callstack );
-	PrintColor( LOG_RED, "\n" );
+	Print( PrintColor_Red, "    CALLSTACK:\n" );
+	Print( PrintColor_Red, callstack );
+	Print( PrintColor_Red, "\n" );
 #endif
 
 	// Error Message Box
@@ -307,7 +360,7 @@ struct SymbolInfo
 	int line;
 };
 
-static bool callstack_symbol_clean_path(const char *path, char *buffer, usize size )
+static bool callstack_symbol_clean_path( const char *path, char *buffer, usize size )
 {
 	buffer[0] = '\0';
 	char *resolved = realpath( path, nullptr );
@@ -379,7 +432,6 @@ static bool callstack_symbol_clean_path(const char *path, char *buffer, usize si
 			return false;
 		}
 
-		// Success
 		return true;
 	}
 
@@ -414,7 +466,6 @@ static bool callstack_symbol_clean_path(const char *path, char *buffer, usize si
 			if( strstr( name, exclusions[i] ) != nullptr ) { return true; }
 		}
 
-		// Success - no need to filter
 		return false;
 	};
 
@@ -441,11 +492,10 @@ static bool callstack_symbol_clean_path(const char *path, char *buffer, usize si
 		line.SizeOfStruct = sizeof( IMAGEHLP_LINE );
 		if( context.SymGetLineFromAddr( context.process, reinterpret_cast<DWORD64>( address ), &displacement, &line ) )
 		{
-			snprintf( info.path, sizeof( info.path ), line.FileName );
+			snprintf( info.path, sizeof( info.path ), "%s", line.FileName );
 			info.line = line.LineNumber;
 		}
 
-		// Success
 		return true;
 	}
 
@@ -471,7 +521,6 @@ static bool callstack_symbol_clean_path(const char *path, char *buffer, usize si
 			count++;
 		}
 
-		// Success
 		free( symbol );
 		callstack_context_free( context );
 		return true;
@@ -524,7 +573,8 @@ static bool callstack_symbol_clean_path(const char *path, char *buffer, usize si
 
 		// Execute 'atos' command
 		char command[256];
-		snprintf( command, 256, "atos -o %s -arch arm64 -l %p -fullPath %s", context.exe, context.address, symbolAddress );
+		snprintf( command, sizeof( command ), "atos -o %s -arch arm64 -l %p -fullPath %s",
+			context.exe, context.address, symbolAddress );
 		FILE *fp = popen( command, "r" );
 		if( fp == nullptr ) { return false; }
 
@@ -566,7 +616,6 @@ static bool callstack_symbol_clean_path(const char *path, char *buffer, usize si
 			snprintf( line, sizeof( line ), "%.*s", lineLength, lineBegin );
 			info.line = atoi( line );
 
-			// Success
 			pclose( fp );
 			return true;
 		}
@@ -599,7 +648,6 @@ static bool callstack_symbol_clean_path(const char *path, char *buffer, usize si
 			count++;
 		}
 
-		// Success
 		free( backtraceSymbols );
 		return true;
 	}
@@ -648,7 +696,7 @@ static bool callstack_symbol_clean_path(const char *path, char *buffer, usize si
 
 		// Execute 'addr2line' command
 		char command[256];
-		snprintf( command, 256, "addr2line -e %s %s -f", context.exe, symbolAddress );
+		snprintf( command, sizeof( command ), "addr2line -e %s %s -f", context.exe, symbolAddress );
 		FILE *fp = popen( command, "r" );
 		if( fp == nullptr ) { return false; }
 
@@ -677,7 +725,6 @@ static bool callstack_symbol_clean_path(const char *path, char *buffer, usize si
 				snprintf( info.name, sizeof( info.name ), "%.*s", functionLength, functionBegin );
 				free( symbolDemangled );
 
-				// Success
 				i++;
 				continue;
 			}
@@ -711,13 +758,11 @@ static bool callstack_symbol_clean_path(const char *path, char *buffer, usize si
 				snprintf( line, sizeof( line ), "%.*s", lineLength, lineBegin );
 				info.line = atoi( line );
 
-				// Success
 				pclose( fp );
 				return true;
 			}
 		}
 
-		// Success
 		pclose( fp );
 		return true;
 	}
@@ -745,7 +790,6 @@ static bool callstack_symbol_clean_path(const char *path, char *buffer, usize si
 			count++;
 		}
 
-		// Success
 		free( backtraceSymbols );
 		return true;
 	}
@@ -753,30 +797,25 @@ static bool callstack_symbol_clean_path(const char *path, char *buffer, usize si
 #endif
 
 
-bool Debug::snprint_callstack( char *buffer, const unsigned int size, const int skip,
-	const char *prefix, const char *caller )
+bool Debug::snprint_callstack( char *buffer, unsigned int size, int skip, const char *prefix, const char *caller )
 {
 #if COMPILE_DEBUG
 	int count = 0;
 	SymbolInfo *symbols = reinterpret_cast<SymbolInfo *>( malloc( sizeof( SymbolInfo ) * CALLSTACK_DEPTH ) );
 	if( symbols == nullptr ) { return false; }
 
-	// Retrive Symbols
-	{
-	#if OS_WINDOWS
-		if( !callstack_symbols_windows( symbols, count ) ) { return false; }
-	#elif OS_MACOS && USE_OFFICIAL_HEADERS
-		if( !callstack_symbols_macos( symbols, count ) ) { return false; }
-	#elif OS_LINUX
-		if( !callstack_symbols_linux( symbols, count ) ) { return false; }
-	#else
-		return false;
-	#endif
-	}
+#if OS_WINDOWS
+	if( !callstack_symbols_windows( symbols, count ) ) { return false; }
+#elif OS_MACOS && USE_OFFICIAL_HEADERS
+	if( !callstack_symbols_macos( symbols, count ) ) { return false; }
+#elif OS_LINUX
+	if( !callstack_symbols_linux( symbols, count ) ) { return false; }
+#else
+	return false;
+#endif
 
-	// Print Symbols
-	char scratch[256];
 	buffer[0] = '\0';
+	char scratch[256];
 	for( int i = count - 1; i > skip; i-- )
 	{
 		SymbolInfo &function = symbols[i];
@@ -800,22 +839,20 @@ bool Debug::snprint_callstack( char *buffer, const unsigned int size, const int 
 	free( symbols );
 	return true;
 #else
-	// Callstacks only available in debug builds
-	return false;
+	return false; // Callstacks only available in debug builds
 #endif
 }
 
 
-bool Debug::print_callstack( const int skip, const char *prefix, const char *caller )
+bool Debug::print_callstack( int skip, const char *prefix, const char *caller )
 {
 #if COMPILE_DEBUG
 	char callstack[4096];
 	snprint_callstack( callstack, sizeof( callstack ), skip, prefix, caller );
-	PrintColor( LOG_RED, callstack );
+	Print( PrintColor_Red, callstack );
 	return true;
 #else
-	// Callstacks only available in debug builds
-	return false;
+	return false; // Callstacks only available in debug builds
 #endif
 }
 
@@ -827,10 +864,10 @@ bool Debug::print_callstack( const int skip, const char *prefix, const char *cal
 void Debug::console_enable_colors()
 {
 	// TODO: Temp fix for Windows cmd.exe not supporting colored text
-    HANDLE hOut = GetStdHandle( STD_OUTPUT_HANDLE );
-    DWORD mode = 0;
-    GetConsoleMode( hOut, &mode );
-    SetConsoleMode( hOut, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING );
+	HANDLE hOut = GetStdHandle( STD_OUTPUT_HANDLE );
+	DWORD mode = 0;
+	GetConsoleMode( hOut, &mode );
+	SetConsoleMode( hOut, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING );
 }
 #else
 void Debug::console_enable_colors()

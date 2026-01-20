@@ -328,6 +328,26 @@ public:
 		}
 
 		// No match, see if the command contains any of the tokens
+#if 1
+		// NOTE: Unordered containment
+		if( match == CommandCompare_None )
+		{
+			usize matched = 0;
+			for( usize i = 0; i < tokens.count(); i++ )
+			{
+				for( usize j = 0; j < inputTokens.count(); j++ )
+				{
+					if( strstr_case_insensitive( tokens[i].string, inputTokens[j].string ) )
+					{
+						matched++;
+						break;
+					}
+				}
+			}
+			if( matched == inputTokens.count() ) { match = CommandCompare_Contains; }
+		}
+#else
+		// NOTE: Ordered containment
 		if( match == CommandCompare_None )
 		{
 			const usize count = min( tokens.count(), static_cast<usize>( numRequiredTokens ) );
@@ -335,13 +355,15 @@ public:
 			{
 				const Token &commandToken = tokens[i];
 				const Token &inputToken = inputTokens[j];
-				if( strstr( commandToken.string, inputToken.string ) != nullptr && ( ++j == inputTokens.count() ) )
+				if( strstr_case_insensitive( commandToken.string, inputToken.string ) &&
+					( ++j == inputTokens.count() ) )
 				{
 					match = CommandCompare_Contains;
 					break;
 				}
 			}
 		}
+#endif
 
 		// Return
 		return match;
@@ -406,10 +428,10 @@ struct LogLine
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class Region
+class ConsoleRegion
 {
 public:
-	Region() { reset(); }
+	ConsoleRegion() { reset(); }
 
 	void reset()
 	{
@@ -468,8 +490,8 @@ public:
 		if( isHovering )
 		{
 			// Tween
-			tween( tweens.x, sliding || !isHoveringSlider ? 1.0f : 0.0f, 0.1f, delta, 0.01f );
-			tween( tweens.y, sliding || isHoveringSlider ? 1.0f : 0.0f, 0.1f, delta, 0.01f );
+			tweenf( tweens.x, sliding || !isHoveringSlider ? 1.0f : 0.0f, 0.1f, delta, 0.01f );
+			tweenf( tweens.y, sliding || isHoveringSlider ? 1.0f : 0.0f, 0.1f, delta, 0.01f );
 
 			// Activate Sliding
 			if( Mouse::check_pressed( mb_left ) )
@@ -485,8 +507,8 @@ public:
 		else
 		{
 			// No hover
-			tween( tweens.x, 0.0f, 0.05f, delta, 0.01f );
-			tween( tweens.y, 0.0f, 0.05f, delta, 0.01f );
+			tweenf( tweens.x, 0.0f, 0.05f, delta, 0.01f );
+			tweenf( tweens.y, 0.0f, 0.05f, delta, 0.01f );
 		}
 
 		// Sliding
@@ -536,7 +558,7 @@ public:
 			scrollbarTweenH.x = 0.0f;
 			scrollbarTweenH.y = 0.0f;
 		}
-		tween( scrollbarValue.x, scrollbarValueTo.x, 0.025f, delta, 0.01f );
+		tweenf( scrollbarValue.x, scrollbarValueTo.x, 0.025f, delta, 0.01f );
 		offset.x = -( dimensionsArea.x - min( dimensionsView.x, dimensionsArea.x ) ) * scrollbarValue.x;
 
 		// Vertical Scrollbar
@@ -551,7 +573,7 @@ public:
 			scrollbarTweenH.y = 0.0f;
 			scrollbarTweenH.y = 0.0f;
 		}
-		tween( scrollbarValue.y, scrollbarValueTo.y, 0.025f, delta, 0.01f );
+		tweenf( scrollbarValue.y, scrollbarValueTo.y, 0.025f, delta, 0.01f );
 		offset.y = -( dimensionsArea.y - min( dimensionsView.y, dimensionsArea.y ) ) * scrollbarValue.y;
 	}
 
@@ -634,9 +656,9 @@ namespace CoreConsole
 	static usize candidateIndex = USIZE_MAX;
 
 	// Regions
-	Region inputRegion;
-	Region logRegion;
-	Region candidateRegion;
+	ConsoleRegion inputRegion;
+	ConsoleRegion logRegion;
+	ConsoleRegion candidateRegion;
 
 	static void reset_regions()
 	{
@@ -874,7 +896,7 @@ void CoreConsole::update_input()
 }
 
 
-void CoreConsole::update_candidates( const bool processHiddenCommands )
+void CoreConsole::update_candidates( bool processHiddenCommands )
 {
 	// Reset Candidates List
 	for( int i = 0; i < COMMANDCOMPARE_COUNT; i++ ) { CoreConsole::candidates[i].clear(); }
@@ -891,7 +913,7 @@ void CoreConsole::update_candidates( const bool processHiddenCommands )
 		CoreConsole::candidates[command.compare( CoreConsole::tokens )].add( candidate );
 	}
 
-	// Mark Region Dirty
+	// Mark ConsoleRegion Dirty
 	CoreConsole::candidateRegion.dirty = true;
 }
 
@@ -901,9 +923,9 @@ void CoreConsole::navigate()
 	// Navigation
 	static char inputCache[COMMAND_SIZE];
 	const usize candidatesCount = CoreConsole::candidates_count();
-	Region &candidateRegion = CoreConsole::candidateRegion;
+	ConsoleRegion &candidateRegion = CoreConsole::candidateRegion;
 	usize &candidateIndex = CoreConsole::candidateIndex;
-	Region &logRegion = CoreConsole::logRegion;
+	ConsoleRegion &logRegion = CoreConsole::logRegion;
 	usize &logIndex = CoreConsole::logIndex;
 	usize &historyIndex = CoreConsole::historyIndex;
 
@@ -1077,7 +1099,7 @@ void CoreConsole::navigate()
 }
 
 
-void CoreConsole::draw_input( const Delta delta )
+void CoreConsole::draw_input( Delta delta )
 {
 	TextEditor &input = CoreConsole::input;
 
@@ -1088,8 +1110,8 @@ void CoreConsole::draw_input( const Delta delta )
 	const int bY2 = bY1 + 32;
 	draw_rectangle( bX1, bY1, bX2, bY2, COLOR_PANELS );
 
-	// Region
-	Region &region = CoreConsole::inputRegion;
+	// ConsoleRegion
+	ConsoleRegion &region = CoreConsole::inputRegion;
 	region.scrollbarVisible = u8_v2 { false, false };
 	const int rX1 = 20;
 	const int rY1 = 4;
@@ -1186,7 +1208,7 @@ void CoreConsole::draw_input( const Delta delta )
 }
 
 
-void CoreConsole::draw_log( const Delta delta )
+void CoreConsole::draw_log( Delta delta )
 {
 	const int mX = mouse_x_logical;
 	const int mY = mouse_y_logical;
@@ -1198,11 +1220,11 @@ void CoreConsole::draw_log( const Delta delta )
 	const int bY2 = Window::height_logical() - 64;
 	draw_rectangle( bX1, bY1, bX2, bY2, Color { 0, 0, 0, static_cast<u8>( Console::logAlpha * 255.0f ) } );
 
-	// Region
-	Region &region = CoreConsole::logRegion;
+	// ConsoleRegion
+	ConsoleRegion &region = CoreConsole::logRegion;
 	const int rX1 = bX1;
 	const int rY1 = bY1;
-	const int rX2 = bX2 - Region::scrollbarThickness;
+	const int rX2 = bX2 - ConsoleRegion::scrollbarThickness;
 	const int rY2 = bY2;
 	region.dimensionsView = int_v2 { rX2 - rX1, rY2 - rY1 };
 	region.draw( delta, rX1, rY1 );
@@ -1232,7 +1254,7 @@ void CoreConsole::draw_log( const Delta delta )
 
 				const bool hovering = region.hover && point_in_rect( mX, mY, hX1, hY1 + 1, hX2, hY2 - 1 );
 				const float tweenTo = hovering || navigating ? 1.0f : 0.0f;
-				tween( line.tween, tweenTo, 0.05f, delta, 0.01f );
+				tweenf( line.tween, tweenTo, 0.05f, delta, 0.01f );
 
 				if( line.tween > 0.0f )
 				{
@@ -1275,7 +1297,7 @@ void CoreConsole::draw_log( const Delta delta )
 			dimensions.y += 20; yOffset += 20;
 		}
 
-		// Update Region
+		// Update ConsoleRegion
 		region.dimensionsArea.x = max( dimensions.x + 6, region.dimensionsArea.x );
 		region.dimensionsArea.y = max( dimensions.y + 2, region.dimensionsArea.y );
 	}
@@ -1283,7 +1305,7 @@ void CoreConsole::draw_log( const Delta delta )
 }
 
 
-void CoreConsole::draw_candidates( const Delta delta )
+void CoreConsole::draw_candidates( Delta delta )
 {
 	if( CoreConsole::candidates_count() == 0 ) { return; }
 	if( CoreConsole::hideCandidates ) { return; }
@@ -1299,8 +1321,8 @@ void CoreConsole::draw_candidates( const Delta delta )
 	const int bY2 = bY1 + 4 + CoreConsole::candidates_count_view() * 24;
 	draw_rectangle( bX1, bY1, bX2, bY2, COLOR_PANELS );
 
-	// Region
-	Region &region = CoreConsole::candidateRegion;
+	// ConsoleRegion
+	ConsoleRegion &region = CoreConsole::candidateRegion;
 	const int rX1 = bX1;
 	const int rY1 = bY1;
 	const int rX2 = bX2;
@@ -1336,7 +1358,7 @@ void CoreConsole::draw_candidates( const Delta delta )
 			const int hY2 = bY1 + 26 + yOffset + region.offset.y;
 			const bool hovering = region.hover && point_in_rect( mX, mY, hX1, hY1 + 1, hX2, hY2 - 1 );
 
-			tween( command.tween, hovering || navigating ? 1.0f : 0.0f, 0.05f, delta, 0.01f );
+			tweenf( command.tween, hovering || navigating ? 1.0f : 0.0f, 0.05f, delta, 0.01f );
 			if( command.tween > 0.0f )
 			{
 				const u8 alpha = static_cast<u8>( command.tween * 0.15f * 255.0f );
@@ -1423,7 +1445,7 @@ void CoreConsole::draw_candidates( const Delta delta )
 }
 
 
-void CoreConsole::Log( const Color color, const char *command, const char *message )
+void CoreConsole::Log( Color color, const char *command, const char *message )
 {
 	// Reset log seek position
 	CoreConsole::logIndex = USIZE_MAX;
@@ -1534,7 +1556,7 @@ void CoreConsole::DVarInitializer::dvar_release( void *payload )
 }
 
 
-void CoreConsole::DVarInitializer::dvar_set_hidden( void *payload, const bool hidden )
+void CoreConsole::DVarInitializer::dvar_set_hidden( void *payload, bool hidden )
 {
 	if( payload == nullptr ) { return; }
 	CoreConsole::DVarInitializer &initializer = CoreConsole::DVarInitializer::get_instance();
@@ -1567,7 +1589,7 @@ void CoreConsole::DVarInitializer::dvar_set_hidden( void *payload, const bool hi
 }
 
 
-void CoreConsole::DVarInitializer::dvar_set_enabled( void *payload, const bool enabled )
+void CoreConsole::DVarInitializer::dvar_set_enabled( void *payload, bool enabled )
 {
 	if( payload == nullptr ) { return; }
 	CoreConsole::DVarInitializer &initializer = CoreConsole::DVarInitializer::get_instance();
@@ -1732,6 +1754,68 @@ static void dvar_render_target_window( GfxRenderTarget *variable )
 	}
 }
 
+
+static void dvar_radial_color_graph( RadialColorGraph *variable )
+{
+	// Log
+	char buffer[COMMAND_SIZE];
+	snprintf( buffer, sizeof( buffer ), "Radial Color Graph: %p", variable );
+	Console::Log( c_white, buffer );
+
+	// Find name
+	const char *name = "RadialColorGraph";
+	for( Command &command : CoreConsole::commands )
+	{
+		if( command.payload == reinterpret_cast<void *>( variable ) )
+		{
+			name = &command.string[3];
+		}
+	}
+
+	// Window
+	ObjectInstance window = ui.create_widget( Object::UIWidget_Window_RadialColorGraph );
+	auto windowHandle = ui.handle<Object::UIWidget_Window_RadialColorGraph>( window );
+	if( windowHandle )
+	{
+		windowHandle->graph = variable;
+		windowHandle->x = 64;
+		windowHandle->y = 64;
+		windowHandle->color = c_dkgray;
+		windowHandle->name = name;
+	}
+}
+
+
+static void dvar_radial_float_graph( RadialFloatGraph *variable )
+{
+	// Log
+	char buffer[COMMAND_SIZE];
+	snprintf( buffer, sizeof( buffer ), "Radial Float Graph: %p", variable );
+	Console::Log( c_white, buffer );
+
+	// Find name
+	const char *name = "RadialFloatGraph";
+	for( Command &command : CoreConsole::commands )
+	{
+		if( command.payload == reinterpret_cast<void *>( variable ) )
+		{
+			name = &command.string[3];
+		}
+	}
+
+	// Window
+	ObjectInstance window = ui.create_widget( Object::UIWidget_Window_RadialFloatGraph );
+	auto windowHandle = ui.handle<Object::UIWidget_Window_RadialFloatGraph>( window );
+	if( windowHandle )
+	{
+		windowHandle->graph = variable;
+		windowHandle->x = 64;
+		windowHandle->y = 64;
+		windowHandle->color = c_dkgray;
+		windowHandle->name = name;
+	}
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 CoreConsole::DVar::~DVar()
@@ -1869,6 +1953,34 @@ CoreConsole::DVar::DVar( bool scoped, GfxRenderTarget *variable, const char *def
 		} );
 }
 
+
+CoreConsole::DVar::DVar( bool scoped, RadialColorGraph *variable, const char *definition, const char *description )
+{
+	Assert( variable != nullptr );
+	payload = scoped ? reinterpret_cast<void *>( variable ) : nullptr;
+
+	CoreConsole::DVarInitializer::dvar_register( definition, "", description, variable,
+		CONSOLE_COMMAND_LAMBDA
+		{
+			Assert( payload != nullptr );
+			dvar_radial_color_graph( reinterpret_cast<RadialColorGraph *>( payload ) );
+		} );
+}
+
+
+CoreConsole::DVar::DVar( bool scoped, RadialFloatGraph *variable, const char *definition, const char *description )
+{
+	Assert( variable != nullptr );
+	payload = scoped ? reinterpret_cast<void *>( variable ) : nullptr;
+
+	CoreConsole::DVarInitializer::dvar_register( definition, "", description, variable,
+		CONSOLE_COMMAND_LAMBDA
+		{
+			Assert( payload != nullptr );
+			dvar_radial_float_graph( reinterpret_cast<RadialFloatGraph *>( payload ) );
+		} );
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 CommandHandle Console::command_init( const char *definition, const char *description,
@@ -1922,7 +2034,7 @@ void Console::command_free( const CommandHandle command )
 }
 
 
-void Console::command_set_hidden( const CommandHandle command, const bool hidden )
+void Console::command_set_hidden( const CommandHandle command, bool hidden )
 {
 	Assert( CoreConsole::initialized );
 	Command *cmd = CoreConsole::command( command );
@@ -1932,7 +2044,7 @@ void Console::command_set_hidden( const CommandHandle command, const bool hidden
 }
 
 
-void Console::command_set_enabled( const CommandHandle command, const bool enabled )
+void Console::command_set_enabled( const CommandHandle command, bool enabled )
 {
 	Assert( CoreConsole::initialized );
 	Command *cmd = CoreConsole::command( command );
@@ -1944,9 +2056,9 @@ void Console::command_set_enabled( const CommandHandle command, const bool enabl
 
 void Console::draw( const Delta delta )
 {
-	Region &inputRegion = CoreConsole::inputRegion;
-	Region &candidateRegion = CoreConsole::candidateRegion;
-	Region &logRegion = CoreConsole::logRegion;
+	ConsoleRegion &inputRegion = CoreConsole::inputRegion;
+	ConsoleRegion &candidateRegion = CoreConsole::candidateRegion;
+	ConsoleRegion &logRegion = CoreConsole::logRegion;
 
 	if( !Console::is_open() )
 	{
@@ -2013,7 +2125,7 @@ void Console::draw( const Delta delta )
 
 			const int hasScrollbarV = ( candidateRegion.dimensionsArea.y > candidateRegion.dimensionsView.y );
 			const int hasScrollbarH = ( candidateRegion.dimensionsArea.x > candidateRegion.dimensionsView.x );
-			constexpr int thickness = Region::scrollbarThickness;
+			constexpr int thickness = ConsoleRegion::scrollbarThickness;
 			hoverCandidates = canHover && point_in_rect( mX, mY, bX1, bY1,
 				bX2 + ( hasScrollbarV * thickness ), bY2 + ( hasScrollbarH * thickness ) );
 		}
@@ -2282,7 +2394,7 @@ void Console::dump_log( const char *path )
 }
 
 
-void Console::Log( const Color color, const char *message, ... )
+void Console::Log( Color color, const char *message, ... )
 {
 	va_list args;
 	va_start( args, message );
@@ -2294,7 +2406,7 @@ void Console::Log( const Color color, const char *message, ... )
 }
 
 
-void Console::LogCommand( const Color color, const char *command, const char *message, ... )
+void Console::LogCommand( Color color, const char *command, const char *message, ... )
 {
 	va_list args;
 	va_start( args, message );
@@ -2322,7 +2434,7 @@ usize Console::get_parameter_count()
 }
 
 
-const char *Console::get_parameter_string( const int param, const char *defaultValue )
+const char *Console::get_parameter_string( int param, const char *defaultValue )
 {
 	const Command *const command = get_command();
 	Assert( command != nullptr );
@@ -2331,7 +2443,7 @@ const char *Console::get_parameter_string( const int param, const char *defaultV
 }
 
 
-int Console::get_parameter_int( const int param, const int defaultValue )
+int Console::get_parameter_int( int param, int defaultValue )
 {
 	const char *parameter = Console::get_parameter_string( param );
 	if( parameter[0] == '\0' ) { return defaultValue; }
@@ -2339,7 +2451,7 @@ int Console::get_parameter_int( const int param, const int defaultValue )
 }
 
 
-u32 Console::get_parameter_u32( const int param, const u32 defaultValue )
+u32 Console::get_parameter_u32( int param, u32 defaultValue )
 {
 	const char *parameter = Console::get_parameter_string( param );
 	if( parameter[0] == '\0' ) { return defaultValue; }
@@ -2347,7 +2459,7 @@ u32 Console::get_parameter_u32( const int param, const u32 defaultValue )
 }
 
 
-u64 Console::get_parameter_u64( const int param, const u64 defaultValue )
+u64 Console::get_parameter_u64( int param, u64 defaultValue )
 {
 	const char *parameter = Console::get_parameter_string( param );
 	if( parameter[0] == '\0' ) { return defaultValue; }
@@ -2355,7 +2467,7 @@ u64 Console::get_parameter_u64( const int param, const u64 defaultValue )
 }
 
 
-bool Console::get_parameter_bool( const int param, const bool defaultValue )
+bool Console::get_parameter_bool( int param, bool defaultValue )
 {
 	const char *parameter = Console::get_parameter_string( param );
 	if( parameter[0] == '\0' ) { return defaultValue; }
@@ -2365,7 +2477,7 @@ bool Console::get_parameter_bool( const int param, const bool defaultValue )
 }
 
 
-bool Console::get_parameter_toggle( const int param, const bool currentValue )
+bool Console::get_parameter_toggle( int param, bool currentValue )
 {
 	if( Console::get_parameter_count() <= static_cast<usize>( param ) ) { return !currentValue; }
 	const char *parameter = Console::get_parameter_string( param );
@@ -2376,7 +2488,7 @@ bool Console::get_parameter_toggle( const int param, const bool currentValue )
 }
 
 
-float Console::get_parameter_float( const int param, const float defaultValue )
+float Console::get_parameter_float( int param, float defaultValue )
 {
 	const char *parameter = Console::get_parameter_string( param );
 	if( parameter[0] == '\0' ) { return defaultValue; }
@@ -2384,7 +2496,7 @@ float Console::get_parameter_float( const int param, const float defaultValue )
 }
 
 
-double Console::get_parameter_double( const int param, const double defaultValue )
+double Console::get_parameter_double( int param, double defaultValue )
 {
 	const char *parameter = Console::get_parameter_string( param );
 	if( parameter[0] == '\0' ) { return defaultValue; }

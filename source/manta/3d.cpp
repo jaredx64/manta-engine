@@ -42,7 +42,7 @@ bool ray_intersect_triangle( const float_r3 &ray,
 
 
 bool ray_intersect_triangle_list( const float_r3 &ray,
-	const float_v3 *verts, const usize count, float_r3::hit &hit )
+	const float_v3 *verts, usize count, float_r3::hit &hit )
 {
 	hit.distance = 1e30f;
 	float_r3::hit cur;
@@ -62,7 +62,7 @@ bool ray_intersect_triangle_list( const float_r3 &ray,
 
 
 bool ray_intersect_triangle_list( const float_r3 &ray,
-	const double_v3 *verts, const usize count, float_r3::hit &hit )
+	const double_v3 *verts, usize count, float_r3::hit &hit )
 {
 	hit.distance = 1e30f;
 	float_r3::hit cur;
@@ -120,7 +120,7 @@ bool ray_intersect_triangle( const double_r3 &ray,
 
 
 bool ray_intersect_triangle_list( const double_r3 &ray,
-	const double_v3 *verts, const usize count, double_r3::hit &hit )
+	const double_v3 *verts, usize count, double_r3::hit &hit )
 {
 	hit.distance = 1e30;
 	double_r3::hit cur;
@@ -140,7 +140,7 @@ bool ray_intersect_triangle_list( const double_r3 &ray,
 
 
 bool ray_intersect_triangle_list( const double_r3 &ray,
-	const float_v3 *verts, const usize count, double_r3::hit &hit )
+	const float_v3 *verts, usize count, double_r3::hit &hit )
 {
 	hit.distance = 1e30;
 	double_r3::hit cur;
@@ -548,7 +548,7 @@ static void frustum_draw( const float_v3 *corners, const Color &color, const boo
 }
 
 
-void frustum_draw( const FrustumDouble &frustum, const Color &color, const bool wireframe )
+void frustum_draw( const FrustumDouble &frustum, const Color &color, bool wireframe )
 {
 	float_v3 corners[FRUSTUMCORNER_COUNT];
 	for( int i = 0; i < FRUSTUMCORNER_COUNT; i++ )
@@ -560,7 +560,7 @@ void frustum_draw( const FrustumDouble &frustum, const Color &color, const bool 
 }
 
 
-void frustum_draw( const FrustumFloat &frustum, const Color &color, const bool wireframe )
+void frustum_draw( const FrustumFloat &frustum, const Color &color, bool wireframe )
 {
 	frustum_draw( frustum.corners, color, wireframe );
 }

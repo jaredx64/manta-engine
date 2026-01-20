@@ -21,7 +21,10 @@
 		extern "C" float atanf(float);
 		extern "C" double atan2(double, double);
 		extern "C" float atan2f(float, float);
-
+		extern "C" double fmin(double, double);
+		extern "C" double fmax(double, double);
+		extern "C" float fminf(float, float);
+		extern "C" float fmaxf(float, float);
 		extern "C" float ceilf(float);
 		extern "C" float coshf(float);
 		extern "C" float expf(float);
@@ -52,6 +55,10 @@
 		inline float atanf(float x) { return __builtin_atanf(x); }
 		inline float atan2(double x, double y) { return __builtin_atan2(x, y); }
 		inline float atan2f(float x, float y) { return __builtin_atan2f(x, y); }
+		inline double fmin(double a, double b) { return __builtin_fmin(a, b); }
+		inline double fmax(double a, double b) { return __builtin_fmax(a, b); }
+		inline float fminf(float a, float b) { return __builtin_fminf(a, b); }
+		inline float fmaxf(float a, float b) { return __builtin_fmaxf(a, b); }
 		inline float ceilf(float x) { return __builtin_ceilf(x); }
 		inline float coshf(float x) { return __builtin_coshf(x); }
 		inline float expf(float x) { return __builtin_expf(x); }

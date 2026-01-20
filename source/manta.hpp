@@ -5,6 +5,10 @@
 #include <pipeline.hpp>
 #include <pipeline.generated.hpp>
 
+#if defined( COMPILE_ENGINE )
+#include <configuration.generated.hpp>
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #ifndef PROJECT_NAME
@@ -37,6 +41,10 @@
 
 #ifndef SWAPCHAIN_DPI_SCALED
 	#define SWAPCHAIN_DPI_SCALED ( false )
+#endif
+
+#ifndef DPI_WINDOW
+	#define DPI_WINDOW ( true )
 #endif
 
 #ifndef SWAPCHAIN_DEPTH_ENABLED
@@ -197,20 +205,38 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#ifndef USING_IMAGES
-	#define USING_IMAGES ( 1 )
+#ifndef COMPILE_PROFILING
+	#ifdef COMPILE_DEBUG
+		#define COMPILE_PROFILING ( COMPILE_DEBUG )
+	#else
+		#define COMPILE_PROFILING ( false )
+	#endif
 #endif
 
-#ifndef USING_SOUNDS
-	#define USING_SOUNDS ( 1 )
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#ifndef COMPILE_TERMINAL
+	#define COMPILE_TERMINAL ( 1 )
 #endif
 
-#ifndef USING_SPRITES
-	#define USING_SPRITES ( 1 )
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#ifndef COMPILE_STEAMWORKS
+	#define COMPILE_STEAMWORKS ( 0 )
 #endif
 
-#ifndef USING_FONTS
-	#define USING_FONTS ( 1 )
+#ifndef STEAMWORKS_APP_ID
+	#define STEAMWORKS_APP_ID ( 480 )
+#endif
+
+#ifndef STEAMWORKS_DISTRIBUTE
+	#define STEAMWORKS_DISTRIBUTE ( 0 )
+#endif
+
+#if COMPILE_STEAMWORKS
+	#define STEAMWORKS(x) x
+#else
+	#define STEAMWORKS(x)
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

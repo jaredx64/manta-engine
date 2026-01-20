@@ -22,7 +22,7 @@ fragment_input FragmentInput
 
 fragment_output FragmentOutput
 {
-	float4 color0 target( 0, COLOR );
+	float4 color target( 0, COLOR );
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -51,7 +51,7 @@ void vertex_main( BuiltinVertexPositionColor In, VertexOutput Out, UniformsPipel
 
 void fragment_main( FragmentInput In, FragmentOutput Out )
 {
-	Out.color0 = In.color;
+	Out.color = In.color;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -1,5 +1,7 @@
 #include <core/math.hpp>
 
+#include <core/memory.hpp>
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // DEPTH_RANGE_0_TO_1 for d3d11 (TODO: move these)
@@ -39,33 +41,33 @@ u64 ceilpow2( u64 v )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-double fast_mod( const double x, const double y )
+double fast_mod( double x, double y )
 {
 	return x - ( static_cast<int>( x / y ) ) * y;
 }
 
 
-float fast_modf( const float x, const float y )
+float fast_modf( float x, float y )
 {
 	return x - ( static_cast<int>( x / y ) ) * y;
 }
 
 
-double fast_floor( const double x )
+double fast_floor( double x )
 {
 	const int f = static_cast<int>( x );
 	return static_cast<double>( f - ( f > x ) );
 }
 
 
-float fast_floorf( const float x )
+float fast_floorf( float x )
 {
 	const int f = static_cast<int>( x );
 	return static_cast<float>( f - ( f > x ) );
 }
 
 
-void fast_sin_cos( const double radians, double &sin, double &cos )
+void fast_sin_cos( double radians, double &sin, double &cos )
 {
 	// XMScalarSinCos from <DirectXMath.h>
 
@@ -114,7 +116,7 @@ void fast_sin_cos( const double radians, double &sin, double &cos )
 }
 
 
-void fast_sinf_cosf( const float radians, float &sin, float &cos )
+void fast_sinf_cosf( float radians, float &sin, float &cos )
 {
 	// XMScalarSinCos from <DirectXMath.h>
 
@@ -164,7 +166,7 @@ void fast_sinf_cosf( const float radians, float &sin, float &cos )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-double lerp_degrees( double value1, double value2, const double amount )
+double lerp_degrees( double value1, double value2, double amount )
 {
 	value1 = fmod( value1, 360.0 );
 	if( value1 < 0.0 ) { value1 += 360.0; }
@@ -571,7 +573,7 @@ float_m44 float_m44_build_identity()
 }
 
 
-float_m44 float_m44_build_scaling( const float xscale, const float yscale, const float zscale )
+float_m44 float_m44_build_scaling( float xscale, float yscale, float zscale )
 {
 	float_m44 m = float_m44_build_zeros();
 	m[0x0] = xscale;
@@ -582,7 +584,7 @@ float_m44 float_m44_build_scaling( const float xscale, const float yscale, const
 }
 
 
-float_m44 float_m44_build_translation( const float xtrans, const float ytrans, const float ztrans )
+float_m44 float_m44_build_translation( float xtrans, float ytrans, float ztrans )
 {
 	float_m44 m = float_m44_build_identity();
 	m[0xC] = xtrans;
@@ -592,7 +594,7 @@ float_m44 float_m44_build_translation( const float xtrans, const float ytrans, c
 }
 
 
-float_m44 float_m44_build_rotation_x( const float rad )
+float_m44 float_m44_build_rotation_x( float rad )
 {
 	float s = static_cast<float>( sinf( rad ) );
 	float c = static_cast<float>( cosf( rad ) );
@@ -606,7 +608,7 @@ float_m44 float_m44_build_rotation_x( const float rad )
 }
 
 
-float_m44 float_m44_build_rotation_y( const float rad )
+float_m44 float_m44_build_rotation_y( float rad )
 {
 	float s = static_cast<float>( sinf( rad ) );
 	float c = static_cast<float>( cosf( rad ) );
@@ -620,7 +622,7 @@ float_m44 float_m44_build_rotation_y( const float rad )
 }
 
 
-float_m44 float_m44_build_rotation_z( const float rad )
+float_m44 float_m44_build_rotation_z( float rad )
 {
 	float s = static_cast<float>( sinf( rad ) );
 	float c = static_cast<float>( cosf( rad ) );
@@ -634,7 +636,7 @@ float_m44 float_m44_build_rotation_z( const float rad )
 }
 
 
-float_m44 float_m44_build_rotation_axis( const float x, const float y, const float z, const float rad )
+float_m44 float_m44_build_rotation_axis( float x, float y, float z, float rad )
 {
 	const double c = cosf( rad );
 	const double s = sinf( rad );
@@ -660,9 +662,8 @@ float_m44 float_m44_build_rotation_axis( const float x, const float y, const flo
 	return m;
 }
 
-float_m44 float_m44_build_basis( const float fX, const float fY, const float fZ,
-	const float rX, const float rY, const float rZ,
-	const float uX, const float uY, const float uZ )
+float_m44 float_m44_build_basis( float fX, float fY, float fZ, float rX, float rY, float rZ,
+	float uX, float uY, float uZ )
 {
 	float_m44 m = float_m44_build_zeros();
 	m[0x0] = rX;
@@ -721,8 +722,7 @@ float_m44 float_m44_build_orthographic( float left, float right, float top, floa
 }
 
 
-float_m44 float_m44_build_perspective( const float fov, const float aspect,
-	const float znear, const float zfar )
+float_m44 float_m44_build_perspective( float fov, float aspect, float znear, float zfar )
 {
 	const float x = 1.0f / tanf( fov * ( 0.5f * DEG2RAD_F ) );
 
@@ -755,9 +755,8 @@ float_m44 float_m44_build_perspective( const float fov, const float aspect,
 }
 
 
-float_m44 float_m44_build_lookat( const float x, const float y, const float z,
-	const float xto, const float yto, const float zto,
-	const float xup, const float yup, const float zup )
+float_m44 float_m44_build_lookat( float x, float y, float z, float xto, float yto, float zto,
+	float xup, float yup, float zup )
 {
 	float fX = xto - x;
 	float fY = yto - y;
@@ -804,7 +803,7 @@ float_m44 float_m44_build_lookat( const float x, const float y, const float z,
 }
 
 
-float_m44 float_m44_build_ndc( const float width, const float height )
+float_m44 float_m44_build_ndc( float width, float height )
 {
 	float_m44 m;
 	m[0x0] = width * 0.5;
@@ -1076,7 +1075,7 @@ double_m44 double_m44_multiply( const double_m44 &a, const double_m44 &b )
 }
 
 
-double_m44 double_m44_multiply_scalar( const double_m44 &a, const double scalar )
+double_m44 double_m44_multiply_scalar( const double_m44 &a, double scalar )
 {
 	double_m44 m;
 	for( int i = 0; i < 16; i++ ) { m[i] = a[i] * scalar; }
@@ -1119,7 +1118,7 @@ double_m44 double_m44_build_identity()
 }
 
 
-double_m44 double_m44_build_scaling( const double xscale, const double yscale, const double zscale )
+double_m44 double_m44_build_scaling( double xscale, double yscale, double zscale )
 {
 	double_m44 m = double_m44_build_zeros();
 	m[0x0] = xscale;
@@ -1130,7 +1129,7 @@ double_m44 double_m44_build_scaling( const double xscale, const double yscale, c
 }
 
 
-double_m44 double_m44_build_translation( const double xtrans, const double ytrans, const double ztrans )
+double_m44 double_m44_build_translation( double xtrans, double ytrans, double ztrans )
 {
 	double_m44 m = double_m44_build_identity();
 	m[0xC] = xtrans;
@@ -1140,7 +1139,7 @@ double_m44 double_m44_build_translation( const double xtrans, const double ytran
 }
 
 
-double_m44 double_m44_build_rotation_x( const double rad )
+double_m44 double_m44_build_rotation_x( double rad )
 {
 	double c = cos( rad );
 	double s = sin( rad );
@@ -1154,7 +1153,7 @@ double_m44 double_m44_build_rotation_x( const double rad )
 }
 
 
-double_m44 double_m44_build_rotation_y( const double rad )
+double_m44 double_m44_build_rotation_y( double rad )
 {
 	double c = cos( rad );
 	double s = sin( rad );
@@ -1168,7 +1167,7 @@ double_m44 double_m44_build_rotation_y( const double rad )
 }
 
 
-double_m44 double_m44_build_rotation_z( const double rad )
+double_m44 double_m44_build_rotation_z( double rad )
 {
 	double c = cos( rad );
 	double s = sin( rad );
@@ -1182,7 +1181,7 @@ double_m44 double_m44_build_rotation_z( const double rad )
 }
 
 
-double_m44 double_m44_build_rotation_axis( const double x, const double y, const double z, double rad )
+double_m44 double_m44_build_rotation_axis( double x, double y, double z, double rad )
 {
 	const double c = cos( rad );
 	const double s = sin( rad );
@@ -1208,9 +1207,8 @@ double_m44 double_m44_build_rotation_axis( const double x, const double y, const
 	return m;
 }
 
-double_m44 double_m44_build_basis( const double fX, const double fY, const double fZ,
-	const double rX, const double rY, const double rZ,
-	const double uX, const double uY, const double uZ )
+double_m44 double_m44_build_basis( double fX, double fY, double fZ, double rX, double rY, double rZ,
+	double uX, double uY, double uZ )
 {
 	double_m44 m = double_m44_build_zeros();
 	m[0x0] = rX;
@@ -1269,8 +1267,7 @@ double_m44 double_m44_build_orthographic( double left, double right, double top,
 }
 
 
-double_m44 double_m44_build_perspective( const double fov, const double aspect,
-	const double znear, const double zfar )
+double_m44 double_m44_build_perspective( double fov, double aspect, double znear, double zfar )
 {
 	const double x = 1.0 / tan( fov * ( 0.5 * DEG2RAD ) );
 
@@ -1303,9 +1300,8 @@ double_m44 double_m44_build_perspective( const double fov, const double aspect,
 }
 
 
-double_m44 double_m44_build_lookat( const double x, const double y, const double z,
-	const double xto, const double yto, const double zto,
-	const double xup, const double yup, const double zup )
+double_m44 double_m44_build_lookat( double x, double y, double z, double xto, double yto, double zto,
+	double xup, double yup, double zup )
 {
 	double fX = xto - x;
 	double fY = yto - y;
@@ -1352,7 +1348,7 @@ double_m44 double_m44_build_lookat( const double x, const double y, const double
 }
 
 
-double_m44 double_m44_build_ndc( const double width, const double height )
+double_m44 double_m44_build_ndc( double width, double height )
 {
 	double_m44 m;
 	m[0x0] = width * 0.5;
@@ -1370,6 +1366,97 @@ double_m44 double_m44_from_float_m44( const double_m44 &matrix )
 	double_m44 result;
 	for( int i = 0; i < 16; ++i ) { result.data[i] = static_cast<double>( matrix.data[i] ); }
 	return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+int RadialFloatGraph::add_node( RadialFloatNode node )
+{
+	if( count >= FLOAT_GRAPH_COUNT ) { return -1; }
+
+	int insertIndex = 0;
+	while( insertIndex < count && nodes[insertIndex].time < node.time ) { insertIndex++; }
+
+	if( insertIndex < count )
+	{
+		memory_move( &nodes[insertIndex + 1], &nodes[insertIndex],
+			( count - insertIndex ) * sizeof( RadialFloatNode ) );
+	}
+
+	nodes[insertIndex] = node;
+	count++;
+	return insertIndex;
+}
+
+
+void RadialFloatGraph::remove_node( int index )
+{
+	if( index < count - 1 )
+	{
+		memory_move( &nodes[index], &nodes[index + 1],
+			( count - index - 1 ) * sizeof( RadialFloatNode ) );
+	}
+
+	count--;
+}
+
+
+float RadialFloatGraph::get_value( float time ) const
+{
+	if( count == 0 ) { return 0.0f; }
+	if( count == 1 ) { return nodes[0].value; }
+	const float t = fmod( time, 1.0f );
+
+	int right = -1;
+	for( int i = 0; i < count; i++ )
+	{
+		if( nodes[i].time == t )
+		{
+			return nodes[i].value;
+		}
+
+		if( nodes[i].time > t )
+		{
+			right = i;
+			break;
+		}
+	}
+
+	int left;
+	float span;
+	float localT;
+
+	if( right == -1 )
+	{
+		left = count - 1;
+		right = 0;
+		const float t0 = nodes[left].time;
+		const float t1 = nodes[right].time + 1.0f;
+		span = t1 - t0;
+		localT = ( t - t0 ) / span;
+	}
+	else
+	{
+		left = right - 1;
+		if( left < 0 )
+		{
+			left = count - 1;
+			const float t0 = nodes[left].time;
+			const float t1 = nodes[right].time;
+			span = ( t1 + 1.0f ) - t0;
+			localT = ( t + 1.0f - t0 ) / span;
+		}
+		else
+		{
+			const float t0 = nodes[left].time;
+			const float t1 = nodes[right].time;
+			span = t1 - t0;
+			localT = ( t - t0 ) / span;
+		}
+	}
+
+	if( span <= 0.0f ) { return nodes[left].value; }
+	return lerp( nodes[left].value, nodes[right].value, localT );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

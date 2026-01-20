@@ -112,7 +112,7 @@ char *Keyboard::keyboard_input_buffer()
 }
 
 
-void Keyboard::keyboard_update( const Delta delta )
+void Keyboard::keyboard_update( Delta delta )
 {
 	// Key State
 	for( int key = 0; key < 256; key++ )
@@ -163,25 +163,41 @@ void Mouse::set_active( Mouse &mouse )
 
 float Mouse::x()
 {
+#if DPI_WINDOW
 	return Mouse::state().positionX * Window::scale;
+#else
+	return Mouse::state().positionX;
+#endif
 }
 
 
 float Mouse::y()
 {
+#if DPI_WINDOW
 	return Mouse::state().positionY * Window::scale;
+#else
+	return Mouse::state().positionY;
+#endif
 }
 
 
 float Mouse::x_previous()
 {
+#if DPI_WINDOW
 	return Mouse::state().positionXPrevious * Window::scale;
+#else
+	return Mouse::state().positionXPrevious;
+#endif
 }
 
 
 float Mouse::y_previous()
 {
+#if DPI_WINDOW
 	return Mouse::state().positionYPrevious * Window::scale;
+#else
+	return Mouse::state().positionYPrevious;
+#endif
 }
 
 
@@ -267,7 +283,7 @@ float Mouse::mouse_wheel_velocity_y()
 bool Mouse::mouse_moved()
 {
 	return mouseState.positionX != mouseState.positionXPrevious ||
-           mouseState.positionY != mouseState.positionYPrevious;
+		mouseState.positionY != mouseState.positionYPrevious;
 }
 
 
@@ -277,13 +293,13 @@ void Mouse::mouse_get_position_precise( double &x, double &y )
 }
 
 
-void Mouse::mouse_set_position( const int x, const int y )
+void Mouse::mouse_set_position( int x, int y )
 {
 	CoreWindow::mouse_set_position( x, y );
 }
 
 
-void Mouse::mouse_update( const Delta delta )
+void Mouse::mouse_update( Delta delta )
 {
 	mouseState.buttonPrevious = mouseState.buttonCurrent;
 

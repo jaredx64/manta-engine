@@ -1,0 +1,333 @@
+#include <object_api.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+HEADER_INCLUDES
+#include <core/list.hpp>
+#include <core/color.hpp>
+#include <manta/ui.hpp>
+
+SOURCE_INCLUDES
+#include <core/string.hpp>
+#include <manta/objects.hpp>
+#include <manta/random.hpp>
+#include <manta/draw.hpp>
+#include <manta/window.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+OBJECT( UIWidget_Window_RadialFloatGraph )
+PARENT( UIWidget_Window )
+
+CATEGORY( UI )
+BUCKET_SIZE( 64 )
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+PUBLIC ObjectInstance clipboard;
+PUBLIC ObjectInstance textbox;
+
+PUBLIC const char *name = "";
+PUBLIC RadialFloatGraph *graph = nullptr;
+
+PUBLIC int selectedIndex = 0;
+PUBLIC bool dragging = false;
+
+PUBLIC GfxVertexBuffer<GfxVertex::BuiltinVertexLine> vertexBuffer;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+PROTECTED void init()
+{
+	INHERIT::init();
+
+	width = 660;
+	height = 300;
+
+	vertexBuffer.init( 400, GfxWriteMode_OVERWRITE );
+
+	TextFormat format;
+	format.font = fnt_iosevka;
+	format.size = 24;
+	textbox = context->create_widget_textline( Object::UIWidget_TextBox, 0, 0, 256, 40, format, id );
+	auto textboxHandle = context->handle<Object::UIWidget_TextBox>( textbox );
+	if( textboxHandle )
+	{
+		textboxHandle->set_string( "1.0" );
+		textboxHandle->set_filter( Text::filter_number );
+		textboxHandle->limitCharacters = 32;
+		textboxHandle->hideScrollbars = true;
+
+		textboxHandle->callbackOnUpdate = []( UIContext &context, ObjectInstance widget )
+			{
+				auto widgetHandle =
+					context.handle<Object::UIWidget_TextBox>( widget );
+				Assert( widgetHandle );
+				auto parentHandle =
+					context.handle<Object::UIWidget_Window_RadialFloatGraph>( widgetHandle->parent );
+				Assert( parentHandle );
+
+				widgetHandle->x = 6;
+				widgetHandle->y = parentHandle->height - 48;
+			};
+
+		textboxHandle->callbackOnInteract = []( UIContext &context, ObjectInstance widget )
+			{
+				auto widgetHandle =
+					context.handle<Object::UIWidget_TextBox>( widget );
+				Assert( widgetHandle );
+				auto parentHandle =
+					context.handle<Object::UIWidget_Window_RadialFloatGraph>( widgetHandle->parent );
+				Assert( parentHandle );
+
+				char buffer[64];
+				widgetHandle->get_string( buffer, sizeof( buffer ) );
+				const float value = atof( buffer );
+
+				const int index = parentHandle->selectedIndex;
+				if( index >= 0 ) { parentHandle->graph->nodes[index].value = value; }
+			};
+	}
+
+	clipboard = context->create_widget_button( Object::UIWidget_Button, 0, 0, 128, 40, id );
+	auto clipboardHandle = context->handle<Object::UIWidget_Button>( clipboard );
+	if( clipboardHandle )
+	{
+		clipboardHandle->set_label( "Clipboard" );
+
+		clipboardHandle->callbackOnUpdate = []( UIContext &context, ObjectInstance widget )
+			{
+				auto widgetHandle =
+					context.handle<Object::UIWidget_Button>( widget );
+				Assert( widgetHandle );
+				auto parentHandle =
+					context.handle<Object::UIWidget_Window_RadialFloatGraph>( widgetHandle->parent );
+				Assert( parentHandle );
+
+				widgetHandle->x = parentHandle->width - widgetHandle->width - 6;
+				widgetHandle->y = parentHandle->height - 48;
+			};
+
+		clipboardHandle->callbackOnInteract = []( UIContext &context, ObjectInstance widget )
+			{
+				auto widgetHandle =
+					context.handle<Object::UIWidget_Button>( widget );
+				Assert( widgetHandle );
+				auto parentHandle =
+					context.handle<Object::UIWidget_Window_RadialFloatGraph>( widgetHandle->parent );
+				Assert( parentHandle );
+
+				const RadialFloatGraph *graph = parentHandle->graph;
+				Assert( graph );
+
+				char buffer[16];
+				String name = parentHandle->name[0] == '\0' ? "RadialFloatGraph" : parentHandle->name;
+				name.trim();
+
+				String clipboard = "";
+				for( int i = 0; i < graph->count; i++ )
+				{
+					const RadialFloatNode &node = graph->nodes[i];
+					clipboard.append( name ).append( ".add_node( RadialFloatNode { " );
+					snprintf( buffer, sizeof( buffer ), "%.3ff", node.value );
+					clipboard.append( buffer ).append( ", " );
+					snprintf( buffer, sizeof( buffer ), "%.3ff", node.time );
+					clipboard.append( buffer ).append( " } );\n" );
+				}
+				Window::set_clipboard( clipboard.cstr() );
+			};
+	}
+}
+
+
+PROTECTED void free()
+{
+	Assert( textbox ); context->destroy_widget( textbox );
+	Assert( clipboard ); context->destroy_widget( clipboard );
+	vertexBuffer.free();
+	INHERIT::free();
+}
+
+
+PROTECTED void update( const Delta delta )
+{
+	if( graph == nullptr ) { context->destroy_widget( id ); return; }
+
+	widthMin = 660;
+	widthMax = 1440;
+	heightMin = 400;
+	heightMax = 400;
+
+	INHERIT::update( delta );
+}
+
+
+PROTECTED void render( const Delta delta, const Alpha alpha )
+{
+	if( graph == nullptr ) { context->destroy_widget( id ); return; }
+	INHERIT::render( delta, alpha );
+
+	// Interaction State
+	const bool isInteractable = is_interactable();
+	const bool isHovering = isInteractable && is_hovering();
+
+	// Interaction
+	bool removed = false;
+	int selectedIndexPrevious = selectedIndex;
+	if( Mouse::check_released( mb_left ) ) { dragging = false; }
+
+	// Coordinates
+	const int_v2 b1 = int_v2( x - border, y - border ).multiply( context->matrix_get() );
+	const int_v2 b2 = int_v2( x + width + border, y + height + border ).multiply( context->matrix_get() );
+	const int_v2 c1 = int_v2( x, y ).multiply( context->matrix_get() );
+	const int_v2 c2 = int_v2( x + width, y + height ).multiply( context->matrix_get() );
+
+	// Name
+	draw_rectangle( c1.x, c1.y, c1.x + width, c1.y + 20, Color { 20, 20, 20, 255 } );
+	draw_text_f( fnt_iosevka.bold(), 14, c1.x + 4, c1.y + 4, c_white, "%s", name );
+
+	// Linear Graph
+	const float linearX = 6.0f;
+	const float linearY = 44.0f;
+	const float linearWidth = width - 12.0f;
+	const float linearHeight = 128.0f;
+
+	draw_rectangle( c1.x + linearX, c1.y + linearY, c1.x + linearX + linearWidth,
+		c1.y + linearY + linearHeight, Color { 20, 20, 20, 255 } );
+
+	float valueMin = FLOAT_MAX;
+	float valueMax = FLOAT_MIN;
+	for( int i = 0; i < graph->count; i++ )
+	{
+		const float value = graph->nodes[i].value;
+		valueMin = min( valueMin, value );
+		valueMax = max( valueMax, value );
+	}
+	if( valueMin == valueMax ) { valueMin -= 0.5f; valueMax += 0.5f; }
+	const float valueToRangeNorm = 1.0f / ( valueMax - valueMin );
+
+	auto &vb = vertexBuffer;
+	vb.write_begin();
+	for( int i = 0; i < 400; i++ )
+	{
+		const float time = i / 400.0f;
+		const float value = 1.0f - ( ( graph->get_value( time ) - valueMin ) * valueToRangeNorm );
+		const float_v3 position = float_v3
+			{
+				c1.x + linearX + time * linearWidth,
+				c1.y + linearY + value * linearHeight,
+				0.0f,
+			};
+		vb.write( GfxVertex::BuiltinVertexLine { position, c_white } );
+	}
+	vb.write_end();
+
+	GfxRenderCommand cmd;
+	cmd.shader( Shader::SHADER_DEFAULT_LINE );
+	Gfx::render_command_execute( cmd, [vb]()
+		{
+			Gfx::draw_vertex_buffer( vb, GfxPrimitiveType_LineStrip );
+		} );
+
+	for( int i = 0; i < graph->count; i++ )
+	{
+		RadialFloatNode &node = graph->nodes[i];
+		bool selected = selectedIndex == i;
+		const Color colorWidget = selected ? c_red : c_yellow;
+
+		const float widgetX = linearX + node.time * linearWidth;
+
+		draw_rectangle( c1.x + widgetX, c1.y + linearY - 1,
+			c1.x + widgetX + 2, c1.y + linearY + linearHeight + 3, c_black );
+		draw_rectangle( c1.x + widgetX - 1, c1.y + linearY - 2,
+			c1.x + widgetX + 1, c1.y + linearY + linearHeight + 2, colorWidget );
+
+		const int_v2 valueWidth = text_dimensions_f( fnt_iosevka, 12, "%.3f", node.value );
+		draw_text_f( fnt_iosevka, 12, c1.x + widgetX - valueWidth.x * 0.5f,
+			c1.y + linearY - 6 - valueWidth.y, c_white, "%.3f", node.value );
+
+		const bool hoverTail = (
+			mouse_x_logical >= c1.x + widgetX - 2 &&
+			mouse_x_logical <= c1.x +widgetX + 2 &&
+			mouse_y_logical >= c1.y +linearY - 4 &&
+			mouse_y_logical <= c1.y +linearY + linearHeight + 2 );
+		const bool hoverHead = (
+			mouse_x_logical >= c1.x + widgetX - 2 &&
+			mouse_x_logical <= c1.x + widgetX + 2 &&
+			mouse_y_logical >= c1.y + linearY - 20 &&
+			mouse_y_logical <= c1.y + linearY - 2 );
+
+		if( isHovering && ( hoverHead || hoverTail ) )
+		{
+			if( Mouse::check_pressed( mb_left ) )
+			{
+				selectedIndex = i;
+				dragging = true;
+			}
+
+			if( Mouse::check_pressed( mb_right ) )
+			{
+				if( graph->count > 1 )
+				{
+					if( selected ) { selectedIndex = -1; }
+					graph->remove_node( i );
+					removed = true;
+				}
+			}
+		}
+
+		if( selected )
+		{
+			const int_v2 textWidth = text_dimensions_f( fnt_iosevka, 12, "%.3f", node.time );
+			draw_text_f( fnt_iosevka, 12, c1.x + widgetX - textWidth.x * 0.5f,
+				c1.y + linearY + linearHeight + 6, colorWidget, "%.3f", node.time );
+		}
+	}
+
+	// Dragging
+	if( dragging && selectedIndex >= 0 && selectedIndex < graph->count )
+	{
+		const float time = clamp( ( mouse_x - linearX - c1.x ) / linearWidth, 0.0f, 1.0f );
+		RadialFloatNode node = graph->nodes[selectedIndex];
+		graph->remove_node( selectedIndex );
+		node.time = time;
+		selectedIndex = graph->add_node( node );
+		state = WindowState_Resize_None;
+	}
+
+	// Addition
+	if( isHovering && Mouse::check_pressed( mb_right ) && !removed && graph->count < 32 )
+	{
+		if( mouse_x_logical >= c1.x + linearX && mouse_x_logical < c1.x + linearX + linearWidth &&
+			mouse_y_logical >= c1.y + linearY && mouse_y_logical < c1.y + linearY + linearHeight )
+		{
+			const float time = clamp( ( mouse_x - linearX - c1.x ) / linearWidth, 0.0f, 1.0f );
+			RadialFloatNode node { graph->get_value( time ), time };
+			selectedIndex = graph->add_node( node );
+		}
+	}
+
+	// Selection
+	if( selectedIndexPrevious != selectedIndex && selectedIndex >= 0 )
+	{
+		const RadialFloatNode &node = graph->nodes[selectedIndex];
+		auto textboxHandle = context->handle<Object::UIWidget_TextBox>( textbox );
+		Assert( textboxHandle );
+
+		char buffer[64];
+		snprintf( buffer, sizeof( buffer ), "%.6f", node.value );
+		char *p = buffer + strlen( buffer ) - 1;
+		while( p > buffer && *p == '0' ) { *p-- = '\0'; }
+		if( *p == '.' ) { *p = '\0'; }
+
+		textboxHandle->set_string( buffer );
+	}
+}
+
+
+// PROTECTED void apply_matrix() { INHERIT::apply_matrix(); }
+
+
+// PROTECTED bool contains_point( const float_v2 point ) { INHERIT::contains_point(); }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

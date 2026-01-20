@@ -15,10 +15,12 @@ using GLdouble = double;
 using GLboolean = unsigned char;
 using GLubyte = unsigned char;
 using GLuint = unsigned int;
+using GLuint64 = unsigned long long;
 using GLenum = unsigned int;
 using GLbitfield = unsigned int;
 using GLfloat = float;
 using GLclampf = float;
+typedef struct __GLsync *GLsync;
 
 #if PIPELINE_OS_WINDOWS
 	using GLsizeiptr = signed long long;
@@ -773,6 +775,9 @@ struct OpenGLInputLayoutFormats
 	#define nglDrawElementsInstanced glDrawElementsInstanced
 	#define nglDrawArraysInstanced glDrawArraysInstanced
 	#define nglFlushMappedBufferRange glFlushMappedBufferRange
+	#define nglFenceSync glFenceSync
+	#define nglDeleteSync glDeleteSync
+	#define nglClientWaitSync glClientWaitSync
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

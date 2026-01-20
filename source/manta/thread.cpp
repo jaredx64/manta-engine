@@ -20,7 +20,7 @@ bool CoreThread::free()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Semaphore::init( const int initialCount )
+void Semaphore::init( int initialCount )
 {
 	count = initialCount;
 	mutex.init();
@@ -81,7 +81,7 @@ u16 Atomic_U16::load() const
 }
 
 
-void Atomic_U16::store( const u16 value )
+void Atomic_U16::store( u16 value )
 {
 #if defined( ATOMIC_MSVC )
 	v = value;
@@ -91,7 +91,7 @@ void Atomic_U16::store( const u16 value )
 }
 
 
-u16 Atomic_U16::fetch_add( const u16 value )
+u16 Atomic_U16::fetch_add( u16 value )
 {
 #if defined( ATOMIC_MSVC )
 	return _InterlockedExchangeAdd16( reinterpret_cast<volatile short*>( &v ), static_cast<short>( value ) );
@@ -100,7 +100,7 @@ u16 Atomic_U16::fetch_add( const u16 value )
 #endif
 }
 
-u16 Atomic_U16::fetch_sub( const u16 value )
+u16 Atomic_U16::fetch_sub( u16 value )
 {
 #if defined( ATOMIC_MSVC )
 	return _InterlockedExchangeAdd16( reinterpret_cast<volatile short*>( &v ), -static_cast<short>( value ) );
@@ -110,7 +110,7 @@ u16 Atomic_U16::fetch_sub( const u16 value )
 }
 
 
-u16 Atomic_U16::fetch_or( const u16 value)
+u16 Atomic_U16::fetch_or( u16 value)
 {
 #if defined( ATOMIC_MSVC )
 	short o;
@@ -122,7 +122,7 @@ u16 Atomic_U16::fetch_or( const u16 value)
 }
 
 
-u16 Atomic_U16::fetch_and( const u16 value )
+u16 Atomic_U16::fetch_and( u16 value )
 {
 #if defined( ATOMIC_MSVC )
 	short o;
@@ -134,7 +134,7 @@ u16 Atomic_U16::fetch_and( const u16 value )
 }
 
 
-u16 Atomic_U16::fetch_xor( const u16 value )
+u16 Atomic_U16::fetch_xor( u16 value )
 {
 #if defined( ATOMIC_MSVC )
 	short o;
@@ -146,7 +146,7 @@ u16 Atomic_U16::fetch_xor( const u16 value )
 }
 
 
-u16 Atomic_U16::exchange( const u16 value )
+u16 Atomic_U16::exchange( u16 value )
 {
 #if defined( ATOMIC_MSVC )
 	return _InterlockedExchange16( reinterpret_cast<volatile short*>( &v ), static_cast<short>( value ) );
@@ -156,7 +156,7 @@ u16 Atomic_U16::exchange( const u16 value )
 }
 
 
-bool Atomic_U16::compare_exchange_strong( u16 &expected, const u16 desired )
+bool Atomic_U16::compare_exchange_strong( u16 &expected, u16 desired )
 {
 #if defined( ATOMIC_MSVC )
 	u16 e = expected;
@@ -183,7 +183,7 @@ u32 Atomic_U32::load() const
 #endif
 }
 
-void Atomic_U32::store( const u32 value )
+void Atomic_U32::store( u32 value )
 {
 #if defined( ATOMIC_MSVC )
 	v = value;
@@ -193,7 +193,7 @@ void Atomic_U32::store( const u32 value )
 }
 
 
-u32 Atomic_U32::fetch_add( const u32 value )
+u32 Atomic_U32::fetch_add( u32 value )
 {
 #if defined( ATOMIC_MSVC )
 	return _InterlockedExchangeAdd( reinterpret_cast<volatile long*>( &v ), static_cast<long>( value ) );
@@ -203,7 +203,7 @@ u32 Atomic_U32::fetch_add( const u32 value )
 }
 
 
-u32 Atomic_U32::fetch_sub( const u32 value )
+u32 Atomic_U32::fetch_sub( u32 value )
 {
 #if defined( ATOMIC_MSVC )
 	return _InterlockedExchangeAdd( reinterpret_cast<volatile long*>( &v ), -static_cast<long>( value ) );
@@ -213,7 +213,7 @@ u32 Atomic_U32::fetch_sub( const u32 value )
 }
 
 
-u32 Atomic_U32::fetch_or( const u32 value )
+u32 Atomic_U32::fetch_or( u32 value )
 {
 #if defined( ATOMIC_MSVC )
 	return _InterlockedOr( reinterpret_cast<volatile long*>( &v ), static_cast<long>( value ) );
@@ -223,7 +223,7 @@ u32 Atomic_U32::fetch_or( const u32 value )
 }
 
 
-u32 Atomic_U32::fetch_and( const u32 value )
+u32 Atomic_U32::fetch_and( u32 value )
 {
 #if defined( ATOMIC_MSVC )
 	return _InterlockedAnd( reinterpret_cast<volatile long*>( &v ), static_cast<long>( value ) );
@@ -233,7 +233,7 @@ u32 Atomic_U32::fetch_and( const u32 value )
 }
 
 
-u32 Atomic_U32::fetch_xor( const u32 value )
+u32 Atomic_U32::fetch_xor( u32 value )
 {
 #if defined( ATOMIC_MSVC )
 	return _InterlockedXor( reinterpret_cast<volatile long*>( &v ), static_cast<long>( value ) );
@@ -243,7 +243,7 @@ u32 Atomic_U32::fetch_xor( const u32 value )
 }
 
 
-u32 Atomic_U32::exchange( const u32 value )
+u32 Atomic_U32::exchange( u32 value )
 {
 #if defined( ATOMIC_MSVC )
 	return _InterlockedExchange( reinterpret_cast<volatile long*>( &v ), static_cast<long>( value ) );
@@ -253,7 +253,7 @@ u32 Atomic_U32::exchange( const u32 value )
 }
 
 
-bool Atomic_U32::compare_exchange_strong( u32 &expected, const u32 desired )
+bool Atomic_U32::compare_exchange_strong( u32 &expected, u32 desired )
 {
 #if defined( ATOMIC_MSVC )
 	u32 e = expected;
@@ -281,7 +281,7 @@ u64 Atomic_U64::load() const
 }
 
 
-void Atomic_U64::store( const u64 value )
+void Atomic_U64::store( u64 value )
 {
 #if defined( ATOMIC_MSVC )
 	_InterlockedExchange64( reinterpret_cast<volatile long long*>( &v ), static_cast<long long>( value ) );
@@ -291,7 +291,7 @@ void Atomic_U64::store( const u64 value )
 }
 
 
-u64 Atomic_U64::fetch_add( const u64 value )
+u64 Atomic_U64::fetch_add( u64 value )
 {
 #if defined( ATOMIC_MSVC )
 	return _InterlockedExchangeAdd64( reinterpret_cast<volatile long long*>( &v ), static_cast<long long>( value ) );
@@ -301,7 +301,7 @@ u64 Atomic_U64::fetch_add( const u64 value )
 }
 
 
-u64 Atomic_U64::fetch_sub( const u64 value )
+u64 Atomic_U64::fetch_sub( u64 value )
 {
 #if defined( ATOMIC_MSVC )
 	return _InterlockedExchangeAdd64( reinterpret_cast<volatile long long*>( &v ), -static_cast<long long>( value ) );
@@ -311,7 +311,7 @@ u64 Atomic_U64::fetch_sub( const u64 value )
 }
 
 
-u64 Atomic_U64::fetch_or( const u64 value )
+u64 Atomic_U64::fetch_or( u64 value )
 {
 #if defined( ATOMIC_MSVC )
 	return _InterlockedOr64( reinterpret_cast<volatile long long*>( &v ), static_cast<long long>( value ) );
@@ -321,7 +321,7 @@ u64 Atomic_U64::fetch_or( const u64 value )
 }
 
 
-u64 Atomic_U64::fetch_and( const u64 value )
+u64 Atomic_U64::fetch_and( u64 value )
 {
 #if defined( ATOMIC_MSVC )
 	return _InterlockedAnd64( reinterpret_cast<volatile long long*>( &v ), static_cast<long long>( value ) );
@@ -331,7 +331,7 @@ u64 Atomic_U64::fetch_and( const u64 value )
 }
 
 
-u64 Atomic_U64::fetch_xor( const u64 value )
+u64 Atomic_U64::fetch_xor( u64 value )
 {
 #if defined( ATOMIC_MSVC )
 	return _InterlockedXor64( reinterpret_cast<volatile long long*>( &v ), static_cast<long long>( value ) );
@@ -341,7 +341,7 @@ u64 Atomic_U64::fetch_xor( const u64 value )
 }
 
 
-u64 Atomic_U64::exchange( const u64 value )
+u64 Atomic_U64::exchange( u64 value )
 {
 #if defined( ATOMIC_MSVC )
 	return _InterlockedExchange64( reinterpret_cast<volatile long long*>( &v ), static_cast<long long>( value ) );
@@ -351,7 +351,7 @@ u64 Atomic_U64::exchange( const u64 value )
 }
 
 
-bool Atomic_U64::compare_exchange_strong( u64 &expected, const u64 desired )
+bool Atomic_U64::compare_exchange_strong( u64 &expected, u64 desired )
 {
 #if defined( ATOMIC_MSVC )
 	long long e = static_cast<long long>( expected );

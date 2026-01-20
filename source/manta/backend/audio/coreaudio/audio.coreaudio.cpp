@@ -7,22 +7,11 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// The number of buffers in the audio queue.
 #define BUFFERS 2
-
-// The number of channels to output.
 #define CHANNELS 2
-
-// The number of samples per second to output.
 #define SAMPLE_RATE 44100
-
-// The number of bytes in a 16-bit stereo audio frame.
 #define FRAME_SIZE 4
-
-// The minimum acceptable sound latency in milliseconds.
 #define LATENCY_MS 30
-
-// The minimum size of the shared buffer between us and Core Audio.
 #define BUFFER_SIZE ( ( static_cast<int>( LATENCY_MS * ( SAMPLE_RATE / 1000.0 ) ) * FRAME_SIZE ) / BUFFERS )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -32,13 +21,13 @@ static void output_callback( void *data, AudioQueueRef queue, AudioQueueBufferRe
 	UInt32 bytes = buffer->mAudioDataBytesCapacity;
 	UInt32 frames = bytes / FRAME_SIZE;
 
-	// Let Core Audio know we're gonna be using the entire buffer.
+	// Let Core Audio know we're gonna be using the entire buffer
     buffer->mAudioDataByteSize = bytes;
 
-	// Finally, we can mix the audio!
+	// Mix the audio
 	CoreAudio::audio_mixer( reinterpret_cast<i16 *>( buffer->mAudioData ), static_cast<u32>( frames ) );
 
-	// Re-enqueue this buffer.
+	// Re-enqueue this buffer
 	AudioQueueEnqueueBuffer( queue, buffer, 0, nullptr );
 }
 
@@ -79,7 +68,7 @@ bool CoreAudio::init_backend()
 
 		// This will prime the buffer to make sure we have audio data before
 		// trying to play anything, and it will also enqueue the buffer to be
-		// played for the first time.
+		// played for the first time
 		output_callback( nullptr, queue, buffers[i] );
 	}
 

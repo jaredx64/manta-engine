@@ -9,13 +9,13 @@ Random::Random()
 }
 
 
-Random::Random( const u64 seed )
+Random::Random( u64 seed )
 {
 	this->seed( seed );
 }
 
 
-void Random::seed( const u64 seed )
+void Random::seed( u64 seed )
 {
 	state = 0;
 	where = ( seed << 1 ) | 1;
@@ -39,7 +39,7 @@ u32 Random::base()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-int Random::next_int( const int min, const int max )
+int Random::next_int( int min, int max )
 {
 	u32 x = base();
 	u64 m = static_cast<u64>( x ) * static_cast<u64>( max - min + 1 );
@@ -47,14 +47,14 @@ int Random::next_int( const int min, const int max )
 }
 
 
-int Random::next_int( const int max )
+int Random::next_int( int max )
 {
 	u32 x = base();
 	u64 m = static_cast<u64>( x ) * static_cast<u64>( max + 1 );
 	return ( m >> 32 );
 }
 
-u64 Random::next_u64( const u64 min, const u64 max )
+u64 Random::next_u64( u64 min, u64 max )
 {
 	u32 x = base();
 	u64 m = static_cast<u64>( x ) * static_cast<u64>( max - min + 1 );
@@ -62,7 +62,7 @@ u64 Random::next_u64( const u64 min, const u64 max )
 }
 
 
-u64 Random::next_u64( const u64 max )
+u64 Random::next_u64( u64 max )
 {
 	u32 x = base();
 	u64 m = static_cast<u64>( x ) * static_cast<u64>( max + 1 );
@@ -70,7 +70,7 @@ u64 Random::next_u64( const u64 max )
 }
 
 
-u32 Random::next_u32( const u32 min, const u32 max )
+u32 Random::next_u32( u32 min, u32 max )
 {
 	u32 x = base();
 	u64 m = static_cast<u64>( x ) * static_cast<u64>( max - min + 1 );
@@ -78,7 +78,7 @@ u32 Random::next_u32( const u32 min, const u32 max )
 }
 
 
-u32 Random::next_u32( const u32 max )
+u32 Random::next_u32( u32 max )
 {
 	u32 x = base();
 	u64 m = static_cast<u64>( x ) * static_cast<u64>( max + 1 );
@@ -86,7 +86,7 @@ u32 Random::next_u32( const u32 max )
 }
 
 
-u16 Random::next_u16( const u16 min, const u16 max )
+u16 Random::next_u16( u16 min, u16 max )
 {
 	u32 x = base();
 	u64 m = static_cast<u64>( x ) * static_cast<u64>( max - min + 1 );
@@ -94,7 +94,7 @@ u16 Random::next_u16( const u16 min, const u16 max )
 }
 
 
-u16 Random::next_u16( const u16 max )
+u16 Random::next_u16( u16 max )
 {
 	u32 x = base();
 	u64 m = static_cast<u64>( x ) * static_cast<u64>( max + 1 );
@@ -102,7 +102,7 @@ u16 Random::next_u16( const u16 max )
 }
 
 
-u8 Random::next_u8( const u8 min, const u8 max )
+u8 Random::next_u8( u8 min, u8 max )
 {
 	u32 x = base();
 	u64 m = static_cast<u64>( x ) * static_cast<u64>( max - min + 1 );
@@ -110,7 +110,7 @@ u8 Random::next_u8( const u8 min, const u8 max )
 }
 
 
-u8 Random::next_u8( const u8 max )
+u8 Random::next_u8( u8 max )
 {
 	u32 x = base();
 	u64 m = static_cast<u64>( x ) * static_cast<u64>( max + 1 );
@@ -118,25 +118,25 @@ u8 Random::next_u8( const u8 max )
 }
 
 
-float Random::next_float( const float min, const float max )
+float Random::next_float( float min, float max )
 {
 	return base() * 0x1.0p-32f * ( max - min ) + min;
 }
 
 
-float Random::next_float( const float max )
+float Random::next_float( float max )
 {
 	return base() * 0x1.0p-32f * max;
 }
 
 
-double Random::next_double( const double min, const double max )
+double Random::next_double( double min, double max )
 {
 	return base() * 0x1.0p-32 * ( max - min ) + min;
 }
 
 
-double Random::next_double( const double max )
+double Random::next_double( double max )
 {
 	return base() * 0x1.0p-32 * max;
 }

@@ -77,82 +77,82 @@ extern u64 ceilpow2( u64 v );
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #if !USE_OFFICIAL_HEADERS
-inline float fabsf( const float value ) { return static_cast<float>( fabs( value ) ); }
+inline float fabsf( float value ) { return static_cast<float>( fabs( value ) ); }
 #endif
 
-extern double fast_mod( const float x, const float y );
-extern float fast_modf( const float x, const float y );
+extern double fast_mod( float x, float y );
+extern float fast_modf( float x, float y );
 
-extern double fast_floor( const double x );
-extern float fast_floorf( const float x );
+extern double fast_floor( double x );
+extern float fast_floorf( float x );
 
-extern void fast_sin_cos( const double radians, double &sin, double &cos );
-extern void fast_sinf_cosf( const float radians, float &sin, float &cos );
+extern void fast_sin_cos( double radians, double &sin, double &cos );
+extern void fast_sinf_cosf( float radians, float &sin, float &cos );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template <typename T> inline T lengthdir_x( const T dist, const double degrees )
+template <typename T> inline T lengthdir_x( T dist, double degrees )
 {
 	return static_cast<T>( static_cast<double>( dist ) * cos( degrees * DEG2RAD ) );
 }
 
 
-template <typename T> inline T lengthdir_x( const T dist, const float degrees )
+template <typename T> inline T lengthdir_x( T dist, float degrees )
 {
 	return static_cast<T>( static_cast<float>( dist ) * cosf( degrees * DEG2RAD_F ) );
 }
 
 
-template <typename T> inline T lengthdir_y( const T dist, const double degrees )
+template <typename T> inline T lengthdir_y( T dist, double degrees )
 {
 	return static_cast<T>( static_cast<double>( dist ) * sin( degrees * DEG2RAD_F ) );
 }
 
 
-template <typename T> inline T lengthdir_y( const T dist, const float degrees )
+template <typename T> inline T lengthdir_y( T dist, float degrees )
 {
 	return static_cast<T>( static_cast<float>( dist ) * sinf( degrees * DEG2RAD_F ) );
 }
 
 
-template <typename T> inline T lengthdir_x_rad( const T dist, const double radians )
+template <typename T> inline T lengthdir_x_rad( T dist, double radians )
 {
 	return static_cast<T>( static_cast<double>( dist ) * cos( radians ) );
 }
 
 
-template <typename T> inline T lengthdir_x_rad( const T dist, const float radians )
+template <typename T> inline T lengthdir_x_rad( T dist, float radians )
 {
 	return static_cast<T>( static_cast<float>( dist ) * cosf( radians ) );
 }
 
 
-template <typename T> inline T lengthdir_y_rad( const T dist, const double radians )
+template <typename T> inline T lengthdir_y_rad( T dist, double radians )
 {
 	return static_cast<T>( static_cast<double>( dist ) * sin( radians ) );
 }
 
 
-template <typename T> inline T lengthdir_y_rad( const T dist, const float radians )
+template <typename T> inline T lengthdir_y_rad( T dist, float radians )
 {
 	return static_cast<T>( static_cast<float>( dist ) * sinf( radians ) );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template <typename T> inline T min( const T val1, const T val2 )
+template <typename T> inline T min( T val1, T val2 )
 {
 	return ( val1 < val2 ) ? val1 : val2;
 }
 
 
-template <typename T> inline T max( const T val1, const T val2 )
+template <typename T> inline T max( T val1, T val2 )
 {
 	return ( val1 > val2 ) ? val1 : val2;
 }
 
 
-template <typename T> constexpr T clamp( T value, const T min, const T max )
+template <typename T> constexpr T clamp( T value, T min, T max )
 {
 	if( value < min ) { value = min; }
 	if( value > max ) { value = max; }
@@ -180,27 +180,42 @@ extern double lerp_radians( double value1, double value2, double amount );
 extern float lerp_radians( float value1, float value2, float amount );
 
 
-template <typename T> inline T lerp( const T value1, const T value2, const float amount )
+template <typename T> inline T lerp( T value1, T value2, float amount )
 {
 	return static_cast<T>( value1 + ( value2 - value1 ) * amount );
 }
 
 
-template <typename T> inline void lerp( const T &value1, const T value2, const float amount, T &result )
+template <typename T> inline void lerp( const T &value1, T value2, float amount, T &result )
 {
 	result = static_cast<T>( value1 + ( value2 - value1 ) * amount );
 }
 
 
-template <typename T> inline T lerp_delta( const T &value1, const T value2, const float amount, const Delta delta )
+template <typename T> inline T lerp_delta( const T &value1, T value2, float amount, Delta delta )
 {
 	return lerp( value1, value2, 1.0f - expf( -amount * delta ) );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template <typename T>
-inline bool tween( T &variable, const T target, const T factor, const Delta delta, const float threshold = 0.25f )
+template <typename T> inline bool tween( T &variable, T target, T factor, Delta delta, double threshold = 0.25 )
+{
+	if( fabs( static_cast<double>( variable - target ) ) < static_cast<double>( threshold ) )
+	{
+		variable = target;
+		return false;
+	}
+	else
+	{
+		variable += static_cast<T>( static_cast<double>( target - variable ) /
+			max( static_cast<double>( factor / delta ), 1.0 ) );
+		return true;
+	}
+}
+
+
+template <typename T> inline bool tweenf( T &variable, T target, T factor, Delta delta, float threshold = 0.25f )
 {
 	if( fabs( static_cast<double>( variable - target ) ) < static_cast<double>( threshold ) )
 	{
@@ -217,20 +232,17 @@ inline bool tween( T &variable, const T target, const T factor, const Delta delt
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-inline bool point_in_rect( const int px, const int py,
-	const int x1, const int y1, const int x2, const int y2 )
+inline bool point_in_rect( int px, int py, int x1, int y1, int x2, int y2 )
 {
 	return ( px >= x1 && px <= x2 && py >= y1 && py <= y2 );
 }
 
-inline bool point_in_rect( const float px, const float py,
-	const float x1, const float y1, const float x2, const float y2 )
+inline bool point_in_rect( float px, float py, float x1, float y1, float x2, float y2 )
 {
 	return ( px >= x1 && px <= x2 && py >= y1 && py <= y2 );
 }
 
-inline bool point_in_rect( const double px, const double py,
-	const double x1, const double y1, const double x2, const double y2 )
+inline bool point_in_rect( double px, double py, double x1, double y1, double x2, double y2 )
 {
 	return ( px >= x1 && px <= x2 && py >= y1 && py <= y2 );
 }
@@ -251,7 +263,7 @@ extern float_m44 float_m44_inverse( const float_m44 &matrix );
 
 extern float_m44 float_m44_multiply( const float_m44 &matrixA, const float_m44 &matrixB );
 
-extern float_m44 float_m44_multiply_scalar( const float_m44 &matrixA, const float scalar );
+extern float_m44 float_m44_multiply_scalar( const float_m44 &matrixA, float scalar );
 
 extern float_m44 float_m44_add( const float_m44 &matrixA, const float_m44 &matrixB );
 
@@ -261,33 +273,30 @@ extern float_m44 float_m44_build_zeros();
 
 extern float_m44 float_m44_build_identity();
 
-extern float_m44 float_m44_build_scaling( const float xscale, const float yscale, const float zscale );
+extern float_m44 float_m44_build_scaling( float xscale, float yscale, float zscale );
 
-extern float_m44 float_m44_build_translation( const float xtrans, const float ytrans, const float ztrans );
+extern float_m44 float_m44_build_translation( float xtrans, float ytrans, float ztrans );
 
-extern float_m44 float_m44_build_rotation_x( const float rad );
+extern float_m44 float_m44_build_rotation_x( float rad );
 
-extern float_m44 float_m44_build_rotation_y( const float rad );
+extern float_m44 float_m44_build_rotation_y( float rad );
 
-extern float_m44 float_m44_build_rotation_z( const float rad );
+extern float_m44 float_m44_build_rotation_z( float rad );
 
-extern float_m44 float_m44_build_rotation_axis( const float x, const float y, const float z, const float rad );
+extern float_m44 float_m44_build_rotation_axis( float x, float y, float z, float rad );
 
-extern float_m44 float_m44_build_basis( const float fX, const float fY, const float fZ,
-	const float rX, const float rY, const float rZ,
-	const float uX, const float uY, const float uZ );
+extern float_m44 float_m44_build_basis( float fX, float fY, float fZ, float rX, float rY, float rZ,
+	float uX, float uY, float uZ );
 
 extern float_m44 float_m44_build_orthographic( float left, float right, float top, float bottom,
 	float znear, float zfar );
 
-extern float_m44 float_m44_build_perspective( const float fov, const float aspect, const float znear,
-	const float zfar );
+extern float_m44 float_m44_build_perspective( float fov, float aspect, float znear, float zfar );
 
-extern float_m44 float_m44_build_lookat( const float x, const float y, const float z,
-	const float xto, const float yto, const float zto,
-	const float xup, const float yup, const float zup );
+extern float_m44 float_m44_build_lookat( float x, float y, float z, float xto, float yto, float zto,
+	float xup, float yup, float zup );
 
-extern float_m44 float_m44_build_ndc( const float width, const float height );
+extern float_m44 float_m44_build_ndc( float width, float height );
 
 extern float_m44 float_m44_from_double_m44( const double_m44 &matrix );
 
@@ -305,8 +314,8 @@ struct float_m44
 
 	explicit operator double_m44() const;
 
-	float &operator[]( const int index ) { return data[index]; }
-	float operator[]( const int index ) const { return data[index]; }
+	float &operator[]( int index ) { return data[index]; }
+	float operator[]( int index ) const { return data[index]; }
 	bool operator==( const float_m44 &matrix ) { return float_m44_equal( *this, matrix ); }
 };
 
@@ -321,7 +330,7 @@ extern double_m44 double_m44_inverse( const double_m44 &matrix );
 
 extern double_m44 double_m44_multiply( const double_m44 &matrixA, const double_m44 &matrixB );
 
-extern double_m44 double_m44_multiply_scalar( const double_m44 &matrixA, const double scalar );
+extern double_m44 double_m44_multiply_scalar( const double_m44 &matrixA, double scalar );
 
 extern double_m44 double_m44_add( const double_m44 &matrixA, const double_m44 &matrixB );
 
@@ -331,33 +340,30 @@ extern double_m44 double_m44_build_zeros();
 
 extern double_m44 double_m44_build_identity();
 
-extern double_m44 double_m44_build_scaling( const double xscale, const double yscale, const double zscale );
+extern double_m44 double_m44_build_scaling( double xscale, double yscale, double zscale );
 
-extern double_m44 double_m44_build_translation( const double xtrans, const double ytrans, const double ztrans );
+extern double_m44 double_m44_build_translation( double xtrans, double ytrans, double ztrans );
 
-extern double_m44 double_m44_build_rotation_x( const double rad );
+extern double_m44 double_m44_build_rotation_x( double rad );
 
-extern double_m44 double_m44_build_rotation_y( const double rad );
+extern double_m44 double_m44_build_rotation_y( double rad );
 
-extern double_m44 double_m44_build_rotation_z( const double rad );
+extern double_m44 double_m44_build_rotation_z( double rad );
 
-extern double_m44 double_m44_build_rotation_axis( const double x, const double y, const double z, const double rad );
+extern double_m44 double_m44_build_rotation_axis( double x, double y, double z, double rad );
 
-extern double_m44 double_m44_build_basis( const double fX, const double fY, const double fZ,
-	const double rX, const double rY, const double rZ,
-	const double uX, const double uY, const double uZ );
+extern double_m44 double_m44_build_basis( double fX, double fY, double fZ, double rX, double rY, double rZ,
+	double uX, double uY, double uZ );
 
 extern double_m44 double_m44_build_orthographic( double left, double right, double top, double bottom,
 	double znear, double zfar );
 
-extern double_m44 double_m44_build_perspective( const double fov, const double aspect,
-	const double znear, const double zfar );
+extern double_m44 double_m44_build_perspective( double fov, double aspect, double znear, double zfar );
 
-extern double_m44 double_m44_build_lookat( const double x, const double y, const double z,
-	const double xto, const double yto, const double zto,
-	const double xup, const double yup, const double zup );
+extern double_m44 double_m44_build_lookat( double x, double y, double z, double xto, double yto, double zto,
+	double xup, double yup, double zup );
 
-extern double_m44 double_m44_build_ndc( const double width, const double height );
+extern double_m44 double_m44_build_ndc( double width, double height );
 
 extern double_m44 double_m44_from_float_m44( const double_m44 &matrix );
 
@@ -375,8 +381,8 @@ struct double_m44
 
 	explicit operator float_m44() const;
 
-	double &operator[]( const int index ) { return data[index]; }
-	double operator[]( const int index ) const { return data[index]; }
+	double &operator[]( int index ) { return data[index]; }
+	double operator[]( int index ) const { return data[index]; }
 	bool operator==( const double_m44 &matrix ) { return double_m44_equal( *this, matrix ); }
 };
 
@@ -389,8 +395,8 @@ struct Vector2D
 	using VectorType = Vector2D<T>;
 	T x, y;
 
-	Vector2D( T x = 0, T y = 0 ) : x{ x }, y{ y } { }
-	Vector2D( const VectorType &v ) : x{ v.x }, y{ v.y } { }
+	Vector2D( T x = 0, T y = 0 ) : x { x }, y { y } { }
+	Vector2D( const VectorType &v ) : x { v.x }, y { v.y } { }
 	VectorType &operator=( const VectorType &v ) { x = v.x; y = v.y; return *this; }
 
 	/* Automatically cast vector types (if valid component cast exists) */
@@ -494,7 +500,7 @@ struct Vector2D
 		return *this;
 	}
 
-	VectorType &divide( const double s )
+	VectorType &divide( double s )
 	{
 		x = static_cast<T>( x / s );
 		y = static_cast<T>( y / s );
@@ -522,7 +528,7 @@ struct Vector2D
 		return *this;
 	}
 
-	VectorType &rotate( const double angle, const VectorType &origin = { } )
+	VectorType &rotate( double angle, const VectorType &origin = { } )
 	{
 		const T tX = x - origin.x;
 		const T tY = y - origin.y;
@@ -560,44 +566,46 @@ struct Vector2D
 	VectorType operator+( const VectorType &v ) const { VectorType r { *this }; r.add( v );      return r; }
 	VectorType operator-( const VectorType &v ) const { VectorType r { *this }; r.sub( v );      return r; }
 	VectorType operator*( const VectorType &v ) const { VectorType r { *this }; r.multiply( v ); return r; }
-	VectorType operator*( const double s )      const { VectorType r { *this }; r.multiply( s ); return r; }
+	VectorType operator*( double s )            const { VectorType r { *this }; r.multiply( s ); return r; }
 	VectorType operator/( const VectorType &v ) const { VectorType r { *this }; r.divide( v );   return r; }
-	VectorType operator/( const double s )      const { VectorType r { *this }; r.divide( s );   return r; }
+	VectorType operator/( double s )            const { VectorType r { *this }; r.divide( s );   return r; }
 
 	VectorType &operator+=( const VectorType &v ) { this->add( v );      return *this; }
 	VectorType &operator-=( const VectorType &v ) { this->sub( v );      return *this; }
 	VectorType &operator*=( const VectorType &v ) { this->multiply( v ); return *this; }
-	VectorType &operator*=( const double s )      { this->multiply( s ); return *this; }
+	VectorType &operator*=( double s )            { this->multiply( s ); return *this; }
 	VectorType &operator/=( const VectorType &v ) { this->divide( v );   return *this; }
-	VectorType &operator/=( const double s )      { this->divide( s );   return *this; }
+	VectorType &operator/=( double s )            { this->divide( s );   return *this; }
 
 	bool operator==( const VectorType &v ) const { return x == v.x && y == v.y; }
 };
 
 
-#define VECTOR_TYPE_2D( Vec, T )                                                                             \
-	inline bool Vec##_equal( const Vec &a, const Vec &b )      { return a == b; }                            \
-	inline    T Vec##_dot( const Vec &a, const Vec &b )        { return a.dot( b ); }                        \
-	inline    T Vec##_length( const Vec &v )                   { return v.length(); }                        \
-	inline    T Vec##_length_sqr( const Vec &v )               { return v.length_sqr(); }                    \
-	inline  Vec Vec##_add( const Vec &a, const Vec &b )        { Vec r { a }; r.add( b ); return r; }        \
-	inline  Vec Vec##_sub( const Vec &a, const Vec &b )        { Vec r { a }; r.sub( b ); return r; }        \
-	inline  Vec Vec##_multiply( const Vec &a, const Vec &b )   { Vec r { a }; r.multiply( b ); return r; }   \
-	inline  Vec Vec##_divide( const Vec &a, const Vec &b )     { Vec r { a }; r.divide( b ); return r; }     \
-	inline  Vec Vec##_multiply( const Vec &v, const double s ) { Vec r { v }; r.multiply( s ); return r; }   \
-	inline  Vec Vec##_divide( const Vec &v, const double s )   { Vec r { v }; r.divide( s ); return r; }     \
-	inline    T Vec##_cross( const Vec &a, const Vec &b )      { return a.cross( b ); }                      \
-	inline  Vec Vec##_normalize( const Vec &v )                { Vec r { v }; r.normalize(); return r; }     \
-	inline  Vec Vec##_project( const Vec &v, const Vec &onto ) { Vec r { v }; r.project( onto ); return r; } \
-	inline  Vec Vec##_rotate( const Vec &v, const float angle, const Vec &origin = { } )                     \
-		{ Vec r { v }; r.rotate( angle, origin ); return r; }                                                \
-	inline  Vec Vec##_reflect( const Vec &v, const Vec &normal )                                             \
-		{ Vec r { v }; r.reflect( normal ); return r; }                                                      \
-	inline Vec Vec##_lerp( const Vec &a, const Vec &b, const float amount )                                  \
-		{ Vec r { a }; r.lerp( b, amount ); return r; }                                                      \
-	inline   T Vec##_distance( const Vec &a, const Vec &b )                                                  \
-		{ Vec r { b.x - a.x, b.y - a.y }; return r.length(); }                                               \
-	inline   T Vec##_distance_sqr( const Vec &a, const Vec &b )                                              \
+#define VECTOR_TYPE_2D( Vec, T )                                                                                  \
+	inline bool Vec##_equal( const Vec &a, const Vec &b ) { return a == b; }                                      \
+	inline    T Vec##_dot( const Vec &a, const Vec &b ) { return a.dot( b ); }                                    \
+	inline    T Vec##_length( const Vec &v ) { return v.length(); }                                               \
+	inline    T Vec##_length_sqr( const Vec &v ) { return v.length_sqr(); }                                       \
+	inline  Vec Vec##_add( const Vec &a, const Vec &b ) { Vec r { a }; r.add( b ); return r; }                    \
+	inline  Vec Vec##_sub( const Vec &a, const Vec &b ) { Vec r { a }; r.sub( b ); return r; }                    \
+	inline  Vec Vec##_divide( const Vec &a, const Vec &b ) { Vec r { a }; r.divide( b ); return r; }              \
+	inline  Vec Vec##_divide( const Vec &v, double s ) { Vec r { v }; r.divide( s ); return r; }                  \
+	inline  Vec Vec##_multiply( const Vec &v, double s ) { Vec r { v }; r.multiply( s ); return r; }              \
+	inline  Vec Vec##_multiply( const Vec &a, const Vec &b ) { Vec r { a }; r.multiply( b ); return r; }          \
+	inline  Vec Vec##_multiply( const Vec &v, const double_m44 &m ) { Vec r { v }; r.multiply( m ); return r; }   \
+	inline  Vec Vec##_multiply( const Vec &v, const float_m44 &m ) { Vec r { v }; r.multiply( m ); return r; }    \
+	inline    T Vec##_cross( const Vec &a, const Vec &b ) { return a.cross( b ); }                                \
+	inline  Vec Vec##_normalize( const Vec &v ) { Vec r { v }; r.normalize(); return r; }                         \
+	inline  Vec Vec##_project( const Vec &v, const Vec &onto ) { Vec r { v }; r.project( onto ); return r; }      \
+	inline  Vec Vec##_rotate( const Vec &v, float angle, const Vec &origin = { } )                                \
+		{ Vec r { v }; r.rotate( angle, origin ); return r; }                                                     \
+	inline  Vec Vec##_reflect( const Vec &v, const Vec &normal )                                                  \
+		{ Vec r { v }; r.reflect( normal ); return r; }                                                           \
+	inline Vec Vec##_lerp( const Vec &a, const Vec &b, float amount )                                             \
+		{ Vec r { a }; r.lerp( b, amount ); return r; }                                                           \
+	inline   T Vec##_distance( const Vec &a, const Vec &b )                                                       \
+		{ Vec r { b.x - a.x, b.y - a.y }; return r.length(); }                                                    \
+	inline   T Vec##_distance_sqr( const Vec &a, const Vec &b )                                                   \
 		{ Vec r { b.x - a.x, b.y - a.y }; return r.length_sqr(); }
 
 
@@ -620,8 +628,8 @@ struct Vector3D
 	using VectorType = Vector3D<T>;
 	T x, y, z;
 
-	Vector3D( T x = 0, T y = 0, T z = 0 ) : x{ x }, y{ y }, z{ z } { }
-	Vector3D( const VectorType &v ) : x{ v.x }, y{ v.y }, z{ v.z } { }
+	Vector3D( T x = 0, T y = 0, T z = 0 ) : x { x }, y { y }, z { z } { }
+	Vector3D( const VectorType &v ) : x { v.x }, y { v.y }, z { v.z } { }
 	VectorType &operator=( const VectorType &v ) { x = v.x; y = v.y; z = v.z; return *this; }
 
 	/* Automatically cast vector types (if valid component cast exists) */
@@ -680,7 +688,7 @@ struct Vector3D
 		return *this;
 	}
 
-	VectorType &multiply( const double s )
+	VectorType &multiply( double s )
 	{
 		x = static_cast<T>( x * s );
 		y = static_cast<T>( y * s );
@@ -736,7 +744,7 @@ struct Vector3D
 		return *this;
 	}
 
-	VectorType &divide( const double s )
+	VectorType &divide( double s )
 	{
 		x = static_cast<T>( x / s );
 		y = static_cast<T>( y / s );
@@ -771,7 +779,7 @@ struct Vector3D
 		return *this;
 	}
 
-	VectorType &rotate_x( const double angle, const VectorType &origin = {} )
+	VectorType &rotate_x( double angle, const VectorType &origin = {} )
 	{
 		const double tY = static_cast<double>( y ) - origin.y;
 		const double tZ = static_cast<double>( z ) - origin.z;
@@ -782,7 +790,7 @@ struct Vector3D
 		return *this;
 	}
 
-	VectorType &rotate_y( const double angle, const VectorType &origin = {} )
+	VectorType &rotate_y( double angle, const VectorType &origin = {} )
 	{
 		const double tX = static_cast<double>( x )- origin.x;
 		const double tZ = static_cast<double>( z ) - origin.z;
@@ -793,7 +801,7 @@ struct Vector3D
 		return *this;
 	}
 
-	VectorType &rotate_z( const double angle, const VectorType &origin = {} )
+	VectorType &rotate_z( double angle, const VectorType &origin = {} )
 	{
 		const double tX = static_cast<double>( x ) - origin.x;
 		const double tY = static_cast<double>( y ) - origin.y;
@@ -811,7 +819,7 @@ struct Vector3D
 		return *this;
 	}
 
-	VectorType &lerp( const VectorType &v, const double amount )
+	VectorType &lerp( const VectorType &v, double amount )
 	{
 		x = static_cast<T>( x + ( v.x - x ) * amount );
 		y = static_cast<T>( y + ( v.y - y ) * amount );
@@ -822,48 +830,50 @@ struct Vector3D
 	VectorType operator+( const VectorType &v ) const { VectorType r { *this }; r.add( v );      return r; }
 	VectorType operator-( const VectorType &v ) const { VectorType r { *this }; r.sub( v );      return r; }
 	VectorType operator*( const VectorType &v ) const { VectorType r { *this }; r.multiply( v ); return r; }
-	VectorType operator*( const double s )      const { VectorType r { *this }; r.multiply( s ); return r; }
+	VectorType operator*( double s )            const { VectorType r { *this }; r.multiply( s ); return r; }
 	VectorType operator/( const VectorType &v ) const { VectorType r { *this }; r.divide( v );   return r; }
-	VectorType operator/( const double s )      const { VectorType r { *this }; r.divide( s );   return r; }
+	VectorType operator/( double s )            const { VectorType r { *this }; r.divide( s );   return r; }
 
 	VectorType &operator+=( const VectorType &v ) { this->add( v );      return *this; }
 	VectorType &operator-=( const VectorType &v ) { this->sub( v );      return *this; }
 	VectorType &operator*=( const VectorType &v ) { this->multiply( v ); return *this; }
-	VectorType &operator*=( const double s )      { this->multiply( s ); return *this; }
+	VectorType &operator*=( double s )            { this->multiply( s ); return *this; }
 	VectorType &operator/=( const VectorType &v ) { this->divide( v );   return *this; }
-	VectorType &operator/=( const double s )      { this->divide( s );   return *this; }
+	VectorType &operator/=( double s )            { this->divide( s );   return *this; }
 
 	bool operator==( const VectorType &v ) const { return x == v.x && y == v.y && z == v.z; }
 };
 
 
-#define VECTOR_TYPE_3D( Vec, T )                                                                             \
-	inline bool Vec##_equal( const Vec &a, const Vec &b )      { return a == b; }                            \
-	inline    T Vec##_dot( const Vec &a, const Vec &b )        { return a.dot( b ); }                        \
-	inline    T Vec##_length( const Vec &v )                   { return v.length(); }                        \
-	inline    T Vec##_length_sqr( const Vec &v )               { return v.length_sqr(); }                    \
-	inline  Vec Vec##_add( const Vec &a, const Vec &b )        { Vec r { a }; r.add( b ); return r; }        \
-	inline  Vec Vec##_sub( const Vec &a, const Vec &b )        { Vec r { a }; r.sub( b ); return r; }        \
-	inline  Vec Vec##_multiply( const Vec &a, const Vec &b )   { Vec r { a }; r.multiply( b ); return r; }   \
-	inline  Vec Vec##_divide( const Vec &a, const Vec &b )     { Vec r { a }; r.divide( b ); return r; }     \
-	inline  Vec Vec##_multiply( const Vec &v, const double s ) { Vec r { v }; r.multiply( s ); return r; }   \
-	inline  Vec Vec##_divide( const Vec &v, const double s )   { Vec r { v }; r.divide( s ); return r; }     \
-	inline  Vec Vec##_cross( const Vec &a, const Vec &b )      { Vec r { a }; r.cross( b ); return r; }      \
-	inline  Vec Vec##_normalize( const Vec &v )                { Vec r { v }; r.normalize(); return r; }     \
-	inline  Vec Vec##_project( const Vec &v, const Vec &onto ) { Vec r { v }; r.project( onto ); return r; } \
-	inline  Vec Vec##_rotate_x( const Vec &v, const float angle, const Vec &origin = { } )                   \
-		{ Vec r { v }; r.rotate_x( angle, origin ); return r; }                                              \
-	inline  Vec Vec##_rotate_y( const Vec &v, const float angle, const Vec &origin = { } )                   \
-		{ Vec r { v }; r.rotate_y( angle, origin ); return r; }                                              \
-	inline  Vec Vec##_rotate_z( const Vec &v, const float angle, const Vec &origin = { } )                   \
-		{ Vec r { v }; r.rotate_z( angle, origin ); return r; }                                              \
-	inline  Vec Vec##_reflect( const Vec &v, const Vec &normal )                                             \
-		{ Vec r { v }; r.reflect( normal ); return r; }                                                      \
-	inline Vec Vec##_lerp( const Vec &a, const Vec &b, const float amount )                                  \
-		{ Vec r { a }; r.lerp( b, amount ); return r; }                                                      \
-	inline   T Vec##_distance( const Vec &a, const Vec &b )                                                  \
-		{ Vec r { b.x - a.x, b.y - a.y, b.z - a.z }; return r.length(); }                                    \
-	inline   T Vec##_distance_sqr( const Vec &a, const Vec &b )                                              \
+#define VECTOR_TYPE_3D( Vec, T )                                                                                \
+	inline bool Vec##_equal( const Vec &a, const Vec &b ) { return a == b; }                                    \
+	inline    T Vec##_dot( const Vec &a, const Vec &b ) { return a.dot( b ); }                                  \
+	inline    T Vec##_length( const Vec &v ) { return v.length(); }                                             \
+	inline    T Vec##_length_sqr( const Vec &v ) { return v.length_sqr(); }                                     \
+	inline  Vec Vec##_add( const Vec &a, const Vec &b ) { Vec r { a }; r.add( b ); return r; }                  \
+	inline  Vec Vec##_sub( const Vec &a, const Vec &b ) { Vec r { a }; r.sub( b ); return r; }                  \
+	inline  Vec Vec##_divide( const Vec &a, const Vec &b ) { Vec r { a }; r.divide( b ); return r; }            \
+	inline  Vec Vec##_divide( const Vec &v, double s ) { Vec r { v }; r.divide( s ); return r; }                \
+	inline  Vec Vec##_multiply( const Vec &v, double s ) { Vec r { v }; r.multiply( s ); return r; }            \
+	inline  Vec Vec##_multiply( const Vec &a, const Vec &b ) { Vec r { a }; r.multiply( b ); return r; }        \
+	inline  Vec Vec##_multiply( const Vec &v, const double_m44 &m ) { Vec r { v }; r.multiply( m ); return r; } \
+	inline  Vec Vec##_multiply( const Vec &v, const float_m44 &m ) { Vec r { v }; r.multiply( m ); return r; }  \
+	inline  Vec Vec##_cross( const Vec &a, const Vec &b ) { Vec r { a }; r.cross( b ); return r; }              \
+	inline  Vec Vec##_normalize( const Vec &v ) { Vec r { v }; r.normalize(); return r; }                       \
+	inline  Vec Vec##_project( const Vec &v, const Vec &onto ) { Vec r { v }; r.project( onto ); return r; }    \
+	inline  Vec Vec##_rotate_x( const Vec &v, float angle, const Vec &origin = { } )                            \
+		{ Vec r { v }; r.rotate_x( angle, origin ); return r; }                                                 \
+	inline  Vec Vec##_rotate_y( const Vec &v, float angle, const Vec &origin = { } )                            \
+		{ Vec r { v }; r.rotate_y( angle, origin ); return r; }                                                 \
+	inline  Vec Vec##_rotate_z( const Vec &v, float angle, const Vec &origin = { } )                            \
+		{ Vec r { v }; r.rotate_z( angle, origin ); return r; }                                                 \
+	inline  Vec Vec##_reflect( const Vec &v, const Vec &normal )                                                \
+		{ Vec r { v }; r.reflect( normal ); return r; }                                                         \
+	inline Vec Vec##_lerp( const Vec &a, const Vec &b, float amount )                                           \
+		{ Vec r { a }; r.lerp( b, amount ); return r; }                                                         \
+	inline   T Vec##_distance( const Vec &a, const Vec &b )                                                     \
+		{ Vec r { b.x - a.x, b.y - a.y, b.z - a.z }; return r.length(); }                                       \
+	inline   T Vec##_distance_sqr( const Vec &a, const Vec &b )                                                 \
 		{ Vec r { b.x - a.x, b.y - a.y, b.z - a.z }; return r.length_sqr(); }
 
 
@@ -886,8 +896,8 @@ struct Vector4D
 	using VectorType = Vector4D<T>;
 	T x, y, z, w;
 
-	Vector4D( T x = 0, T y = 0, T z = 0, T w = 0 ) : x{ x }, y{ y }, z{ z }, w{ w } { }
-	Vector4D( const VectorType &v ) : x{ v.x }, y{ v.y }, z{ v.z }, w{ v.w } { }
+	Vector4D( T x = 0, T y = 0, T z = 0, T w = 0 ) : x { x }, y { y }, z { z }, w { w } { }
+	Vector4D( const VectorType &v ) : x { v.x }, y { v.y }, z { v.z }, w { v.w } { }
 	VectorType &operator=( const VectorType &v ) { x = v.x; y = v.y; z = v.z; w = v.w; return *this; }
 
 	/* Automatically cast vector types (if valid component cast exists) */
@@ -953,7 +963,7 @@ struct Vector4D
 		return *this;
 	}
 
-	VectorType &multiply( const double s )
+	VectorType &multiply( double s )
 	{
 		x = static_cast<T>( x * s );
 		y = static_cast<T>( y * s );
@@ -1013,7 +1023,7 @@ struct Vector4D
 		return *this;
 	}
 
-	VectorType &divide( const double s )
+	VectorType &divide( double s )
 	{
 		x = static_cast<T>( x / s );
 		y = static_cast<T>( y / s );
@@ -1051,7 +1061,7 @@ struct Vector4D
 		return *this;
 	}
 
-	VectorType &rotate_x( const double angle, const VectorType &origin = {} )
+	VectorType &rotate_x( double angle, const VectorType &origin = {} )
 	{
 		const double tY = static_cast<double>( y ) - origin.y;
 		const double tZ = static_cast<double>( z ) - origin.z;
@@ -1062,7 +1072,7 @@ struct Vector4D
 		return *this;
 	}
 
-	VectorType &rotate_y( const double angle, const VectorType &origin = {} )
+	VectorType &rotate_y( double angle, const VectorType &origin = {} )
 	{
 		const double tX = static_cast<double>( x )- origin.x;
 		const double tZ = static_cast<double>( z ) - origin.z;
@@ -1073,7 +1083,7 @@ struct Vector4D
 		return *this;
 	}
 
-	VectorType &rotate_z( const double angle, const VectorType &origin = {} )
+	VectorType &rotate_z( double angle, const VectorType &origin = {} )
 	{
 		const double tX = static_cast<double>( x ) - origin.x;
 		const double tY = static_cast<double>( y ) - origin.y;
@@ -1091,7 +1101,7 @@ struct Vector4D
 		return *this;
 	}
 
-	VectorType &lerp( const VectorType &v, const double amount )
+	VectorType &lerp( const VectorType &v, double amount )
 	{
 		x = static_cast<T>( x + ( v.x - x ) * amount );
 		y = static_cast<T>( y + ( v.y - y ) * amount );
@@ -1103,48 +1113,50 @@ struct Vector4D
 	VectorType operator+( const VectorType &v ) const { VectorType r { *this }; r.add( v );      return r; }
 	VectorType operator-( const VectorType &v ) const { VectorType r { *this }; r.sub( v );      return r; }
 	VectorType operator*( const VectorType &v ) const { VectorType r { *this }; r.multiply( v ); return r; }
-	VectorType operator*( const double s )      const { VectorType r { *this }; r.multiply( s ); return r; }
+	VectorType operator*( double s )            const { VectorType r { *this }; r.multiply( s ); return r; }
 	VectorType operator/( const VectorType &v ) const { VectorType r { *this }; r.divide( v );   return r; }
-	VectorType operator/( const double s )      const { VectorType r { *this }; r.divide( s );   return r; }
+	VectorType operator/( double s )            const { VectorType r { *this }; r.divide( s );   return r; }
 
 	VectorType &operator+=( const VectorType &v ) { this->add( v );      return *this; }
 	VectorType &operator-=( const VectorType &v ) { this->sub( v );      return *this; }
 	VectorType &operator*=( const VectorType &v ) { this->multiply( v ); return *this; }
-	VectorType &operator*=( const double s )      { this->multiply( s ); return *this; }
+	VectorType &operator*=( double s )            { this->multiply( s ); return *this; }
 	VectorType &operator/=( const VectorType &v ) { this->divide( v );   return *this; }
-	VectorType &operator/=( const double s )      { this->divide( s );   return *this; }
+	VectorType &operator/=( double s )            { this->divide( s );   return *this; }
 
 	bool operator==( const VectorType &v ) const { return x == v.x && y == v.y && z == v.z && w == v.w; }
 };
 
 
-#define VECTOR_TYPE_4D( Vec, T )                                                                             \
-	inline bool Vec##_equal( const Vec &a, const Vec &b )      { return a == b; }                            \
-	inline    T Vec##_dot( const Vec &a, const Vec &b )        { return a.dot( b ); }                        \
-	inline    T Vec##_length( const Vec &v )                   { return v.length(); }                        \
-	inline    T Vec##_length_sqr( const Vec &v )               { return v.length_sqr(); }                    \
-	inline  Vec Vec##_add( const Vec &a, const Vec &b )        { Vec r { a }; r.add( b ); return r; }        \
-	inline  Vec Vec##_sub( const Vec &a, const Vec &b )        { Vec r { a }; r.sub( b ); return r; }        \
-	inline  Vec Vec##_multiply( const Vec &a, const Vec &b )   { Vec r { a }; r.multiply( b ); return r; }   \
-	inline  Vec Vec##_divide( const Vec &a, const Vec &b )     { Vec r { a }; r.divide( b ); return r; }     \
-	inline  Vec Vec##_multiply( const Vec &v, const double s ) { Vec r { v }; r.multiply( s ); return r; }   \
-	inline  Vec Vec##_divide( const Vec &v, const double s )   { Vec r { v }; r.divide( s ); return r; }     \
-	inline  Vec Vec##_cross( const Vec &a, const Vec &b )      { Vec r { a }; r.cross( b ); return r; }      \
-	inline  Vec Vec##_normalize( const Vec &v )                { Vec r { v }; r.normalize(); return r; }     \
-	inline  Vec Vec##_project( const Vec &v, const Vec &onto ) { Vec r { v }; r.project( onto ); return r; } \
-	inline  Vec Vec##_rotate_x( const Vec &v, const float angle, const Vec &origin = { } )                   \
-		{ Vec r { v }; r.rotate_x( angle, origin ); return r; }                                              \
-	inline  Vec Vec##_rotate_y( const Vec &v, const float angle, const Vec &origin = { } )                   \
-		{ Vec r { v }; r.rotate_y( angle, origin ); return r; }                                              \
-	inline  Vec Vec##_rotate_z( const Vec &v, const float angle, const Vec &origin = { } )                   \
-		{ Vec r { v }; r.rotate_z( angle, origin ); return r; }                                              \
-	inline  Vec Vec##_reflect( const Vec &v, const Vec &normal )                                             \
-		{ Vec r { v }; r.reflect( normal ); return r; }                                                      \
-	inline Vec Vec##_lerp( const Vec &a, const Vec &b, const float amount )                                  \
-		{ Vec r { a }; r.lerp( b, amount ); return r; }                                                      \
-	inline   T Vec##_distance( const Vec &a, const Vec &b )                                                  \
-		{ Vec r { b.x - a.x, b.y - a.y, b.z - a.z, b.w - a.w }; return r.length(); }                         \
-	inline   T Vec##_distance_sqr( const Vec &a, const Vec &b )                                              \
+#define VECTOR_TYPE_4D( Vec, T )                                                                                \
+	inline bool Vec##_equal( const Vec &a, const Vec &b ) { return a == b; }                                    \
+	inline    T Vec##_dot( const Vec &a, const Vec &b ) { return a.dot( b ); }                                  \
+	inline    T Vec##_length( const Vec &v ) { return v.length(); }                                             \
+	inline    T Vec##_length_sqr( const Vec &v ) { return v.length_sqr(); }                                     \
+	inline  Vec Vec##_add( const Vec &a, const Vec &b ) { Vec r { a }; r.add( b ); return r; }                  \
+	inline  Vec Vec##_sub( const Vec &a, const Vec &b ) { Vec r { a }; r.sub( b ); return r; }                  \
+	inline  Vec Vec##_divide( const Vec &a, const Vec &b ) { Vec r { a }; r.divide( b ); return r; }            \
+	inline  Vec Vec##_divide( const Vec &v, double s ) { Vec r { v }; r.divide( s ); return r; }                \
+	inline  Vec Vec##_multiply( const Vec &v, double s ) { Vec r { v }; r.multiply( s ); return r; }            \
+	inline  Vec Vec##_multiply( const Vec &a, const Vec &b ) { Vec r { a }; r.multiply( b ); return r; }        \
+	inline  Vec Vec##_multiply( const Vec &v, const double_m44 &m ) { Vec r { v }; r.multiply( m ); return r; } \
+	inline  Vec Vec##_multiply( const Vec &v, const float_m44 &m ) { Vec r { v }; r.multiply( m ); return r; }  \
+	inline  Vec Vec##_cross( const Vec &a, const Vec &b ) { Vec r { a }; r.cross( b ); return r; }              \
+	inline  Vec Vec##_normalize( const Vec &v ) { Vec r { v }; r.normalize(); return r; }                       \
+	inline  Vec Vec##_project( const Vec &v, const Vec &onto ) { Vec r { v }; r.project( onto ); return r; }    \
+	inline  Vec Vec##_rotate_x( const Vec &v, float angle, const Vec &origin = { } )                            \
+		{ Vec r { v }; r.rotate_x( angle, origin ); return r; }                                                 \
+	inline  Vec Vec##_rotate_y( const Vec &v, float angle, const Vec &origin = { } )                            \
+		{ Vec r { v }; r.rotate_y( angle, origin ); return r; }                                                 \
+	inline  Vec Vec##_rotate_z( const Vec &v, float angle, const Vec &origin = { } )                            \
+		{ Vec r { v }; r.rotate_z( angle, origin ); return r; }                                                 \
+	inline  Vec Vec##_reflect( const Vec &v, const Vec &normal )                                                \
+		{ Vec r { v }; r.reflect( normal ); return r; }                                                         \
+	inline Vec Vec##_lerp( const Vec &a, const Vec &b, float amount )                                           \
+		{ Vec r { a }; r.lerp( b, amount ); return r; }                                                         \
+	inline   T Vec##_distance( const Vec &a, const Vec &b )                                                     \
+		{ Vec r { b.x - a.x, b.y - a.y, b.z - a.z, b.w - a.w }; return r.length(); }                            \
+	inline   T Vec##_distance_sqr( const Vec &a, const Vec &b )                                                 \
 		{ Vec r { b.x - a.x, b.y - a.y, b.z - a.z, b.w - a.w }; return r.length_sqr(); }
 
 
@@ -1338,5 +1350,51 @@ inline double_v4 quaternion_from_forward_up( const double_v3 &forward, const dou
 
 	return quaternion_normalize( q );
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+inline float rsqrtf( float x )
+{
+#if defined( __clang__ ) || defined( __GNUC__ )
+	return 1.0f / __builtin_sqrtf( x );
+#else
+	return 1.0f / sqrtf(x);
+#endif
+}
+
+inline double rsqrt( double x )
+{
+#if defined( __clang__ ) || defined( __GNUC__ )
+	return 1.0 / __builtin_sqrt( x );
+#else
+	return 1.0 / sqrt( x );
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+static constexpr int FLOAT_GRAPH_COUNT = 32;
+
+
+struct RadialFloatNode
+{
+	RadialFloatNode() { };
+	RadialFloatNode( float value, float time ) : value { value }, time { time } { };
+	float value = 0.0f;
+	float time = 0.0f;
+};
+
+
+class RadialFloatGraph
+{
+public:
+	int add_node( RadialFloatNode node );
+	void remove_node( int index );
+	float get_value( float time ) const;
+
+public:
+	RadialFloatNode nodes[FLOAT_GRAPH_COUNT] = { };
+	int count = 0;
+};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

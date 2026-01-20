@@ -339,7 +339,8 @@
 	};
 
 	extern "C" XColormap XCreateColormap(XDisplay *, XWindow, XVisual *, int);
-	extern "C" XWindow XCreateWindow(XDisplay *, XWindow, int, int, unsigned int, unsigned int, unsigned int, int, unsigned int, XVisual *, unsigned long, XSetWindowAttributes *);
+	extern "C" XWindow XCreateWindow(XDisplay *, XWindow, int, int, unsigned int, unsigned int, unsigned int, int,
+		unsigned int, XVisual *, unsigned long, XSetWindowAttributes *);
 	extern "C" int XFilterEvent(XEvent *, XWindow);
 	extern "C" int XFree(void *);
 	extern "C" XAtom XInternAtom(XDisplay *, const char *, int);
@@ -353,7 +354,8 @@
 	extern "C" int XSetWMProtocols(XDisplay *, XWindow, XAtom *, int);
 	extern "C" int XStoreName(XDisplay *, XWindow, const char *);
 	extern "C" int XSync(XDisplay *, int);
-	extern "C" int XQueryPointer(XDisplay *, XWindow, XWindow *, XWindow *, int *, int *, int *, int *, unsigned int *);
+	extern "C" int XQueryPointer(XDisplay *, XWindow, XWindow *, XWindow *, int *, int *, int *, int *,
+		unsigned int *);
 	extern "C" int XWarpPointer(XDisplay *, XWindow, XWindow, int, int, unsigned int, unsigned int, int, int);
 	extern "C" int XLookupString(XKeyEvent *, char *, int, KeySym *, XComposeStatus *);
 	extern "C" int XMoveResizeWindow(XDisplay *, XWindow, int, int, unsigned int, unsigned int);
@@ -364,7 +366,8 @@
 	extern "C" int XChangeProperty(XDisplay *, XWindow, XAtom, XAtom, int, int, unsigned char *, int);
 	extern "C" int XSetSelectionOwner(XDisplay *, XAtom, XWindow, XTime);
 	extern "C" int XConvertSelection(XDisplay *, XAtom, XAtom, XAtom, XWindow, XTime);
-	extern "C" int XGetWindowProperty(XDisplay *, XWindow, XAtom, long, long, Bool, XAtom, XAtom *, int *, unsigned long *, unsigned long *, unsigned char **);
+	extern "C" int XGetWindowProperty(XDisplay *, XWindow, XAtom, long, long, Bool, XAtom, XAtom *, int *,
+		unsigned long *, unsigned long *, unsigned char **);
 	extern "C" int XResizeWindow(XDisplay *, XWindow, unsigned int, unsigned int);
 	extern "C" int XMoveWindow(XDisplay *, XWindow, int, int);
 	extern "C" int XFlush(XDisplay *);

@@ -20,9 +20,9 @@ Globe Renderer (https://www.youtube.com/watch?v=0EJK37nCA-0)
 
 
 
-Vitality (https://www.youtube.com/watch?v=y05wb1y-OQc) (Work in progress indie game)
+Vitality (https://www.youtube.com/watch?v=5Re4pwUAnYU) (Work in progress indie game)
 
-[![Youtube Redirect](https://img.youtube.com/vi/y05wb1y-OQc/0.jpg)](https://www.youtube.com/watch?v=y05wb1y-OQc)
+[![Youtube Redirect](https://img.youtube.com/vi/5Re4pwUAnYU/0.jpg)](https://www.youtube.com/watch?v=5Re4pwUAnYU)
 
 # Setup:
 
@@ -47,7 +47,7 @@ boot.bat -project=globe
 ```
 Note: by default, boot.bat builds with MSVC (C++20). You can also pass `-toolchain=llvm` or `-toolchain=gnu` if you have LLVM or GNU installed.
 
-If using MSVC, you may need to edit the generated `manta-engine\boot-vcvars64.txt` to point to the appropriate location on your machine. Loading vcvars64.bat is (annoyingly) required for running MSVC in a terminal.
+If using MSVC, you may need to edit the generated `manta-engine\environment.json` -> `vcvars64` field to point to the appropriate location on your machine. Loading vcvars64.bat is (annoyingly) required for running MSVC in a terminal.
 
 </details>
 
@@ -62,29 +62,30 @@ Note: by default, boot.sh builds with LLVM. You can also pass `-toolchain=gnu`. 
 
 </details>
 
-### 3. (Optional) Manta VS Code Plugin
+### 3. (Optional) Manta Engine VS Code Plugin + Clangd
 ```
-VS Code -> Extensions -> Install from VSIX -> manta-engine\.manta\vscmanta\output\vscmanta.vsix
+VS Code -> Extensions -> Install from VSIX -> manta-engine\.manta\vscmanta\vscmanta.vsix
 ```
 <details>
-<summary><span>Helpful keybindings (add to keybindings.json)</span></summary>
+<summary><span>Helpful plugin commands (that can be bound to hotkeys in keybindings.json):</span></summary>
 
 ```
-{ "key": "f5", "when": "resourceExists('.manta')", "command": "vscmanta.buildAndRun" },
-{ "key": "f6", "when": "resourceExists('.manta')", "command": "vscmanta.debugRuntime" },
-{ "key": "f7", "when": "resourceExists('.manta')", "command": "vscmanta.renderdoc" },
-{ "key": "f8", "when": "resourceExists('.manta')", "command": "vscmanta.build" },
-{ "key": "f9", "when": "resourceExists('.manta')", "command": "vscmanta.insertCommentBreak" },
-{ "key": "ctrl+shift+c", "when": "resourceExists('.manta')", "command": "vscmanta.cleanProject" },
+"vscmanta.buildAndRun" - Builds & runs the current project
+"vscmanta.debugRuntime" - Builds & runs the current project with VS Code C++ debugger attached
+"vscmanta.renderdoc" - Builds & runs with RenderDoc (Windows/Linux only -- RenderDoc must be in the system PATH)
+"vscmanta.build" - Build only
+"vscmanta.cleanProject" - Clears project build cache (deletes output folders)
 ```
 
 </details><br>
 
-Note: Source for plugin can be found at `manta-engine\.manta\vscmanta\extension.js`
+Note: Source for plugin can be found at `manta-engine\.manta\vscmanta\extension.js` and built by executing `manta-engine\.manta\vscmanta\install.bat`
 
 VSCManta is essentially a wrapper around explicit calls to the `manta-engine\boot` script. It scans the engine & project repository and generates build commands. It can also be bound to hotkeys in VS Code.
 
-Windows Only: If using the RenderDoc button (`boot -run=2`), RenderDoc must be added to system PATH environment variables (e.g. `C:\Program Files\RenderDoc`)
+**Windows**: If using the RenderDoc button (`boot -run=2`), RenderDoc must be added to system PATH environment variables (e.g. `C:\Program Files\RenderDoc`)
+
+**Clangd**: VSCManta plugin also generates `compile_commands.json` for Clangd C++ language server/intellisense. Clangd is significantly more responsive than Microsoft's C/C++ extension so I highly recommend using it! (https://marketplace.visualstudio.com/items?itemName=llvm-vs-code-extensions.vscode-clangd)
 
 # Engine Repository Structure:
 
@@ -162,19 +163,19 @@ In general terms, `source\boot`, `source\build`, and `source\manta` are separate
 
 # Additional Build Information:
 
-Manta does not use precompiled headers or static/dynamic linkage for the engine "library." Rather, sources are compiled directly as a part of the project executable.
+Manta does not use precompiled headers or static/dynamic linkage for the engine "library." Rather, engine sources are compiled directly into the project executable.
 
 The reasons for this are:
 
-- Caching of builds is already done in the boot.exe and build.exe stages (with C++ compilation caching provided by ninja)
+- Build caching is already done in the boot.exe and build.exe stages (with C++ compilation caching managed by ninja)
 - The build tool generates C++ boilerplate for various runtime systems (assets, objects, graphics backend) which would cause frequent rebuilds of precompiled headers
-- The engine library code will likely be updated continously alongside project code (until the engine matures)
+- The engine library code will likely update continously alongside project code (until the engine matures)
 - Compile times are already quite fast due to restrictions on C++ STL includes, "unofficial" C headers for development builds (USE_OFFICIAL_HEADERS = 0), and general project structure
 - It is easier to reason about, understand, and maintain a system when it is simpler
 
 This may change in later versions of the engine, but for now it is structured this way.
 
-Anecdotally (on my machine) I can do a clean build + compile (no cache) of boot.exe, build.exe, and the game.exe in roughly 500ms (~100 translation units) with both MSVC and Clang++ on the "release" configuration.
+Anecdotally (on my machine) I can do a clean build + compile (no cache) of boot.exe, build.exe, and the game.exe in roughly 1 second (~100 translation units) with both MSVC and Clang++ on the "release" configuration.
 
 
 # Graphics System
@@ -187,7 +188,9 @@ Shader files are translated at build time into either GLSL, HLSL, or Metal depen
 
 The generated shader code (hlsl/glsl/metal) is written to `projects\<project>\output\generated\shaders\`, along with the associated graphics system C++ boilerplate in `projects\<project>\output\generated\gfx.generated.hpp`.
 
-In an editor, basic syntax highlighting and IntelliSense is possible by optionally including `#include <shader_api.hpp>` in the shader file. That header is compatible with a typical C++ language server and provides a reference to the features/keywords of the shader language.
+In an editor, basic syntax highlighting and IntelliSense is possible by optionally including `#include <shader_api.hpp>` in the shader file. That header is compatible with a C++ language server and provides a reference to the features/keywords of the shader language.
+
+The language is not complete, but the intention is to fully support raster (vertex + fragment), compute, and raytracing pipelines.
 
 **Example `.shader` code (Simple Phong):**
 ```c++
@@ -816,7 +819,7 @@ PRIVATE void process_death()
 __INTERNAL_OBJECT_SYSTEM_BEGIN
 class obj_rabbit_t : public obj_animal_t
 {
-_PUBLIC:
+public::
 	obj_rabbit_t() = default;
 	obj_rabbit_t( float spawnX, float spawnY );
 	float x = 0.0f;
@@ -826,7 +829,7 @@ _PUBLIC:
 	float health = 100.0f;
 	virtual void EVENT_UPDATE( const Delta delta );
 	virtual void EVENT_RENDER( const Delta delta );
-_PRIVATE:
+private::
 	friend struct CoreObjects::OBJECT_ENCODER<Object::obj_rabbit>;
 	enum RabbitState
 	{
@@ -867,7 +870,7 @@ template <> struct ObjectHandle<Object::obj_rabbit>
 
 template <> struct CoreObjects::OBJECT_ENCODER<Object::obj_rabbit>
 {
-	OBJECT_ENCODER( void *data ) : object{ *reinterpret_cast<obj_rabbit_t *>( data ) } { } obj_rabbit_t &object;
+	OBJECT_ENCODER( void *data ) : object { *reinterpret_cast<obj_rabbit_t *>( data ) } { } obj_rabbit_t &object;
 };
 
 CoreObjects::obj_rabbit_t::obj_rabbit_t( float spawnX, float spawnY )
@@ -994,12 +997,11 @@ context.free();
 Since engine development is primarily driven by project needs, there is currently no precise roadmap. However, the following are areas I hope to complete over the next 6-12 months:
 
 ### Graphics
-- Upgrade to OpenGL 4.5+ (currently limited to 4.1 by macOS OpenGL deprecation)
 - Implement Vulkan
 - Switch from D3D11 to D3D12
-
-### Networking
-- Finish the networking module (UDP/TCP implementations across Windows/macOS/Linux)
+- Deprecate OpenGL (in favor of D3D11/12, Vulkan, Metal)
+- 2D and 3D animation systems
+- RTX shaders
 
 ### Scripting
 - Integrate simple scripting support to the engine (LUA?)

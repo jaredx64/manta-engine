@@ -16,7 +16,7 @@ static bool char_is_slash( const char c )
 		// Open File
 		HANDLE file;
 		if( ( file = CreateFileA( path, GENERIC_READ, FILE_SHARE_READ, nullptr,
-		                          OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr ) ) == INVALID_HANDLE_VALUE )
+			OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr ) ) == INVALID_HANDLE_VALUE )
 		{
 			return false;
 		}
@@ -27,8 +27,6 @@ static bool char_is_slash( const char c )
 
 		// Close File
 		CloseHandle( file );
-
-		// Success?
 		return success;
 	}
 
@@ -112,7 +110,7 @@ static bool char_is_slash( const char c )
 	}
 
 
-	bool directory_iterate( List<FileInfo> &list, const char *path, const char *extension, const bool recurse )
+	bool directory_iterate( List<FileInfo> &list, const char *path, const char *extension, bool recurse )
 	{
 		WIN32_FIND_DATAA findData;
 		HANDLE hFind;
@@ -191,7 +189,7 @@ static bool char_is_slash( const char c )
 		}
 		while( FindNextFileA( hFind, &findData ) );
 
-		FindClose(hFind);
+		FindClose( hFind );
 
 		if( !RemoveDirectoryA( path ) ) { return false; }
 		return true;
@@ -253,12 +251,13 @@ static bool char_is_slash( const char c )
 		close( file );
 
 	#if PIPELINE_OS_MACOS
-		// Use st_mtime (seconds). st_birthtime is not reliably portable.
-		result->time = static_cast<u64>( file_stat.st_mtime );
+		result->time =
+			static_cast<u64>( file_stat.st_mtime ) * 1000000000ULL +
+			static_cast<u64>( file_stat.st_mtimespec.tv_nsec );
 	#else
-		// Use st_mtim (nanoseconds precision)
-		result->time = static_cast<u64>( file_stat.st_mtim.tv_sec ) * 1000000 +
-			static_cast<u64>( file_stat.st_mtim.tv_nsec ) / 1000;
+		result->time =
+			static_cast<u64>( file_stat.st_mtim.tv_sec ) * 1000000000ULL +
+			static_cast<u64>( file_stat.st_mtim.tv_nsec );
 	#endif
 
 		return true;
@@ -345,7 +344,7 @@ static bool char_is_slash( const char c )
 	}
 
 
-	bool directory_iterate( List<FileInfo> &list, const char *path, const char *extension, const bool recurse )
+	bool directory_iterate( List<FileInfo> &list, const char *path, const char *extension, bool recurse )
 	{
 		struct dirent *entry;
 		DIR *dir = opendir( path );
@@ -524,7 +523,7 @@ bool path_is_file( const char *path )
 }
 
 
-void path_get_directory( char *buffer, const usize size, const char *path )
+void path_get_directory( char *buffer, usize size, const char *path )
 {
 	// Ensure valid strings
 	if( buffer == nullptr || path == nullptr ) { return; }
@@ -551,7 +550,7 @@ void path_get_directory( char *buffer, const usize size, const char *path )
 }
 
 
-void path_get_filename( char *buffer, const usize size, const char *path )
+void path_get_filename( char *buffer, usize size, const char *path )
 {
 	// Ensure valid strings
 	if( buffer == nullptr || path == nullptr || size == 0 ) { return; }
@@ -579,7 +578,7 @@ void path_get_filename( char *buffer, const usize size, const char *path )
 }
 
 
-void path_get_extension( char *buffer, const usize size, const char *path )
+void path_get_extension( char *buffer, usize size, const char *path )
 {
 	// Ensure valid strings
 	if( buffer == nullptr || path == nullptr ) { return; }
@@ -640,7 +639,7 @@ void path_change_extension( char *buffer, usize size, const char *path, const ch
 }
 
 
-void path_remove_extension( char *path, const usize size )
+void path_remove_extension( char *path, usize size )
 {
 	if( path == nullptr || size == 0 ) { return; }
 
@@ -655,7 +654,7 @@ void path_remove_extension( char *path, const usize size )
 }
 
 
-void path_remove_extensions( char *path, const usize size )
+void path_remove_extensions( char *path, usize size )
 {
 	if( path == nullptr || size == 0 ) { return; }
 
@@ -667,6 +666,7 @@ void path_remove_extensions( char *path, const usize size )
 	}
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void swrite( const char *string, FILE *file )
 {
@@ -704,9 +704,7 @@ bool File::open( const char *path )
 	data[size] = '\0';
 	if( fread( data, size, 1, file ) < 1 ) { goto cleanup; }
 
-	// Success
 	return true;
-
 cleanup:
 	fclose( file );
 	if( data != nullptr ) { memory_free( data ); }
@@ -730,9 +728,7 @@ bool File::save( const char *path )
 	// Write file
 	if( fwrite( data, size, 1, wfile ) < 1 ) { goto cleanup; }
 
-	// Success
 	return true;
-
 cleanup:
 	fclose( wfile );
 	return false;

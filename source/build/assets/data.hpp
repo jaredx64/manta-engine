@@ -25,11 +25,11 @@ struct DataAssets
 {
 	void make_new( const DataAsset &asset );
 
-	usize gather( const char *path, const bool recurse = true );
+	usize gather( const char *path, bool recurse = true );
 	void process( const char *path );
 	void build();
 
-	DataAsset &operator[]( const u32 dataAssetID ) { return dataAssets[dataAssetID]; }
+	DataAsset &operator[]( u32 dataAssetID ) { return dataAssets[dataAssetID]; }
 
 	List<DataAsset> dataAssets;
 };

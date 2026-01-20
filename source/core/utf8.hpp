@@ -10,12 +10,12 @@
 
 extern usize utf8_length_codepoints( const char *string );
 extern usize utf8_length_bytes( const char *string );
-extern usize utf8_substr_length_bytes( const char *string, const usize start, const usize end );
+extern usize utf8_substr_length_bytes( const char *string, usize start, usize end );
 
-extern u32 utf8_codepoint_at( const char *string, const usize index );
-extern int utf8_codepoint_size( const u32 codepoint );
+extern u32 utf8_codepoint_at( const char *string, usize index );
+extern int utf8_codepoint_size( u32 codepoint );
 
-extern int utf8_encode( char *buffer, const u32 codepoint );
+extern int utf8_encode( char *buffer, u32 codepoint );
 extern u32 utf8_decode( u32 *state, u32 *codepoint, char byte );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

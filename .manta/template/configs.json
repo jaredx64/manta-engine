@@ -22,9 +22,15 @@
 				"linkerFlags": "-g"
 			}
 		},
-		"run":
+		"application":
 		{
-			"commandline": ""
+			"showTerminal": true
+		},
+		"steamworks":
+		{
+			"enabled": false,
+			"distribute": false,
+			"appid": 480
 		}
 	},
 
@@ -51,9 +57,15 @@
 				"linkerFlags": "-g -fsanitize=address"
 			}
 		},
-		"run" :
+		"application":
 		{
-			"commandline": ""
+			"showTerminal": true
+		},
+		"steamworks":
+		{
+			"enabled": false,
+			"distribute": false,
+			"appid": 480
 		}
 	},
 
@@ -80,9 +92,15 @@
 				"linkerFlags": ""
 			}
 		},
-		"run":
+		"application":
 		{
-			"commandline": ""
+			"showTerminal": false
+		},
+		"steamworks":
+		{
+			"enabled": false,
+			"distribute": false,
+			"appid": 480
 		}
 	}
 }

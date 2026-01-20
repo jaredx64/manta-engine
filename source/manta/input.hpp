@@ -53,7 +53,7 @@ public:
 	static bool has_input() { return keyboard->keyboard_has_input(); }
 	static char *input_buffer() { return keyboard->keyboard_input_buffer(); }
 
-	static void update( const Delta delta ) { return keyboard->keyboard_update( delta ); }
+	static void update( Delta delta ) { return keyboard->keyboard_update( delta ); }
 	static void clear() { return keyboard->keyboard_clear(); }
 
 private:
@@ -70,7 +70,7 @@ private:
 	bool keyboard_has_input();
 	char *keyboard_input_buffer();
 
-	void keyboard_update( const Delta delta );
+	void keyboard_update( Delta delta );
 	void keyboard_clear();
 
 public:
@@ -388,9 +388,9 @@ public:
 	static bool moved() { return mouse->mouse_moved(); }
 
 	static void get_position_precise( double &x, double & y ) { mouse->mouse_get_position_precise( x, y ); }
-	static void set_position( const int x, const int y ) { mouse->mouse_set_position( x, y ); }
+	static void set_position( int x, int y ) { mouse->mouse_set_position( x, y ); }
 
-	static void update( const Delta delta ) { mouse->mouse_update( delta ); }
+	static void update( Delta delta ) { mouse->mouse_update( delta ); }
 	static void clear() { mouse->mouse_clear(); }
 
 private:
@@ -411,7 +411,7 @@ private:
 	void mouse_get_position_precise( double &x, double &y );
 	void mouse_set_position( int x, int y );
 
-	void mouse_update( const Delta delta );
+	void mouse_update( Delta delta );
 	void mouse_clear();
 
 public:

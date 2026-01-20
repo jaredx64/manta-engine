@@ -12,19 +12,28 @@ JSON::JSON( String &string )
 {
 	MemoryAssert( string.data != nullptr );
 
-	// Strip Whitespace
-	bool inQuotes = false;
-	for( usize i = string.length_bytes(); i > 0; i-- )
+	// Skip UTF-8 BOM if present
+	if( string.length_bytes() >= 3 &&
+		static_cast<u8>( string[0] ) == 0xEF &&
+		static_cast<u8>( string[1] ) == 0xBB &&
+		static_cast<u8>( string[2] ) == 0xBF)
 	{
-		if( string[i-1] == '"' && ( i <= 1 || string[i-2] != '\\' ) ) { inQuotes = !inQuotes; continue; }
-		if( !inQuotes && char_whitespace( string[i-1] ) ) { string.remove( i - 1, 1 ); continue; }
+		string.remove( 0, 3 );
 	}
 
-	this->start = 1;
-	AssertMsg( string[0] == '{', "JSON has invalid root scope (no open {)\n\nJSON:\n%s", string.cstr() );
-	this->end = string.length_bytes() - 1;
-	AssertMsg( string[this->end] == '}', "JSON has invalid root scope (no closing })\n\nJSON:\n%s", string.cstr() );
-	this->string = &string;
+    // Strip Whitespace
+    bool inQuotes = false;
+    for( usize i = string.length_bytes(); i > 0; i-- )
+    {
+        if( string[i-1] == '"' && ( i <= 1 || string[i - 2] != '\\' ) ) { inQuotes = !inQuotes; continue; }
+        if( !inQuotes && char_is_whitespace( string[i - 1] ) ) { string.remove( i - 1, 1 ); continue; }
+    }
+
+    this->start = 1;
+    AssertMsg( string[0] == '{', "JSON has invalid root scope (no open {)\n\nJSON:\n%s", string.cstr() );
+    this->end = string.length_bytes() - 1;
+    AssertMsg( string[this->end] == '}', "JSON has invalid root scope (no closing })\n\nJSON:\n%s", string.cstr() );
+    this->string = &string;
 }
 
 
@@ -42,7 +51,7 @@ JSON JSON::object( const char *key )
 }
 
 
-JSON JSON::object_at( const usize index )
+JSON JSON::object_at( usize index )
 {
 	// Find Element
 	JSONElement element = find_element_index( index );
@@ -68,7 +77,7 @@ JSON JSON::array( const char *key )
 }
 
 
-JSON JSON::array_at( const usize index )
+JSON JSON::array_at( usize index )
 {
 	// Find Element
 	JSONElement element = find_element_index( index );
@@ -95,7 +104,7 @@ String JSON::get_string( const char *key, const char *defaultValue )
 }
 
 
-String JSON::get_string_at( const usize index, const char *defaultValue )
+String JSON::get_string_at( usize index, const char *defaultValue )
 {
 	// Find Element
 	JSONElement element = find_element_index( index );
@@ -120,7 +129,7 @@ double JSON::get_double( const char *key, const double defaultValue )
 }
 
 
-double JSON::get_double_at( const usize index, const double defaultValue )
+double JSON::get_double_at( usize index, const double defaultValue )
 {
 	// Find Element
 	JSONElement element = find_element_index( index );
@@ -137,7 +146,7 @@ float JSON::get_float( const char *key, const float defaultValue )
 }
 
 
-float JSON::get_float_at( const usize index, const float defaultValue )
+float JSON::get_float_at( usize index, const float defaultValue )
 {
 	return static_cast<float>( get_double_at( index, static_cast<double>( defaultValue ) ) );
 }
@@ -154,7 +163,7 @@ int JSON::get_int( const char *key, const int defaultValue )
 }
 
 
-int JSON::get_int_at( const usize index, const int defaultValue )
+int JSON::get_int_at( usize index, const int defaultValue )
 {
 	// Find Element
 	JSONElement element = find_element_index( index );
@@ -176,7 +185,7 @@ bool JSON::get_bool( const char *key, const bool defaultValue )
 }
 
 
-bool JSON::get_bool_at( const usize index, const bool defaultValue )
+bool JSON::get_bool_at( usize index, const bool defaultValue )
 {
 	// Find Element
 	JSONElement element = find_element_index( index );
@@ -259,7 +268,7 @@ static usize json_find_element_key( const String &buffer, const char *key, usize
 	return USIZE_MAX;
 }
 
-static usize json_find_element_index( const String &buffer, const usize index, usize start = 0, usize end = USIZE_MAX )
+static usize json_find_element_index( const String &buffer, usize index, usize start = 0, usize end = USIZE_MAX )
 {
 	bool inQuotes = false;
 	int depthBraces = 0;
@@ -337,22 +346,16 @@ JSON::JSONElement JSON::find_element_key( const char *key )
 	const usize indexEnd = json_find_element_delimiter( *string, indexStart, end );
 	if( indexEnd > end || indexEnd <= indexStart ) { return JSONElement { 0, 0 }; }
 
-	// Success
 	return JSONElement { indexStart, indexEnd };
 }
 
 
-JSON::JSONElement JSON::find_element_index( const usize index )
+JSON::JSONElement JSON::find_element_index( usize index )
 {
-	// Locate Start
 	const usize indexStart = json_find_element_index( *string, index, start, end );
 	if( indexStart > end ) { return JSONElement { 0, 0 }; }
-
-	// Locate End
 	const usize indexEnd = json_find_element_delimiter( *string, indexStart, end );
 	if( indexEnd > end || indexEnd <= indexStart ) { return JSONElement { 0, 0 }; }
-
-	// Success
 	return JSONElement { indexStart, indexEnd };
 }
 

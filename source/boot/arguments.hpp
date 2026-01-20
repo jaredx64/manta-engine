@@ -12,7 +12,7 @@ static char argumentOptions[256];
 
 template <typename... Args>
 void parse_argument( int argc, char **argv, const char *argument, const char *&variable,
-                     const bool required, const char *defaultValue, Args... options )
+	bool required, const char *defaultValue, Args... options )
 {
 	// Search for argument
 	bool found = false;

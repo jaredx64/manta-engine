@@ -43,6 +43,9 @@ namespace Engine
 {
 	extern int main( int argc, char **argv, const ProjectCallbacks &project );
 	extern void exit();
+	extern void terminal_init();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#define APPLICATION_MAIN( name )

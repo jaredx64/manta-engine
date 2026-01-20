@@ -54,11 +54,11 @@ class AsyncQueue
 public:
 	bool init();
 	bool free();
-	bool update( const Delta delta );
+	bool update( Delta delta );
 
 	void push_front( const AsyncEvent &event );
 	void push_back( const AsyncEvent &event );
-	void push( const AsyncEvent &event, const bool skipQueue );
+	void push( const AsyncEvent &event, bool skipQueue );
 
 private:
 	List<AsyncEvent> events;

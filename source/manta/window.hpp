@@ -16,18 +16,21 @@
 
 namespace CoreWindow
 {
-	extern bool init( const int width = WINDOW_WIDTH_DEFAULT, const int height = WINDOW_HEIGHT_DEFAULT );
+	extern bool init( int width = WINDOW_WIDTH_DEFAULT, int height = WINDOW_HEIGHT_DEFAULT );
 	extern bool free();
 	extern void show();
 	extern void poll();
+
+	extern void terminal_init();
+
 	extern void mouse_get_position( double &x, double &y );
-	extern void mouse_set_position( const int x, const int y );
+	extern void mouse_set_position( int x, int y );
 
 	extern bool ime_init();
 	extern void ime_quit();
-	extern void ime_set_focus( const bool focused );
+	extern void ime_set_focus( bool focused );
 	extern void ime_reset();
-	extern bool ime_process_key_event( const u32 keysym, const u32 keycode, const bool down );
+	extern bool ime_process_key_event( u32 keysym, u32 keycode, bool down );
 	extern void ime_pump_events();
 }
 
@@ -35,20 +38,20 @@ namespace CoreWindow
 
 namespace Window
 {
-	extern void update( const Delta delta );
+	extern void update( Delta delta );
 
 	extern void show_message( const char *title, const char *message );
 	extern void show_message_error( const char *title, const char *message );
 
-	extern void set_size( const int width, const int height );
+	extern void set_size( int width, int height );
 	extern void set_fullscreen( bool enabled );
-	extern void show_cursor( const bool enabled );
+	extern void show_cursor( bool enabled );
 	extern void set_caption( const char *caption );
 
 	extern bool set_clipboard( const char *buffer );
-	extern bool get_clipboard( char *buffer, const usize size );
+	extern bool get_clipboard( char *buffer, usize size );
 	extern bool set_selection( const char *buffer );
-	extern bool get_selection( char *buffer, const usize size );
+	extern bool get_selection( char *buffer, usize size );
 
 	extern int width_logical();
 	extern int height_logical();

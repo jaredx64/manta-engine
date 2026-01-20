@@ -11,7 +11,7 @@ namespace ShaderCompiler
 
 struct Optimizer
 {
-	Optimizer( Parser &parser ) : parser{ parser } { }
+	Optimizer( Parser &parser ) : parser { parser } { }
 	Parser &parser;
 
 	void optimize_stage( ShaderStage stage );

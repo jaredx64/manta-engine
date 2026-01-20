@@ -29,17 +29,17 @@ public:
 	void stop() { timeEnd = Time::value(); timing = false; }
 	bool running() const { return timing; }
 
-	double s()
+	double s() const
 	{
 		return ( Time::value() - timeStart );
 	}
 
-	double ms()
+	double ms() const
 	{
 		return ( Time::value() - timeStart ) * 1000.0;
 	}
 
-	double us()
+	double us() const
 	{
 		return ( Time::value() - timeStart ) * 1000.0 * 1000.0;
 	}
@@ -70,11 +70,30 @@ private:
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template <typename T>
-class TimedInterpolator
+class Ticker
 {
 public:
-	void set( const T start, const T end, const float timeMS )
+	void start();
+	int tick( double intervalMS );
+
+	template <typename T> int tick( double intervalMS, T &callback )
+	{
+		const int ticks = tick( intervalMS );
+		for( int i = 0; i < ticks; i++ ) { callback(); }
+		return ticks;
+	}
+
+private:
+	double lastTimeS = 0.0;
+	double accumulatorMS = 0.0;
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <typename T> class TimedInterpolator
+{
+public:
+	void set( T start, T end, float timeMS )
 	{
 		vStart = start;
 		vEnd = end;
@@ -84,7 +103,7 @@ public:
 
 	T value() const
 	{
-		const float progress = []( const float a, const float b ) { return a < b ? a : b; } (
+		const float progress = []( float a, float b ) { return a < b ? a : b; } (
 			( static_cast<float>( Time::value() ) - tStart ) * tDurationInv, 1.0f );
 		return vStart + ( vEnd - vStart ) * progress;
 	}

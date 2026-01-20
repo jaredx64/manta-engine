@@ -6,6 +6,7 @@
 #include <core/types.hpp>
 #include <core/string.hpp>
 
+#include <manta/profiler.hpp>
 #include <manta/assets.hpp>
 #include <manta/time.hpp>
 #include <manta/thread.hpp>
@@ -16,6 +17,7 @@
 #include <manta/objects.hpp>
 #include <manta/fonts.hpp>
 #include <manta/ui.hpp>
+#include <manta/network.hpp>
 
 #include <manta/text.hpp>
 #include <manta/input.hpp>
@@ -23,12 +25,18 @@
 
 #include <vendor/signal.hpp>
 
+#include <manta/steamworks.hpp>
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 namespace Engine
 {
 	static bool init( int argc, char **argv )
 	{
+		Engine::terminal_init();
+
+		STEAMWORKS( ErrorReturnIf( !Steamworks::init(), false, "Failed to initialize Steam API!" ) );
+
 		ErrorReturnIf( !CoreAssets::init(), false, "Engine: failed to initialize assets" );
 		ErrorReturnIf( !CoreTime::init(), false, "Engine: failed to initialize timer" );
 		ErrorReturnIf( !CoreThread::init(), false, "Engine: failed to initialize thread" );
@@ -39,11 +47,19 @@ namespace Engine
 		ErrorReturnIf( !CoreObjects::init(), false, "Engine: failed to initialize object system" );
 		ErrorReturnIf( !CoreFonts::init(), false, "Engine: failed to initialize font system" );
 		ErrorReturnIf( !CoreUI::init(), false, "Engine: failed to initialize UI system" );
+		ErrorReturnIf( !CoreNetwork::init(), false, "Engine: failed to initialize Network system" );
+
+		PROFILING( CoreProfiler::PROFILER.init() );
+		PROFILING( CoreProfiler::PROFILER.capturing = true; );
+
 		return true;
 	}
 
 	static bool free()
 	{
+		PROFILING( CoreProfiler::PROFILER.free() );
+
+		ErrorReturnIf( !CoreNetwork::free(), false, "Engine: failed to free Network system" );
 		ErrorReturnIf( !CoreUI::free(), false, "Engine: failed to free UI system" );
 		ErrorReturnIf( !CoreFonts::free(), false, "Engine: failed to free font system" );
 		ErrorReturnIf( !CoreObjects::free(), false, "Engine: failed to free object system" );
@@ -54,6 +70,9 @@ namespace Engine
 		ErrorReturnIf( !CoreThread::free(), false, "Engine: failed to free thread" );
 		ErrorReturnIf( !CoreTime::free(), false, "Engine: failed to free timer" );
 		ErrorReturnIf( !CoreAssets::free(), false, "Engine: failed to free assets" );
+
+		STEAMWORKS( ErrorReturnIf( !Steamworks::free(), false, "Failed to free Steam API!" ) );
+
 		return true;
 	}
 }
@@ -70,13 +89,14 @@ namespace Engine
 		// Seg Fault Listener
 		signal( SIGSEGV, SEGMENTATION_FAULT_HANLDER_FUNCTION );
 
-		// Working Directory & Binary
-		path_get_directory( WORKING_DIRECTORY, sizeof( WORKING_DIRECTORY ), argv[0] );
+		// Directories
+		path_get_directory_executable( argv[0] );
+		path_get_directory_application( PROJECT_NAME );
 
 	#if 0
 		// Log
-		PrintColor( LOG_YELLOW, "\n>" );
-		for( int i = 0; i < argc; i++ ) { PrintColor( LOG_YELLOW, " %s", argv[i] ); }
+		Print( PrintColor_Yellow, "\n>" );
+		for( int i = 0; i < argc; i++ ) { Print( PrintColor_Yellow, " %s", argv[i] ); }
 		Print( "\n" );
 	#endif
 
@@ -88,7 +108,13 @@ namespace Engine
 			while( !exiting )
 			{
 				Frame::start();
+				PROFILING( CoreProfiler::PROFILER.frame_start() );
 				{
+					PROFILE_SCOPE( "Frame" );
+
+					// Platform
+					STEAMWORKS( Steamworks::callbacks() );
+
 					// Pre-Engine
 					Keyboard::update( Frame::delta );
 					Mouse::update( Frame::delta );
@@ -105,6 +131,7 @@ namespace Engine
 					// Show the window after at least 1 frame has been rendered
 					if( !painted ) { CoreWindow::show(); painted = true; }
 				}
+				PROFILING( CoreProfiler::PROFILER.frame_end() );
 				Frame::end();
 			}
 
@@ -123,6 +150,11 @@ namespace Engine
 	void exit()
 	{
 		exiting = true;
+	}
+
+	void terminal_init()
+	{
+		CoreWindow::terminal_init();
 	}
 }
 

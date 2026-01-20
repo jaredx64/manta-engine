@@ -70,7 +70,8 @@
 
 	MIDL_INTERFACE IAudioClient : IUnknown
 	{
-		virtual HRESULT STD_CALL Initialize(AUDCLNT_SHAREMODE, DWORD, REFERENCE_TIME, REFERENCE_TIME, const WAVEFORMATEX *, const GUID *) = 0;
+		virtual HRESULT STD_CALL Initialize(AUDCLNT_SHAREMODE, DWORD, REFERENCE_TIME, REFERENCE_TIME,
+			const WAVEFORMATEX *, const GUID *) = 0;
 		virtual HRESULT STD_CALL GetBufferSize(UINT32 *) = 0;
 		virtual HRESULT STD_CALL GetStreamLatency(REFERENCE_TIME *) = 0;
 		virtual HRESULT STD_CALL GetCurrentPadding(UINT32 *) = 0;

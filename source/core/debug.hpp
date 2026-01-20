@@ -28,9 +28,9 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #if COMPILE_DEBUG
-	#define DEBUG(code) code
+	#define DEBUG( code ) code
 #else
-	#define DEBUG(code)
+	#define DEBUG( code )
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -45,19 +45,20 @@ namespace Debug
 {
 	extern void exit( const int code );
 
-	extern void print_formatted_variadic( const bool newline, const char *format, va_list args );
-	extern void print_formatted_variadic_color( const bool newline, int color, const char *format, va_list args );
-	extern void print_formatted( const bool newline, const char *format, ... );
-	extern void print_formatted_color( const bool newline, int color, const char *format, ... );
+	extern void print_formatted_variadic( bool newline, const char *format, va_list args );
+	extern void print_formatted_variadic_color( bool newline, int color, const char *format, va_list args );
+	extern void print_formatted( bool newline, const char *format, ... );
+	extern void print_formatted_color( bool newline, int color, const char *format, ... );
 
 	extern void manta_assert( const char *label, const char *caller, const char *file, const char *func,
-		const int line, const char *condition );
+		int line, const char *condition );
 
 	extern void manta_assert_message( const char *label, const char *caller, const char *file, const char *func,
-		const int line, const char *condition, const char *msg, ... );
+		int line, const char *condition, const char *msg, ... );
 
 	extern bool snprint_callstack( char *buffer, const unsigned int size, int skip = 0,
 		const char *prefix = "", const char *caller = "" );
+
 	extern bool print_callstack( int skip = 0, const char *prefix = "", const char *caller = "" );
 
 	extern void console_enable_colors();
@@ -65,23 +66,25 @@ namespace Debug
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-enum
+enum_type( PrintColor, int )
 {
-	LOG_DEFAULT = 0,
-	LOG_BLACK = 30,
-	LOG_RED = 31,
-	LOG_GREEN = 32,
-	LOG_YELLOW = 33,
-	LOG_BLUE = 34,
-	LOG_MAGENTA = 35,
-	LOG_CYAN = 36,
-	LOG_WHITE = 37,
+	PrintColor_Default = 0,
+	PrintColor_Black = 30,
+	PrintColor_Red = 31,
+	PrintColor_Green = 32,
+	PrintColor_Yellow = 33,
+	PrintColor_Blue = 34,
+	PrintColor_Magenta = 35,
+	PrintColor_Cyan = 36,
+	PrintColor_White = 37,
 };
 
-#define Print( message, ... ) Debug::print_formatted( false, message, ##__VA_ARGS__ )
-#define PrintColor( color, message, ... ) Debug::print_formatted_color( false, color, message, ##__VA_ARGS__ )
-#define PrintLn( message, ... ) Debug::print_formatted( true, message, ##__VA_ARGS__ )
-#define PrintLnColor( color, message, ... ) Debug::print_formatted_color( true, color, message, ##__VA_ARGS__ )
+
+extern void Print( const char *format, ... );
+extern void Print( PrintColor color, const char *format, ... );
+extern void PrintLn( const char *format, ... );
+extern void PrintLn( PrintColor color, const char *format, ... );
+
 
 #if COMPILE_DEBUG
 	#define DebugPrint( message, ... ) Debug::print_formatted( false, message, ##__VA_ARGS__ )
@@ -101,7 +104,7 @@ class EnumInfo
 {
 #if COMPILE_DEBUG
 public:
-	constexpr EnumInfo( const char *str, const Color col ) : str{ str }, col{ col } { };
+	constexpr EnumInfo( const char *str, Color col ) : str { str }, col { col } { };
 	const char *name() const { return str; }
 	Color color() const { return col; }
 private:
@@ -109,7 +112,7 @@ private:
 	const Color col = c_white;
 #else
 public:
-	constexpr EnumInfo( const char *str, const Color col ) { }
+	constexpr EnumInfo( const char *str, Color col ) { }
 	const char *name() const { return "..."; }
 	Color color() const { return c_white; }
 #endif
@@ -124,7 +127,7 @@ public:
 
 #define ERROR_HANDLER_FUNCTION __Error
 #define ERROR_HANDLER_FUNCTION_DECL \
-	ERROR_HANDLER_FUNCTION( const char *caller, const char *file, const char *func, const int line, \
+	ERROR_HANDLER_FUNCTION( const char *caller, const char *file, const char *func, int line, \
 		const char *condition, const char *message, ... ) \
 
 extern void ERROR_HANDLER_FUNCTION_DECL;
@@ -144,25 +147,26 @@ extern void ERROR_HANDLER_FUNCTION_DECL;
 	#define ErrorReturnIf( condition, value, message, ... ) \
 		if( condition ) \
 		{ \
-			Debug::print_formatted_color( true, LOG_RED, "ERROR: " message " (%s)", ##__VA_ARGS__, __FILE__ ); \
+			Debug::print_formatted_color( true, PrintColor_Red, "ERROR: " message " (%s)", ##__VA_ARGS__, __FILE__ ); \
 			return value; \
 		}
 
 	#define ErrorReturnMsg( value, message, ... ) \
-		Debug::print_formatted_color( true, LOG_RED, "ERROR: " message " (%s)", ##__VA_ARGS__, __FILE__ ); return value
+		Debug::print_formatted_color( true, PrintColor_Red, "ERROR: " message " (%s)", ##__VA_ARGS__, __FILE__ ); \
+		return value
 
 	#define Warning( message, ... ) \
-		Debug::print_formatted_color( true, LOG_YELLOW, "WARNING: " message, ##__VA_ARGS__ );
+		Debug::print_formatted_color( true, PrintColor_Yellow, "WARNING: " message, ##__VA_ARGS__ );
 #else
 	#define ErrorReturnIf( condition, value, message, ... ) \
 		if( condition ) \
 		{ \
-			Debug::print_formatted_color( true, LOG_RED, "ERROR: " message, ##__VA_ARGS__ ); \
+			Debug::print_formatted_color( true, PrintColor_Red, "ERROR: " message, ##__VA_ARGS__ ); \
 			return value; \
 		}
 
 	#define ErrorReturnMsg( value, message, ... ) \
-		Debug::print_formatted_color( true, LOG_RED, "ERROR: " message, ##__VA_ARGS__ ); return value
+		Debug::print_formatted_color( true, PrintColor_Red, "ERROR: " message, ##__VA_ARGS__ ); return value
 
 	#define Warning( message, ... )
 #endif
@@ -173,7 +177,7 @@ extern void ERROR_HANDLER_FUNCTION_DECL;
 #define ASSERT_HANLDER_FUNCTION __Assert
 #define ASSERT_HANLDER_FUNCTION_DECL \
 	ASSERT_HANLDER_FUNCTION( const char *label, const char *caller, const char *file, const char *func, \
-		const int line, const char *condition, const char *message, ... )
+		int line, const char *condition, const char *message, ... )
 
 extern void ASSERT_HANLDER_FUNCTION_DECL;
 
@@ -194,7 +198,7 @@ extern void ASSERT_HANLDER_FUNCTION_DECL;
 		}
 
 	#define MemoryWarning( message, ... ) \
-		Debug::print_formatted_color( true, LOG_YELLOW, "WARNING: " message, ##__VA_ARGS__ );
+		Debug::print_formatted_color( true, PrintColor_Yellow, "WARNING: " message, ##__VA_ARGS__ );
 #else
 	#define Assert( condition )
 	#define AssertMsg( condition, message, ... )
@@ -226,7 +230,7 @@ extern void ASSERT_HANLDER_FUNCTION_DECL;
 
 #define SEGMENTATION_FAULT_HANLDER_FUNCTION __SegFault
 #define SEGMENTATION_FAULT_HANLDER_FUNCTION_DECL \
-	SEGMENTATION_FAULT_HANLDER_FUNCTION( const int code )
+	SEGMENTATION_FAULT_HANLDER_FUNCTION( int code )
 
 extern void SEGMENTATION_FAULT_HANLDER_FUNCTION_DECL;
 

@@ -46,8 +46,8 @@ static const D3D11InputFormatInfo D3D11_INPUT_FORMATS_UNORM16[] =
 {
 	{ "DXGI_FORMAT_R16_UNORM", 2 },
 	{ "DXGI_FORMAT_R16G16_UNORM", 4 },
-	{ "DXGI_FORMAT_R16G16B16A18_UNORM", 8 },
-	{ "DXGI_FORMAT_R16G16B16A18_UNORM", 8 },
+	{ "DXGI_FORMAT_R16G16B16A16_UNORM", 8 },
+	{ "DXGI_FORMAT_R16G16B16A16_UNORM", 8 },
 };
 
 
@@ -73,8 +73,8 @@ static const D3D11InputFormatInfo D3D11_INPUT_FORMATS_SNORM16[] =
 {
 	{ "DXGI_FORMAT_R16_SNORM", 2 },
 	{ "DXGI_FORMAT_R16G16_SNORM", 4 },
-	{ "DXGI_FORMAT_R16G16B16A18_SNORM", 8 },
-	{ "DXGI_FORMAT_R16G16B16A18_SNORM", 8 },
+	{ "DXGI_FORMAT_R16G16B16A16_SNORM", 8 },
+	{ "DXGI_FORMAT_R16G16B16A16_SNORM", 8 },
 };
 
 
@@ -1199,8 +1199,6 @@ void GeneratorHLSL::generate_structure( NodeStruct *node )
 		"struct",  // StructType_VertexOutput
 		"struct",  // StructType_FragmentInput
 		"struct",  // StructType_FragmentOutput
-		"struct",  // StructType_ComputeInput
-		"struct",  // StructType_ComputeOutput
 	};
 	static_assert( ARRAY_LENGTH( structNames ) == STRUCTTYPE_COUNT, "Missing TextureType" );
 
@@ -1412,7 +1410,6 @@ void GeneratorHLSL::generate_texture( NodeTexture *node )
 		generatedSampler = true;
 	}
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 }

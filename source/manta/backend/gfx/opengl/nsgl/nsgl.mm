@@ -2,8 +2,10 @@
 #include <manta/backend/gfx/opengl/opengl.hpp>
 #include <manta/backend/window/cocoa/window.cocoa.hpp>
 
-#import <Cocoa/Cocoa.h>
-#import <OpenGL/gl3.h>
+#include <vendor/conflicts.hpp>
+	#import <Cocoa/Cocoa.h>
+	#import <OpenGL/gl3.h>
+#include <vendor/conflicts.hpp>
 
 #include <core/debug.hpp>
 

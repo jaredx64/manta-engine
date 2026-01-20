@@ -10,7 +10,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Texture2DBuffer::init( const u16 width, const u16 height )
+void Texture2DBuffer::init( u16 width, u16 height )
 {
 	// Free existing data
 	if( data != nullptr ) { free(); }
@@ -87,8 +87,8 @@ void Texture2DBuffer::clear( const rgba color )
 }
 
 
-void Texture2DBuffer::splice( Texture2DBuffer &source,
-	const u16 srcX1, const u16 srcY1, const u16 srcX2, const u16 srcY2, const u16 dstX, const u16 dstY )
+void Texture2DBuffer::splice( Texture2DBuffer &source, u16 srcX1, u16 srcY1, u16 srcX2, u16 srcY2,
+	u16 dstX, u16 dstY )
 {
 	// Error checking
 	ErrorIf( !source, "Texture2DBuffer::splice - Attempting to splice null Texture2DBuffer" );

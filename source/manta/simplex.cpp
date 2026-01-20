@@ -16,6 +16,12 @@ static float grad( int hash, float x, float y )
 	return ( ( h & 1 ) ? -u : u ) + ( ( h & 2 ) ? -2.0f * v : 2.0f * v );
 }
 
+static inline int wrap_int( int x, int period )
+{
+	x %= period;
+	return ( x < 0 ) ? x + period : x;
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void Simplex::seed( u64 seed )
@@ -191,6 +197,70 @@ float Simplex::sample( float x, float y ) const
 	{
 		t2 *= t2;
 		n2  = t2 * t2 * grad( gi2, x2, y2 );
+	}
+
+	return 45.23065f * ( n0 + n1 + n2 );
+}
+
+
+float Simplex::sample_tiled( float x, float y, int period ) const
+{
+	float n0, n1, n2;
+	float t0, t1, t2;
+
+	float s = ( x + y ) * F2;
+	int i = fast_floor( x + s );
+	int j = fast_floor( y + s );
+
+	float t  = (float)( i + j ) * G2;
+	float xf = i - t;
+	float yf = j - t;
+
+	float x0 = x - xf;
+	float y0 = y - yf;
+
+	int i1 = ( x0 > y0 );
+	int j1 = !i1;
+
+	float x1 = x0 - i1 + G2;
+	float y1 = y0 - j1 + G2;
+	float x2 = x0 - 1.0f + 2.0f * G2;
+	float y2 = y0 - 1.0f + 2.0f * G2;
+
+	// 🔑 WRAP lattice coordinates (this is the entire trick)
+	int ii0 = wrap_int( i,     period );
+	int jj0 = wrap_int( j,     period );
+	int ii1 = wrap_int( i+i1,  period );
+	int jj1 = wrap_int( j+j1,  period );
+	int ii2 = wrap_int( i+1,   period );
+	int jj2 = wrap_int( j+1,   period );
+
+	int gi0 = hash( ii0, jj0 );
+	int gi1 = hash( ii1, jj1 );
+	int gi2 = hash( ii2, jj2 );
+
+	t0 = 0.5f - x0*x0 - y0*y0;
+	if( t0 < 0.0f ) n0 = 0.0f;
+	else
+	{
+		t0 *= t0;
+		n0 = t0 * t0 * grad( gi0, x0, y0 );
+	}
+
+	t1 = 0.5f - x1*x1 - y1*y1;
+	if( t1 < 0.0f ) n1 = 0.0f;
+	else
+	{
+		t1 *= t1;
+		n1 = t1 * t1 * grad( gi1, x1, y1 );
+	}
+
+	t2 = 0.5f - x2*x2 - y2*y2;
+	if( t2 < 0.0f ) n2 = 0.0f;
+	else
+	{
+		t2 *= t2;
+		n2 = t2 * t2 * grad( gi2, x2, y2 );
 	}
 
 	return 45.23065f * ( n0 + n1 + n2 );

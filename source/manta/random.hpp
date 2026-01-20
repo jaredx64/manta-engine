@@ -10,25 +10,25 @@ class Random
 {
 public:
 	Random();
-	Random( const u64 seed );
+	Random( u64 seed );
 
-	void seed( const u64 seed );
+	void seed( u64 seed );
 	u32 base();
 
-	int next_int( const int min, const int max );
-	int next_int( const int max );
-	u64 next_u64( const u64 min, const u64 max );
-	u64 next_u64( const u64 max );
-	u32 next_u32( const u32 min, const u32 max );
-	u32 next_u32( const u32 max );
-	u16 next_u16( const u16 min, const u16 max );
-	u16 next_u16( const u16 max );
-	u8 next_u8( const u8 min, const u8 max );
-	u8 next_u8( const u8 max );
-	float next_float( const float min, const float max );
-	float next_float( const float max );
-	double next_double( const double min, const double max );
-	double next_double( const double max );
+	int next_int( int min, int max );
+	int next_int( int max );
+	u64 next_u64( u64 min, u64 max );
+	u64 next_u64( u64 max );
+	u32 next_u32( u32 min, u32 max );
+	u32 next_u32( u32 max );
+	u16 next_u16( u16 min, u16 max );
+	u16 next_u16( u16 max );
+	u8 next_u8( u8 min, u8 max );
+	u8 next_u8( u8 max );
+	float next_float( float min, float max );
+	float next_float( float max );
+	double next_double( double min, double max );
+	double next_double( double max );
 
 	// Usage: random.choose( { value1, ..., valueN } );
 	template <typename T> T choose( std::initializer_list<T> values )

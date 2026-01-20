@@ -1,10 +1,12 @@
 #pragma once
 #ifdef __OBJC__
 
-#import <Cocoa/Cocoa.h>
-#import <Metal/Metal.h>
-#import <QuartzCore/CAMetalLayer.h>
-#import <QuartzCore/QuartzCore.h>
+#include <vendor/conflicts.hpp>
+	#import <Cocoa/Cocoa.h>
+	#import <Metal/Metal.h>
+	#import <QuartzCore/CAMetalLayer.h>
+	#import <QuartzCore/QuartzCore.h>
+#include <vendor/conflicts.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

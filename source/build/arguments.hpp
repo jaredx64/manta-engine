@@ -68,6 +68,7 @@ struct Arguments
 	const char *architecture;
 	const char *toolchain;
 	const char *gfx;
+	const char *multilaunch;
 
 	void parse( int argc, char **argv )
 	{
@@ -94,6 +95,10 @@ struct Arguments
 
 		// Run
 		parse_argument( argc, argv, "-run=", run, ARG_OPTIONAL, "1", "0", "2" );
+
+		// Multi-Launch
+		parse_argument( argc, argv, "-multilaunch=", multilaunch, ARG_OPTIONAL, "1",
+			"1", "2", "3", "4", "5", "6", "7", "8" );
 
 		// Operating System
 		#if PIPELINE_OS_WINDOWS

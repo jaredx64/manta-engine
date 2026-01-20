@@ -24,7 +24,7 @@ public:
 	void read( const char *path );
 	void write( const char *path );
 
-	template <typename T> bool fetch( const CacheID id, T &data )
+	template <typename T> bool fetch( CacheID id, T &data )
 	{
 		if( entryTableReading.count() == 0 ) { return false; }
 		Cache::Entry entry = entryTableReading.get( id );
@@ -35,7 +35,7 @@ public:
 		return true;
 	}
 
-	template <typename T> void store( const CacheID id, T &data )
+	template <typename T> void store( CacheID id, T &data )
 	{
 #if 1
 		ErrorIf( entryTableWriting.contains( id ), "CacheID conflict: %u", id );

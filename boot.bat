@@ -57,29 +57,23 @@ set project=
 		goto final
 	)
 
-	:: Load vcvars64 (required for MSVC)
+	:: MSVC: Load vcvars64.bat
 	if %toolchain% == msvc (
-		set "vcvars64_file=boot-vcvars64.txt"
-		set "default_vcvars64=C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
+		set "environment_json=environment.json"
+		set "vcvars64_path="
+		set "vcvars64_path_default=C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Auxiliary/Build/vcvars64.bat"
 
-		:: Check if boot-vcvars64.txt exists
-		if not exist "!vcvars64_file!" (
-			echo !default_vcvars64! > "!vcvars64_file!"
-			if %errorlevel% neq 0 (
-				echo Error: Failed to write to !vcvars64_file!
-				echo.
-				goto final
-			)
+		:: Create environment.json if it doesn't exist
+		if not exist "!environment_json!" (
+			powershell -NoProfile -Command "Set-Content -Path '!environment_json!' -Value (ConvertTo-Json @{ pipeline = @{ vcvars64 = '!vcvars64_path_default!' } }) -Encoding UTF8"
 		)
 
-		:: Read vcvars64.bat path from the file
-		set "vcvars64_path="
-		for /f "usebackq delims=" %%i in ("!vcvars64_file!") do set "vcvars64_path=%%i"
+		:: Read vcvars64 from environment.json
+		for /f "usebackq delims=" %%i in (`powershell -NoProfile -Command "try{$j=Get-Content '!environment_json!'|ConvertFrom-Json;$j.pipeline.vcvars64}catch{''}"`) do set "vcvars64_path=%%i"
 
-		:: Validate read path
-		if "!vcvars64_path!" == "" (
-			echo Error: boot-vcvars64.txt is empty or invalid.
-			goto final
+		:: If reading failed or empty, recreate environment.json
+		if "!vcvars64_path!"=="" (
+			set "vcvars64_path=!vcvars64_path_default!"
 		)
 
 		:: Run vcvars64.bat
@@ -143,13 +137,14 @@ set project=
 	goto final
 
 :print_vcvars_error
-	echo Error: Could not load vcvars64.bat for MSVC
-	echo        !vcvars64_path!
+	echo Error: Could not load vcvars64.bat for MSVC:
+	echo.
+	echo "!vcvars64_path!"
 	echo.
 	echo To fix:
-	echo 1.^) Ensure Microsoft Visual Studio is installed on your machine
-	echo 2.^) Locate its vcvars64.bat
-	echo 3.^) Update boot-vcvars64.txt (located next to this script) with the appropriate path for your machine
+	echo 1.) Ensure Microsoft Visual Studio is installed on your machine
+	echo 2.) Locate its vcvars64.bat
+	echo 3.) Update environment.json "vcvars64" with the appropriate path for your machine
 	echo.
 	echo Alternatively, try -toolchain=llvm or -toolchain=gnu if you have LLVM or GNU installed
 	echo.

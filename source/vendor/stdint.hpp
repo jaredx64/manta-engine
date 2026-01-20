@@ -2,11 +2,9 @@
 #include <vendor/config.hpp>
 
 #if USE_OFFICIAL_HEADERS
-#include <vendor/conflicts.hpp>
-
-#include <stdint.h>
-
-#include <vendor/conflicts.hpp>
+	#include <vendor/conflicts.hpp>
+		#include <stdint.h>
+	#include <vendor/conflicts.hpp>
 #else
 
 	typedef signed char int8_t;

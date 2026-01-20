@@ -4,13 +4,57 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-char WORKING_DIRECTORY[PATH_SIZE];
+char EXECUTABLE_DIRECTORY[PATH_SIZE];
+char APPLICATION_DIRECTORY[PATH_SIZE];
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 static bool char_is_slash( const char c )
 {
 	return c == '\\' || c == '/';
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool directory_create_full( const char *path )
+{
+	if( path == nullptr || path[0] == '\0' ) { return false; }
+
+	char buffer[PATH_SIZE];
+	usize length = 0;
+
+	while( path[length] != '\0' )
+	{
+		if( length + 1 >= PATH_SIZE ) { return false; }
+		buffer[length] = path[length];
+		length++;
+	}
+	buffer[length] = '\0';
+
+	for( usize i = 0; i < length; i++ )
+	{
+		char c = buffer[i];
+
+		if( c == '/' || c == '\\' )
+		{
+			if( i == 0 ) { continue; }
+
+			buffer[i] = '\0';
+			if( !directory_exists( buffer ) )
+			{
+				if( !directory_create( buffer ) ) { return false; }
+			}
+
+			buffer[i] = c;
+		}
+	}
+
+	if( !directory_exists( buffer ) )
+	{
+		if( !directory_create( buffer ) ) { return false; }
+	}
+
+	return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -9,7 +9,6 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// The GUIDs used for this API.
 static const GUID _IID_MMDeviceEnumerator
 	{ 0xBCDE0395, 0xE52F, 0x467C, { 0x8E, 0x3D, 0xC4, 0x57, 0x92, 0x91, 0x69, 0x2E } };
 static const GUID _IID_IMMDeviceEnumerator
@@ -19,33 +18,23 @@ static const GUID _IID_IAudioClient
 static const GUID _IID_IAudioRenderClient
 	{ 0xF294ACFC, 0x3146, 0x4483, { 0xA7, 0xBF, 0xAD, 0xDC, 0xA7, 0xC2, 0x60, 0xE2 } };
 
-// The number of channels to output.
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 #define CHANNELS 2
-
-// The number of samples per second to output.
 #define SAMPLE_RATE 44100
-
-// The minimum acceptable sound latency in milliseconds.
 #define LATENCY_MS 30
-
-// The number of REFERENCE_TIMEs per millisecond.
 #define REFTIMES_MS 10000
-
-// The minimum size of the shared buffer between us and WASAPI.
 #define BUFFER_SIZE LATENCY_MS * REFTIMES_MS
 
-// The format of the data stream we want to send to WASAPI. Of course, this
-// is Microsoft we're talking about here, so this is specified to the API in
-// WAV format.
 static const WAVEFORMATEX format
 {
-    .wFormatTag = WAVE_FORMAT_PCM,
-    .nChannels = CHANNELS,
-    .nSamplesPerSec = SAMPLE_RATE,
-    .nAvgBytesPerSec = CHANNELS * sizeof( i16 ) * SAMPLE_RATE,
-    .nBlockAlign = CHANNELS * sizeof( i16 ),
-    .wBitsPerSample = 16,
-    .cbSize = 0,
+	.wFormatTag = WAVE_FORMAT_PCM,
+	.nChannels = CHANNELS,
+	.nSamplesPerSec = SAMPLE_RATE,
+	.nAvgBytesPerSec = CHANNELS * sizeof( i16 ) * SAMPLE_RATE,
+	.nBlockAlign = CHANNELS * sizeof( i16 ),
+	.wBitsPerSample = 16,
+	.cbSize = 0,
 };
 
 static IAudioClient *client;
@@ -74,11 +63,11 @@ static THREAD_FUNCTION( audio_mixer_thread )
 		}
 
 		// The "padding" of the buffer is the number of audio frames in the
-        // buffer that are currently queued to play by WASAPI. So subtract that
-        // from the actual size of the buffer to get the number of audio frames
-        // that are not queued (i.e. ones that we can write to).
-        if( FAILED( client->GetCurrentPadding( &padding ) ) )
-        {
+		// buffer that are currently queued to play by WASAPI. So subtract that
+		// from the actual size of the buffer to get the number of audio frames
+		// that are not queued (i.e. ones that we can write to)
+		if( FAILED( client->GetCurrentPadding( &padding ) ) )
+		{
 			errorMessage = "WASAPI: Failed get current padding";
 			goto error;
 		}
@@ -122,7 +111,7 @@ bool CoreAudio::init_backend()
 
 	// Create Device Enumerator
 	failure = FAILED( CoCreateInstance( _IID_MMDeviceEnumerator, nullptr, CLSCTX_ALL, _IID_IMMDeviceEnumerator,
-		                               reinterpret_cast<void **>( &enumerator ) ) );
+		reinterpret_cast<void **>( &enumerator ) ) );
 	ErrorReturnIf( failure, false, "WASAPI: Failed to create device enumerator" );
 
 	// Get Default Endpoint Device
@@ -136,28 +125,21 @@ bool CoreAudio::init_backend()
 
 	// Initialize Audio Client
 	failure = FAILED( client->Initialize(
-        // Shared mode, so our application plays nice with others.
-        AUDCLNT_SHAREMODE_SHARED,
-
-        // Have the Windows audio engine handle a lot of stuff for us,
-        // like sample-rate and bit-depth conversion.
-        AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY |
-
-        // Request event-driven processing of the audio buffer.
-        AUDCLNT_STREAMFLAGS_EVENTCALLBACK,
-
-        // The minimum size of the shared buffer between us and WASAPI.
-        BUFFER_SIZE,
-
-        // This can only be non-zero in exclusive mode.
-        0,
-
-        // The format of the audio data we're going to specify in the audio buffer.
-        &format,
-
-        // TODO
-        nullptr ) );
-    ErrorReturnIf( failure, false, "WASAPI: Failed to initialize audio client" );
+		// Shared mode, so our application plays nice with others
+		AUDCLNT_SHAREMODE_SHARED,
+		// Have the Windows audio engine handle a lot of stuff for us,
+		// like sample-rate and bit-depth conversion
+		AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY |
+		// Request event-driven processing of the audio buffer
+		AUDCLNT_STREAMFLAGS_EVENTCALLBACK,
+		// The minimum size of the shared buffer between us and WASAPI
+		BUFFER_SIZE,
+		// This can only be non-zero in exclusive mode
+		0,
+		// The format of the audio data we're going to specify in the audio buffer
+		&format,
+		nullptr ) );
+	ErrorReturnIf( failure, false, "WASAPI: Failed to initialize audio client" );
 
 	// Get Render Client
 	failure = FAILED( client->GetService( _IID_IAudioRenderClient,
@@ -184,7 +166,6 @@ bool CoreAudio::init_backend()
 	failure = FAILED( client->Start() );
 	ErrorReturnIf( failure, false, "WASAPI: Failed to start audio client" );
 
-	// TODO: print in debug mode only
 #if COMPILE_DEBUG && false
 	PrintLn( "wasapi buffer size: %d frames (%d bytes, %f milliseconds)\n",
 		bufferSize,

@@ -4,216 +4,362 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#if 0
-
-#define NETWORKING 1
-
 #define NETWORK_PORT_DEFAULT ( 25565 )
 #define NETWORK_IP_DEFAULT ( "127.0.0.1" )
 
-struct PacketHeader
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+using NetworkConnectionHandle = u32;
+#define NetworkConnectionHandle_Null ( 0U )
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#define NETWORK_PACKET_MAX_BYTES ( 1024 * 1024 ) // 1 mb
+
+#define NETWORK_PACKET_DELIMITER ( 0x4E592A91A2B0F53F )
+
+#define NETWORK_PACKET_DELIMITER_BYTES ( 8 )
+#define NETWORK_PACKET_CHECKSUM_BYTES ( 4 )
+#define NETWORK_PACKET_PAYLOAD_SIZE_BYTES ( 4 )
+#define NETWORK_PACKET_HEADER_BYTES ( 16 )
+
+struct NetworkPacketHeaderTCP
 {
 	u64 delimiter;
 	u32 checksum;
 	u32 size;
 };
-
-#define PACKET_HEADER_DELIMITER_SIZE ( 8 )
-#define PACKET_HEADER_LENGTH_SIZE ( 4 )
-#define PACKET_HEADER_CHECKSUM_SIZE ( 4 )
-#define PACKET_HEADER_SIZE ( PACKET_HEADER_DELIMITER_SIZE + PACKET_HEADER_LENGTH_SIZE + PACKET_HEADER_CHECKSUM_SIZE )
-
-#define PACKET_HEADER_DELIMITER ( 0x4E592A91A2B0F53F )
+static_assert( sizeof( NetworkPacketHeaderTCP ) == NETWORK_PACKET_HEADER_BYTES, "Size mismatch!" );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-enum_type( SocketType, int )
+#define NETWORK_PACKET_UDP_HEADER_BYTES ( 8 )
+
+struct NetworkPacketHeaderUDP
 {
-	SocketType_TCP = 0,
-	SocketType_UDP = 1,
+	NetworkConnectionHandle handle;
+	u32 sequence;
+};
+static_assert( sizeof( NetworkPacketHeaderUDP ) == NETWORK_PACKET_UDP_HEADER_BYTES, "Size mismatch!" );
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct NetworkSocketResource;
+
+enum_type( NetworkSocketType, int )
+{
+	NetworkSocketType_Client,
+	NetworkSocketType_Server,
+	NetworkSocketType_Connection,
 };
 
-struct Socket
+
+enum_type( NetworkReceiveEvent, int )
 {
-#if NETWORK_WINDOWS
-	// Windows
-	usize id;
-#endif
-#if NETWORK_POSIX
-	// POSIX
-#endif
-
-	// Generic Packet Data
-	u64 packet_delimiter; // Unique flag to identify the start of a packet header
-	u32 packet_length; // The length of the current packet
-	u32 packet_checksum; // Checksum for the packet data
-	Buffer packet_buffer; // Buffer containing a single packet while it is being received
-
-	// Packet Security
-	u32 packet_size_validation_offset = PACKET_HEADER_DELIMITER_SIZE;
-	u8 dropped_packets; // Number of dropped/corrupt packets this socket has sent
+	NetworkReceiveEvent_None,
+	NetworkReceiveEvent_Data,
+	NetworkReceiveEvent_Disconnect,
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-extern bool network_init();
-extern bool network_free();
+using NetworkPort = u32;
 
-extern bool network_connect( Socket &socket, const char *host, const u16 port );
-extern void network_disconnect();
 
-extern void network_send( Socket &socket, Buffer &buffer, const usize size );
-extern int network_receive( Socket &socket, void ( *process )( Socket &socket, Buffer &packet ) );
-
-extern bool listen_socket_init( Socket &socket, const SocketType type, const u16 port );
-extern bool listen_socket_accept_connections( Socket &listenSocket, Socket &outSocket );
-
-extern bool socket_init( Socket &socket, const SocketType type );
-extern void socket_free( Socket &socket );
-
-extern void packet_process_buffer( Socket &socket, void *data, const usize data_size,
-	void ( *process )( Socket &socket, Buffer &packet ) );
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-enum_type( NetworkProtocol, int )
-{
-	NetworkProtocol_TCP = 0,
-	NetworkProtocol_UDP = 1,
-};
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-class NSocket
+class NetworkIP
 {
 public:
-	bool init( const NetworkProtocol protocol );
-	bool free();
+	NetworkIP() = default;
+	NetworkIP( const char* str ) { set( str ); }
+	NetworkIP( const NetworkIP &other ) { set( other.ip ); }
 
-	bool connect( const char *ip, const u16 port );
+	NetworkIP &operator=( const char *str )
+	{
+		set( str );
+		return *this;
+	}
+
+	NetworkIP &operator=( const NetworkIP &other )
+	{
+		if( this != &other ) { set( other.ip ); }
+		return *this;
+	}
+
+	char &operator[]( usize index ) { Assert( index < sizeof( ip ) ); return ip[index]; }
+	const char &operator[]( usize index ) const { Assert( index < sizeof( ip ) ); return ip[index]; }
+
+	bool is_empty() const { return ip[0] == '\0'; }
+	explicit operator bool() const { return !is_empty(); }
+
+	const char *cstr() const { return ip; }
+	operator const char *() const { return ip; }
+
+	char *cstr() { return ip; }
+	operator char *() { return ip; }
+
+	void set( const char *str );
+
+public:
+	char ip[48] = { };
+};
+
+
+class NetworkEndpoint
+{
+public:
+	NetworkEndpoint() = default;
+	NetworkEndpoint( const char *ip, u32 port ) : ip { ip }, port { port } { };
+
+	bool valid() const { return ip[0] != '\0'; }
+
+public:
+	NetworkIP ip = "";
+	NetworkPort port = 0;
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class NetworkSocketTCP
+{
+public:
+	void init( NetworkSocketType type, NetworkPort port, void *context );
+	void free();
+
+	bool listen();
+	bool connect( const char *host );
+	void disconnect();
+
+	bool accept_connection( NetworkSocketTCP *connection );
+
+	NetworkReceiveEvent receive( NetworkConnectionHandle handle,
+		void ( *process )( void *context, NetworkConnectionHandle handle, Buffer &buffer ) );
+
+	bool send( const void *data, usize size );
+
+private:
+	bool packet_validate_checksum() const;
+	bool packet_drop();
+	void packet_process_buffer( NetworkConnectionHandle handle, void *data, usize size,
+		void ( *process )( void *context, NetworkConnectionHandle handle, Buffer &buffer ) );
+
+public:
+	void *context = nullptr;
+	struct NetworkSocketResource *resource = nullptr;
+	NetworkSocketType type;
+	NetworkPort port;
+
+	Buffer buffer;
+	u64 delimiter;
+	u32 checksum;
+	u32 payloadSize;
+	u32 packetsDropped;
+
+	bool connected = false;
+
+	void ( *callbackOnDisconnect )( NetworkSocketTCP &socket ) = nullptr;
+};
+
+
+class NetworkConnectionTCP
+{
+public:
+	void init( NetworkPort port, void *context );
+	void free();
+
+public:
+	NetworkSocketTCP socket = { };
+	NetworkConnectionHandle handle;
+	NetworkIP ip = "";
+};
+
+
+class NetworkServerTCP
+{
+public:
+	void init( NetworkPort port, u32 connectionsCapacity, void *context );
+	void free();
+	bool connect();
 	bool disconnect();
 
-	void send( void *data, const usize size );
-	void send( const Buffer &buffer );
-	void send( const Buffer &buffer, const usize size );
-	int receive( void ( *process )( NSocket &socket, Buffer &packet ) );
+	NetworkConnectionHandle connection_accept(
+		void ( *callbackOnConnect )( void *context, NetworkConnectionHandle handle ) );
+
+	void connection_disconnect( NetworkConnectionHandle handle,
+		void ( *callbackOnDisconnect )( void *context, NetworkConnectionHandle handle ) );
+
+	void receive(
+		void ( *callbackOnReceive )( void *context, NetworkConnectionHandle handle, Buffer &buffer ),
+		void ( *callbackOnDisconnect )( void *context, NetworkConnectionHandle handle ) );
+
+	bool send_to( NetworkConnectionHandle handle, const void *data, usize size );
+	bool send_to( NetworkConnectionHandle handle, const Buffer &buffer );
+	bool send( const void *data, usize size );
+	bool send( const Buffer &buffer );
 
 private:
-	NetworkProtocol protocol;
-	u64 id = U64_MAX; // Windows
+	u32 connection_get_index( NetworkConnectionHandle handle ) const;
+
+public:
+	void *context = nullptr;
+	NetworkConnectionTCP *connections = nullptr;
+	NetworkSocketTCP socket;
+	u32 connectionsCapacity = 0;
+	u32 connectionsCurrent = 0;
+	u32 connectionsCount = 0;
+};
+
+
+class NetworkClientTCP
+{
+public:
+	void init( NetworkIP ip, NetworkPort port, void *context );
+	void free();
+	bool connect( void ( *callbackOnConnect )( void *context ) );
+	bool disconnect( void ( *callbackOnDisconnect )( void *context ) );
+
+	void receive(
+		void ( *callbackOnReceive )( void *context, NetworkConnectionHandle handle, Buffer &buffer ),
+		void ( *callbackOnDisconnect )( void *context ) );
+
+	bool send( const void *data, usize size );
+	bool send( const Buffer &buffer );
+
+public:
+	void *context = nullptr;
+	NetworkIP hostIP = "";
+	NetworkPort hostPort = 0;
+	NetworkSocketTCP socket;
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class NetworkSocketUDP
+{
+public:
+	void init( NetworkSocketType type, NetworkPort port, void *context );
+	void free();
+
+	bool bind();
+	void disconnect();
+
+	NetworkReceiveEvent receive(
+		void *validateContext,
+		bool ( *functionValidate )( void *context, NetworkConnectionHandle handle, u32 sequence,
+			const NetworkEndpoint &endpoint ),
+		void ( *functionProcess )( void *context, NetworkConnectionHandle handle, Buffer &buffer ) );
+
+	bool send( NetworkConnectionHandle handle, const NetworkEndpoint &endpoint,
+		const void *data, usize size );
+
+private:
+	bool packet_validate_sequence( u32 current, u32 previous ) const;
+	void packet_process_buffer( const NetworkEndpoint &endpoint, void *data, usize size,
+		void *validateContext,
+		bool ( *functionValidate )( void *context, NetworkConnectionHandle handle, u32 sequence,
+			const NetworkEndpoint &endpoint ),
+		void ( *functionProcess )( void *context, NetworkConnectionHandle handle, Buffer &buffer ) );
+
+public:
+	void *context = nullptr;
+	struct NetworkSocketResource *resource = nullptr;
+	NetworkSocketType type;
+	NetworkPort port;
 	Buffer buffer;
-};
+	u32 sequence = 0U;
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	bool connected = false;
 
-class NConnection
-{
-public:
-	explicit operator bool() const { return id < U32_MAX; }
-	operator u32() const { return id; }
-
-public:
-	u32 id = U32_MAX;
-	const char *ip = "";
-	NSocket socket;
+	void ( *callbackOnDisconnect )( NetworkSocketUDP &socket ) = nullptr;
 };
 
 
-class NConnections
+struct NetworkConnectionUDP
+{
+	NetworkConnectionHandle handle = NetworkConnectionHandle_Null;
+	NetworkEndpoint endpoint = NetworkEndpoint { };
+	u32 sequence = U32_MAX;
+};
+
+
+class NetworkServerUDP
 {
 public:
-	bool init( const u32 capacity );
-	bool free();
+	void init( NetworkPort port, u32 connectionsCapacity, void *context );
+	void free();
+	bool connect();
+	bool disconnect();
 
-	u32 make_new();
-	bool release( const u32 id );
+	bool connection_register( NetworkConnectionHandle handle );
+	void connection_release( NetworkConnectionHandle handle );
 
-	NConnection &at( const u32 id );
-	const NConnection &at( const u32 id ) const;
-	NConnection &operator[]( const u32 id ) { return at( id ); }
-	const NConnection &operator[]( const u32 id ) const { return at( id ); }
+	void receive(
+		void ( *callbackOnReceive )( void *context, NetworkConnectionHandle handle, Buffer &buffer ) );
 
-public:
-	class forward_iterator
-	{
-	public:
-		forward_iterator( NConnections &context, const bool begin ) : context { context }, index{ 0 }
-		{
-			if( !begin ) { connection = nullptr; return; } // end() state
-			MemoryAssert( context.connections != nullptr );
-			connection = &context.connections[index];
-			if( connection->id == U32_MAX ) { advance(); } // begin() state
-		}
-		forward_iterator &operator++() { advance(); return *this; }
-		bool operator!=( const forward_iterator &other ) const { return connection != other.connection; }
-		NConnection &operator*() { MemoryAssert( connection != nullptr ); return *connection; }
-
-	private:
-		void advance()
-		{
-			MemoryAssert( context.connections != nullptr );
-			while( ++index < context.capacity )
-			{
-				connection = &context.connections[index];
-				if( connection->id < U32_MAX ) { return; }
-			}
-			connection = nullptr;
-		}
-
-	private:
-		NConnections &context;
-		NConnection *connection;
-		u32 index;
-	};
-
-	forward_iterator begin() { return forward_iterator( *this, true ); }
-	forward_iterator end() { return forward_iterator( *this, false ); }
+	bool send_to( NetworkConnectionHandle handle, const void *data, usize size );
+	bool send_to( NetworkConnectionHandle handle, const Buffer &buffer );
+	bool send( const void *data, usize size );
+	bool send( const Buffer &buffer );
 
 private:
-	NConnection *connections = nullptr;
-	u32 capacity;
-	u32 current;
+	u32 connection_get_index( NetworkConnectionHandle handle ) const;
+	static bool packet_validate( void *context, NetworkConnectionHandle handle, u32 sequence,
+		const NetworkEndpoint &endpoint );
 
 public:
-	u32 count;
+	void *context = nullptr;
+	NetworkConnectionUDP *connections = nullptr;
+	NetworkSocketUDP socket;
+	u32 connectionsCapacity = 0;
+	u32 connectionsCurrent = 0;
+	u32 connectionsCount = 0;
 };
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class NServer
+class NetworkClientUDP
 {
 public:
-	bool init( const NetworkProtocol protocol, const u16 port, const u32 count );
-	bool free();
+	void init( NetworkIP ip, NetworkPort port, void *context );
+	void free();
+	bool connect();
+	bool disconnect();
 
-	u32 connection_accept();
-	bool connection_disconnect( u32 id );
+	void set_handle( NetworkConnectionHandle handle );
+
+	void receive(
+		void ( *callbackOnReceive )( void *context, NetworkConnectionHandle handle, Buffer &buffer ) );
+
+	bool send( const void *data, usize size );
+	bool send( const Buffer &buffer );
+
+private:
+	static bool packet_validate( void *context, NetworkConnectionHandle handle, u32 sequence,
+		const NetworkEndpoint &endpoint );
 
 public:
-	NSocket socket;
-	NConnections connections;
+	void *context = nullptr;
+	NetworkSocketUDP socket;
+	NetworkEndpoint endpoint;
+	NetworkConnectionHandle handle = NetworkConnectionHandle_Null;
+	u32 sequence = U32_MAX;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 namespace CoreNetwork
 {
+	extern bool initialized;
+	extern bool init();
+	extern bool free();
+	extern bool send_buffer( NetworkSocketResource *resource, const char *data, int size );
+};
+
+
+namespace Network
+{
 	extern bool init();
 	extern bool free();
 
-	extern bool connect( NSocket &socket, const char *host, const u16 port );
-	extern bool disconnect( NSocket &socket );
-
-	extern bool send( NSocket &socket, void *data, const usize size );
-	extern int receive( void ( *process )( NSocket &socket, Buffer &packet ) );
-
-	extern bool socket_init( NSocket &socket, const NetworkProtocol protocol );
-	extern bool socket_listener_init( NSocket &socket, const NetworkProtocol protocol, const u16 port );
-	extern bool socket_free( NSocket &socket );
-
-	extern NSocket socket_listener_accept_connection( NSocket &socket );
-}
-
-#endif
+	extern bool parse_ip_port( const char *src, NetworkIP &ip, NetworkPort &port );
+};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

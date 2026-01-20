@@ -1,6 +1,7 @@
 #include <manta/filesystem.hpp>
 
 #include <core/string.hpp>
+#include <core/list.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -13,12 +14,13 @@ bool file_time( const char *path, FileTime *result )
 	close( file );
 
 #if PIPELINE_OS_MACOS
-	// Use st_mtime (seconds). st_birthtime is not reliably portable.
-	result->time = static_cast<u64>( file_stat.st_mtime );
+	result->time =
+		static_cast<u64>( file_stat.st_mtime ) * 1000000000ULL +
+		static_cast<u64>( file_stat.st_mtimespec.tv_nsec );
 #else
-	// Use st_mtim (nanoseconds precision)
-	result->time = static_cast<u64>( file_stat.st_mtim.tv_sec ) * 1000000 +
-		static_cast<u64>( file_stat.st_mtim.tv_nsec ) / 1000;
+	result->time =
+		static_cast<u64>( file_stat.st_mtim.tv_sec ) * 1000000000ULL +
+		static_cast<u64>( file_stat.st_mtim.tv_nsec );
 #endif
 
 	return true;
@@ -34,6 +36,17 @@ bool file_time_newer( const FileTime &a, const FileTime &b )
 bool file_delete( const char *path )
 {
 	return ( unlink( path ) == 0 );
+}
+
+
+bool file_exists( const char *path )
+{
+	struct stat statBuf;
+	if( lstat( path, &statBuf ) != 0 )
+	{
+		return false;
+	}
+	return S_ISREG( statBuf.st_mode );
 }
 
 
@@ -96,13 +109,43 @@ bool file_copy( const char *source, const char *destination )
 	return true;
 }
 
+
+void file_time_string( u64 time, char *buffer, usize size )
+{
+	// Convert to struct timespec
+	struct timespec ts;
+	ts.tv_sec = time / 1000000000;
+	ts.tv_nsec = time % 1000000000;
+
+	// Convert to struct tm (local time)
+	struct tm localTime;
+	localtime_r( &ts.tv_sec, &localTime );
+
+	// Create String
+	const bool AM = localTime.tm_hour < 12;
+	const int month = localTime.tm_mon + 1;
+	const int day = localTime.tm_mday;
+	const int year = localTime.tm_year + 1900;
+	int hour = localTime.tm_hour % 12;
+	if( hour == 0 ) { hour = 12; }
+	const int minute = localTime.tm_min;
+	const int second = localTime.tm_sec;
+	snprintf( buffer, size, "%02d/%02d/%04d %02d:%02d:%02d %s",
+		month, day, year, hour, minute, second, AM ? "AM" : "PM" );
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool directory_create( const char *path )
 {
+#if 0
 	char dir[PATH_SIZE];
 	strjoin( dir, "." SLASH, path );
 	return mkdir( dir, 0777 ) == 0;
+#else
+	if( !path || path[0] == '\0' ) { return false; }
+	return mkdir( path, 0777 ) == 0 || errno == EEXIST;
+#endif
 }
 
 
@@ -143,6 +186,17 @@ bool directory_delete( const char *path )
 
 	if( rmdir( path ) != 0 ) { return false; }
 	return true;
+}
+
+
+bool directory_exists( const char *path )
+{
+	struct stat statBuf;
+	if( lstat( path, &statBuf ) != 0 )
+	{
+		return false;
+	}
+	return S_ISDIR( statBuf.st_mode );
 }
 
 
@@ -207,6 +261,99 @@ bool directory_copy( const char *source, const char *destination )
 
 	closedir( dir );
 	return true;
+}
+
+
+bool directory_iterate( List<FileInfo> &list, const char *path, const char *extension, bool recurse )
+{
+	struct dirent *entry;
+	DIR *dir = opendir( path );
+	if( !dir ) { return false; }
+
+	// Find first file
+	if( ( entry = readdir( dir ) ) == nullptr ) { closedir( dir ); return false; }
+
+	do
+	{
+		// Ignore hidden directories
+		if( entry->d_name[0] == '.' ) { continue; }
+
+		// Recurse Into Directories
+		if( entry->d_type == DT_DIR && recurse )
+		{
+			char subdir[PATH_SIZE];
+			strjoin( subdir, path, SLASH, entry->d_name );
+			directory_iterate( list, subdir, extension, recurse );
+		}
+		// Add File
+		else
+		{
+			// Filter extension
+			const int length = strlen( entry->d_name );
+			const int extensionLength = strlen( extension );
+			if( length <= extensionLength ||
+				strcmp( entry->d_name + length - extensionLength, extension ) != 0 )
+			{
+				continue;
+			}
+
+			// Add FileInfo
+			FileInfo info;
+			strjoin( info.path, path, SLASH, entry->d_name );
+			strncpy( info.name, entry->d_name, sizeof( info.name ) - 1 );
+			info.name[sizeof( info.name ) - 1] = '\0';
+			file_time( info.path, &info.time );
+			list.add( info );
+		}
+	} while ( ( entry = readdir( dir ) ) != nullptr );
+
+	closedir( dir );
+	return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool path_get_directory_executable( const char *executable )
+{
+	path_get_directory( EXECUTABLE_DIRECTORY, sizeof( EXECUTABLE_DIRECTORY ), executable );
+	return true;
+}
+
+
+bool path_get_directory_application( const char *application )
+{
+	APPLICATION_DIRECTORY[0] = '\0';
+
+#if OS_MACOS
+
+	const char *home = getenv( "HOME" );
+    if( !home ) { return false; }
+
+	snprintf( APPLICATION_DIRECTORY, sizeof( APPLICATION_DIRECTORY ),
+		"%s" SLASH "Library" SLASH "Application Support" SLASH "%s", home, application );
+
+	return true;
+
+#elif OS_LINUX
+
+	const char *home = getenv( "HOME" );
+    if( !home ) { return false; }
+
+	char applicationLower[PATH_SIZE];
+	snprintf( applicationLower, sizeof( applicationLower ), "%s", application );
+	strlower( applicationLower );
+
+	snprintf( APPLICATION_DIRECTORY, sizeof( APPLICATION_DIRECTORY ),
+		"%s" SLASH ".local" SLASH "share" SLASH "%s", home, applicationLower );
+
+	return true;
+
+#else
+
+	static_assert( false, "Unsupported operating system!" );
+	return false;
+
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

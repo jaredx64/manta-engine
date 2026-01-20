@@ -7,6 +7,7 @@
 #include <core/types.hpp>
 
 #include <vendor/stdlib.hpp>
+#include <vendor/stdio.hpp>
 
 #include <manta/engine.hpp>
 #include <manta/input.hpp>
@@ -114,7 +115,8 @@ namespace CoreWindow
 
 				// Keyboard Input Buffer
 				char *buffer = Keyboard::state().inputBuffer;
-				int size = WideCharToMultiByte( CP_UTF8, 0, reinterpret_cast<WCHAR *>( &wp ), 1, buffer, 10, nullptr, nullptr );
+				int size = WideCharToMultiByte( CP_UTF8, 0, reinterpret_cast<WCHAR *>( &wp ),
+					1, buffer, 10, nullptr, nullptr );
 				buffer[size] = '\0';
 
 				return 0;
@@ -130,7 +132,8 @@ namespace CoreWindow
 
 				// Keyboard Input Buffer
 				char *buffer = Keyboard::state().inputBuffer;
-				int size = WideCharToMultiByte( CP_UTF8, 0, reinterpret_cast<WCHAR *>( &wp ), 1, buffer, 10, nullptr, nullptr );
+				int size = WideCharToMultiByte( CP_UTF8, 0, reinterpret_cast<WCHAR *>( &wp ),
+					1, buffer, 10, nullptr, nullptr );
 				buffer[size] = '\0';
 
 				return 0;
@@ -209,7 +212,7 @@ namespace CoreWindow
 	}
 
 
-	bool init( const int defaultWidth, const int defaultHeight )
+	bool init( int defaultWidth, int defaultHeight )
 	{
 	#if WINDOW_ENABLED
 		// Set Dimensions
@@ -314,6 +317,32 @@ namespace CoreWindow
 	}
 
 
+	void terminal_init()
+	{
+	#if WINDOW_ENABLED
+	#if COMPILE_TERMINAL
+		if( !AttachConsole( ATTACH_PARENT_PROCESS ) ) { AllocConsole(); }
+		FILE *f;
+		freopen_s( &f, "CONOUT$", "w", stdout );
+		freopen_s( &f, "CONOUT$", "w", stderr );
+		freopen_s( &f, "CONIN$",  "r", stdin );
+
+		// Enable ANSI escape sequences
+		HANDLE hOut = GetStdHandle( STD_OUTPUT_HANDLE );
+		if( hOut != INVALID_HANDLE_VALUE )
+		{
+			DWORD dwMode = 0;
+			if( GetConsoleMode( hOut, &dwMode ) )
+			{
+				dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+				SetConsoleMode( hOut, dwMode );
+			}
+		}
+	#endif
+	#endif
+	}
+
+
 	void mouse_get_position( double &x, double &y )
 	{
 	#if WINDOW_ENABLED
@@ -324,7 +353,7 @@ namespace CoreWindow
 	}
 
 
-	void mouse_set_position( const int x, const int y )
+	void mouse_set_position( int x, int y )
 	{
 	#if WINDOW_ENABLED
 		POINT p;
@@ -441,7 +470,7 @@ namespace Window
 	}
 
 
-	void show_cursor( const bool enabled )
+	void show_cursor( bool enabled )
 	{
 	#if WINDOW_ENABLED
 		ShowCursor( enabled );
@@ -501,7 +530,7 @@ namespace Window
 	}
 
 
-	bool get_clipboard( char *buffer, const usize size )
+	bool get_clipboard( char *buffer, usize size )
 	{
 	#if WINDOW_ENABLED
 		// Open the clipboard
@@ -535,7 +564,7 @@ namespace Window
 	}
 
 
-	bool get_selection( char *buffer, const usize size )
+	bool get_selection( char *buffer, usize size )
 	{
 	#if WINDOW_ENABLED
 		// Do nothing on Windows

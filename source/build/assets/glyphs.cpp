@@ -91,8 +91,8 @@ void Glyphs::build()
 	if( verbose_output() )
 	{
 		const usize count = glyphs.size();
-		PrintColor( LOG_WHITE, TAB TAB "Wrote %d glyph%s", count, count == 1 ? "" : "s" );
-		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+		Print( PrintColor_White, TAB TAB "Wrote %d glyph%s", count, count == 1 ? "" : "s" );
+		PrintLn( PrintColor_White, " (%.3f ms)", timer.elapsed_ms() );
 	}
 }
 

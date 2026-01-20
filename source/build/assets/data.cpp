@@ -25,7 +25,7 @@ void DataAssets::make_new( const DataAsset &asset )
 }
 
 
-usize DataAssets::gather( const char *path, const bool recurse )
+usize DataAssets::gather( const char *path, bool recurse )
 {
 	// Gather DataAssets
 	List<FileInfo> files;
@@ -157,7 +157,7 @@ void DataAssets::build()
 		assets_group( header );
 
 		// Enums
-		header.append( "enum_class_type\n(\n\tDataAsset, u32,\n\n" );
+		header.append( "enum_class\n(\n\tDataAsset, u32,\n\n" );
 		for( DataAsset &asset : dataAssets ) { header.append( "\t" ).append( asset.name ).append( ",\n" ); }
 		header.append( "\n\tNull = 0,\n" );
 		header.append( ");\n\n" );
@@ -205,8 +205,8 @@ void DataAssets::build()
 	if( verbose_output() )
 	{
 		const usize count = dataAssets.size();
-		PrintColor( LOG_WHITE, TAB TAB "Wrote %d data asset%s", count, count == 1 ? "" : "s" );
-		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+		Print( PrintColor_White, TAB TAB "Wrote %d data asset%s", count, count == 1 ? "" : "s" );
+		PrintLn( PrintColor_White, " (%.3f ms)", timer.elapsed_ms() );
 	}
 }
 

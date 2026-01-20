@@ -16,7 +16,7 @@ namespace Assets
 
 bool CoreAssets::init()
 {
-	strjoin( Assets::binaryPath, WORKING_DIRECTORY, SLASH BUILD_PROJECT, ".bin" );
+	strjoin( Assets::binaryPath, EXECUTABLE_DIRECTORY, SLASH BUILD_PROJECT, ".bin" );
 	Assets::binary.open( Assets::binaryPath );
 
 	PrintLn( "%s", Assets::binaryPath );

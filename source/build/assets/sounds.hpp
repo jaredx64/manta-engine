@@ -33,11 +33,11 @@ struct Sounds
 {
 	SoundID make_new( const Sound &voice );
 
-	usize gather( const char *path, const bool recurse = true );
+	usize gather( const char *path, bool recurse = true );
 	void process( const char *path );
 	void build();
 
-	Sound &operator[]( const u32 soundID ) { return sounds[soundID]; }
+	Sound &operator[]( u32 soundID ) { return sounds[soundID]; }
 
 	List<Sound> sounds;
 };

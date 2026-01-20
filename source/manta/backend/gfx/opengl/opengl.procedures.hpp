@@ -59,5 +59,8 @@ META( void, glTexImage2DMultisample, GLenum, GLsizei, GLint, GLsizei, GLsizei, G
 META( void, glDrawArraysInstanced, GLenum, GLint, GLsizei, GLsizei )
 META( void, glDrawElementsInstanced, GLenum, GLsizei, GLenum, const void *, GLsizei )
 META( void, glFlushMappedBufferRange, GLenum, GLintptr, GLsizeiptr )
+META( GLsync, glFenceSync, GLenum, GLbitfield )
+META( void, glDeleteSync, GLsync )
+META( GLenum, glClientWaitSync, GLsync, GLbitfield, GLuint64 )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -28,11 +28,11 @@ struct Sprites
 {
 	void make_new( const Sprite &sprite );
 
-	usize gather( const char *path, const bool recurse = true );
+	usize gather( const char *path, bool recurse = true );
 	void process( const char *path );
 	void build();
 
-	Sprite &operator[]( const u32 spriteID ) { return sprites[spriteID]; }
+	Sprite &operator[]( u32 spriteID ) { return sprites[spriteID]; }
 
 	List<Sprite> sprites;
 };

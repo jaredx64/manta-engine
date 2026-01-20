@@ -17,7 +17,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void CoreText::macro_strjoin( const usize size, char *buffer, ... )
+void CoreText::macro_strjoin( usize size, char *buffer, ... )
 {
 	if( buffer == nullptr || size == 0 ) { return; }
 
@@ -45,7 +45,7 @@ void CoreText::macro_strjoin( const usize size, char *buffer, ... )
 }
 
 
-void CoreText::macro_strjoin_path( const usize size, char *buffer, ... )
+void CoreText::macro_strjoin_path( usize size, char *buffer, ... )
 {
 	if( buffer == nullptr || size == 0 ) { return; }
 	const usize slashLength = strlen( SLASH );
@@ -80,7 +80,7 @@ void CoreText::macro_strjoin_path( const usize size, char *buffer, ... )
 }
 
 
-void CoreText::macro_strappend( const usize size, char *buffer, const char *string )
+void CoreText::macro_strappend( usize size, char *buffer, const char *string )
 {
 	if( buffer == nullptr || string == nullptr || size == 0 ) { return; }
 	const usize bufferLength = strlen( buffer );
@@ -125,7 +125,7 @@ bool streq( const char *str1, const char *str2 )
 }
 
 
-bool strneq( const char *str1, const char *str2, const usize size )
+bool strneq( const char *str1, const char *str2, usize size )
 {
 	for( usize i = 0; i < size; i++ )
 	{
@@ -148,7 +148,7 @@ bool streq_case_insensitive( const char *str1, const char *str2 )
 }
 
 
-bool strneq_case_insensitive( const char *str1, const char *str2, const usize size )
+bool strneq_case_insensitive( const char *str1, const char *str2, usize size )
 {
 	for( usize i = 0; i < size; i++ )
 	{
@@ -159,7 +159,29 @@ bool strneq_case_insensitive( const char *str1, const char *str2, const usize si
 }
 
 
-bool char_whitespace( const char c )
+bool strstr_case_insensitive( const char *str1, const char *str2 )
+{
+	if( !*str2 ) return true;
+
+	for( ; *str1; ++str1 )
+	{
+		const char* h = str1;
+		const char* n = str2;
+
+		while( *h && *n && chrlower( *h ) == chrlower( *n ) )
+		{
+			++h;
+			++n;
+		}
+
+		if( !( *n ) ) { return true; }
+	}
+
+	return false;
+}
+
+
+bool char_is_whitespace( const char c )
 {
 	return c == ' ' || c == '\n' || c == '\r' || c == '\t';
 }
@@ -205,20 +227,17 @@ void String::grow()
 	MemoryAssert( data != nullptr );
 	if( capacity == 0 ) { capacity = 1; } else { capacity = capacity > USIZE_MAX / 2 ? USIZE_MAX : capacity * 2; }
 
-	// Reallocate memory
 	data = reinterpret_cast<char *>( memory_realloc( data, capacity + 1 ) );
 	ErrorIf( data == nullptr, "Failed to allocate memory for grow String (%p: alloc %d bytes)", data, capacity + 1 );
 	data[capacity] = '\0';
 }
 
 
-void String::init( const char *string, const usize length )
+void String::init( const char *string, usize length )
 {
-	// Set state
 	capacity = length == USIZE_MAX ? strlen( string ) : length;
 	current = capacity;
 
-	// Allocate memory
 	MemoryAssert( data == nullptr );
 	data = reinterpret_cast<char *>( memory_alloc( capacity + 1 ) );
 	memory_copy( data, string, current );
@@ -237,79 +256,11 @@ void String::free()
 	#endif
 	}
 
-	// Free memory
 	memory_free( data );
 	data = nullptr;
 
-	// Reset state
 	capacity = 0LLU;
 	current = 0LLU;
-}
-
-
-String &String::copy( const String &other )
-{
-	MemoryAssert( other.data != nullptr );
-	if( this == &other ) { return *this; }
-	if( data != nullptr ) { free(); }
-
-	// Copy state
-	capacity = other.capacity;
-	current = other.current;
-
-	// Allocate memory
-	MemoryAssert( data == nullptr );
-	data = reinterpret_cast<char *>( memory_alloc( capacity + 1 ) );
-	memory_copy( data, other.data, current );
-	data[current] = '\0';
-
-	// Return this
-	return *this;
-}
-
-
-String &String::copy_part( const String &other, usize start, usize end )
-{
-	MemoryAssert( other.data != nullptr );
-	if( this == &other ) { return *this; }
-	if( data != nullptr ) { free(); }
-
-	// Validate ranges
-	Assert( start <= end && start <= other.current );
-	if( end == USIZE_MAX ) { end = other.current; }
-	Assert( end <= other.current );
-	capacity = end - start;
-	current = capacity;
-
-	// Allocate memory
-	MemoryAssert( data == nullptr );
-	data = reinterpret_cast<char *>( memory_alloc( capacity + 1 ) );
-	memory_copy( data, other.data + start, current );
-	data[current] = '\0';
-
-	// Return thiss
-	return *this;
-}
-
-
-String &String::move( String &&other )
-{
-	MemoryAssert( other.data != nullptr );
-	if( this == &other ) { return *this; }
-	if( data != nullptr ) { free(); }
-
-	// Move the other String's resources
-	data = other.data;
-	capacity = other.capacity;
-	current = other.current;
-
-	// Reset other String to null state
-	other.data = nullptr;
-	other.capacity = 0LLU;
-	other.current = 0LLU;
-
-	// Return this
-	return *this;
 }
 
 
@@ -353,6 +304,63 @@ cleanup:
 }
 
 
+String &String::copy( const String &other )
+{
+	MemoryAssert( other.data != nullptr );
+	if( this == &other ) { return *this; }
+	if( data != nullptr ) { free(); }
+
+	capacity = other.capacity;
+	current = other.current;
+
+	MemoryAssert( data == nullptr );
+	data = reinterpret_cast<char *>( memory_alloc( capacity + 1 ) );
+	memory_copy( data, other.data, current );
+	data[current] = '\0';
+
+	return *this;
+}
+
+
+String &String::copy_part( const String &other, usize start, usize end )
+{
+	MemoryAssert( other.data != nullptr );
+	if( this == &other ) { return *this; }
+	if( data != nullptr ) { free(); }
+
+	Assert( start <= end && start <= other.current );
+	if( end == USIZE_MAX ) { end = other.current; }
+	Assert( end <= other.current );
+	capacity = end - start;
+	current = capacity;
+
+	MemoryAssert( data == nullptr );
+	data = reinterpret_cast<char *>( memory_alloc( capacity + 1 ) );
+	memory_copy( data, other.data + start, current );
+	data[current] = '\0';
+
+	return *this;
+}
+
+
+String &String::move( String &&other )
+{
+	MemoryAssert( other.data != nullptr );
+	if( this == &other ) { return *this; }
+	if( data != nullptr ) { free(); }
+
+	data = other.data;
+	capacity = other.capacity;
+	current = other.current;
+
+	other.data = nullptr;
+	other.capacity = 0LLU;
+	other.current = 0LLU;
+
+	return *this;
+}
+
+
 String &String::clear()
 {
 	MemoryAssert( data != nullptr );
@@ -363,7 +371,7 @@ String &String::clear()
 
 
 #if true || MEMORY_RAII
-String String::substr( const usize start, const usize end ) const
+String String::substr( usize start, usize end ) const
 {
 	MemoryAssert( data != nullptr );
 	Assert( start <= end );
@@ -372,7 +380,7 @@ String String::substr( const usize start, const usize end ) const
 #endif
 
 
-StringView String::view( const usize start, const usize end ) const
+StringView String::view( usize start, usize end ) const
 {
 	MemoryAssert( data != nullptr );
 	Assert( start <= end && start <= current );
@@ -387,13 +395,10 @@ String &String::trim()
 	MemoryAssert( data != nullptr );
 	if( current == 0 ) { return *this; }
 
-	// Trim leading whitespace characters
 	usize leadingSpaces = 0;
-	while( leadingSpaces < current && char_whitespace( data[leadingSpaces] ) ) { leadingSpaces++; }
-
-	// Trim trailing whitespace characters
+	while( leadingSpaces < current && char_is_whitespace( data[leadingSpaces] ) ) { leadingSpaces++; }
 	usize trailingSpaces = 0;
-	while( trailingSpaces < current && char_whitespace(data[current - trailingSpaces - 1] ) ) { trailingSpaces++; }
+	while( trailingSpaces < current && char_is_whitespace(data[current - trailingSpaces - 1] ) ) { trailingSpaces++; }
 
 	if( leadingSpaces + trailingSpaces >= current )
 	{
@@ -495,7 +500,7 @@ String &String::append( double number )
 }
 
 
-String &String::insert( const usize index, const char *string )
+String &String::insert( usize index, const char *string )
 {
 	MemoryAssert( data != nullptr );
 	if( string == nullptr || string[0] == '\0' ) { return *this; }
@@ -515,7 +520,7 @@ String &String::insert( const usize index, const char *string )
 }
 
 
-String &String::remove( const usize index, const usize count )
+String &String::remove( usize index, usize count )
 {
 	MemoryAssert( data != nullptr );
 	Assert( index < current && index + count <= current );
@@ -546,7 +551,7 @@ String &String::replace( const char *substr, const char *str, usize start, usize
 	const usize lenString = strlen( str );
 	const i64 lenDiff = ( lenString - lenSubstr );
 
-	// Replace substr's
+	// Replace substrings
 	usize index = find( substr, start, end );
 	while( index != USIZE_MAX && index + lenSubstr <= end )
 	{
@@ -628,7 +633,6 @@ usize String::find( const char *substr, usize start, usize end ) const
 	Assert( end <= current );
 	if( substr == nullptr || substr[0] == '\0' ) { return USIZE_MAX; }
 
-	// Iterate through the string
 	const usize length = strlen( substr );
 	end = current - length < end ? current - length + 1 : end;
 	for( usize i = start; i < end; i++ )
@@ -646,7 +650,6 @@ usize String::find( const char *substr, usize start, usize end ) const
 		if( found ) { return i; }
 	}
 
-	// Substring not found
 	return USIZE_MAX;
 }
 
@@ -663,7 +666,6 @@ bool String::contains_at( const char *substr, usize index ) const
 	if( index >= current ) { return false; }
 	if( substr == nullptr || substr[0] == '\0' ) { return false; }
 
-	// Check if substr matches
 	const usize length = strlen( substr );
 	if( index + length > current ) { return false; }
 	return strncmp( &data[index], substr, length ) == 0;
@@ -694,27 +696,19 @@ bool String::equals( const StringView &string ) const
 }
 
 
-char &String::char_at( const usize index )
+const char *String::get_pointer( usize index ) const
 {
-	 MemoryAssert( data != nullptr );
-	 Assert( index <= current );
-	 return data[index];
+	MemoryAssert( data != nullptr );
+	Assert( index <= current );
+	return &data[index];
 }
 
 
-const char &String::char_at( const usize index ) const
+const char &String::char_at( usize index ) const
 {
-	 MemoryAssert( data != nullptr );
-	 Assert( index <= current );
-	 return data[index];
-}
-
-
-const char *String::get_pointer( const usize index ) const
-{
-	 MemoryAssert( data != nullptr );
-	 Assert( index <= current );
-	 return &data[index];
+	MemoryAssert( data != nullptr );
+	Assert( index <= current );
+	return data[index];
 }
 
 
@@ -736,21 +730,20 @@ usize String::write( Buffer &buffer, const String &string )
 }
 
 
-void String::read( Buffer &buffer, String &string )
+bool String::read( Buffer &buffer, String &string )
 {
 	if( string.data != nullptr ) { string.free(); }
 
-	// Read state
 	buffer.read<usize>( string.capacity );
 	ErrorIf( string.capacity == 0, "Failed to Buffer read String: invalid capacity" );
 	string.capacity -= 1;
 	string.current = string.capacity;
 
-	// Allocate & read memory
 	MemoryAssert( string.data == nullptr );
 	string.data = reinterpret_cast<char *>( memory_alloc( string.capacity + 1 ) );
 	memory_copy( string.data, buffer.read_bytes( string.capacity ), string.capacity );
 	string.data[string.current] = '\0';
+	return true;
 }
 
 
@@ -760,9 +753,9 @@ void String::serialize( Buffer &buffer, const String &string )
 }
 
 
-void String::deserialize( Buffer &buffer, String &string )
+bool String::deserialize( Buffer &buffer, String &string )
 {
-	buffer.read<String>( string );
+	return buffer.read<String>( string );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

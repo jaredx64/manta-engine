@@ -83,8 +83,6 @@ template <typename A> A buffer( A buffer, int index );
 #define vertex_output struct
 #define fragment_input struct
 #define fragment_output struct
-#define compute_input struct
-#define compute_output struct
 #define in
 #define out
 #define inout
@@ -846,17 +844,29 @@ inline float depth_linearize( float depth, float near, float far ) { return 0.0f
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Built-in System-Value Semantics
 
-uint SV_VertexID;
-uint SV_InstanceID;
-uint SV_PrimitiveID;
-uint SV_SampleID;
-bool SV_IsFrontFace;
-uint3 SV_DispatchThreadID;
-uint3 SV_GroupThreadID;
-uint3 SV_GroupID;
-uint SV_GroupIndex;
+inline uint SV_VertexID;
+inline uint SV_InstanceID;
+inline uint SV_PrimitiveID;
+inline uint SV_SampleID;
+inline bool SV_IsFrontFace;
+inline uint3 SV_DispatchThreadID;
+inline uint3 SV_GroupThreadID;
+inline uint3 SV_GroupID;
+inline uint SV_GroupIndex;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Runtime Compilation Preprocessor Macros
+
+#define DEFINE( x )
+#define IF( x )
+#define IF_DEFINED( x )
+#define IF_UNDEFINED( x )
+#define IF_USING( x )
+#define ELSE_IF( x )
+#define ELSE
+#define ENDIF
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Stages
 
 #define vertex_main vertex_main
@@ -870,17 +880,5 @@ uint SV_GroupIndex;
 #define ray_miss ray_miss
 #define ray_intersection ray_intersection
 #define ray_callable ray_callable
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Runtime Compilation Preprocessor Macros
-
-#define DEFINE( x )
-#define IF( x )
-#define IF_DEFINED( x )
-#define IF_UNDEFINED( x )
-#define IF_USING( x )
-#define ELSE_IF( x )
-#define ELSE
-#define ENDIF
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

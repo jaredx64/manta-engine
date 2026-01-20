@@ -50,7 +50,7 @@ static CONSOLE_COMMAND_FUNCTION( cmd_debug_enabled )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-float CoreAudio::Effect::get_parameter( const EffectParam param, const bool incrementTime )
+float CoreAudio::Effect::get_parameter( EffectParam param, bool incrementTime )
 {
 	//Assert( active );
 	const float valueFrom = parameters[param].valueFrom;
@@ -62,7 +62,7 @@ float CoreAudio::Effect::get_parameter( const EffectParam param, const bool incr
 }
 
 
-void CoreAudio::Effect::set_parameter_default( const EffectParam param, const float value )
+void CoreAudio::Effect::set_parameter_default( EffectParam param, float value )
 {
 	parameters[param].valueFrom = value;
 	parameters[param].valueTo = value;
@@ -71,7 +71,7 @@ void CoreAudio::Effect::set_parameter_default( const EffectParam param, const fl
 }
 
 
-void CoreAudio::Effect::set_parameter( const EffectParam param, const float value )
+void CoreAudio::Effect::set_parameter( EffectParam param, float value )
 {
 	active = true;
 	parameters[param].valueFrom = value;
@@ -81,7 +81,7 @@ void CoreAudio::Effect::set_parameter( const EffectParam param, const float valu
 }
 
 
-void CoreAudio::Effect::set_parameter( const EffectParam param, const float value, const usize timeMS )
+void CoreAudio::Effect::set_parameter( EffectParam param, float value, usize timeMS )
 {
 	active = true;
 	parameters[param].valueFrom = get_parameter( param, false );
@@ -92,7 +92,7 @@ void CoreAudio::Effect::set_parameter( const EffectParam param, const float valu
 }
 
 
-void CoreAudio::Effect::set_parameter( const EffectParam param, const float v0, const float v1, const usize timeMS )
+void CoreAudio::Effect::set_parameter( EffectParam param, float v0, float v1, usize timeMS )
 {
 	active = true;
 	parameters[param].valueFrom = v0;
@@ -1124,8 +1124,8 @@ void CoreAudio::Stream::init()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-SoundHandle CoreAudio::play_voice( const int idBus, const i16 *const samples, const u32 samplesCount,
-	const int channels, const AudioEffects &effects, const AudioDescription &description, const char *name )
+SoundHandle CoreAudio::play_voice( int idBus, const i16 *samples, u32 samplesCount, int channels,
+	const AudioEffects &effects, const AudioDescription &description, const char *name )
 {
 	const u16 v = find_voice();
 	if( v == U16_MAX ) { return SoundHandle { }; }
@@ -1164,7 +1164,7 @@ SoundHandle CoreAudio::play_voice( const int idBus, const i16 *const samples, co
 }
 
 
-SoundHandle CoreAudio::play_stream( const int idBus, const u32 assetID,
+SoundHandle CoreAudio::play_stream( int idBus, u32 assetID,
 	const AudioEffects &effects, const AudioDescription &description, const char *name )
 {
 	const u16 s = find_stream();
@@ -1456,7 +1456,7 @@ static void audio_draw_label_value( const float x, const float y, const int widt
 }
 
 
-int_v2 CoreAudio::draw_debug( const Delta delta, const float x, const float y )
+int_v2 CoreAudio::draw_debug( const Delta delta, float x, float y )
 {
 	int_v2 dimensions = int_v2 { 0, 0 };
 	if( !DEBUG_ENABLED ) { return dimensions; }
@@ -1476,7 +1476,7 @@ int_v2 CoreAudio::draw_debug( const Delta delta, const float x, const float y )
 }
 
 
-bool CoreAudio::draw_bus( const Delta delta, const int id, float &x, float &y )
+bool CoreAudio::draw_bus( const Delta delta, int id, float &x, float &y )
 {
 	Bus &bus = buses[id];
 	if( bus.available ) { return false; }
@@ -1532,7 +1532,7 @@ bool CoreAudio::draw_bus( const Delta delta, const int id, float &x, float &y )
 }
 
 
-bool CoreAudio::draw_voice( const Delta delta, const int id, float &x, float &y )
+bool CoreAudio::draw_voice( const Delta delta, int id, float &x, float &y )
 {
 	Voice &voice = voices[id];
 	if( voice.idBus < 0 ) { return false; }
@@ -1563,7 +1563,7 @@ bool CoreAudio::draw_voice( const Delta delta, const int id, float &x, float &y 
 }
 
 
-bool CoreAudio::draw_stream( const Delta delta, const int id, float &x, float &y )
+bool CoreAudio::draw_stream( const Delta delta, int id, float &x, float &y )
 {
 	Stream &stream = sounds[id];
 	if( stream.idBus < 0 ) { return false; }
@@ -1610,7 +1610,7 @@ bool CoreAudio::draw_stream( const Delta delta, const int id, float &x, float &y
 }
 
 
-bool CoreAudio::draw_effect( const Delta delta, Effect &effect, const int type, float &x, float &y )
+bool CoreAudio::draw_effect( const Delta delta, Effect &effect, int type, float &x, float &y )
 {
 	if( !effect.active ) { return false; }
 

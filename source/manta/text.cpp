@@ -125,7 +125,7 @@ CoreFonts::FontGlyphInfo &TextChar::get_glyph() const
 }
 
 
-u16_v2 TextChar::get_glyph_dimensions( const usize index ) const
+u16_v2 TextChar::get_glyph_dimensions( usize index ) const
 {
 	static usize indexInLine = 0;
 	if( UNLIKELY( index == 0 ) ) { indexInLine = 0; }
@@ -179,18 +179,14 @@ void Text::grow()
 
 void Text::init( const char *string )
 {
-	// Set state
 	capacity = 1LLU;
 	current = 0LLU;
 
-	// Allocate memory
 	MemoryAssert( data == nullptr );
 	data = reinterpret_cast<TextChar *>( memory_alloc( capacity * sizeof( TextChar ) ) );
 
-	// Default Format
 	defaultFormat = TextFormat { };
 
-	// Append string
 	if( string[0] != '\0' ) { append( string ); };
 }
 
@@ -206,11 +202,9 @@ void Text::free()
 	#endif
 	}
 
-	// Free memory
 	memory_free( data );
 	data = nullptr;
 
-	// Reset state
 	capacity = 0LLU;
 	current = 0LLU;
 }
@@ -222,16 +216,13 @@ Text &Text::copy( const Text &other )
 	if( this == &other ) { return *this; }
 	if( data != nullptr ) { free(); }
 
-	// Copy state
 	capacity = other.capacity;
 	current = other.current;
 
-	// Allocate memory
 	MemoryAssert( data == nullptr );
 	data = reinterpret_cast<TextChar *>( memory_alloc( capacity * sizeof( TextChar ) ) );
 	memory_copy( data, other.data, current * sizeof( TextChar ) );
 
-	// Return this
 	return *this;
 }
 
@@ -242,17 +233,14 @@ Text &Text::move( Text &&other )
 	if( this == &other ) { return *this; }
 	if( data != nullptr ) { free(); }
 
-	// Move the other Text's resources
 	data = other.data;
 	capacity = other.capacity;
 	current = other.current;
 
-	// Reset other Text to null state
 	other.data = nullptr;
 	other.capacity = 0LLU;
 	other.current = 0LLU;
 
-	// Return this
 	return *this;
 }
 
@@ -266,7 +254,7 @@ void Text::clear()
 }
 
 
-void Text::remove( const usize index, const usize count )
+void Text::remove( usize index, usize count )
 {
 	MemoryAssert( data != nullptr );
 	Assert( index < current && index + count <= current );
@@ -311,13 +299,8 @@ usize Text::append( const char *string, TextFormat format )
 
 	while( ( c = *string++ ) != '\0' )
 	{
-		// Process Formatting Codes
 		if( process_formatting_codes( format, string, c ) ) { continue; }
-
-		// Decode UTF8
 		if( utf8_decode( &state, &codepoint, c ) != UTF8_ACCEPT ) { continue; }
-
-		// Append Character
 		count += append( TextChar { codepoint, format } );
 	}
 
@@ -343,7 +326,7 @@ usize Text::append( const Text &string )
 }
 
 
-usize Text::insert( const usize index, const TextChar &c )
+usize Text::insert( usize index, const TextChar &c )
 {
 	MemoryAssert( data != nullptr );
 
@@ -368,7 +351,7 @@ usize Text::insert( const usize index, const TextChar &c )
 }
 
 
-usize Text::insert( const usize index, const char *string, TextFormat format )
+usize Text::insert( usize index, const char *string, TextFormat format )
 {
 	MemoryAssert( data != nullptr );
 	usize count = 0;
@@ -379,13 +362,8 @@ usize Text::insert( const usize index, const char *string, TextFormat format )
 
 	while( ( c = *string++ ) != '\0' )
 	{
-		// Process Formatting Codes
 		if( process_formatting_codes( format, string, c ) ) { continue; }
-
-		// Decode UTF8
 		if( utf8_decode( &state, &codepoint, c ) != UTF8_ACCEPT ) { continue; }
-
-		// Append Character
 		count += insert( index + count, { codepoint, format } );
 	}
 
@@ -393,14 +371,14 @@ usize Text::insert( const usize index, const char *string, TextFormat format )
 }
 
 
-usize Text::insert( const usize index, const char *string )
+usize Text::insert( usize index, const char *string )
 {
 	MemoryAssert( data != nullptr );
 	return insert( index, string, get_format( index ) );
 }
 
 
-usize Text::insert( const usize index, const Text &string )
+usize Text::insert( usize index, const Text &string )
 {
 	MemoryAssert( data != nullptr );
 	MemoryAssert( string.data != nullptr );
@@ -430,7 +408,7 @@ usize Text::length() const
 }
 
 
-TextChar &Text::char_at( const usize index )
+TextChar &Text::char_at( usize index )
 {
 	 MemoryAssert( data != nullptr );
 	 Assert( index < current );
@@ -438,7 +416,7 @@ TextChar &Text::char_at( const usize index )
 }
 
 
-const TextChar &Text::char_at( const usize index ) const
+const TextChar &Text::char_at( usize index ) const
 {
 	 MemoryAssert( data != nullptr );
 	 Assert( index < current );
@@ -461,7 +439,7 @@ void Text::string( String &string )
 };
 
 
-String Text::substr( const usize start, const usize end )
+String Text::substr( usize start, usize end )
 {
 	MemoryAssert( data != nullptr );
 	Assert( start < end );
@@ -480,9 +458,8 @@ String Text::substr( const usize start, const usize end )
 };
 
 
-void Text::cstr( char *buffer, const usize size )
+void Text::cstr( char *buffer, usize size )
 {
-	// Size check
 	MemoryAssert( data != nullptr );
 	const usize bytes = length_bytes();
 	if( size < bytes ) { Warning( "Text::cstr() buffer not large enough: %llu, needs %llu", size, bytes ); }
@@ -499,8 +476,8 @@ void Text::cstr( char *buffer, const usize size )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static void draw_glyph( const float x, const float y, const float xOffset, const float yOffset,
-	const CoreFonts::FontGlyphInfo &glyph, const Color color )
+static void draw_glyph( float x, float y, float xOffset, float yOffset,
+	const CoreFonts::FontGlyphInfo &glyph, Color color )
 {
 	const float glyphX1 = x + xOffset + glyph.xshift;
 	const float glyphY1 = y + yOffset + glyph.yshift;
@@ -524,7 +501,7 @@ static void draw_glyph( const float x, const float y, const float xOffset, const
 }
 
 
-TextFormat Text::get_format( const usize index ) const
+TextFormat Text::get_format( usize index ) const
 {
 	if( index > 0 ) { return data[index - 1].format; }
 	if( index == 0 && current > 0 ) { return data[index].format; }
@@ -532,7 +509,7 @@ TextFormat Text::get_format( const usize index ) const
 }
 
 
-Text::LineInfo Text::get_line( const usize index )
+Text::LineInfo Text::get_line( usize index )
 {
 	Assert( index <= current );
 	LineInfo line { };
@@ -629,7 +606,7 @@ Text::LineInfo Text::get_line( const usize index )
 }
 
 
-usize Text::get_index_from_position( const int x, const int y, const float bias )
+usize Text::get_index_from_position( int x, int y, float bias )
 {
 	// Early out for empty Text
 	if( current == 0 ) { return 0; }
@@ -664,7 +641,7 @@ usize Text::get_index_from_position( const int x, const int y, const float bias 
 }
 
 
-int_v3 Text::get_position_from_index( const usize index )
+int_v3 Text::get_position_from_index( usize index )
 {
 	// Early out for empty Text
 
@@ -738,7 +715,7 @@ bool Text::limit_dimensions()
 }
 
 
-void Text::draw_selection( const float x, const float y, const usize begin, const usize end, const Alpha alpha )
+void Text::draw_selection( float x, float y, usize begin, usize end, Alpha alpha )
 {
 	const Color colorSelection = Color { 0, 40, 100, 255 };
 
@@ -831,7 +808,7 @@ void Text::draw_selection( const float x, const float y, const usize begin, cons
 }
 
 
-void Text::draw_caret( const float x, const float y, const usize index, float_v4 *outCorners, const Alpha alpha )
+void Text::draw_caret( float x, float y, usize index, float_v4 *outCorners, Alpha alpha )
 {
 	Assert( index <= current );
 
@@ -886,7 +863,7 @@ void Text::draw_caret( const float x, const float y, const usize index, float_v4
 }
 
 
-int_v2 Text::draw( const float x, const float y, const Alpha alpha )
+int_v2 Text::draw( float x, float y, Alpha alpha )
 {
 	int_v2 dimensions { 0, 0 };
 
@@ -1090,21 +1067,21 @@ TextEditor::~TextEditor()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static bool codepoint_is_whitespace( const u32 codepoint )
+static bool codepoint_is_whitespace( u32 codepoint )
 {
 	return codepoint == static_cast<u32>( ' ' ) ||
-	       codepoint == static_cast<u32>( '\t' ) ||
-		   codepoint == static_cast<u32>( '\n' );
+		codepoint == static_cast<u32>( '\t' ) ||
+		codepoint == static_cast<u32>( '\n' );
 }
 
 
-static bool codepoint_is_newline( const u32 codepoint )
+static bool codepoint_is_newline( u32 codepoint )
 {
 	return codepoint == static_cast<u32>( '\n' );
 }
 
 
-static bool codepoint_is_tab( const u32 codepoint )
+static bool codepoint_is_tab( u32 codepoint )
 {
 	return codepoint == static_cast<u32>( '\t' );
 }
@@ -1134,7 +1111,7 @@ void TextEditor::deactivate()
 }
 
 
-void TextEditor::update( const u64 codepoint )
+void TextEditor::update( u64 codepoint )
 {
 	// Append codepoint
 	char buffer[6];
@@ -1585,7 +1562,7 @@ void TextEditor::event_paste_selection()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void TextEditor::caret_alert( const Color color )
+void TextEditor::caret_alert( Color color )
 {
 	caretTimer = 0.0f;
 	caretTimerAlert = 1.0f;
@@ -1593,13 +1570,13 @@ void TextEditor::caret_alert( const Color color )
 }
 
 
-void TextEditor::caret_set_color( const Color color )
+void TextEditor::caret_set_color( Color color )
 {
 	caretColor = color;
 }
 
 
-void TextEditor::caret_set_root( const usize position )
+void TextEditor::caret_set_root( usize position )
 {
 	Assert( position <= text.length() );
 	caretRoot = position;
@@ -1607,7 +1584,7 @@ void TextEditor::caret_set_root( const usize position )
 }
 
 
-void TextEditor::caret_set_position( const usize position )
+void TextEditor::caret_set_position( usize position )
 {
 	Assert( position <= text.length() );
 
@@ -1647,7 +1624,7 @@ void TextEditor::caret_set_position_end()
 }
 
 
-void TextEditor::caret_set_selection( const usize start, const usize end )
+void TextEditor::caret_set_selection( usize start, usize end )
 {
 	Assert( start <= end );
 	caret_set_root( start );
@@ -1655,7 +1632,7 @@ void TextEditor::caret_set_selection( const usize start, const usize end )
 }
 
 
-void TextEditor::caret_set_selection_word( const usize index )
+void TextEditor::caret_set_selection_word( usize index )
 {
 	validate_selection();
 	const usize current = caret_get_position();
@@ -1699,7 +1676,7 @@ void TextEditor::caret_set_selection_word( const usize index )
 }
 
 
-void TextEditor::caret_set_selection_paragraph( const usize index )
+void TextEditor::caret_set_selection_paragraph( usize index )
 {
 	validate_selection();
 	const usize current = caret_get_position();
@@ -1753,7 +1730,7 @@ void TextEditor::caret_reset_selection()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-int_v2 TextEditor::draw( const Delta delta, const float x, const float y, const Alpha alpha )
+int_v2 TextEditor::draw( Delta delta, float x, float y, Alpha alpha )
 {
 	// Highlight
 	if( highlighting() ) { text.draw_selection( x, y, caretStart, caretEnd, alpha ); }
@@ -1933,7 +1910,7 @@ void TextEditor::text_append( const char *buffer )
 }
 
 
-usize TextEditor::text_replace( const usize start, const usize end, const char *buffer )
+usize TextEditor::text_replace( usize start, usize end, const char *buffer )
 {
 	Assert( start <= end );
 	Assert( end <= text.length() );
@@ -1972,7 +1949,7 @@ void TextEditor::validate_selection()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void TextEditor::text_callback_error( Text &text, const TextErr error )
+void TextEditor::text_callback_error( Text &text, TextErr error )
 {
 	if( CoreText::ACTIVE_TEXT_EDITOR == nullptr ) { return; }
 	TextEditor &textEditor = *CoreText::ACTIVE_TEXT_EDITOR;

@@ -1,0 +1,444 @@
+#include <object_api.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+HEADER_INCLUDES
+#include <core/list.hpp>
+#include <core/color.hpp>
+#include <manta/ui.hpp>
+
+SOURCE_INCLUDES
+#include <core/string.hpp>
+#include <manta/objects.hpp>
+#include <manta/random.hpp>
+#include <manta/draw.hpp>
+#include <manta/window.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+OBJECT( UIWidget_Window_RadialColorGraph )
+PARENT( UIWidget_Window )
+
+CATEGORY( UI )
+BUCKET_SIZE( 64 )
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+PUBLIC ObjectInstance spectrum;
+PUBLIC ObjectInstance textboxes;
+PUBLIC ObjectInstance clipboard;
+
+PUBLIC const char *name = "";
+PUBLIC RadialColorGraph *graph = nullptr;
+
+PUBLIC int selectedIndex = 0;
+PUBLIC bool dragging = false;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+PROTECTED void init()
+{
+	INHERIT::init();
+
+	width = 660;
+	height = 400;
+
+	spectrum = context->create_widget( Object::UIWidget_ColorPicker_Spectrum, id );
+	auto spectrumHandle = context->handle<Object::UIWidget_ColorPicker_Spectrum>( spectrum );
+	Assert( spectrumHandle );
+	if( spectrumHandle )
+	{
+		spectrumHandle->set_rgba( c_red );
+
+		spectrumHandle->callbackOnUpdate = []( UIContext &context, ObjectInstance widget )
+			{
+				auto widgetHandle = context.handle<Object::UIWidget_ColorPicker_Spectrum>( widget );
+				Assert( widgetHandle );
+				auto parentHandle = context.handle<Object::UIWidget_Window>( widgetHandle->parent );
+				Assert( parentHandle );
+
+				const int offsetX = 288;
+				const int offsetY = 128;
+				widgetHandle->x = offsetX + 4;
+				widgetHandle->y = offsetY + 4;
+				widgetHandle->width = parentHandle->width - 8 - offsetX;
+				widgetHandle->height = parentHandle->height - 80 - offsetY;
+			};
+
+		spectrumHandle->callbackOnInteract = []( UIContext &context, ObjectInstance widget )
+			{
+				auto widgetHandle =
+					context.handle<Object::UIWidget_ColorPicker_Spectrum>( widget );
+				Assert( widgetHandle );
+				auto parentHandle =
+					context.handle<Object::UIWidget_Window_RadialColorGraph>( widgetHandle->parent );
+				Assert( parentHandle );
+
+				auto textboxesHandle =
+					context.handle<Object::UIWidget_ColorPicker_TextBox>( parentHandle->textboxes );
+				Assert( textboxesHandle );
+				auto spectrumHandle =
+					context.handle<Object::UIWidget_ColorPicker_Spectrum>( parentHandle->spectrum );
+				Assert( spectrumHandle );
+
+				const Color color = spectrumHandle->get_rgba();
+				textboxesHandle->set_rgba( color );
+
+				const int index = parentHandle->selectedIndex;
+				if( index >= 0 ) { parentHandle->graph->nodes[index].color = color; }
+			};
+	}
+
+	textboxes = context->create_widget( Object::UIWidget_ColorPicker_TextBox, id );
+	auto textboxesHandle = context->handle<Object::UIWidget_ColorPicker_TextBox>( textboxes );
+	Assert( spectrumHandle );
+	if( textboxesHandle )
+	{
+		textboxesHandle->set_rgba( c_red );
+
+		textboxesHandle->callbackOnUpdate = []( UIContext &context, ObjectInstance widget )
+			{
+				auto widgetHandle = context.handle<Object::UIWidget_ColorPicker_TextBox>( widget );
+				Assert( widgetHandle );
+				auto parentHandle = context.handle<Object::UIWidget_Window>( widgetHandle->parent );
+				Assert( parentHandle );
+
+				const int offsetX = 256;
+				const int offsetY = 128;
+				widgetHandle->x = offsetX + 4;
+				widgetHandle->y = parentHandle->height - 68;
+			};
+
+		textboxesHandle->callbackOnInteract = []( UIContext &context, ObjectInstance widget )
+			{
+				auto widgetHandle =
+					context.handle<Object::UIWidget_ColorPicker_TextBox>( widget );
+				Assert( widgetHandle );
+				auto parentHandle =
+					context.handle<Object::UIWidget_Window_RadialColorGraph>( widgetHandle->parent );
+				Assert( parentHandle );
+
+				auto textboxesHandle =
+					context.handle<Object::UIWidget_ColorPicker_TextBox>( parentHandle->textboxes );
+				Assert( textboxesHandle );
+				auto spectrumHandle =
+					context.handle<Object::UIWidget_ColorPicker_Spectrum>( parentHandle->spectrum );
+				Assert( spectrumHandle );
+
+				const Color color = textboxesHandle->get_rgba();
+				spectrumHandle->set_rgba( color );
+
+				const int index = parentHandle->selectedIndex;
+				if( index >= 0 ) { parentHandle->graph->nodes[index].color = color; }
+			};
+	}
+
+	clipboard = context->create_widget_button( Object::UIWidget_Button, 0, 0, 128, 64, id );
+	auto clipboardHandle = context->handle<Object::UIWidget_Button>( clipboard );
+	if( clipboardHandle )
+	{
+		clipboardHandle->set_label( "Clipboard" );
+
+		clipboardHandle->callbackOnUpdate = []( UIContext &context, ObjectInstance widget )
+			{
+				auto widgetHandle =
+					context.handle<Object::UIWidget_Button>( widget );
+				Assert( widgetHandle );
+				auto parentHandle =
+					context.handle<Object::UIWidget_Window_RadialColorGraph>( widgetHandle->parent );
+				Assert( parentHandle );
+
+				widgetHandle->x = parentHandle->width - widgetHandle->width - 6;
+				widgetHandle->y = parentHandle->height - 68;
+			};
+
+		clipboardHandle->callbackOnInteract = []( UIContext &context, ObjectInstance widget )
+			{
+				auto widgetHandle =
+					context.handle<Object::UIWidget_Button>( widget );
+				Assert( widgetHandle );
+				auto parentHandle =
+					context.handle<Object::UIWidget_Window_RadialColorGraph>( widgetHandle->parent );
+				Assert( parentHandle );
+
+				const RadialColorGraph *graph = parentHandle->graph;
+				Assert( graph );
+
+				char buffer[16];
+				String name = parentHandle->name[0] == '\0' ? "radialColorGraph" : parentHandle->name;
+				name.trim();
+
+				String clipboard = "";
+				for( int i = 0; i < graph->count; i++ )
+				{
+					const RadialColorNode &node = graph->nodes[i];
+					clipboard.append( name ).append( ".add_node( RadialColorNode { Color { " );
+					snprintf( buffer, sizeof( buffer ), "0x%02X", node.color.r );
+					clipboard.append( buffer ).append( ", " );
+					snprintf( buffer, sizeof( buffer ), "0x%02X", node.color.g );
+					clipboard.append( buffer ).append( ", " );
+					snprintf( buffer, sizeof( buffer ), "0x%02X", node.color.b );
+					clipboard.append( buffer ).append( ", " );
+					snprintf( buffer, sizeof( buffer ), "0x%02X", node.color.a );
+					clipboard.append( buffer ).append( " }, " );
+					snprintf( buffer, sizeof( buffer ), "%.3ff", node.time );
+					clipboard.append( buffer ).append( " } );\n" );
+				}
+				Window::set_clipboard( clipboard.cstr() );
+			};
+	}
+}
+
+
+PROTECTED void free()
+{
+	Assert( spectrum ); context->destroy_widget( spectrum );
+	Assert( textboxes ); context->destroy_widget( textboxes );
+	Assert( clipboard ); context->destroy_widget( clipboard );
+	INHERIT::free();
+}
+
+
+PROTECTED void update( const Delta delta )
+{
+	if( graph == nullptr ) { context->destroy_widget( id ); return; }
+
+	widthMin = 660;
+	widthMax = 1440;
+	heightMin = 400;
+	heightMax = 400;
+
+	INHERIT::update( delta );
+}
+
+
+PROTECTED void render( const Delta delta, const Alpha alpha )
+{
+	if( graph == nullptr ) { context->destroy_widget( id ); return; }
+	INHERIT::render( delta, alpha );
+
+	// Interaction State
+	const bool isInteractable = is_interactable();
+	const bool isHovering = isInteractable && is_hovering();
+
+	// Interaction
+	bool removed = false;
+	int selectedIndexPrevious = selectedIndex;
+	if( Mouse::check_released( mb_left ) ) { dragging = false; }
+
+	// Coordinates
+	const int_v2 b1 = int_v2( x - border, y - border ).multiply( context->matrix_get() );
+	const int_v2 b2 = int_v2( x + width + border, y + height + border ).multiply( context->matrix_get() );
+	const int_v2 c1 = int_v2( x, y ).multiply( context->matrix_get() );
+	const int_v2 c2 = int_v2( x + width, y + height ).multiply( context->matrix_get() );
+
+	// Name
+	draw_rectangle( c1.x, c1.y, c1.x + width, c1.y + 20, Color { 20, 20, 20, 255 } );
+	draw_text_f( fnt_iosevka.bold(), 14, c1.x + 4, c1.y + 4, c_white, "%s", name );
+
+	// Linear Graph
+	const float linearX = 6.0f;
+	const float linearY = 44.0f;
+	const float linearWidth = width - 12.0f;
+	const float linearHeight = 64.0f;
+
+	draw_checkerboard( c1.x + linearX, c1.y + linearY,
+		c1.x + linearX + linearWidth, c1.y + linearY + linearHeight );
+
+	for( int i = 0; i < 400; i++ )
+	{
+		const float s0 = ( ( i + 0 ) / 400.0f ) * linearWidth;
+		const float s1 = ( ( i + 1 ) / 400.0f ) * linearWidth;
+		const Color c = graph->get_color( i / 400.0f );
+		draw_rectangle( c1.x + linearX + s0, c1.y + linearY,
+			c1.x + linearX + s1, c1.y + linearY + linearHeight - 16, c );
+		draw_rectangle( c1.x + linearX + s0, c1.y + linearY + linearHeight - 16,
+			c1.x + linearX + s1, c1.y + linearY + linearHeight,
+			Color { c.r, c.g, c.b, 255U } );
+	}
+
+	for( int i = 0; i < graph->count; i++ )
+	{
+		RadialColorNode &node = graph->nodes[i];
+		bool selected = selectedIndex == i;
+		const Color colorWidget = selected ? c_red : c_yellow;
+
+		const float widgetX = linearX + node.time * linearWidth;
+
+		draw_rectangle( c1.x + widgetX, c1.y + linearY - 4,
+			c1.x + widgetX + 2, c1.y + linearY + linearHeight + 3, c_black );
+		draw_rectangle( c1.x + widgetX - 1, c1.y + linearY - 4,
+			c1.x + widgetX + 1, c1.y + linearY + linearHeight + 2, colorWidget );
+		draw_rectangle( c1.x + widgetX - 7, c1.y + linearY - 19,
+			c1.x + widgetX + 9, c1.y + linearY - 3, c_black );
+		draw_rectangle( c1.x + widgetX - 8, c1.y + linearY - 20,
+			c1.x + widgetX + 8, c1.y + linearY - 4, colorWidget );
+		draw_rectangle( c1.x + widgetX - 6, c1.y + linearY - 18,
+			c1.x + widgetX + 6, c1.y + linearY - 6,
+			Color { node.color.r, node.color.g, node.color.b, 255U } );
+		draw_rectangle( c1.x + widgetX - 6, c1.y + linearY - 18,
+			c1.x + widgetX + 6, c1.y + linearY - 6, c_black, true );
+
+		const bool hoverTail = (
+			mouse_x_logical >= c1.x + widgetX - 2 &&
+			mouse_x_logical <= c1.x +widgetX + 2 &&
+			mouse_y_logical >= c1.y +linearY - 4 &&
+			mouse_y_logical <= c1.y +linearY + linearHeight + 2 );
+		const bool hoverHead = (
+			mouse_x_logical >= c1.x + widgetX - 2 &&
+			mouse_x_logical <= c1.x + widgetX + 2 &&
+			mouse_y_logical >= c1.y + linearY - 20 &&
+			mouse_y_logical <= c1.y + linearY - 2 );
+
+		if( isHovering && ( hoverHead || hoverTail ) )
+		{
+			if( Mouse::check_pressed( mb_left ) )
+			{
+				selectedIndex = i;
+				dragging = true;
+			}
+
+			if( Mouse::check_pressed( mb_right ) )
+			{
+				if( graph->count > 1 )
+				{
+					if( selected ) { selectedIndex = -1; }
+					graph->remove_node( i );
+					removed = true;
+				}
+			}
+		}
+
+		if( selected )
+		{
+			const int_v2 textWidth = text_dimensions_f( fnt_iosevka, 12, "%.3f", node.time );
+			draw_text_f( fnt_iosevka, 12, c1.x + widgetX - textWidth.x * 0.5f,
+				c1.y + linearY + linearHeight + 6, colorWidget, "%.3f", node.time );
+		}
+	}
+
+	draw_line( c1.x + linearX + linearWidth * graph->hint, c1.y + linearY,
+		c1.x + linearX + linearWidth * graph->hint, c1.y + linearY + linearHeight, c_lime, 1.0 );
+
+	// Radial Graph
+	const float radialRadius = 128.0f;
+	const float radialX = linearX + radialRadius + 6.0f;
+	const float radialY = linearY + linearHeight + radialRadius + 32.0f;
+	draw_radial_color_graph( *graph, c1.x + radialX, c1.y + radialY, radialRadius );
+
+	for( int i = 0; i < graph->count; i++ )
+	{
+		RadialColorNode &node = graph->nodes[i];
+		bool selected = selectedIndex == i;
+		const Color colorWidget = selected ? c_red : c_yellow;
+
+		const float widgetX1 = radialX;
+		const float widgetY1 = radialY;
+		const float widgetX2 = radialX + lengthdir_x( radialRadius + 2.0f, ( node.time + 0.5 ) * 360.0f );
+		const float widgetY2 = radialY + lengthdir_y( radialRadius + 2.0f, ( node.time + 0.5 ) * 360.0f );
+		draw_line( c1.x + widgetX1, c1.y + widgetY1,
+			c1.x + widgetX2, c1.y + widgetY2, colorWidget, 3 );
+	}
+
+	// Dragging
+	if( dragging && selectedIndex >= 0 && selectedIndex < graph->count )
+	{
+		const float time = clamp( ( mouse_x - linearX - c1.x ) / linearWidth, 0.0f, 1.0f );
+		RadialColorNode node = graph->nodes[selectedIndex];
+		graph->remove_node( selectedIndex );
+		node.time = time;
+		selectedIndex = graph->add_node( node );
+		state = WindowState_Resize_None;
+	}
+
+	// Addition
+	if( isHovering && Mouse::check_pressed( mb_right ) && !removed && graph->count < 32 )
+	{
+		if( mouse_x_logical >= c1.x + linearX && mouse_x_logical < c1.x + linearX + linearWidth &&
+			mouse_y_logical >= c1.y + linearY && mouse_y_logical < c1.y + linearY + linearHeight )
+		{
+			const float time = clamp( ( mouse_x - linearX - c1.x ) / linearWidth, 0.0f, 1.0f );
+			RadialColorNode node { graph->get_color( time ), time };
+			selectedIndex = graph->add_node( node );
+		}
+	}
+
+	// Selection
+	if( selectedIndexPrevious != selectedIndex && selectedIndex >= 0 )
+	{
+		const RadialColorNode &node = graph->nodes[selectedIndex];
+		auto textboxesHandle =
+			context->handle<Object::UIWidget_ColorPicker_TextBox>( textboxes );
+		Assert( textboxesHandle );
+		auto spectrumHandle =
+			context->handle<Object::UIWidget_ColorPicker_Spectrum>( spectrum );
+		Assert( spectrumHandle );
+
+		textboxesHandle->set_rgba( node.color );
+		spectrumHandle->set_rgba( node.color );
+	}
+}
+
+
+// PROTECTED void apply_matrix() { INHERIT::apply_matrix(); }
+
+
+// PROTECTED bool contains_point( const float_v2 point ) { INHERIT::contains_point(); }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+PRIVATE void draw_radial_color_graph( RadialColorGraph &graph, float x, float y, float radius )
+{
+	static const Assets::SpriteEntry &nullSprite = Assets::sprite( Sprite::SPRITE_DEFAULT );
+	static const Assets::GlyphEntry &nullGlyph = Assets::glyph( nullSprite.glyph );
+	static const GfxTexture *const nullTexture = &CoreGfx::textures[nullSprite.texture];
+	static constexpr int resolution = 256;
+	static constexpr float increment = 2.0f * PI_F / resolution;
+
+	for( u32 i = 0; i < resolution; i++ )
+	{
+		const float angle1 = increment * ( i + 0.0f );
+		const float angle2 = increment * ( i + 0.5f );
+		const float angle3 = increment * ( i + 1.0f );
+
+		float x1 = x;
+		float y1 = y;
+		float x2 = x + radius * cos( angle1 );
+		float y2 = y + radius * sin( angle1 );
+		float x3 = x + radius * cos( angle3 );
+		float y3 = y + radius * sin( angle3 );
+		float x4 = x + radius * cos( angle2 );
+		float y4 = y + radius * sin( angle2 );
+
+		const Assets::GlyphEntry &g = nullGlyph;
+
+		float time = static_cast<float>( i ) / resolution + 0.5f;
+		time -= floorf( time );
+		const Color color = graph.get_color( time );
+
+		Gfx::quad_batch_write( x1, y1, x2, y2, x3, y3, x4, y4, g.u1, g.v1, g.u2, g.v2,
+			color, color, color, color, nullTexture, 0.0f );
+	}
+}
+
+
+PRIVATE void draw_checkerboard( const int x1, const int y1, const int x2, const int y2 )
+{
+	const int checkerSize = 8;
+	const int checkerCountX = ( x2 - x1 ) / checkerSize;
+	const int checkerCountY = ( y2 - y1 ) / checkerSize;
+
+	for( int i = 0; i <= checkerCountX; i++ )
+	for( int j = 0; j <= checkerCountY; j++ )
+	{
+
+		const Color checkerColor = ( ( j % 2 ) + i ) % 2 == 0 ? Color { 120, 120, 120 } : Color { 170, 170, 170 };
+		const int checkerX1 = x1 + i * checkerSize;
+		const int checkerY1 = y1 + j * checkerSize;
+		const int checkerX2 = checkerX1 + ( i == checkerCountX ? x2 - checkerX1 : checkerSize );
+		const int checkerY2 = checkerY1 + ( j == checkerCountY ? y2 - checkerY1 : checkerSize );
+		draw_rectangle( checkerX1, checkerY1, checkerX2, checkerY2, checkerColor );
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

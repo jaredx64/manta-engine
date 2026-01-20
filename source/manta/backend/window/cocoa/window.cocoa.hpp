@@ -6,7 +6,10 @@
 
 #ifdef __OBJC__
 	#include <vendor/stddef.hpp>
-	#import <Cocoa/Cocoa.h>
+
+	#include <vendor/conflicts.hpp>
+		#import <Cocoa/Cocoa.h>
+	#include <vendor/conflicts.hpp>
 
 #if GRAPHICS_METAL
 	@interface GameView : NSView <CALayerDelegate> @end

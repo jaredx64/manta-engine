@@ -875,8 +875,6 @@ void Generator::generate_structure( NodeStruct *node )
 		"vertex_output",   // StructType_VertexOutput
 		"fragment_input",  // StructType_FragmentInput
 		"fragment_output", // StructType_FragmentOutput
-		"compute_input",   // StructType_ComputeInput
-		"compute_output",  // StructType_ComputeOutput
 	};
 	static_assert( ARRAY_LENGTH( structNames ) == STRUCTTYPE_COUNT, "Missing TextureType" );
 

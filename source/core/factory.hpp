@@ -9,12 +9,11 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template <typename T>
-class Factory
+template <typename T> class Factory
 {
 public:
 #if MEMORY_RAII
-	Factory( const u32 bucketSize = 64, const bool growable = true, const T &nullElement = { } )
+	Factory( const u32 bucketSize = 64, bool growable = true, const T &nullElement = { } )
 		{ init( bucketSize, growable, nullElement ); }
 	Factory( const Factory<T> &other ) { copy( other ); }
 	Factory( Factory<T> &&other ) { move( static_cast<Factory<T> &&>( other ) ); }
@@ -29,11 +28,10 @@ public:
 #if MEMORY_ASSERTS
 	~Factory()
 	{
-		// Memory Leak Detection
 		if( Debug::memoryLeakDetection && Debug::exitCode == 0 )
 		{
 			MemoryAssertMsg( buckets == nullptr, "ERROR: Memory leak in Factory (%p) (size: %.2f kb)",
-			                 this, KB( size_allocated_bytes() ) );
+				this, KB( size_allocated_bytes() ) );
 		}
 	}
 #endif
@@ -63,7 +61,7 @@ private:
 			T element;
 		};
 
-		Bucket( const BucketID id ) : id{ id } { };
+		Bucket( BucketID id ) : id{ id } { };
 		BucketID id = 0;
 
 		ElementSlot *slots = nullptr;
@@ -72,15 +70,13 @@ private:
 		BucketIndex bottom = 0;
 		BucketIndex top = 0;
 
-		void init( const BucketIndex reserve = 1 )
+		void init( BucketIndex reserve = 1 )
 		{
-			// Set state
 			capacity = reserve;
 			current = 0;
 			bottom = 0;
 			top = 0;
 
-			// Allocate memory
 			MemoryAssert( slots == nullptr );
 			Assert( capacity >= 1 );
 			slots = reinterpret_cast<ElementSlot *>( memory_alloc( capacity * sizeof( ElementSlot ) ) );
@@ -89,7 +85,6 @@ private:
 
 		void free()
 		{
-			// Free elements
 			MemoryAssert( slots != nullptr );
 			for( BucketIndex i = bottom; i < top; i++ )
 			{
@@ -99,11 +94,9 @@ private:
 				slot.element.~T();
 			}
 
-			// Free elements array
 			memory_free( slots );
 			slots = nullptr;
 
-			// Reset state
 			capacity = 0;
 			current = 0;
 			bottom = 0;
@@ -116,25 +109,21 @@ private:
 			if( this == &other ) { return *this; }
 			if( slots != nullptr ) { free(); }
 
-			// Copy state
 			capacity = other.capacity;
 			current = other.current;
 			bottom = other.bottom;
 			top = other.top;
 
-			// Allocate memory
 			MemoryAssert( slots == nullptr );
 			Assert( capacity >= 1 );
 			slots = reinterpret_cast<ElementSlot *>( memory_alloc( capacity * sizeof( ElementSlot ) ) );
 
-			// Copy memory
 			for( usize i = 0; i < capacity; i++ )
 			{
 				slots[i].handle = other.slots[i].handle;
 				new ( &slots[i].element ) T( other.slots[i].element );
 			}
 
-			// Return self
 			return *this;
 		}
 
@@ -144,27 +133,23 @@ private:
 			if( this == &other ) { return *this; }
 			if( slots != nullptr ) { free(); }
 
-			// Move the other bucket's resources
 			slots = other.slots;
 			capacity = other.capacity;
 			current = other.current;
 			bottom = other.bottom;
 			top = other.top;
 
-			// Reset other bucket to a null state
 			other.slots = nullptr;
 			other.capacity = 0;
 			other.current = 0;
 			other.bottom = 0;
 			other.top = 0;
 
-			// Return self
 			return *this;
 		}
 
 		void clear()
 		{
-			// Clear all elements in the bucket
 			MemoryAssert( slots != nullptr );
 			for( BucketIndex i = bottom; i < top; i++ )
 			{
@@ -176,7 +161,6 @@ private:
 				}
 			}
 
-			// Reset state
 			current = 0;
 			bottom = 0;
 			top = 0;
@@ -257,7 +241,7 @@ private:
 			return reinterpret_cast<u64 &>( slot.handle );
 		}
 
-		bool remove( const BucketIndex index, const GenerationID generation )
+		bool remove( BucketIndex index, GenerationID generation )
 		{
 			// Valid element?
 			MemoryAssert( slots != nullptr );
@@ -286,11 +270,10 @@ private:
 				while( top > 0 && slots[top - 1].handle.alive == false ) { top--; }
 			}
 
-			// Success
 			return true;
 		}
 
-		T *get( const BucketIndex index, const GenerationID generation ) const
+		T *get( BucketIndex index, GenerationID generation ) const
 		{
 			// Valid index?
 			if( index >= top ) { return nullptr; }
@@ -300,11 +283,10 @@ private:
 			ElementSlot &slot = slots[index];
 			if( !slot.handle.alive || slot.handle.generation != generation ) { return nullptr; }
 
-			// Success
 			return &slot.element;
 		}
 
-		bool contains( const BucketIndex index, const GenerationID generation ) const
+		bool contains( BucketIndex index, GenerationID generation ) const
 		{
 			// Valid element?
 			MemoryAssert( slots != nullptr );
@@ -340,7 +322,6 @@ private:
 				if( slots[i].element != other.slots[i].element ) { return false; }
 			}
 
-			// Success
 			return true;
 		}
 
@@ -376,7 +357,6 @@ private:
 		bucket->init( bucketSize );
 		current++;
 
-		// Success
 		return true;
 	}
 
@@ -406,7 +386,7 @@ private:
 	}
 
 public:
-	void init( const u32 bucketSize = 64, const bool growable = true, const T &nullElement = { } )
+	void init( u32 bucketSize = 64, bool growable = true, const T &nullElement = { } )
 	{
 		// Set state
 		this->capacity = 1;
@@ -535,7 +515,6 @@ public:
 		ErrorIf( buckets == nullptr, "Failed to reallocate memory for shrink Factory (%p: alloc %d bytes)",
 		         buckets, capacity * sizeof( Bucket ) );
 
-		// Success
 		return true;
 	}
 
@@ -574,7 +553,7 @@ public:
 		if( handle ) { elementCount++; return handle; } else { return 0; }
 	}
 
-	bool remove( const u64 handle )
+	bool remove( u64 handle )
 	{
 		MemoryAssert( buckets != nullptr );
 		const Handle h = reinterpret_cast<const Handle &>( handle );
@@ -590,7 +569,7 @@ public:
 		return false;
 	}
 
-	T &get( const u64 handle )
+	T &get( u64 handle )
 	{
 		MemoryAssert( buckets != nullptr );
 		const Handle h = reinterpret_cast<const Handle &>( handle );
@@ -601,7 +580,7 @@ public:
 		return *element;
 	}
 
-	const T &get( const u64 handle ) const
+	const T &get( u64 handle ) const
 	{
 		MemoryAssert( buckets != nullptr );
 		const Handle h = reinterpret_cast<const Handle &>( handle );
@@ -612,7 +591,7 @@ public:
 		return *element;
 	}
 
-	bool contains( const u64 handle ) const
+	bool contains( u64 handle ) const
 	{
 		MemoryAssert( buckets != nullptr );
 		const Handle h = reinterpret_cast<const Handle &>( handle );
@@ -650,21 +629,12 @@ public:
 		return bytes;
 	}
 
-	// Copy & Move Assignment
-
-
-	// Equality
     bool operator==( const Factory<T> &other ) const { return equals( other ); }
 	bool operator!=( const Factory<T> &other ) const { return !equals( other ); }
 
-	// Indexer
-    T &operator[]( const u64 handle ) { return get( handle ); }
-	const T &operator[]( const u64 handle ) const { return get( handle ); }
+    T &operator[]( u64 handle ) { return get( handle ); }
+	const T &operator[]( u64 handle ) const { return get( handle ); }
 
-	// Initialization check
-    explicit operator bool() const { return buckets != nullptr; }
-
-	// Forward Iterator
 	class forward_iterator
 	{
 	public:
@@ -721,7 +691,6 @@ public:
 	forward_iterator begin() const { MemoryAssert( buckets != nullptr ); return forward_iterator( *this, true ); }
 	forward_iterator end() const { MemoryAssert( buckets != nullptr ); return forward_iterator( *this, false ); }
 
-	// Reverse Iterator
 	class reverse_iterator
 	{
 	public:
@@ -780,6 +749,8 @@ public:
 	reverse_iterator rbegin() const { MemoryAssert( buckets != nullptr ); return reverse_iterator( *this, true ); }
 	reverse_iterator rend() const { MemoryAssert( buckets != nullptr ); return reverse_iterator( *this, false ); }
 
+	explicit operator bool() const { return buckets != nullptr; }
+
 public:
 	static void write( Buffer &buffer, const Factory<T> &factory )
 	{
@@ -816,21 +787,22 @@ public:
 		}
 	}
 
-	static void read( Buffer &buffer, Factory<T> &factory )
+	NO_DISCARD static bool read( Buffer &buffer, Factory<T> &factory )
 	{
-		if( factory.buckets != nullptr ) { factory.free(); }
-		MemoryAssert( factory.buckets == nullptr );
-
 		// Read state
-		buffer.read<BucketID>( factory.capacity );
-		buffer.read<BucketID>( factory.current );
-		buffer.read<BucketID>( factory.recent );
-		buffer.read<usize>( factory.elementCount );
-		buffer.read<BucketIndex>( factory.bucketSize );
-		buffer.read<bool>( factory.growable );
-		buffer.read<T>( factory.null );
+		if( !buffer.read<BucketID>( factory.capacity ) ) { return false; }
+		if( !buffer.read<BucketID>( factory.current ) ) { return false; }
+		if( !buffer.read<BucketID>( factory.recent ) ) { return false; }
+		if( !buffer.read<usize>( factory.elementCount ) ) { return false; }
+		if( !buffer.read<BucketIndex>( factory.bucketSize ) ) { return false; }
+		if( !buffer.read<bool>( factory.growable ) ) { return false; }
+		if( !buffer.read<T>( factory.null ) ) { return false; }
 
 		// Initialize memory
+		const bool factoryAlreadyInitialized = factory.buckets != nullptr;
+		auto cleanup_failure = [&]() { if( !factoryAlreadyInitialized ) { factory.free(); } };
+		if( factoryAlreadyInitialized ) { factory.free(); }
+		MemoryAssert( factory.buckets == nullptr );
 		Assert( factory.bucketSize >= 1 );
 		factory.buckets = reinterpret_cast<Bucket *>( memory_alloc( factory.capacity * sizeof( Bucket ) ) );
 
@@ -844,20 +816,23 @@ public:
 			MemoryAssert( bucket.slots != nullptr );
 
 			// Read bucket state
-			buffer.read<BucketIndex>( bucket.capacity );
-			buffer.read<BucketIndex>( bucket.current );
-			buffer.read<BucketIndex>( bucket.bottom );
-			buffer.read<BucketIndex>( bucket.top );
+			if( !buffer.read<BucketIndex>( bucket.capacity ) ) { cleanup_failure(); return false; }
+			if( !buffer.read<BucketIndex>( bucket.current ) ) { cleanup_failure(); return false; }
+			if( !buffer.read<BucketIndex>( bucket.bottom ) ) { cleanup_failure(); return false; }
+			if( !buffer.read<BucketIndex>( bucket.top ) ) { cleanup_failure(); return false; }
 
 			// Read elements
+			u64 handle;
 			for( BucketIndex j = 0; j < bucket.current; j++ )
 			{
 				typename Bucket::ElementSlot &slot = bucket.slots[j];
-				const u64 handle = buffer.read<u64>();
+				if( !buffer.read<u64>( handle ) ) { cleanup_failure(); return false; }
 				slot.handle = *reinterpret_cast<const Handle *>( &handle );
-				buffer.read<T>( slot.element );
+				if( !buffer.read<T>( slot.element ) ) { cleanup_failure(); return false; }
 			}
 		}
+
+		return true;
 	}
 
 	static void serialize( Buffer &buffer, const Factory<T> &factory )
@@ -866,10 +841,11 @@ public:
 		Error( "TODO: Implement this!" );
 	}
 
-	static void deserialize( Buffer &buffer, const Factory<T> &factory )
+	NO_DISCARD static bool deserialize( Buffer &buffer, const Factory<T> &factory )
 	{
 		// TODO: Implement Factory deserialize() function
 		Error( "TODO: Implement this!" );
+		return true;
 	}
 
 private:

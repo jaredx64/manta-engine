@@ -26,11 +26,11 @@ void Optimizer::optimize_stage( ShaderStage stage )
 		Node *node = parser.program[i];
 
 		if( node->nodeType != NodeType_FunctionDeclaration ) { continue; }
-		const NodeFunctionDeclaration *const declaration = reinterpret_cast<NodeFunctionDeclaration *>( node );
+		const NodeFunctionDeclaration *declaration = reinterpret_cast<NodeFunctionDeclaration *>( node );
 
-		if( ( stage == ShaderStage_Vertex   && declaration->functionType == FunctionType_MainVertex ) ||
+		if( ( stage == ShaderStage_Vertex && declaration->functionType == FunctionType_MainVertex ) ||
 		    ( stage == ShaderStage_Fragment && declaration->functionType == FunctionType_MainFragment ) ||
-		    ( stage == ShaderStage_Compute  && declaration->functionType == FunctionType_MainCompute ) )
+		    ( stage == ShaderStage_Compute && declaration->functionType == FunctionType_MainCompute ) )
 		{
 			entryPoint = i;
 			break;

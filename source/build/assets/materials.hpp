@@ -22,11 +22,11 @@ struct Materials
 {
 	void make_new( const Material &material );
 
-	usize gather( const char *path, const bool recurse = true );
+	usize gather( const char *path, bool recurse = true );
 	void process( const char *path );
 	void build();
 
-	Material &operator[]( const u32 materialID ) { return materials[materialID]; }
+	Material &operator[]( u32 materialID ) { return materials[materialID]; }
 
 	List<Material> materials;
 };

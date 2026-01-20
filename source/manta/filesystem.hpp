@@ -2,13 +2,13 @@
 
 #include <config.hpp>
 
-#include <core/debug.hpp>
-#include <core/types.hpp>
-
 #include <vendor/stdio.hpp>
 #include <vendor/stdlib.hpp>
 #include <vendor/stdarg.hpp>
 #include <vendor/string.hpp>
+
+#include <core/debug.hpp>
+#include <core/types.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -38,46 +38,70 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-extern char WORKING_DIRECTORY[PATH_SIZE];
+extern char EXECUTABLE_DIRECTORY[PATH_SIZE];
+extern char APPLICATION_DIRECTORY[PATH_SIZE];
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 struct FileTime
 {
 #if PIPELINE_OS_WINDOWS
-	// Windows
 	FILETIME time;
+	u64 as_u64() const
+	{
+		return ( static_cast<u64>( time.dwHighDateTime ) << 32 ) | static_cast<u64>( time.dwLowDateTime );
+	}
 #else
-	// POSIX
-	u64 time;
+	u64 time = 0;
+	u64 as_u64() const { return time; }
 #endif
+};
+
+
+struct FileInfo
+{
+	char path[PATH_SIZE];
+	char name[PATH_SIZE];
+	FileTime time;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 extern bool file_time( const char *path, FileTime *result );
 extern bool file_time_newer( const FileTime &a, const FileTime &b );
+extern bool file_exists( const char *path );
 extern bool file_delete( const char *path );
 extern bool file_rename( const char *path, const char *name );
 extern bool file_copy( const char *source, const char *destination );
+extern void file_time_string( u64 time, char *buffer, usize size );
 
 extern bool directory_create( const char *path );
+extern bool directory_create_full( const char *path );
+extern bool directory_exists( const char *path );
 extern bool directory_delete( const char *path );
 extern bool directory_rename( const char *path, const char *name );
 extern bool directory_copy( const char *source, const char *destination );
+
+template <typename T> class List;
+extern bool directory_iterate( List<FileInfo> &list, const char *path, const char *extension, bool recurse );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 extern bool path_is_directory( const char *path );
 extern bool path_is_file( const char *path );
 
-extern void path_get_directory( char *buffer, const usize size, const char *path );
-extern void path_get_filename( char *buffer, const usize size, const char *path );
-extern void path_get_extension( char *buffer, const usize size, const char *path );
+extern void path_get_directory( char *buffer, usize size, const char *path );
+extern void path_get_filename( char *buffer, usize size, const char *path );
+extern void path_get_extension( char *buffer, usize size, const char *path );
 
-extern void path_change_extension( char *buffer, const usize size, const char *path, const char *extension );
-extern void path_remove_extension( char *path, const usize size );
-extern void path_remove_extensions( char *path, const usize size );
+extern void path_change_extension( char *buffer, usize size, const char *path, const char *extension );
+extern void path_remove_extension( char *path, usize size );
+extern void path_remove_extensions( char *path, usize size );
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+extern bool path_get_directory_executable( const char *executable );
+extern bool path_get_directory_application( const char *application );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -89,12 +113,8 @@ extern usize fsize( FILE *file );
 struct FileHandle
 {
 #if FILESYSTEM_WINDOWS
-	// Windows
 	void *handle;
-#endif
-
-#if FILESYSTEM_POSIX
-	// POSIX
+#elif FILESYSTEM_POSIX
 	int fd;
 #endif
 };
@@ -113,17 +133,12 @@ public:
 
 	explicit operator bool() const { return file != nullptr && data != nullptr; }
 
-	// Memory Leak Detection
 	#if COMPILE_DEBUG
 	~File()
 	{
 		if( Debug::memoryLeakDetection && Debug::exitCode == 0 )
 		{
-			if( data == nullptr )
-			{
-				PrintLn( "memory leak!" );
-			}
-
+			if( data == nullptr ) { PrintLn( "memory leak!" ); }
 			AssertMsg( data == nullptr,
 				"ERROR: Memory leak in File (%p) (size: %.2f kb) (%s)", this, KB( size ), filepath );
 			AssertMsg( file == nullptr,

@@ -1422,7 +1422,7 @@ void preprocess_input( const char *path, String &input, String &output )
 
 
 bool preprocess_shader( const char *path, String &output,
-	const char **pipelineMacros, const int pipelineMacrosCount )
+	const char **pipelineMacros, int pipelineMacrosCount )
 {
 	Timer timer;
 

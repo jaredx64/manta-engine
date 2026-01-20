@@ -18,9 +18,9 @@ class Token
 {
 public:
 	Token() = default;
-	Token( TokenType type, StringView name ) : type{ type }, name{ name } { }
-	Token( TokenType type, double number, StringView name ) : type{ type }, name{ name }, number{ number } { }
-	Token( TokenType type, u64 integer, StringView name ) : type{ type }, name{ name }, integer{ integer } { }
+	Token( TokenType type, StringView name ) : type { type }, name { name } { }
+	Token( TokenType type, double number, StringView name ) : type { type }, name { name }, number { number } { }
+	Token( TokenType type, u64 integer, StringView name ) : type { type }, name { name }, integer { integer } { }
 
 public:
 	usize position = 0;
@@ -45,7 +45,7 @@ public:
 		stack.clear();
 	}
 
-	void init( const char *buffer, const usize offset )
+	void init( const char *buffer, usize offset )
 	{
 		this->buffer = buffer;
 		this->position = offset;
@@ -55,7 +55,7 @@ public:
 	bool consume( char c );
 	void skip_whitespace();
 
-	Token next( const bool skipWhitespace = true );
+	Token next( bool skipWhitespace = true );
 	Token back();
 	Token current();
 
@@ -78,13 +78,13 @@ public:
 class Parser
 {
 public:
-	Parser( Shader &shader, const char *path ) : shader{ shader }, path{ path } { }
+	Parser( Shader &shader, const char *path ) : shader { shader }, path { path } { }
 
 	void init();
 	bool parse( const char *string );
 
 	Node *parse_statement();
-	Node *parse_statement_block( const VariableID scopeIndex = USIZE_MAX );
+	Node *parse_statement_block( VariableID scopeIndex = USIZE_MAX );
 	Node *parse_statement_expression();
 	Node *parse_statement_function_call();
 	Node *parse_statement_cast();
@@ -106,8 +106,13 @@ public:
 	Node *parse_variable_declaration();
 
 	Node *parse_function_declaration();
-	Node *parse_function_declaration_main( FunctionType functionType, const char *functionName,
-		TokenType inToken, TokenType outToken );
+
+	Node *parse_function_declaration_main_pipeline( FunctionType functionType,
+		const char *functionName, TokenType inToken, TokenType outToken );
+	Node *parse_function_declaration_main_compute( FunctionType functionType,
+		const char *functionName );
+	Node *parse_function_declaration_main_raytracing( FunctionType functionType,
+		const char *functionName );
 
 	// https://en.cppreference.com/w/c/language/operator_precedence
 	Node *parse_assignment();             // Lowest Precedence
@@ -130,22 +135,22 @@ public:
 	inline Node *parse_expression() { return parse_assignment(); }
 
 	List<Struct> structs;
-	StructID register_struct( const Struct structure );
+	StructID register_struct( Struct structure );
 
 	List<Texture> textures;
 	HashMap<StringView, TextureID> textureMap;
-	TextureID register_texture( const Texture texture );
+	TextureID register_texture( Texture texture );
 
 	List<Type> types;
 	HashMap<StringView, TypeID> typeMap;
-	TypeID register_type( const Type type );
+	TypeID register_type( Type type );
 
 	List<Function> functions;
 	HashMap<StringView, FunctionID> functionMap;
-	FunctionID register_function( const Function function );
+	FunctionID register_function( Function function );
 
 	List<Variable> variables;
-	VariableID register_variable( const Variable variable );
+	VariableID register_variable( Variable variable );
 
 	bool swizzling = false;
 	HashMap<StringView, SwizzleID> swizzleMap;
@@ -158,10 +163,10 @@ public:
 	bool node_is_constexpr( Node *node );
 
 	List<VariableID> scope;
-	VariableID scope_find_variable( const StringView name );
-	void scope_reset( const VariableID target );
+	VariableID scope_find_variable( StringView name );
+	void scope_reset( VariableID target );
 
-	void check_namespace_conflicts( const StringView name );
+	void check_namespace_conflicts( StringView name );
 	void expect_semicolon();
 	bool node_seen( Node *node );
 
@@ -182,6 +187,12 @@ public:
 	FunctionID mainVertex = USIZE_MAX;
 	FunctionID mainFragment = USIZE_MAX;
 	FunctionID mainCompute = USIZE_MAX;
+	FunctionID mainRayGenerate = USIZE_MAX;
+	FunctionID mainRayHitAny = USIZE_MAX;
+	FunctionID mainRayHitClosest = USIZE_MAX;
+	FunctionID mainRayMiss = USIZE_MAX;
+	FunctionID mainRayIntersection = USIZE_MAX;
+	FunctionID mainRayCallable = USIZE_MAX;
 
 	u64 threadGroupX;
 	u64 threadGroupY;

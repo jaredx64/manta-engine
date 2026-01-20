@@ -12,6 +12,7 @@
 #include <build/assets/sprites.hpp>
 
 #include <build/arguments.hpp>
+#include <build/configuration.hpp>
 #include <build/objects.hpp>
 #include <build/toolchains.hpp>
 #include <build/filesystem.hpp>
@@ -22,15 +23,39 @@
 
 struct Source
 {
-	Source( const char *srcPath, const char *objPath ) : srcPath( srcPath ), objPath( objPath ) { }
+	Source() = default;
+	Source( const char *srcPath, const char *objPath ) : srcPath { srcPath }, objPath { objPath } { }
 	String srcPath;
 	String objPath;
+};
+
+
+struct Library
+{
+	Library() = default;
+	Library( const char *library, const char *path ) : library { library }, path { path } { }
+	String library;
+	String path;
+};
+
+
+struct Environment
+{
+	String pipelineVCVars64;
+	String pipelineVulkanSDK;
+	bool clangdEnabled = true;
+	bool clangdCHeaders = false;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 namespace Build
 {
+	// Pipeline
+	extern Arguments args;
+	extern Toolchain tc;
+	void parse_arguments( int argc, char **argv );
+
 	// Paths
 	extern char pathEngine[PATH_SIZE];
 	extern char pathProject[PATH_SIZE];
@@ -51,6 +76,16 @@ namespace Build
 	extern char pathOutputBuildCacheGraphics[PATH_SIZE];
 	extern char pathOutputBuildCacheAssets[PATH_SIZE];
 
+	// Configuration
+	extern Configuration config;
+	extern void configuration_load();
+	extern void configuration_save();
+
+	// Environment
+	extern Environment env;
+	extern void environment_load();
+	extern void environment_save();
+
 	// Package
 	extern String packageName;
 	extern String packageCompany;
@@ -61,14 +96,16 @@ namespace Build
 	extern String packageIcon;
 	extern Texture2DBuffer packageIconBuffer;
 	extern Source packageRC;
+	extern void package_load();
+	extern void package_generate_rc();
+	extern bool package_copy_steamworks( const char *pathPackage );
+	extern bool package_windows();
+	extern bool package_linux();
+	extern bool package_macos();
 
 	// Commands
 	extern char commandNinja[1024];
 	extern char commandRun[1024];
-
-	// Pipeline
-	extern Arguments args;
-	extern Toolchain tc;
 
 	// Timing
 	extern Timer timer;
@@ -80,14 +117,18 @@ namespace Build
 	// Compile
 	extern List<Source> rcs;
 	extern List<Source> sources;
-	extern List<String> libraries;
+	extern List<Library> libraries;
+	extern List<String> frameworks;
 	extern List<String> includeDirectories;
 
 	extern void compile_add_source( const char *pathSrc, const char *pathObj, const char *extensionObj );
-	extern usize compile_add_sources( const char *directory, const bool recurse,
+	extern usize compile_add_sources( const char *directory, bool recurse,
 		const char *extensionSrc, const char *extensionObj );
 
-	extern void compile_add_library( const char *library );
+	extern void compile_add_library( const char *library, const char *path = "" );
+
+	extern void compile_add_framework( const char *framework );
+
 	extern void compile_add_include_directory( const char *includePath );
 
 	// Stages
@@ -111,9 +152,6 @@ public:
 	// Build
 	virtual void build( int argc, char **argv );
 	virtual void build_cache_validate();
-
-	// Arguments & Toolchain
-	virtual void parse_arguments( int argc, char **argv );
 
 	// Objects
 	virtual void objects_gather();
@@ -139,14 +177,6 @@ public:
 	virtual void compile_engine();
 	virtual void compile_write_ninja();
 	virtual void compile_run_ninja();
-
-	// Package
-	virtual void package_load();
-	virtual void package_generate_rc();
-
-	virtual bool package_windows();
-	virtual bool package_linux();
-	virtual bool package_macos();
 
 	// Run
 	virtual void executable_run( int argc, char **argv );

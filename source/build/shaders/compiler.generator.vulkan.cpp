@@ -29,8 +29,6 @@ void GeneratorVulkan::generate_structure( NodeStruct *node )
 		"struct",          // StructType_VertexOutput
 		"struct",          // StructType_FragmentInput
 		"struct",          // StructType_FragmentOutput
-		"struct",          // StructType_ComputeInput
-		"struct",          // StructType_ComputeOutput
 	};
 	static_assert( ARRAY_LENGTH( structNames ) == STRUCTTYPE_COUNT, "Missing TextureType" );
 

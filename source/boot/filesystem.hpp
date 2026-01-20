@@ -40,7 +40,7 @@ inline bool char_is_slash( const char c )
 }
 
 
-inline void path_change_extension( char *buffer, const usize size, const char *path, const char *extension )
+inline void path_change_extension( char *buffer, usize size, const char *path, const char *extension )
 {
 	// Ensure valid strings
 	if( buffer == nullptr || path == nullptr || extension == nullptr ) { return; }
@@ -108,7 +108,7 @@ struct FileInfo
 
 struct FileList
 {
-	FileList( const usize reserve = 1 )
+	FileList( usize reserve = 1 )
 	{
 		data = reinterpret_cast<FileInfo *>( malloc( reserve * sizeof( FileInfo ) ) );
 		AssertMsg( data != nullptr, "Failed to malloc FileList buffer" );
@@ -160,8 +160,6 @@ inline bool file_time( const char *path, FileTime *result )
 
 	// Close File
 	CloseHandle( file );
-
-	// Success?
 	return success;
 }
 
@@ -234,13 +232,11 @@ static bool directory_delete( const char *path, const bool recurse )
 
 	// Delete directory
     if( !RemoveDirectoryA( path ) ) { return false; }
-
-	// Success
 	return true;
 }
 
 
-inline bool directory_iterate( FileList &list, const char *path, const char *extension, const bool recurse )
+inline bool directory_iterate( FileList &list, const char *path, const char *extension, bool recurse )
 {
 	WIN32_FIND_DATAA findData;
 	HANDLE findFile;
@@ -282,7 +278,6 @@ inline bool directory_iterate( FileList &list, const char *path, const char *ext
 		}
 	} while ( FindNextFileA( findFile, &findData ) );
 
-	// Success
 	return true;
 }
 
@@ -302,12 +297,13 @@ inline bool file_time( const char *path, FileTime *result )
 	close( file );
 
 #if PIPELINE_OS_MACOS
-	// Use st_mtime (seconds). st_birthtime is not reliably portable.
-	result->time = static_cast<u64>( file_stat.st_mtime );
+	result->time =
+		static_cast<u64>( file_stat.st_mtime ) * 1000000000ULL +
+		static_cast<u64>( file_stat.st_mtimespec.tv_nsec );
 #else
-	// Use st_mtim (nanoseconds precision)
-	result->time = static_cast<u64>( file_stat.st_mtim.tv_sec ) * 1000000 +
-		static_cast<u64>( file_stat.st_mtim.tv_nsec ) / 1000;
+	result->time =
+		static_cast<u64>( file_stat.st_mtim.tv_sec ) * 1000000000ULL +
+		static_cast<u64>( file_stat.st_mtim.tv_nsec );
 #endif
 
 	return true;
@@ -336,7 +332,7 @@ inline bool directory_create( const char *path )
 }
 
 
-static bool directory_delete( const char *path, const bool recurse )
+static bool directory_delete( const char *path, bool recurse )
 {
 	if( recurse )
 	{
@@ -378,12 +374,11 @@ static bool directory_delete( const char *path, const bool recurse )
 	// Delete directory
 	if( rmdir( path ) != 0 ) { return false; }
 
-	// Success
 	return true;
 }
 
 
-inline bool directory_iterate( FileList &list, const char *path, const char *extension, const bool recurse )
+inline bool directory_iterate( FileList &list, const char *path, const char *extension, bool recurse )
 {
 	struct dirent *entry;
 	DIR *dir = opendir( path );
@@ -424,7 +419,6 @@ inline bool directory_iterate( FileList &list, const char *path, const char *ext
 		}
 	} while ( ( entry = readdir( dir ) ) != nullptr );
 
-	// Success
 	closedir( dir );
 	return true;
 }
@@ -488,9 +482,7 @@ bool File::open( const char *path )
 	data[size] = '\0';
 	if( fread( data, size, 1, file ) < 1 ) { goto cleanup; }
 
-	// Success
 	return true;
-
 cleanup:
 	fclose( file );
 	if( data != nullptr ) { free( data ); }
@@ -514,9 +506,7 @@ bool File::save( const char *path )
 	// Write file
 	if( fwrite( data, size, 1, wfile ) < 1 ) { goto cleanup; }
 
-	// Success
 	return true;
-
 cleanup:
 	fclose( wfile );
 	return false;

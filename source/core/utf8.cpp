@@ -30,7 +30,7 @@ usize utf8_length_bytes( const char *string )
 }
 
 
-usize utf8_substr_length_bytes( const char *string, const usize start, const usize end )
+usize utf8_substr_length_bytes( const char *string, usize start, usize end )
 {
 	usize i = 0;
 	usize bytes = 0;
@@ -54,7 +54,7 @@ usize utf8_substr_length_bytes( const char *string, const usize start, const usi
 }
 
 
-u32 utf8_codepoint_at( const char *string, const usize index )
+u32 utf8_codepoint_at( const char *string, usize index )
 {
 	u32 state = UTF8_ACCEPT;
 	u32 codepoint;
@@ -73,7 +73,7 @@ u32 utf8_codepoint_at( const char *string, const usize index )
 }
 
 
-int utf8_codepoint_size( const u32 codepoint )
+int utf8_codepoint_size( u32 codepoint )
 {
 	if( codepoint <= 0x7F ) { return 1; }
 	if( codepoint <= 0x07FF ) { return 2; }
@@ -83,7 +83,7 @@ int utf8_codepoint_size( const u32 codepoint )
 }
 
 
-int utf8_encode( char *buffer, const u32 codepoint )
+int utf8_encode( char *buffer, u32 codepoint )
 {
 	if( codepoint <= 0x7F )
 	{

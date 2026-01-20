@@ -83,7 +83,7 @@ u32 checksum_xcrc32( const char *buffer, usize size, u32 seed )
 }
 
 
-u32 checksum_xcrc32( const char *buffer, const int offset, usize size, u32 seed )
+u32 checksum_xcrc32( const char *buffer, int offset, usize size, u32 seed )
 {
 	return checksum_xcrc32( buffer + offset, size, seed );
 }
@@ -106,7 +106,7 @@ u64 checksum_fnv1a64( const char *buffer, usize size, u64 seed )
 }
 
 
-u64 checksum_fnv1a64( const char *buffer, const usize offset, int size, u32 seed )
+u64 checksum_fnv1a64( const char *buffer, usize offset, int size, u32 seed )
 {
 	return checksum_fnv1a64( buffer + offset, size, seed );
 }

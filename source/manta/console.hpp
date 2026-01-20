@@ -30,13 +30,13 @@ namespace CoreConsole
 
 	extern void tokenize_input( const char *string );
 	extern void update_input();
-	extern void update_candidates( const bool processHiddenCommands );
+	extern void update_candidates( bool processHiddenCommands );
 
-	extern void draw_input( const Delta delta );
-	extern void draw_log( const Delta delta );
-	extern void draw_candidates( const Delta delta );
+	extern void draw_input( Delta delta );
+	extern void draw_log( Delta delta );
+	extern void draw_candidates( Delta delta );
 
-	extern void Log( const Color color, const char *command, const char *message );
+	extern void Log( Color color, const char *command, const char *message );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -63,8 +63,8 @@ namespace CoreConsole
 		static void dvar_register( const char *definition, const char *parameter, const char *description,
 			void *payload, CONSOLE_COMMAND_FUNCTION_POINTER( function ) );
 		static void dvar_release( void *payload );
-		static void dvar_set_hidden( void *payload, const bool hidden );
-		static void dvar_set_enabled( void *payload, const bool enabled );
+		static void dvar_set_hidden( void *payload, bool hidden );
+		static void dvar_set_enabled( void *payload, bool enabled );
 
 	public:
 		static constexpr int STATIC_DVARS_MAX = 1024;
@@ -85,6 +85,8 @@ namespace CoreConsole
 		DVar( bool scoped, double *variable, const char *definition, const char *description );
 		DVar( bool scoped, Color *variable, const char *definition, const char *description );
 		DVar( bool scoped, class GfxRenderTarget *variable, const char *definition, const char *description );
+		DVar( bool scoped, class RadialColorGraph *variable, const char *definition, const char *description );
+		DVar( bool scoped, class RadialFloatGraph *variable, const char *definition, const char *description );
 	public:
 		void *payload = nullptr;
 	};
@@ -144,8 +146,8 @@ namespace Console
 		const int param, const char *description );
 
 	extern void command_free( const CommandHandle command );
-	extern void command_set_hidden( const CommandHandle command, const bool hidden );
-	extern void command_set_enabled( const CommandHandle command, const bool enabled );
+	extern void command_set_hidden( const CommandHandle command, bool hidden );
+	extern void command_set_enabled( const CommandHandle command, bool enabled );
 
 	extern bool command_execute();
 	extern bool command_execute( const char *command );
@@ -161,19 +163,19 @@ namespace Console
 	extern void clear_log();
 	extern void dump_log( const char *path );
 
-	extern void Log( const Color color, const char *message, ... );
-	extern void LogCommand( const Color color, const char *command, const char *message, ... );
+	extern void Log( Color color, const char *message, ... );
+	extern void LogCommand( Color color, const char *command, const char *message, ... );
 
 	extern usize get_parameter_count();
 
-	extern const char *get_parameter_string( const int param, const char *defaultValue = "" );
-	extern int get_parameter_int( const int param, const int defaultValue = 0 );
-	extern u32 get_parameter_u32( const int param, const u32 defaultValue = 0 );
-	extern u64 get_parameter_u64( const int param, const u64 defaultValue = 0 );
-	extern bool get_parameter_bool( const int param, const bool defaultValue = false );
-	extern bool get_parameter_toggle( const int param, const bool currentValue = false );
-	extern float get_parameter_float( const int param, const float defaultValue = 0.0f );
-	extern double get_parameter_double( const int param, const double defaultValue = 0.0 );
+	extern const char *get_parameter_string( int param, const char *defaultValue = "" );
+	extern int get_parameter_int( int param, int defaultValue = 0 );
+	extern u32 get_parameter_u32( int param, u32 defaultValue = 0 );
+	extern u64 get_parameter_u64( int param, u64 defaultValue = 0 );
+	extern bool get_parameter_bool( int param, bool defaultValue = false );
+	extern bool get_parameter_toggle( int param, bool currentValue = false );
+	extern float get_parameter_float( int param, float defaultValue = 0.0f );
+	extern double get_parameter_double( int param, double defaultValue = 0.0 );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

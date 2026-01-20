@@ -165,8 +165,6 @@ const char *StructTypeNames[] =
 	"vertex_output",
 	"fragment_input",
 	"fragment_output",
-	"compute_input",
-	"compute_output",
 };
 static_assert( ARRAY_LENGTH( StructTypeNames ) == STRUCTTYPE_COUNT, "Missing StructType!" );
 
@@ -229,8 +227,6 @@ const Keyword KeywordNames[] =
 	{ "vertex_output", TokenType_VertexOutput },
 	{ "fragment_input", TokenType_FragmentInput },
 	{ "fragment_output", TokenType_FragmentOutput },
-	{ "compute_input", TokenType_ComputeInput },
-	{ "compute_output", TokenType_ComputeOutput },
 	{ "texture1D", TokenType_Texture1D },
 	{ "texture1DArray", TokenType_Texture1DArray },
 	{ "texture2D", TokenType_Texture2D },
@@ -407,25 +403,25 @@ bool Scanner::consume( char c )
 }
 
 
-static bool is_letter( const char c )
+static bool is_letter( char c )
 {
 	return ( static_cast<unsigned int>( c ) | 32 ) - 'a' < 26;
 }
 
 
-static bool is_digit( const char c )
+static bool is_digit( char c )
 {
 	return ( static_cast<unsigned int>( c ) ) - '0' < 10;
 }
 
 
-static bool is_digit_hex( const char c )
+static bool is_digit_hex( char c )
 {
 	return is_digit( c ) || ( c >= 'A' && c <= 'F' );
 }
 
 
-static TokenType get_keyword( const char *buffer, const u32 length )
+static TokenType get_keyword( const char *buffer, u32 length )
 {
 	const u32 keywordCount = sizeof( KeywordNames ) / sizeof( KeywordNames[0] );
 	for( u32 i = 0; i < keywordCount; i++ )
@@ -443,7 +439,7 @@ static TokenType get_keyword( const char *buffer, const u32 length )
 }
 
 
-static TokenType get_directive( const char *buffer, const u32 length )
+static TokenType get_directive( const char *buffer, u32 length )
 {
 	const u32 directiveCount = sizeof( DirectiveNames ) / sizeof( DirectiveNames[0] );
 	for( u32 i = 0; i < directiveCount; i++ )
@@ -461,7 +457,7 @@ static TokenType get_directive( const char *buffer, const u32 length )
 }
 
 
-Token Scanner::next( const bool skipWhitespace )
+Token Scanner::next( bool skipWhitespace )
 {
 	Token token;
 	#define RETURN_TOKEN_NAME(...) \
@@ -710,7 +706,7 @@ Token Scanner::current()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-StructID Parser::register_struct( const Struct structure )
+StructID Parser::register_struct( Struct structure )
 {
 	StructID structID = structs.size();
 	structs.add( structure );
@@ -718,7 +714,7 @@ StructID Parser::register_struct( const Struct structure )
 }
 
 
-TextureID Parser::register_texture( const Texture texture )
+TextureID Parser::register_texture( Texture texture )
 {
 	TextureID textureID = textures.size();
 	textures.add( texture );
@@ -728,7 +724,7 @@ TextureID Parser::register_texture( const Texture texture )
 }
 
 
-TypeID Parser::register_type( const Type type )
+TypeID Parser::register_type( Type type )
 {
 	TypeID typeID = types.size();
 	types.add( type );
@@ -737,7 +733,7 @@ TypeID Parser::register_type( const Type type )
 }
 
 
-FunctionID Parser::register_function( const Function function )
+FunctionID Parser::register_function( Function function )
 {
 	FunctionID functionID = functions.size();
 	functions.add( function );
@@ -746,7 +742,7 @@ FunctionID Parser::register_function( const Function function )
 }
 
 
-VariableID Parser::register_variable( const Variable variable )
+VariableID Parser::register_variable( Variable variable )
 {
 	VariableID variableID = variables.size();
 	variables.add( variable );
@@ -901,7 +897,7 @@ bool Parser::node_is_constexpr( Node *node )
 }
 
 
-VariableID Parser::scope_find_variable( const StringView name )
+VariableID Parser::scope_find_variable( StringView name )
 {
 	for( VariableID i = 0; i < scope.size(); i++ )
 	{
@@ -913,7 +909,7 @@ VariableID Parser::scope_find_variable( const StringView name )
 }
 
 
-void Parser::scope_reset( const VariableID target )
+void Parser::scope_reset( VariableID target )
 {
 	for( VariableID i = scope.size(); i > target; i-- )
 	{
@@ -922,7 +918,7 @@ void Parser::scope_reset( const VariableID target )
 }
 
 
-void Parser::check_namespace_conflicts( const StringView name )
+void Parser::check_namespace_conflicts( StringView name )
 {
 	ErrorIf( typeMap.contains( name ),
 		"namespace: '%.*s' conflicts with existing type", name.length, name.data );
@@ -1053,8 +1049,6 @@ bool Parser::parse( const char *string )
 			case TokenType_VertexOutput:
 			case TokenType_FragmentInput:
 			case TokenType_FragmentOutput:
-			case TokenType_ComputeInput:
-			case TokenType_ComputeOutput:
 			{
 				program.add( parse_structure() );
 			}
@@ -1092,16 +1086,15 @@ bool Parser::parse( const char *string )
 	if( !hasMain )
 	{
 		scanner.back();
-		Error( "shader does not implement a main function!\n\nmust implement vertex_main(), fragment_main(), or compute_main()" );
+		Error( "shader does not implement a main function!" );
 	}
 
-	// Success
 	return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static bool vertex_input_type_allowed( const TypeID typeID )
+static bool vertex_input_type_allowed( TypeID typeID )
 {
 	switch( typeID )
 	{
@@ -1130,7 +1123,7 @@ static bool vertex_input_type_allowed( const TypeID typeID )
 }
 
 
-static bool instance_input_type_allowed( const TypeID typeID )
+static bool instance_input_type_allowed( TypeID typeID )
 {
 	switch( typeID )
 	{
@@ -1160,7 +1153,7 @@ static bool instance_input_type_allowed( const TypeID typeID )
 }
 
 
-static bool buffer_type_allowed( const TokenType typeToken, const TypeID typeID )
+static bool buffer_type_allowed( TokenType typeToken, TypeID typeID )
 {
 	// Shared Structs
 	if( typeToken == TokenType_SharedStruct ) { return true; }
@@ -1276,18 +1269,6 @@ Node *Parser::parse_structure()
 			structType = StructType_FragmentOutput;
 			type.global = true;
 			type.pipelineVarying = false;
-		break;
-
-		case TokenType_ComputeInput:
-			structType = StructType_ComputeInput;
-			type.global = true;
-			type.pipelineVarying = false;
-		break;
-
-		case TokenType_ComputeOutput:
-			structType = StructType_ComputeOutput;
-			type.global = true;
-			type.pipelineVarying = true;
 		break;
 
 		default: Error( "unknown structure type!" ); break;
@@ -1556,7 +1537,6 @@ Node *Parser::parse_structure()
 		Error( "%s: expected semicolon after final closing '}'", structName );
 	}
 
-	// Success
 	structure.typeID = register_type( type );
 	scope_reset( scopeIndex );
 	return ast.add( NodeStruct( structType, register_struct( structure ) ) );
@@ -1651,7 +1631,6 @@ Node *Parser::parse_texture()
 		Error( "%s: expected semicolon", textureName );
 	}
 
-	// Success
 	texture.variableID = register_variable( variable );
 	return ast.add( NodeTexture( textureType, register_texture( texture ) ) );
 }
@@ -1850,7 +1829,6 @@ Node *Parser::parse_statement_function_call()
 		token = scanner.next();
 	}
 
-	// Success
 	scanner.next();
 	return ast.add( NodeFunctionCall( functionID, first ) );
 }
@@ -1894,7 +1872,6 @@ Node *Parser::parse_statement_cast()
 		token = scanner.next();
 	}
 
-	// Success
 	scanner.next();
 	return ast.add( NodeCast( typeID, first ) );
 }
@@ -1962,7 +1939,6 @@ Node *Parser::parse_statement_if()
 		scanner.back();
 	}
 
-	// Success
 	scanner.next();
 	return ast.add( NodeStatementIf( expr, blockIf, blockElse ) );
 }
@@ -2003,7 +1979,6 @@ Node *Parser::parse_statement_while()
 	}
 	Node *block = parse_statement_block();
 
-	// Success
 	scanner.next();
 	return ast.add( NodeStatementWhile( expr, block ) );
 }
@@ -2048,7 +2023,6 @@ Node *Parser::parse_statement_do_while()
 		Error(  "'if' condition missing ')'" );
 	}
 
-	// Success
 	scanner.next();
 	return ast.add( NodeStatementDoWhile( expr, block ) );
 }
@@ -2130,7 +2104,6 @@ Node *Parser::parse_statement_for()
 	}
 	Node *block = parse_statement_block( scopeIndex );
 
-	// Success
 	scanner.next();
 	return ast.add( NodeStatementFor( expr1, expr2, expr3, block ) );
 }
@@ -2226,7 +2199,6 @@ Node *Parser::parse_statement_switch()
 		token = scanner.current();
 	}
 
-	// Success
 	first = first == nullptr ? ast.add( NodeStatementBlock( nullptr ) ) : first;
 	scanner.next();
 	return ast.add( NodeStatementSwitch( expr, first ) );
@@ -2270,7 +2242,6 @@ Node *Parser::parse_statement_case()
 		block = ast.add( NodeStatementBlock( parse_statement() ) );
 	}
 
-	// Success
 	return ast.add( NodeStatementCase( expr, block ) );
 }
 
@@ -2308,7 +2279,6 @@ Node *Parser::parse_statement_default()
 		block = ast.add( NodeStatementBlock( parse_statement() ) );
 	}
 
-	// Success
 	return ast.add( NodeStatementDefault( block ) );
 }
 
@@ -2327,7 +2297,6 @@ Node *Parser::parse_statement_return()
 		expr = parse_expression();
 	}
 
-	// Success
 	return ast.add( NodeStatementReturn( expr ) );
 }
 
@@ -2338,7 +2307,6 @@ Node *Parser::parse_statement_break()
 	Token token = scanner.current();
 	ErrorIf( token.type != TokenType_Break, "unexpected token" );
 
-	// Success
 	scanner.next();
 	return ast.add( NodeStatementBreak() );
 }
@@ -2350,7 +2318,6 @@ Node *Parser::parse_statement_continue()
 	Token token = scanner.current();
 	ErrorIf( token.type != TokenType_Continue, "unexpected token" );
 
-	// Success
 	scanner.next();
 	return ast.add( NodeStatementContinue() );
 }
@@ -2362,7 +2329,6 @@ Node *Parser::parse_statement_discard()
 	Token token = scanner.current();
 	ErrorIf( token.type != TokenType_Discard, "unexpected token" );
 
-	// Success
 	scanner.next();
 	return ast.add( NodeStatementDiscard() );
 }
@@ -2400,8 +2366,7 @@ Node *Parser::parse_variable_declaration()
 	// Is the variable a constant structure type?
 	if( token.type == TokenType_InstanceInput ||
 		token.type == TokenType_VertexInput ||
-		token.type == TokenType_FragmentInput ||
-		token.type == TokenType_ComputeInput )
+		token.type == TokenType_FragmentInput )
 	{
 		ErrorIf( variable.out, "const variable cannot be tagged 'out' or 'inout'" );
 		variable.constant = true;
@@ -2464,7 +2429,6 @@ Node *Parser::parse_variable_declaration()
 		assignment = parse_expression();
 	}
 
-	// Success
 	return ast.add( NodeVariableDeclaration( register_variable( variable ), assignment ) );
 }
 
@@ -2492,22 +2456,57 @@ Node *Parser::parse_function_declaration()
 		strncmp( "vertex_main", token.name.data, token.name.length ) == 0 )
 	{
 		scanner.back();
-		return parse_function_declaration_main( FunctionType_MainVertex, "vertex_main",
+		return parse_function_declaration_main_pipeline( FunctionType_MainVertex, "vertex_main",
 			TokenType_VertexInput, TokenType_VertexOutput );
 	}
 	else if( token.name.length == strlen( "fragment_main" ) &&
 		strncmp( "fragment_main", token.name.data, token.name.length ) == 0 )
 	{
 		scanner.back();
-		return parse_function_declaration_main( FunctionType_MainFragment, "fragment_main",
+		return parse_function_declaration_main_pipeline( FunctionType_MainFragment, "fragment_main",
 			TokenType_FragmentInput, TokenType_FragmentOutput );
 	}
 	else if( token.name.length == strlen( "compute_main" ) &&
 		strncmp( "compute_main", token.name.data, token.name.length ) == 0 )
 	{
 		scanner.back();
-		return parse_function_declaration_main( FunctionType_MainCompute, "compute_main",
-			TokenType_ComputeInput, TokenType_ComputeOutput );
+		return parse_function_declaration_main_compute( FunctionType_MainCompute, "compute_main" );
+	}
+	else if( token.name.length == strlen( "ray_generate" ) &&
+		strncmp( "ray_generate", token.name.data, token.name.length ) == 0 )
+	{
+		scanner.back();
+		return parse_function_declaration_main_raytracing( FunctionType_MainRayGenerate, "ray_generate" );
+	}
+	else if( token.name.length == strlen( "ray_hit_any" ) &&
+		strncmp( "ray_hit_any", token.name.data, token.name.length ) == 0 )
+	{
+		scanner.back();
+		return parse_function_declaration_main_raytracing( FunctionType_MainRayHitAny, "ray_hit_any" );
+	}
+	else if( token.name.length == strlen( "ray_hit_closest" ) &&
+		strncmp( "ray_hit_closest", token.name.data, token.name.length ) == 0 )
+	{
+		scanner.back();
+		return parse_function_declaration_main_raytracing( FunctionType_MainRayHitClosest, "ray_hit_closest" );
+	}
+	else if( token.name.length == strlen( "ray_miss" ) &&
+		strncmp( "ray_miss", token.name.data, token.name.length ) == 0 )
+	{
+		scanner.back();
+		return parse_function_declaration_main_raytracing( FunctionType_MainRayMiss, "ray_miss" );
+	}
+	else if( token.name.length == strlen( "ray_intersection" ) &&
+		strncmp( "ray_intersection", token.name.data, token.name.length ) == 0 )
+	{
+		scanner.back();
+		return parse_function_declaration_main_raytracing( FunctionType_MainRayIntersection, "ray_intersection" );
+	}
+	else if( token.name.length == strlen( "ray_callable" ) &&
+		strncmp( "ray_callable", token.name.data, token.name.length ) == 0 )
+	{
+		scanner.back();
+		return parse_function_declaration_main_raytracing( FunctionType_MainRayCallable, "ray_callable" );
 	}
 
 	// Function Parameters
@@ -2547,13 +2546,12 @@ Node *Parser::parse_function_declaration()
 	token = scanner.next();
 	Node *block = parse_statement_block( scopeIndex );
 
-	// Success
 	return ast.add( NodeFunctionDeclaration( FunctionType_Custom, register_function( function ), block ) );
 }
 
 
-Node *Parser::parse_function_declaration_main( FunctionType functionType, const char *functionName,
-	TokenType inToken, TokenType outToken )
+Node *Parser::parse_function_declaration_main_pipeline( FunctionType functionType,
+	const char *functionName, TokenType inToken, TokenType outToken )
 {
 	Function function;
 	Token token = scanner.current();
@@ -2574,34 +2572,6 @@ Node *Parser::parse_function_declaration_main( FunctionType functionType, const 
 	ErrorIf( token.type != TokenType_Identifier, "function declaration: expected a name" );
 	check_namespace_conflicts( token.name );
 	function.name = token.name;
-
-	// Group IDs (compute_main only)
-	if( functionType == FunctionType_MainCompute )
-	{
-		token = scanner.next();
-		ErrorIf( token.type != TokenType_LParen, "compute_main: expected '(' before thread groups" );
-
-		token = scanner.next();
-		ErrorIf( token.type != TokenType_Integer, "compute_main: expected thread group x" );
-		threadGroupX = token.integer;
-
-		token = scanner.next();
-		ErrorIf( token.type != TokenType_Comma, "compute_main: expected ','" );
-
-		token = scanner.next();
-		ErrorIf( token.type != TokenType_Integer, "compute_main: expected thread group y" );
-		threadGroupY = token.integer;
-
-		token = scanner.next();
-		ErrorIf( token.type != TokenType_Comma, "compute_main: expected ','" );
-
-		token = scanner.next();
-		ErrorIf( token.type != TokenType_Integer, "compute_main: expected thread group z" );
-		threadGroupZ = token.integer;
-
-		token = scanner.next();
-		ErrorIf( token.type != TokenType_RParen, "compute_main: expected ')' after thread groups" );
-	}
 
 	// Requirements
 	bool hasIn = false;
@@ -2703,24 +2673,197 @@ Node *Parser::parse_function_declaration_main( FunctionType functionType, const 
 	};
 	function.parameterCount = variables.size() - function.parameterFirst;
 
-	if( functionType != FunctionType_MainCompute )
+	if( functionType == FunctionType_MainVertex )
 	{
 		ErrorIf( !hasIn, "%s() requires a first parameter of type 'vertex_input'", functionName );
 		ErrorIf( !hasOut, "%s() requires a second parameter of type 'vertex_output'", functionName );
+	}
+	else if( functionType == FunctionType_MainFragment )
+	{
+		ErrorIf( !hasIn, "%s() requires a first parameter of type 'fragment_input'", functionName );
+		ErrorIf( !hasOut, "%s() requires a second parameter of type 'fragment_output'", functionName );
 	}
 
 	// Parse Block
 	token = scanner.next();
 	Node *block = parse_statement_block( scopeIndex );
 
-	// Success
 	FunctionID functionID = register_function( function );
-
 	switch( functionType )
 	{
 		case FunctionType_MainVertex: mainVertex = functionID; break;
 		case FunctionType_MainFragment: mainFragment = functionID; break;
+	}
+
+	return ast.add( NodeFunctionDeclaration( functionType, functionID, block ) );
+}
+
+
+Node *Parser::parse_function_declaration_main_compute( FunctionType functionType, const char *functionName )
+{
+	Function function;
+	Token token = scanner.current();
+
+	// Parse Return Type
+	ErrorIf( token.type != TokenType_Identifier,
+		"function declaration: expected a return type" );
+	ErrorIf( !typeMap.contains( token.name ),
+		"function declaration: unknown type '%.*s'", token.name.length, token.name.data );
+	function.typeID = typeMap.get( token.name );
+
+	// Enforce Return Type
+	ErrorIf( function.typeID != Primitive_Void,
+		"%s() must have a 'void' return type", functionName );
+
+	// Parse Function Name
+	token = scanner.next();
+	ErrorIf( token.type != TokenType_Identifier, "function declaration: expected a name" );
+	check_namespace_conflicts( token.name );
+	function.name = token.name;
+
+	// Group IDs (compute_main only)
+	if( functionType == FunctionType_MainCompute )
+	{
+		token = scanner.next();
+		ErrorIf( token.type != TokenType_LParen, "compute_main: expected '(' before thread groups" );
+
+		token = scanner.next();
+		ErrorIf( token.type != TokenType_Integer, "compute_main: expected thread group x" );
+		threadGroupX = token.integer;
+
+		token = scanner.next();
+		ErrorIf( token.type != TokenType_Comma, "compute_main: expected ','" );
+
+		token = scanner.next();
+		ErrorIf( token.type != TokenType_Integer, "compute_main: expected thread group y" );
+		threadGroupY = token.integer;
+
+		token = scanner.next();
+		ErrorIf( token.type != TokenType_Comma, "compute_main: expected ','" );
+
+		token = scanner.next();
+		ErrorIf( token.type != TokenType_Integer, "compute_main: expected thread group z" );
+		threadGroupZ = token.integer;
+
+		token = scanner.next();
+		ErrorIf( token.type != TokenType_RParen, "compute_main: expected ')' after thread groups" );
+	}
+
+	// Function Parameters
+	VariableID scopeIndex = scope.size();
+	token = scanner.next();
+	ErrorIf( token.type != TokenType_LParen, "function declaration: '(' before parameter list" );
+	token = scanner.next();
+	function.parameterFirst = variables.size();
+	while( token.type != TokenType_RParen )
+	{
+		// Variables
+		NodeVariableDeclaration *nodeDecl = reinterpret_cast<NodeVariableDeclaration *>( parse_variable_declaration() );
+		ErrorIf( nodeDecl->assignment != nullptr, "function parameters cannot have assignment" );
+		token = scanner.current();
+
+		Variable &paramVariable = variables[nodeDecl->variableID];
+		Type &paramType = types[paramVariable.typeID];
+
+		const bool isBufferType = paramType.tokenType == TokenType_UniformBuffer ||
+			paramType.tokenType == TokenType_ConstantBuffer ||
+			paramType.tokenType == TokenType_MutableBuffer;
+
+		if( !isBufferType )
+		{
+			scanner.back(); scanner.back();
+			Error( "%s() can only take parameters of type *_buffer", functionName );
+		}
+
+		// Comma or ')'
+		if( token.type == TokenType_RParen ) { break; }
+		ErrorIf( token.type != TokenType_Comma, "function declaration: expected ',' between parameters" );
+		token = scanner.next();
+	};
+	function.parameterCount = variables.size() - function.parameterFirst;
+
+	// Parse Block
+	token = scanner.next();
+	Node *block = parse_statement_block( scopeIndex );
+
+	FunctionID functionID = register_function( function );
+	switch( functionType )
+	{
 		case FunctionType_MainCompute: mainCompute = functionID; break;
+	}
+
+	return ast.add( NodeFunctionDeclaration( functionType, functionID, block ) );
+}
+
+
+Node *Parser::parse_function_declaration_main_raytracing( FunctionType functionType, const char *functionName )
+{
+	Function function;
+	Token token = scanner.current();
+
+	// Parse Return Type
+	ErrorIf( token.type != TokenType_Identifier,
+		"function declaration: expected a return type" );
+	ErrorIf( !typeMap.contains( token.name ),
+		"function declaration: unknown type '%.*s'", token.name.length, token.name.data );
+	function.typeID = typeMap.get( token.name );
+
+	// Enforce Return Type
+	ErrorIf( function.typeID != Primitive_Void,
+		"%s() must have a 'void' return type", functionName );
+
+	// Parse Function Name
+	token = scanner.next();
+	ErrorIf( token.type != TokenType_Identifier, "function declaration: expected a name" );
+	check_namespace_conflicts( token.name );
+	function.name = token.name;
+
+	// Function Parameters
+	VariableID scopeIndex = scope.size();
+	token = scanner.next();
+	ErrorIf( token.type != TokenType_LParen, "function declaration: '(' before parameter list" );
+	token = scanner.next();
+	function.parameterFirst = variables.size();
+	while( token.type != TokenType_RParen )
+	{
+		// Variables
+		NodeVariableDeclaration *nodeDecl = reinterpret_cast<NodeVariableDeclaration *>( parse_variable_declaration() );
+		ErrorIf( nodeDecl->assignment != nullptr, "function parameters cannot have assignment" );
+		token = scanner.current();
+
+		Variable &paramVariable = variables[nodeDecl->variableID];
+		Type &paramType = types[paramVariable.typeID];
+
+		const bool isBufferType = paramType.tokenType == TokenType_UniformBuffer ||
+			paramType.tokenType == TokenType_ConstantBuffer ||
+			paramType.tokenType == TokenType_MutableBuffer;
+
+		if( !isBufferType )
+		{
+			scanner.back(); scanner.back();
+			Error( "%s() can only take parameters of type *_buffer", functionName );
+		}
+
+		// Comma or ')'
+		if( token.type == TokenType_RParen ) { break; }
+		ErrorIf( token.type != TokenType_Comma, "function declaration: expected ',' between parameters" );
+		token = scanner.next();
+	};
+	function.parameterCount = variables.size() - function.parameterFirst;
+
+	// Parse Block
+	token = scanner.next();
+	Node *block = parse_statement_block( scopeIndex );
+
+	FunctionID functionID = register_function( function );
+	switch( functionType )
+	{
+		case FunctionType_MainRayGenerate: mainRayGenerate = functionID; break;
+		case FunctionType_MainRayHitAny: mainRayHitAny = functionID; break;
+		case FunctionType_MainRayHitClosest: mainRayHitClosest = functionID; break;
+		case FunctionType_MainRayMiss: mainRayMiss = functionID; break;
+		case FunctionType_MainRayIntersection: mainRayIntersection = functionID; break;
+		case FunctionType_MainRayCallable: mainRayCallable = functionID; break;
 	}
 
 	return ast.add( NodeFunctionDeclaration( functionType, functionID, block ) );
@@ -3293,7 +3436,7 @@ Node *Parser::parse_fundamental()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static String line_string( const Scanner &scanner, const u32 line, u32 &linePosition )
+static String line_string( const Scanner &scanner, u32 line, u32 &linePosition )
 {
 	usize l = 1;
 	usize s = 0;
@@ -3315,17 +3458,17 @@ void Parser::ERROR_HANDLER_FUNCTION_DECL
 	if( Debug::exitCode != 0 ) { return; }
 
 	// Print Label
-	PrintColor( LOG_RED, "\n\nSHADER COMPILE ERROR:\n\n" );
+	Print( PrintColor_Red, "\n\nSHADER COMPILE ERROR:\n\n" );
 
 	// Print Message
 	va_list args;
 	va_start( args, message );
-	PrintColor( LOG_WHITE, "    " );
-	Debug::print_formatted_variadic_color( true, LOG_WHITE, message, args );
+	Print( PrintColor_White, "    " );
+	Debug::print_formatted_variadic_color( true, PrintColor_White, message, args );
 	va_end( args );
 
 	// Print File
-	PrintColor( LOG_RED, "\n    %s:%u\n", path, scanner.current().line );
+	Print( PrintColor_Red, "\n    %s:%u\n", path, scanner.current().line );
 
 	// Print Line
 	u32 linePosition = 0;
@@ -3334,10 +3477,10 @@ void Parser::ERROR_HANDLER_FUNCTION_DECL
 	String spaces = "";
 	for( usize i = 0; i < spacePosition; i++ ) { spaces += ( errorLine[i] == '\t' ?  "" : "~" ); }
 
-	PrintColor( LOG_RED, "\n" );
-	PrintColor( LOG_RED, "Line %u:\n", scanner.current().line );
-	PrintColor( LOG_RED, TAB "%s\n", errorLine.replace( "\t", "" ).cstr() );
-	PrintColor( LOG_RED, "~~~~%s^\n", spaces.cstr() );
+	Print( PrintColor_Red, "\n" );
+	Print( PrintColor_Red, "Line %u:\n", scanner.current().line );
+	Print( PrintColor_Red, TAB "%s\n", errorLine.replace( "\t", "" ).cstr() );
+	Print( PrintColor_Red, "~~~~%s^\n", spaces.cstr() );
 
 	// Exit
 	Debug::exit( 1 );

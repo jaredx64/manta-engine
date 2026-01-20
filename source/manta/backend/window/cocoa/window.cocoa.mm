@@ -1,7 +1,9 @@
 #include <manta/window.hpp>
 #include <manta/backend/window/cocoa/window.cocoa.hpp>
 
-#import <Cocoa/Cocoa.h>
+#include <vendor/conflicts.hpp>
+	#import <Cocoa/Cocoa.h>
+#include <vendor/conflicts.hpp>
 
 #include <config.hpp>
 
@@ -41,7 +43,7 @@ static void metal_drawable_resize( CGFloat scaleFactor )
 {
 	CGSize sizeLogical = CoreWindow::view.bounds.size;
     CGSize sizePixels = sizeLogical;
-    sizePixels.width  *= scaleFactor;
+    sizePixels.width *= scaleFactor;
     sizePixels.height *= scaleFactor;
 
 	if( sizePixels.width <= 0 || sizePixels.height <= 0 ) { return; }
@@ -113,7 +115,7 @@ static void metal_drawable_resize( CGFloat scaleFactor )
 {
 	Debug::memoryLeakDetection = false;
 	Engine::exit();
-	[NSApp terminate:nil];
+	[NSApp terminate: nil];
 }
 
 
@@ -352,19 +354,19 @@ static void metal_drawable_resize( CGFloat scaleFactor )
 // buttons being held. Let's just forward these to regular mouseMoved events
 - (void)mouseDragged:(NSEvent *)event
 {
-	[self mouseMoved:event];
+	[self mouseMoved: event];
 }
 
 
 - (void)rightMouseDragged:(NSEvent *)event
 {
-	[self mouseMoved:event];
+	[self mouseMoved: event];
 }
 
 
 - (void)otherMouseDragged:(NSEvent *)event
 {
-	[self mouseMoved:event];
+	[self mouseMoved: event];
 }
 
 
@@ -401,14 +403,14 @@ static void metal_drawable_resize( CGFloat scaleFactor )
 
 - (void)setFrameSize:(NSSize)size
 {
-    [super setFrameSize:size];
+    [super setFrameSize: size];
     metal_drawable_resize( CoreWindow::window.screen.backingScaleFactor );
 }
 
 
 - (void)setBoundsSize:(NSSize)size
 {
-    [super setBoundsSize:size];
+    [super setBoundsSize: size];
     metal_drawable_resize( CoreWindow::window.screen.backingScaleFactor );
 }
 #endif
@@ -419,7 +421,7 @@ static void metal_drawable_resize( CGFloat scaleFactor )
 
 namespace CoreWindow
 {
-	bool init( const int defaultWidth, const int defaultHeight )
+	bool init( int defaultWidth, int defaultHeight )
 	{
 	#if WINDOW_ENABLED
 		// TODO
@@ -442,13 +444,13 @@ namespace CoreWindow
 
 		// Create Window
 		CoreWindow::window = [[GameWindow alloc]
-			initWithContentRect:NSMakeRect(
+			initWithContentRect: NSMakeRect(
 				static_cast<int>( area.size.width - defaultWidth ) >> 1,
 				static_cast<int>( area.size.height - defaultHeight ) >> 1,
 				defaultWidth, defaultHeight )
-			styleMask:WINDOW_STYLE
-			backing:NSBackingStoreBuffered
-			defer:NO];
+			styleMask: WINDOW_STYLE
+			backing: NSBackingStoreBuffered
+			defer: NO];
 
 		// Check Window
 		if( CoreWindow::window == nil )
@@ -458,51 +460,51 @@ namespace CoreWindow
 
 		// Create Window View
 		CoreWindow::view = [GameView new];
-		[CoreWindow::view setWantsLayer:YES];
+		[CoreWindow::view setWantsLayer: YES];
 
 		// Setup Window Properties
-		[CoreWindow::window setContentView:CoreWindow::view];
-		[CoreWindow::window makeFirstResponder:CoreWindow::view];
-		[CoreWindow::window setDelegate:(id)[GameWindowDelegate new]];
-		[CoreWindow::window setAcceptsMouseMovedEvents:YES];
-		[CoreWindow::window setTitle:@WINDOW_TITLE];
-		[CoreWindow::window setRestorable:NO];
-		[CoreWindow::window setContentMinSize:NSMakeSize( WINDOW_WIDTH_MIN, WINDOW_WIDTH_MAX )];
+		[CoreWindow::window setContentView: CoreWindow::view];
+		[CoreWindow::window makeFirstResponder: CoreWindow::view];
+		[CoreWindow::window setDelegate: (id)[GameWindowDelegate new]];
+		[CoreWindow::window setAcceptsMouseMovedEvents: YES];
+		[CoreWindow::window setTitle: @WINDOW_TITLE];
+		[CoreWindow::window setRestorable: NO];
+		[CoreWindow::window setContentMinSize: NSMakeSize( WINDOW_WIDTH_MIN, WINDOW_WIDTH_MAX )];
 
 		// Setup Apple Menu
 		{
 			NSMenu *appleMenu = [NSMenu new];
 
 			NSMenuItem *aboutItem = [[NSMenuItem alloc]
-				initWithTitle:@"About " PROJECT_NAME
-				action:@selector(orderFrontStandardAboutPanel:)
-				keyEquivalent:@""];
-			[appleMenu addItem:aboutItem];
+				initWithTitle: @"About " PROJECT_NAME
+				action: @selector(orderFrontStandardAboutPanel:)
+				keyEquivalent: @""];
+			[appleMenu addItem: aboutItem];
 
-			[appleMenu addItem:[NSMenuItem separatorItem]];
+			[appleMenu addItem: [NSMenuItem separatorItem]];
 
 			NSMenuItem *quitItem = [[NSMenuItem alloc]
-				initWithTitle:@"Quit " PROJECT_NAME
-				action:@selector(terminate:)
-				keyEquivalent:@"q"];
-			[appleMenu addItem:quitItem];
+				initWithTitle: @"Quit " PROJECT_NAME
+				action: @selector(terminate:)
+				keyEquivalent: @"q"];
+			[appleMenu addItem: quitItem];
 
 			NSMenuItem *appleItem = [[NSMenuItem alloc]
-				initWithTitle:@PROJECT_NAME
-				action:nil
-				keyEquivalent:@""];
+				initWithTitle: @PROJECT_NAME
+				action: nil
+				keyEquivalent: @""];
 
 			NSMenu *mainMenu = [NSMenu new];
-			[mainMenu addItem:appleItem];
-			[appleItem setSubmenu:appleMenu];
+			[mainMenu addItem: appleItem];
+			[appleItem setSubmenu: appleMenu];
 
-			[NSApp setMainMenu:mainMenu];
+			[NSApp setMainMenu: mainMenu];
 		}
 
 		// macOS applications that are not bundled must be explicitly made into UI
 		// apps by calling this function otherwise we won't appear in the dock and
 		// the window will not be visible
-		[NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
+		[NSApp setActivationPolicy: NSApplicationActivationPolicyRegular];
 
 		[NSApp finishLaunching];
 	#endif
@@ -525,10 +527,10 @@ namespace CoreWindow
 	{
 	#if WINDOW_ENABLED
 		// Bring the Application into focus
-		[NSApp activateIgnoringOtherApps:YES];
+		[NSApp activateIgnoringOtherApps: YES];
 
 		// Bring the Window into focus
-		[CoreWindow::window makeKeyAndOrderFront:nil];
+		[CoreWindow::window makeKeyAndOrderFront: nil];
 	#endif
 	}
 
@@ -540,16 +542,16 @@ namespace CoreWindow
 		{
 			// Get the next event in the queue
 			NSEvent *event = [NSApp
-				nextEventMatchingMask:NSEventMaskAny
-				untilDate:nil
-				inMode:NSDefaultRunLoopMode
-				dequeue:YES ];
+				nextEventMatchingMask: NSEventMaskAny
+				untilDate: nil
+				inMode: NSDefaultRunLoopMode
+				dequeue: YES];
 
 			// There are no more events, break
 			if( event == nil ) { break; }
 
 			// Forward the event to the rest of the application
-			[NSApp sendEvent:event];
+			[NSApp sendEvent: event];
 		}
 
 		// All of the memory management for Cocoa is done here
@@ -558,6 +560,13 @@ namespace CoreWindow
 
 		// Next, create the pool for the next frame
 		pool = [NSAutoreleasePool new];
+	#endif
+	}
+
+
+	void terminal_init()
+	{
+	#if WINDOW_ENABLED
 	#endif
 	}
 
@@ -582,7 +591,7 @@ namespace CoreWindow
 	}
 
 
-	void mouse_set_position( const int x, const int y )
+	void mouse_set_position( int x, int y )
 	{
 	#if WINDOW_ENABLED
 		NSRect rect = [CoreWindow::window frame];
@@ -603,9 +612,9 @@ namespace Window
 	#if WINDOW_ENABLED
 		NSApplication *app = [NSApplication sharedApplication];
 		NSAlert *alert = [[NSAlert alloc] init];
-		[alert setIcon:nil];
-		[alert setMessageText:[NSString stringWithUTF8String:title]];
-		[alert setInformativeText:[NSString stringWithUTF8String:message]];
+		[alert setIcon: nil];
+		[alert setMessageText: [NSString stringWithUTF8String: title]];
+		[alert setInformativeText: [NSString stringWithUTF8String: message]];
 		[alert runModal];
 	#endif
 	}
@@ -616,9 +625,9 @@ namespace Window
 	#if WINDOW_ENABLED
 		NSApplication *app = [NSApplication sharedApplication];
 		NSAlert *alert = [[NSAlert alloc] init];
-		[alert setAlertStyle:NSAlertStyleCritical];
-		[alert setMessageText:[NSString stringWithUTF8String:title]];
-		[alert setInformativeText:[NSString stringWithUTF8String:message]];
+		[alert setAlertStyle: NSAlertStyleCritical];
+		[alert setMessageText: [NSString stringWithUTF8String: title]];
+		[alert setInformativeText: [NSString stringWithUTF8String: message]];
 		[alert runModal];
 	#endif
 	}
@@ -629,14 +638,14 @@ namespace Window
 	#if WINDOW_ENABLED
 		// Resize Window
 		NSRect contentRect = { { 0, 0 }, { static_cast<CGFloat>( width ), static_cast<CGFloat>( height ) } };
-		NSRect frame = [CoreWindow::window frameRectForContentRect:contentRect];
+		NSRect frame = [CoreWindow::window frameRectForContentRect: contentRect];
 
 		// Receneter window
 		NSRect screenRect = [[NSScreen mainScreen] frame];
 		frame.origin.x = ( screenRect.size.width - frame.size.width ) / 2;
 		frame.origin.y = ( screenRect.size.height - frame.size.height ) / 2;
 
-		[CoreWindow::window setFrame:frame display:YES animate:YES];
+		[CoreWindow::window setFrame: frame display: YES animate: YES];
 	#endif
 	}
 
@@ -646,7 +655,7 @@ namespace Window
 	#if WINDOW_ENABLED
 		if( enabled != Window::fullscreen )
 		{
-			[CoreWindow::window toggleFullScreen:nil];
+			[CoreWindow::window toggleFullScreen: nil];
 
 			// HACK
 			for( int i = 0; i < 255; i++ )
@@ -658,7 +667,7 @@ namespace Window
 	}
 
 
-	void show_cursor( const bool enabled )
+	void show_cursor( bool enabled )
 	{
 	#if WINDOW_ENABLED
 		if( enabled )
@@ -692,16 +701,16 @@ namespace Window
 		[pasteboard clearContents];
 
 		// Transfer buffer to clipboard
-		NSString *text = [NSString stringWithUTF8String:buffer];
+		NSString *text = [NSString stringWithUTF8String: buffer];
 		if( !text ) { return false; }
-		BOOL success = [pasteboard setString:text forType:NSPasteboardTypeString];
+		BOOL success = [pasteboard setString: text forType: NSPasteboardTypeString];
 		return success;
 	#endif
 		return false;
 	}
 
 
-	bool get_clipboard( char *buffer, const usize size )
+	bool get_clipboard( char *buffer, usize size )
 	{
 	#if WINDOW_ENABLED
 		// Get the cipboard
@@ -710,7 +719,7 @@ namespace Window
 		if( !pasteboard ) { return false; }
 
 		// Transfer text from the clipboard
-		NSString *text = [pasteboard stringForType:NSPasteboardTypeString];
+		NSString *text = [pasteboard stringForType: NSPasteboardTypeString];
 		if( !text ) { return false; }
 		const char *clipboardText = [text UTF8String];
 		if( !clipboardText ) { return false; }
@@ -729,7 +738,7 @@ namespace Window
 	}
 
 
-	bool get_selection( char *buffer, const usize size )
+	bool get_selection( char *buffer, usize size )
 	{
 	#if WINDOW_ENABLED
 		// Do nothing on MacOS

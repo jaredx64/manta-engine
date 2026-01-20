@@ -236,4 +236,15 @@ PUBLIC void set_scrollable_area( const int w, const int h )
 	regionHeight = h;
 }
 
+
+PUBLIC bool is_hovering()
+{
+	const ObjectInstance hoverInstance = context->get_widget_hover();
+	if( hoverInstance == id ) { return true; }
+	if( hoverInstance == scrollbarVertical ) { return true; }
+	if( hoverInstance == scrollbarHorizontal ) { return true; }
+	for( ObjectInstance child : children ) { if( hoverInstance == child ) { return true; } }
+	return false;
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

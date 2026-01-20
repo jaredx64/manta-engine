@@ -8,6 +8,6 @@
 extern void preprocess_input( const char *path, String &input, String &output );
 
 extern bool preprocess_shader( const char *path, String &output,
-	const char **pipelineMacros = nullptr, const int pipelineMacrosCount = 0 );
+	const char **pipelineMacros = nullptr, int pipelineMacrosCount = 0 );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

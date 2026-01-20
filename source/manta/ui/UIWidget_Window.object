@@ -22,7 +22,7 @@ BUCKET_SIZE( 64 )
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // INTERNAL STATE
 
-PRIVATE enum_type( WindowState, u8 )
+PROTECTED enum_type( WindowState, u8 )
 {
 	WindowState_Resize_None,
 	WindowState_Move,
@@ -36,9 +36,9 @@ PRIVATE enum_type( WindowState, u8 )
 	WindowState_Resize_Bottom,
 };
 
-PRIVATE int_v2 anchorCorner;
-PRIVATE int_v2 anchorMouse;
-PRIVATE WindowState state;
+PROTECTED int_v2 anchorCorner;
+PROTECTED int_v2 anchorMouse;
+PROTECTED WindowState state;
 
 PROTECTED int widthMin = 128;
 PROTECTED int widthMax = 720;

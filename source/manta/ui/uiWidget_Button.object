@@ -21,7 +21,7 @@ BUCKET_SIZE( 64 )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-PROTECTED Text label;
+PUBLIC Text label;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -38,10 +38,10 @@ PROTECTED void update( const Delta delta )
 	const bool isHovering = isInteractable && is_hovering();
 
 	// Tweens
-	tween( tweenHover, isHovering ? 1.0f : 0.0f, 0.1f, delta, 0.01f );
-	tween( tweenAlert, 0.0f, 0.1f, delta, 0.01f );
-	tween( tweenError, 0.0f, 0.1f, delta, 0.01f );
-	tween( tweenClick, 0.0f, 0.1f, delta, 0.01f );
+	tweenf( tweenHover, isHovering ? 1.0f : 0.0f, 0.1f, delta, 0.01f );
+	tweenf( tweenAlert, 0.0f, 0.1f, delta, 0.01f );
+	tweenf( tweenError, 0.0f, 0.1f, delta, 0.01f );
+	tweenf( tweenClick, 0.0f, 0.1f, delta, 0.01f );
 
 	// Click
 	if( isHovering && Mouse::check_pressed( mb_left ) )

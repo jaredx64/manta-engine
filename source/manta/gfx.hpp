@@ -15,7 +15,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#if !defined( HEADLESS ) && ( GRAPHICS_D3D11 || GRAPHICS_D3D12 || GRAPHICS_METAL || GRAPHICS_OPENGL || GRAPHICS_VULKAN )
+#if !defined( HEADLESS ) && ( GRAPHICS_D3D11 || GRAPHICS_D3D12 || GRAPHICS_METAL || GRAPHICS_OPENGL /*|| GRAPHICS_VULKAN*/ )
 	#define GRAPHICS_ENABLED ( true )
 #else
 	#define GRAPHICS_ENABLED ( false )
@@ -107,11 +107,11 @@ struct GfxStatistics
 		extern GfxStatistics stats;
 		extern GfxStatistics statsPrevious;
 	}
-
-	extern void debug_overlay_gfx( const float x, const float y );
 #else
 	#define PROFILE_GFX(expr)
 #endif
+
+extern void debug_overlay_gfx( const float x, const float y );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -150,9 +150,9 @@ class GfxTexture;
 
 namespace CoreGfx
 {
-	struct UniformBufferInitEntry { const char *const name; const u32 size; };
+	struct UniformBufferInitEntry { const char *name; const u32 size; };
 	struct UniformBufferBindEntry { const u32 id; const u32 slot; };
-	struct UniformBufferBindTable { const UniformBufferBindEntry *const buffers; const u32 count; };
+	struct UniformBufferBindTable { const UniformBufferBindEntry *buffers; const u32 count; };
 
 	// Implemented in gfx.cpp
 	extern GfxTexture textures[CoreAssets::textureCount];
@@ -174,9 +174,9 @@ enum_type( GfxColorFormat, u8 )
 	GfxColorFormat_R8G8B8A8_FLOAT,
 	GfxColorFormat_R8G8B8A8_UINT,
 	GfxColorFormat_R10G10B10A2_FLOAT,
-	GfxColorFormat_R8,
+	GfxColorFormat_R8_UINT,
 	GfxColorFormat_R8G8,
-	GfxColorFormat_R16,
+	GfxColorFormat_R16_UINT,
 	GfxColorFormat_R16_FLOAT,
 	GfxColorFormat_R16G16,
 	GfxColorFormat_R16G16F_FLOAT,
@@ -198,9 +198,9 @@ namespace CoreGfx
 		4,  // GfxColorFormat_R8G8B8A8_FLOAT
 		4,  // GfxColorFormat_R8G8B8A8_UINT
 		4,  // GfxColorFormat_R10G10B10A2_FLOAT
-		1,  // GfxColorFormat_R8
+		1,  // GfxColorFormat_R8_UINT
 		2,  // GfxColorFormat_R8G8
-		2,  // GfxColorFormat_R16
+		2,  // GfxColorFormat_R16_UINT
 		2,  // GfxColorFormat_R16_FLOAT
 		4,  // GfxColorFormat_R16G16
 		4,  // GfxColorFormat_R16G16F_FLOAT
@@ -219,9 +219,9 @@ namespace CoreGfx
 		"R8G8B8A8_FLOAT",     // GfxColorFormat_R8G8B8A8_FLOAT
 		"R8G8B8A8_UINT",      // GfxColorFormat_R8G8B8A8_UINT
 		"R10G10B10A2_FLOAT",  // GfxColorFormat_R10G10B10A2_FLOAT
-		"R8",                 // GfxColorFormat_R8
+		"R8_UINT",            // GfxColorFormat_R8_UINT
 		"R8G8",               // GfxColorFormat_R8G8
-		"R16",                // GfxColorFormat_R16
+		"R16_UINT",           // GfxColorFormat_R16_UINT
 		"R16_FLOAT",          // GfxColorFormat_R16_FLOAT
 		"R16G16",             // GfxColorFormat_R16G16
 		"R16G16_FLOAT",       // GfxColorFormat_R16G16F_FLOAT
@@ -335,6 +335,8 @@ enum_type( GfxSamplerFilteringMode, u8 )
 {
 	GfxSamplerFilteringMode_NEAREST = 0,
 	GfxSamplerFilteringMode_LINEAR,
+	GfxSamplerFilteringMode_MAG_NEAREST_MIN_LINEAR,
+	GfxSamplerFilteringMode_MAG_LINEAR_MIN_NEAREST,
 	GfxSamplerFilteringMode_ANISOTROPIC,
 	GFXSAMPLERFILTERINGMODE_COUNT,
 };
@@ -472,14 +474,14 @@ namespace Gfx
 class GfxStack
 {
 public:
-	void init( const usize reserve = 1 );
+	void init( usize reserve = 1 );
 	void free();
 	void grow();
 	void clear();
 
 public:
-	usize add( const void *buffer, const u16 size, const u16 alignment );
-	void *get( const usize offset, const u16 size );
+	usize add( const void *buffer, u16 size, u16 alignment );
+	void *get( usize offset, u16 size );
 
 public:
 	usize capacity = 0LLU;
@@ -492,13 +494,13 @@ public:
 
 namespace CoreGfx
 {
-	extern void api_clear_color( const Color color );
-	extern void api_clear_depth( const float depth );
+	extern void api_clear_color( Color color );
+	extern void api_clear_depth( float depth );
 }
 
 namespace Gfx
 {
-	extern void clear_color( const Color color );
+	extern void clear_color( Color color );
 	extern void clear_depth( float depth = 1.0f );
 }
 
@@ -610,6 +612,15 @@ struct GfxStatePipeline
 static_assert( sizeof( GfxStatePipeline ) == 16, "GfxStatePipeline size changed!" );
 
 
+struct GfxStateCompute
+{
+	GfxShaderResource *shader = nullptr;
+
+	bool operator==( const GfxStateCompute &other ) const = default;
+};
+static_assert( sizeof( GfxStateCompute ) == 8, "GfxStatePipeline size changed!" );
+
+
 struct GfxState
 {
 	bool rendering = false;
@@ -621,6 +632,7 @@ struct GfxState
 	GfxStateScissor scissor = GfxStateScissor { };
 	GfxStateSampler sampler = GfxStateSampler { };
 	GfxStatePipeline pipeline = GfxStatePipeline { };
+	GfxStateCompute compute = GfxStateCompute { };
 
 	GfxTextureResource *boundTexture[GFX_TEXTURE_SLOT_COUNT] = { nullptr };
 	CoreGfxUniformBuffer::UniformsPipeline_t pipelineUniforms = { };
@@ -658,13 +670,13 @@ namespace Gfx
 
 namespace CoreGfx
 {
-	extern bool api_swapchain_init( const u16 width, const u16 height );
+	extern bool api_swapchain_init( u16 width, u16 height );
 	extern bool api_swapchain_free();
-	extern bool api_swapchain_set_size( const u16 width, const u16 height );
+	extern bool api_swapchain_set_size( u16 width, u16 height );
 
-	extern bool api_viewport_init( const u16 width, const u16 height );
+	extern bool api_viewport_init( u16 width, u16 height );
 	extern bool api_viewport_free();
-	extern bool api_viewport_set_size( const u16 width, const u16 height );
+	extern bool api_viewport_set_size( u16 width, u16 height );
 
 	extern bool api_scissor_set_state( const GfxStateScissor &state );
 
@@ -681,13 +693,13 @@ namespace CoreGfx
 namespace Gfx
 {
 	extern void scissor_set_state( const GfxStateScissor &state );
-	extern void scissor_set( const u16 x1, const u16 y1, const u16 x2, const u16 y2 );
-	extern void scissor_set_nested( const u16 x1, const u16 y1, const u16 x2, const u16 y2 );
+	extern void scissor_set( u16 x1, u16 y1, u16 x2, u16 y2 );
+	extern void scissor_set_nested( u16 x1, u16 y1, u16 x2, u16 y2 );
 	extern void scissor_reset();
 
 	extern void sampler_set_state( const GfxStateSampler &state );
 	extern void sampler_filtering_mode( const GfxSamplerFilteringMode &mode );
-	extern void sampler_filtering_anisotropy( const int anisotropy );
+	extern void sampler_filtering_anisotropy( int anisotropy );
 	extern void sampler_wrap_mode( const GfxSamplerWrapMode &mode );
 
 	extern int swapchain_width();
@@ -695,7 +707,7 @@ namespace Gfx
 
 	extern int viewport_width();
 	extern int viewport_height();
-	extern void viewport_set_size( const u16 width, const u16 height );
+	extern void viewport_set_size( u16 width, u16 height );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -717,7 +729,7 @@ namespace Gfx
 	extern void raster_cull_mode( const GfxCullMode &mode );
 
 	extern void blend_set_state( const GfxPipelineDescription &description );
-	extern void blend_enabled( const bool enabled );
+	extern void blend_enabled( bool enabled );
 	extern void blend_mode_color( const GfxBlendFactor &srcFactor,
 		const GfxBlendFactor &dstFactor, const GfxBlendOperation &operation );
 	extern void blend_mode_alpha( const GfxBlendFactor &srcFactor,
@@ -745,16 +757,11 @@ namespace CoreGfx
 
 namespace Gfx
 {
-	extern void set_matrix_mvp_2d_orthographic( const double x, const double y,
-		const double zoom, const double angle,
-		const double width, const double height,
-		const double znear = 0.0f, const double zfar = 1.0f );
+	extern void set_matrix_mvp_2d_orthographic( double x, double y, double zoom, double angle,
+		double width, double height, double znear = 0.0f, double zfar = 1.0f );
 
-	extern void set_matrix_mvp_3d_perspective( const double fov, const double aspect,
-		const double znear, const double zfar,
-		const double x, const double y, const double z,
-		const double xto, const double yto, const double zto,
-		const double xup, const double yup, const double zup );
+	extern void set_matrix_mvp_3d_perspective( double fov, double aspect, double znear, double zfar,
+		double x, double y, double z, double xto, double yto, double zto, double xup, double yup, double zup );
 
 	extern void set_matrix_model( const double_m44 &matrix );
 
@@ -781,20 +788,19 @@ namespace Gfx
 
 namespace CoreGfx
 {
-	extern bool api_shader_init( GfxShaderResource *&resource,
-		const u32 shaderID, const struct ShaderEntry &shaderEntry );
+	extern bool api_shader_init( GfxShaderResource *&resource, u32 shaderID, const struct ShaderEntry &shaderEntry );
 	extern bool api_shader_free( GfxShaderResource *&resource );
 
-	extern bool shader_bind_uniform_buffers_vertex( const u32 shaderID );
-	extern bool shader_bind_uniform_buffers_fragment( const u32 shaderID );
-	extern bool shader_bind_uniform_buffers_compute( const u32 shaderID );
+	extern bool shader_bind_uniform_buffers_vertex( u32 shaderID );
+	extern bool shader_bind_uniform_buffers_fragment( u32 shaderID );
+	extern bool shader_bind_uniform_buffers_compute( u32 shaderID );
 }
 
 
 class GfxShader
 {
 public:
-	void init( const u32 shaderID, const struct ShaderEntry &shaderEntry );
+	void init( u32 shaderID, const struct ShaderEntry &shaderEntry );
 	void free();
 
 public:
@@ -813,16 +819,12 @@ namespace Gfx
 
 namespace CoreGfx
 {
-	extern bool api_buffer_init( GfxBufferResource *&resource, const usize capacity );
-
+	extern bool api_buffer_init( GfxBufferResource *&resource, usize capacity );
 	extern bool api_buffer_free( GfxBufferResource *&resource );
 
-	extern void api_buffer_write_begin( GfxBufferResource *const resource );
-
-	extern void api_buffer_write_end( GfxBufferResource *const resource );
-
-	extern void api_buffer_write( GfxBufferResource *const resource, const void *const data,
-		const usize size, const usize offset );
+	extern void api_buffer_write_begin( GfxBufferResource *resource );
+	extern void api_buffer_write_end( GfxBufferResource *resource );
+	extern void api_buffer_write( GfxBufferResource *resource, const void *data, usize size, usize offset );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -830,26 +832,25 @@ namespace CoreGfx
 
 namespace CoreGfx
 {
-	extern bool api_vertex_buffer_init( GfxVertexBufferResource *&resource, const u32 vertexFormatID,
-		const GfxWriteMode writeMode, const u32 capacity, const u32 stride );
+	extern bool api_vertex_buffer_init( GfxVertexBufferResource *&resource, u32 vertexFormatID,
+		GfxWriteMode writeMode, u32 capacity, u32 stride );
 
 	extern bool api_vertex_buffer_free( GfxVertexBufferResource *&resource );
 
-	extern void api_vertex_buffer_write_begin( GfxVertexBufferResource *const resource );
+	extern void api_vertex_buffer_write_begin( GfxVertexBufferResource *resource );
 
-	extern void api_vertex_buffer_write_end( GfxVertexBufferResource *const resource );
+	extern void api_vertex_buffer_write_end( GfxVertexBufferResource *resource );
 
-	extern void api_vertex_buffer_write( GfxVertexBufferResource *const resource,
-		const void *const data, const u32 size );
+	extern void api_vertex_buffer_write( GfxVertexBufferResource *resource, const void *data, u32 size );
 
-	extern u32 api_vertex_buffer_current( const GfxVertexBufferResource *const resource );
+	extern u32 api_vertex_buffer_current( const GfxVertexBufferResource *resource );
 }
 
 
 template <typename VertexFormat> class GfxVertexBuffer
 {
 public:
-	void init( const u32 count, const GfxWriteMode writeMode )
+	void init( u32 count, GfxWriteMode writeMode )
 	{
 		const u32 capacity = count * sizeof( VertexFormat );
 		ErrorIf( !CoreGfx::api_vertex_buffer_init( resource, CoreGfxVertex::vertex_format_id<VertexFormat>(),
@@ -885,7 +886,7 @@ public:
 		CoreGfx::api_vertex_buffer_write( resource, &element, sizeof( element ) );
 	}
 
-	void write( void *data, const usize size )
+	void write( void *data, usize size )
 	{
 		Assert( size % sizeof( VertexFormat ) == 0 );
 		CoreGfx::api_vertex_buffer_write( resource, data, size );
@@ -900,26 +901,25 @@ public:
 
 namespace CoreGfx
 {
-	extern bool api_instance_buffer_init( GfxInstanceBufferResource *&resource, const u32 instanceFormatID,
-		const GfxWriteMode writeMode, const u32 capacity, const u32 stride );
+	extern bool api_instance_buffer_init( GfxInstanceBufferResource *&resource, u32 instanceFormatID,
+		GfxWriteMode writeMode, u32 capacity, u32 stride );
 
 	extern bool api_instance_buffer_free( GfxInstanceBufferResource *&resource );
 
-	extern void api_instance_buffer_write_begin( GfxInstanceBufferResource *const resource );
+	extern void api_instance_buffer_write_begin( GfxInstanceBufferResource *resource );
 
-	extern void api_instance_buffer_write_end( GfxInstanceBufferResource *const resource );
+	extern void api_instance_buffer_write_end( GfxInstanceBufferResource *resource );
 
-	extern void api_instance_buffer_write( GfxInstanceBufferResource *const resource,
-		const void *const data, const u32 size );
+	extern void api_instance_buffer_write( GfxInstanceBufferResource *resource, const void *data, u32 size );
 
-	extern u32 api_instance_buffer_current( const GfxInstanceBufferResource *const resource );
+	extern u32 api_instance_buffer_current( const GfxInstanceBufferResource *resource );
 }
 
 
 template <typename InstanceType> class GfxInstanceBuffer
 {
 public:
-	void init( const u32 count, const GfxWriteMode writeMode )
+	void init( u32 count, GfxWriteMode writeMode )
 	{
 		const u32 capacity = count * sizeof( InstanceType );
 		ErrorIf( !CoreGfx::api_instance_buffer_init( resource, CoreGfxInstance::instance_format_id<InstanceType>(),
@@ -954,7 +954,7 @@ public:
 		CoreGfx::api_instance_buffer_write( resource, &element, sizeof( element ) );
 	}
 
-	void write( void *data, const usize size )
+	void write( void *data, usize size )
 	{
 		Assert( size % sizeof( InstanceType ) == 0 );
 		CoreGfx::api_instance_buffer_write( resource, data, size );
@@ -969,8 +969,8 @@ public:
 
 namespace CoreGfx
 {
-	extern bool api_index_buffer_init( GfxIndexBufferResource *&resource, void *data, const u32 size,
-		const double indicesToVerticiesRatio, const GfxIndexBufferFormat format, const GfxWriteMode writeMode );
+	extern bool api_index_buffer_init( GfxIndexBufferResource *&resource, void *data, u32 size,
+		double indicesToVerticiesRatio, GfxIndexBufferFormat format, GfxWriteMode writeMode );
 
 	extern bool api_index_buffer_free( GfxIndexBufferResource *&resource );
 }
@@ -979,8 +979,7 @@ namespace CoreGfx
 class GfxIndexBuffer
 {
 public:
-	void init( void *data, const u32 size, const double indicesToVerticiesRatio,
-		const GfxIndexBufferFormat format )
+	void init( void *data, u32 size, double indicesToVerticiesRatio, GfxIndexBufferFormat format )
 	{
 		this->indicesToVerticiesRatio = indicesToVerticiesRatio;
 		ErrorIf( !CoreGfx::api_index_buffer_init( resource, data, size,
@@ -1007,21 +1006,21 @@ private:
 namespace CoreGfx
 {
 	extern bool api_uniform_buffer_init( GfxUniformBufferResource *&resource,
-		const char *name, const int index, const u32 size );
+		const char *name, int index, u32 size );
 
 	extern bool api_uniform_buffer_free( GfxUniformBufferResource *&resource );
 
-	extern void api_uniform_buffer_write_begin( GfxUniformBufferResource *const resource );
+	extern void api_uniform_buffer_write_begin( GfxUniformBufferResource *resource );
 
-	extern void api_uniform_buffer_write_end( GfxUniformBufferResource *const resource );
+	extern void api_uniform_buffer_write_end( GfxUniformBufferResource *resource );
 
-	extern void api_uniform_buffer_write( GfxUniformBufferResource *const resource, const void *data );
+	extern void api_uniform_buffer_write( GfxUniformBufferResource *resource, const void *data );
 
-	extern bool api_uniform_buffer_bind_vertex( GfxUniformBufferResource *const resource, const int slot );
+	extern bool api_uniform_buffer_bind_vertex( GfxUniformBufferResource *resource, int slot );
 
-	extern bool api_uniform_buffer_bind_fragment( GfxUniformBufferResource *const resource, const int slot );
+	extern bool api_uniform_buffer_bind_fragment( GfxUniformBufferResource *resource, int slot );
 
-	extern bool api_uniform_buffer_bind_compute( GfxUniformBufferResource *const resource, const int slot );
+	extern bool api_uniform_buffer_bind_compute( GfxUniformBufferResource *resource, int slot );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1035,22 +1034,21 @@ namespace CoreGfx
 namespace CoreGfx
 {
 	extern bool api_texture_init( GfxTextureResource *&resource, void *data,
-		const u16 width, const u16 height, const u16 levels,
-		const GfxColorFormat &format );
+		u16 width, u16 height, u16 levels, const GfxColorFormat &format );
 
 	extern bool api_texture_free( GfxTextureResource *&resource );
 
-	extern bool api_texture_bind( GfxTextureResource *const resource, const int slot );
+	extern bool api_texture_bind( GfxTextureResource *resource, int slot );
 
-	extern bool api_texture_release( GfxTextureResource *const resource, const int slot );
+	extern bool api_texture_release( GfxTextureResource *resource, int slot );
 }
 
 
 class GfxTexture
 {
 public:
-	void init_2d( void *data, const u16 width, const u16 height, const GfxColorFormat &format );
-	void init_2d( void *data, const u16 width, const u16 height, const u16 levels, const GfxColorFormat &format );
+	void init_2d( void *data, u16 width, u16 height, const GfxColorFormat &format );
+	void init_2d( void *data, u16 width, u16 height, u16 levels, const GfxColorFormat &format );
 	void free();
 
 public:
@@ -1061,11 +1059,11 @@ public:
 
 namespace Gfx
 {
-	extern void bind_texture( const int slot, const Texture texture );
-	extern void bind_texture( const int slot, const GfxTexture &texture );
+	extern void bind_texture( int slot, Texture texture );
+	extern void bind_texture( int slot, const GfxTexture &texture );
 
-	extern void release_texture( const int slot, const Texture texture );
-	extern void release_texture( const int slot, const GfxTexture &texture );
+	extern void release_texture( int slot, Texture texture );
+	extern void release_texture( int slot, const GfxTexture &texture );
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1085,12 +1083,20 @@ namespace CoreGfx
 	extern bool api_render_target_init( GfxRenderTargetResource *&resource,
 		GfxTextureResource *&resourceColor,
 		GfxTextureResource *&resourceDepth,
-		const u16 width, const u16 height,
+		u16 width, u16 height,
 		const GfxRenderTargetDescription &desc = { } );
 
 	extern bool api_render_target_free( GfxRenderTargetResource *&resource,
 		GfxTextureResource *&resourceColor,
 		GfxTextureResource *&resourceDepth );
+
+	extern bool api_render_target_copy_color(
+		GfxRenderTargetResource *&srcResource, GfxTextureResource *&srcResourceColor,
+		GfxRenderTargetResource *&dstResource, GfxTextureResource *&dstResourceColor );
+
+	extern bool api_render_target_copy_depth(
+		GfxRenderTargetResource *&srcResource, GfxTextureResource *&srcResourceDepth,
+		GfxRenderTargetResource *&dstResource, GfxTextureResource *&dstResourceDepth );
 
 	extern bool api_render_target_copy(
 		GfxRenderTargetResource *&srcResource,
@@ -1103,35 +1109,53 @@ namespace CoreGfx
 		GfxTextureResource *&srcResourceColor, GfxTextureResource *&srcResourceDepth,
 		GfxRenderTargetResource *&dstResource,
 		GfxTextureResource *&dstResourceColor, GfxTextureResource *&dstResourceDepth,
-		const u16 srcX, const u16 srcY, const u16 dstX, const u16 dstY, const u16 width, const u16 height );
+		u16 srcX, u16 srcY, u16 dstX, u16 dstY, u16 width, u16 height );
 
 	extern bool api_render_target_buffer_read_color( GfxRenderTargetResource *&resource,
 		GfxTextureResource *&resourceColor,
-		void *buffer, const u32 size );
+		void *buffer, u32 size );
+
+	extern bool api_render_target_buffer_read_color_async_request( GfxRenderTargetResource *&resource,
+		GfxTextureResource *&resourceColor,
+		void *buffer, u32 size );
+
+	extern bool api_render_target_buffer_read_color_async_poll( GfxRenderTargetResource *&resource,
+		GfxTextureResource *&resourceColor,
+		void *buffer, u32 size );
 
 	extern bool api_render_target_buffer_read_depth( GfxRenderTargetResource *&resource,
 		GfxTextureResource *&resourceDepth,
-		void *buffer, const u32 size );
+		void *buffer, u32 size );
+
+	extern bool api_render_target_buffer_read_depth_async_request( GfxRenderTargetResource *&resource,
+		GfxTextureResource *&resourceColor,
+		void *buffer, u32 size );
+
+	extern bool api_render_target_buffer_read_depth_async_poll( GfxRenderTargetResource *&resource,
+		GfxTextureResource *&resourceColor,
+		void *buffer, u32 size );
 
 	extern bool api_render_target_buffer_write_color( GfxRenderTargetResource *&resource,
 		GfxTextureResource *&resourceColor,
-		const void *const buffer, const u32 size );
+		const void *buffer, u32 size );
 
 	extern bool api_render_target_buffer_write_depth( GfxRenderTargetResource *&resource,
 		GfxTextureResource *&resourceDepth,
-		const void *const buffer, const u32 size );
+		const void *buffer, u32 size );
 }
 
 
 class GfxRenderTarget
 {
 public:
-	void init( const u16 width, const u16 height, const GfxRenderTargetDescription &desc );
+	void init( u16 width, u16 height, const GfxRenderTargetDescription &desc );
 	void free();
 	void copy( GfxRenderTarget &source );
+	void copy_color( GfxRenderTarget &source );
+	void copy_depth( GfxRenderTarget &source );
 	void copy_part( GfxRenderTarget &source, int srcX, int srcY, int dstX, int dstY, u16 width, u16 height );
-	void resize( const u16 width, const u16 height );
-	void bind( const int slot = 0 );
+	void resize( u16 width, u16 height );
+	void bind( int slot = 0 );
 	void release();
 
 public:
@@ -1152,18 +1176,17 @@ private:
 namespace CoreGfx
 {
 	extern bool api_draw(
-		const GfxVertexBufferResource *const resourceVertex, const u32 vertexCount,
-		const GfxInstanceBufferResource *const resourceInstance, const u32 instanceCount,
-		const GfxIndexBufferResource *const resourceIndex,
-		const GfxPrimitiveType type );
+		const GfxVertexBufferResource *resourceVertex, u32 vertexCount,
+		const GfxInstanceBufferResource *resourceInstance, u32 instanceCount,
+		const GfxIndexBufferResource *resourceIndex,
+		GfxPrimitiveType type );
 }
 
 
 namespace Gfx
 {
-	inline void draw_vertices(
-		const u32 vertexCount,
-		const GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
+	inline void draw_vertices( u32 vertexCount,
+		GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
 	{
 		AssertMsg( CoreGfx::state.renderCommandActive, "Draw calls must be part of a GfxRenderCommand!" );
 		CoreGfx::api_draw(
@@ -1173,10 +1196,8 @@ namespace Gfx
 	}
 
 
-	inline void draw_vertices_instanced(
-		const u32 vertexCount,
-		const u32 instanceCount,
-		const GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
+	inline void draw_vertices_instanced( u32 vertexCount, u32 instanceCount,
+		GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
 	{
 		AssertMsg( CoreGfx::state.renderCommandActive, "Draw calls must be part of a GfxRenderCommand!" );
 		CoreGfx::api_draw(
@@ -1187,13 +1208,13 @@ namespace Gfx
 
 
 	template <typename InstanceFormat>
-	inline void draw_vertices_instanced(
-		const u32 vertexCount,
+	inline void draw_vertices_instanced( u32 vertexCount,
 		const GfxInstanceBuffer<InstanceFormat> &instanceBuffer,
-		const GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
+		GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
 	{
 		AssertMsg( CoreGfx::state.renderCommandActive, "Draw calls must be part of a GfxRenderCommand!" );
 		const u32 instanceCount = instanceBuffer.current() / sizeof( InstanceFormat );
+		if( instanceCount == 0 ) { return; }
 		CoreGfx::api_draw(
 			nullptr, vertexCount,
 			instanceBuffer.resource, instanceCount,
@@ -1201,10 +1222,9 @@ namespace Gfx
 	}
 
 
-	inline void draw_vertices_indexed(
-		const u32 vertexCount,
+	inline void draw_vertices_indexed( u32 vertexCount,
 		const GfxIndexBuffer &indexBuffer,
-		const GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
+		GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
 	{
 		AssertMsg( CoreGfx::state.renderCommandActive, "Draw calls must be part of a GfxRenderCommand!" );
 		CoreGfx::api_draw(
@@ -1214,11 +1234,9 @@ namespace Gfx
 	}
 
 
-	inline void draw_vertices_instanced_indexed(
-		const u32 vertexCount,
-		const u32 instanceCount,
+	inline void draw_vertices_instanced_indexed( u32 vertexCount, u32 instanceCount,
 		const GfxIndexBuffer &indexBuffer,
-		const GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
+		GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
 	{
 		AssertMsg( CoreGfx::state.renderCommandActive, "Draw calls must be part of a GfxRenderCommand!" );
 		CoreGfx::api_draw(
@@ -1229,14 +1247,14 @@ namespace Gfx
 
 
 	template <typename InstanceFormat>
-	inline void draw_vertices_instanced_indexed(
-		const u32 vertexCount,
+	inline void draw_vertices_instanced_indexed( u32 vertexCount,
 		const GfxInstanceBuffer<InstanceFormat> &instanceBuffer,
 		const GfxIndexBuffer &indexBuffer,
-		const GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
+		GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
 	{
 		AssertMsg( CoreGfx::state.renderCommandActive, "Draw calls must be part of a GfxRenderCommand!" );
 		const u32 instanceCount = instanceBuffer.current() / sizeof( InstanceFormat );
+		if( instanceCount == 0 ) { return; }
 		CoreGfx::api_draw(
 			nullptr, vertexCount,
 			instanceBuffer.resource, instanceCount,
@@ -1247,10 +1265,11 @@ namespace Gfx
 	template <typename VertexFormat>
 	inline void draw_vertex_buffer(
 		const GfxVertexBuffer<VertexFormat> &vertexBuffer,
-		const GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
+		GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
 	{
 		AssertMsg( CoreGfx::state.renderCommandActive, "Draw calls must be part of a GfxRenderCommand!" );
 		const u32 vertexCount = vertexBuffer.current() / sizeof( VertexFormat );
+		if( vertexCount == 0 ) { return; }
 		CoreGfx::api_draw( vertexBuffer.resource, vertexCount,
 			nullptr, 0,
 			nullptr, type );
@@ -1261,11 +1280,12 @@ namespace Gfx
 	inline void draw_vertex_buffer_instanced(
 		const GfxVertexBuffer<VertexFormat> &vertexBuffer,
 		const GfxInstanceBuffer<InstanceFormat> &instanceBuffer,
-		const GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
+		GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
 	{
 		AssertMsg( CoreGfx::state.renderCommandActive, "Draw calls must be part of a GfxRenderCommand!" );
 		const u32 vertexCount = vertexBuffer.current() / sizeof( VertexFormat );
 		const u32 instanceCount = instanceBuffer.current() / sizeof( InstanceFormat );
+		if( vertexCount == 0 || instanceCount == 0 ) { return; }
 		CoreGfx::api_draw( vertexBuffer.resource, vertexCount,
 			instanceBuffer.resource, instanceCount,
 			nullptr, type );
@@ -1276,10 +1296,11 @@ namespace Gfx
 	inline void draw_vertex_buffer_instanced(
 		const GfxVertexBuffer<VertexFormat> &vertexBuffer,
 		const u32 instanceCount,
-		const GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
+		GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
 	{
 		AssertMsg( CoreGfx::state.renderCommandActive, "Draw calls must be part of a GfxRenderCommand!" );
 		const u32 vertexCount = vertexBuffer.current() / sizeof( VertexFormat );
+		if( vertexCount == 0 ) { return; }
 		CoreGfx::api_draw( vertexBuffer.resource, vertexCount,
 			nullptr, instanceCount,
 			nullptr, type );
@@ -1290,10 +1311,11 @@ namespace Gfx
 	inline void draw_vertex_buffer_indexed(
 		const GfxVertexBuffer<VertexFormat> &vertexBuffer,
 		const GfxIndexBuffer &indexBuffer,
-		const GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
+		GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
 	{
 		AssertMsg( CoreGfx::state.renderCommandActive, "Draw calls must be part of a GfxRenderCommand!" );
 		const u32 vertexCount = vertexBuffer.current() / sizeof( VertexFormat );
+		if( vertexCount == 0 ) { return; }
 		CoreGfx::api_draw( vertexBuffer.resource, vertexCount,
 			nullptr, 0,
 			indexBuffer.resource, type );
@@ -1305,11 +1327,12 @@ namespace Gfx
 		const GfxVertexBuffer<VertexFormat> &vertexBuffer,
 		const GfxInstanceBuffer<InstanceFormat> &instanceBuffer,
 		const GfxIndexBuffer &indexBuffer,
-		const GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
+		GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
 	{
 		AssertMsg( CoreGfx::state.renderCommandActive, "Draw calls must be part of a GfxRenderCommand!" );
 		const u32 vertexCount = vertexBuffer.current() / sizeof( VertexFormat );
 		const u32 instanceCount = instanceBuffer.current() / sizeof( InstanceFormat );
+		if( vertexCount == 0 || instanceCount == 0 ) { return; }
 		CoreGfx::api_draw( vertexBuffer.resource, vertexCount,
 			instanceBuffer.resource, instanceCount,
 			indexBuffer.resource, type );
@@ -1321,10 +1344,11 @@ namespace Gfx
 		const GfxVertexBuffer<VertexFormat> &vertexBuffer,
 		const u32 instanceCount,
 		const GfxIndexBuffer &indexBuffer,
-		const GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
+		GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
 	{
 		AssertMsg( CoreGfx::state.renderCommandActive, "Draw calls must be part of a GfxRenderCommand!" );
 		const u32 vertexCount = vertexBuffer.current() / sizeof( VertexFormat );
+		if( vertexCount == 0 ) { return; }
 		CoreGfx::api_draw( vertexBuffer.resource, vertexCount,
 			nullptr, instanceCount,
 			indexBuffer.resource, type );
@@ -1336,13 +1360,13 @@ namespace Gfx
 
 namespace CoreGfx
 {
-	extern bool api_dispatch( const u32 x, const u32 y, const u32 z );
+	extern bool api_dispatch( u32 x, u32 y, u32 z );
 };
 
 
 namespace Gfx
 {
-	inline void dispatch( const u32 x, const u32 y, const u32 z )
+	inline void dispatch( u32 x, u32 y, u32 z )
 	{
 		AssertMsg( CoreGfx::state.renderCommandActive, "Dispatch calls must be part of a GfxRenderCommand!" );
 		CoreGfx::api_dispatch( x, y, z );
@@ -1356,20 +1380,19 @@ class GfxRenderCommand
 {
 public:
 	void shader( const GfxShader &shader );
-	void shader( const Shader shader );
+	void shader( Shader shader );
 
 	void set_pipeline_description( const GfxPipelineDescription &description );
 
 	void raster_fill_mode( const GfxFillMode &mode );
 	void raster_cull_mode( const GfxCullMode &mode );
 
-	void blend_enabled( const bool enabled );
+	void blend_enabled( bool enabled );
 	void blend_mode_color( const GfxBlendFactor &srcFactor,
 		const GfxBlendFactor &dstFactor, const GfxBlendOperation &operation );
 	void blend_mode_alpha( const GfxBlendFactor &srcFactor,
 		const GfxBlendFactor &dstFactor, const GfxBlendOperation &operation );
 	void blend_write_mask( const GfxBlendWrite &mask );
-
 	void depth_function( const GfxDepthFunction &mode );
 	void depth_write_mask( const GfxDepthWrite &mask );
 
@@ -1518,7 +1541,7 @@ namespace Gfx
 class GfxRenderPass
 {
 public:
-	void target( const int slot, const GfxRenderTarget &target );
+	void target( int slot, const GfxRenderTarget &target );
 	void set_name( const char *name );
 	void set_name_f( const char *name, ... );
 
@@ -1548,7 +1571,7 @@ namespace Gfx
 
 namespace CoreGfx
 {
-	extern byte *scratch_buffer( const usize size );
+	extern byte *scratch_buffer( usize size );
 }
 
 
@@ -1559,19 +1582,19 @@ namespace Gfx
 	extern bool mip_level_validate_2d( u16 width, u16 height, u16 levels );
 
 	extern usize mip_buffer_size_2d( u16 width, u16 height, u16 levels,
-		const GfxColorFormat format );
+		GfxColorFormat format );
 
-	extern bool mip_generate_next_2d( void *data, const u16 width, const u16 height,
-		const GfxColorFormat format, void *dest, const usize size );
+	extern bool mip_generate_next_2d( const void *data, u16 width, u16 height,
+		GfxColorFormat format, void *dest, usize size );
 
-	extern bool mip_generate_next_2d_alloc( void *data, const u16 width, const u16 height,
-		const GfxColorFormat format, void *&outData, usize &outSize );
+	extern bool mip_generate_next_2d_alloc( const void *data, u16 width, u16 height,
+		GfxColorFormat format, void *&outData, usize &outSize );
 
-	extern bool mip_generate_chain_2d( void *data, const u16 width, const u16 height,
-		const GfxColorFormat format, void *dest, const usize size );
+	extern bool mip_generate_chain_2d( const void *data, u16 width, u16 height,
+		GfxColorFormat format, void *dest, usize size );
 
-	extern bool mip_generate_chain_2d_alloc( void *data, const u16 width, const u16 height,
-		const GfxColorFormat format, void *&outData, usize &outSize );
+	extern bool mip_generate_chain_2d_alloc( const void *data, u16 width, u16 height,
+		GfxColorFormat format, void *&outData, usize &outSize );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1583,7 +1606,7 @@ public:
 	struct Quad { VertexFormat v0, v1, v2, v3; };
 
 public:
-	bool init( const u32 capacity )
+	bool init( u32 capacity )
 	{
 		Assert( capacity * 6 < U32_MAX );
 		this->capacity = capacity;
@@ -1692,11 +1715,7 @@ public:
 #endif
 	}
 
-	void write(
-		const VertexFormat &v0,
-		const VertexFormat &v1,
-		const VertexFormat &v2,
-		const VertexFormat &v3 )
+	void write( const VertexFormat &v0, const VertexFormat &v1, const VertexFormat &v2, const VertexFormat &v3 )
 	{
 #if GRAPHICS_ENABLED
 		break_check();
@@ -1735,27 +1754,25 @@ namespace Gfx
 	extern void quad_batch_break_check();
 
 	extern void quad_batch_write( const GfxQuadBatch<GfxVertex::BuiltinVertex>::Quad &quad,
-		const GfxTexture *const texture = nullptr );
+		const GfxTexture *texture = nullptr );
 
-	extern void quad_batch_write( const float x1, const float y1, const float x2, const float y2,
-		const u16 u1, const u16 v1, const u16 u2, const u16 v2,
-		const Color c1, const Color c2, const Color c3, const Color c4,
-		const GfxTexture *const texture = nullptr, const float depth = 0.0f );
+	extern void quad_batch_write( float x1, float y1, float x2, float y2,
+		u16 u1, u16 v1, u16 u2, u16 v2, Color c1, Color c2, Color c3, Color c4,
+		const GfxTexture *texture = nullptr, float depth = 0.0f );
 
-	extern void quad_batch_write( const float x1, const float y1, const float x2, const float y2,
-		const float x3, const float y3, const float x4, const float y4,
-		const u16 u1, const u16 v1, const u16 u2, const u16 v2,
-		const Color c1, const Color c2, const Color c3, const Color c4,
-		const GfxTexture *const texture = nullptr, const float depth = 0.0f );
+	extern void quad_batch_write( float x1, float y1, float x2, float y2,
+		float x3, float y3, float x4, float y4,
+		u16 u1, u16 v1, u16 u2, u16 v2, Color c1, Color c2, Color c3, Color c4,
+		const GfxTexture *texture = nullptr, float depth = 0.0f );
 
-	extern void quad_batch_write( const float x1, const float y1, const float x2, const float y2,
-		const u16 u1, const u16 v1, const u16 u2, const u16 v2, const Color color,
-		const GfxTexture *const texture = nullptr, const float depth = 0.0f );
+	extern void quad_batch_write( float x1, float y1, float x2, float y2,
+		u16 u1, u16 v1, u16 u2, u16 v2, Color color,
+		const GfxTexture *texture = nullptr, float depth = 0.0f );
 
-	extern void quad_batch_write( const float x1, const float y1, const float x2, const float y2,
-		const float x3, const float y3, const float x4, const float y4,
-		const u16 u1, const u16 v1, const u16 u2, const u16 v2, const Color color,
-		const GfxTexture *const texture = nullptr, const float depth = 0.0f );
+	extern void quad_batch_write( float x1, float y1, float x2, float y2,
+		float x3, float y3, float x4, float y4,
+		u16 u1, u16 v1, u16 u2, u16 v2, Color color,
+		const GfxTexture *texture = nullptr, float depth = 0.0f );
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -20,7 +20,7 @@ namespace CoreFonts
 {
 	struct FontGlyphEntry
 	{
-		FontGlyphEntry( FontGlyphKey key, FontGlyphInfo value ) : key{ key }, value{ value } { }
+		FontGlyphEntry( FontGlyphKey key, FontGlyphInfo value ) : key { key }, value { value } { }
 		FontGlyphKey key;
 		FontGlyphInfo value;
 	};
@@ -31,10 +31,6 @@ namespace CoreFonts
 		stbtt_fontinfo info;
 	};
 
-	// Global
-	GfxTexture glyphAtlasTexture;
-
-	// Static
 	static u16 insertX = CoreFonts::FONTS_GLYPH_PADDING;
 	static u16 insertY = CoreFonts::FONTS_GLYPH_PADDING;
 	static u16 lineHeight = 0;
@@ -45,6 +41,8 @@ namespace CoreFonts
 	static FontGlyphEntry *data = nullptr;
 	static List<FontInfo> fontInfos;
 	static List<FontGlyphEntry> dirtyGlyphs;
+
+	GfxTexture glyphAtlasTexture;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -63,7 +61,7 @@ u32 CoreFonts::FontGlyphKey::hash()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool CoreFonts::FontGlyphInfo::get_glyph_metrics( const u32 codepoint, const u16 ttf, const u16 size )
+bool CoreFonts::FontGlyphInfo::get_glyph_metrics( u32 codepoint, u16 ttf, u16 size )
 {
 	CoreFonts::FontInfo &fontInfo = fontInfos[ttf];
 	const float scale = stbtt_ScaleForPixelHeight( &fontInfo.info, size * ( 96.0f / 72.0f ) );
@@ -103,9 +101,7 @@ bool CoreFonts::init()
 	// Init Fonts Table
 	Assert( data == nullptr );
 	constexpr usize size = CoreFonts::FONTS_GROUP_SIZE *
-	                       CoreFonts::FONTS_TABLE_DEPTH *
-	                       CoreFonts::FONTS_TABLE_SIZE *
-	                       sizeof( CoreFonts::FontGlyphEntry );
+		CoreFonts::FONTS_TABLE_DEPTH * CoreFonts::FONTS_TABLE_SIZE * sizeof( CoreFonts::FontGlyphEntry );
 	data = reinterpret_cast<CoreFonts::FontGlyphEntry *>( memory_alloc( size ) );
 	memory_set( data, 0, size ); // Zero memory
 
@@ -312,7 +308,7 @@ void CoreFonts::update()
 }
 
 
-void CoreFonts::cache( const u16 ttf, const u16 size, const u32 start, const u32 end )
+void CoreFonts::cache( u16 ttf, u16 size, u32 start, u32 end )
 {
 	for( u32 codepoint = start; codepoint <= end; codepoint++ )
 	{
@@ -321,7 +317,7 @@ void CoreFonts::cache( const u16 ttf, const u16 size, const u32 start, const u32
 }
 
 
-void CoreFonts::cache( const u16 ttf, const u16 size, const char *buffer )
+void CoreFonts::cache( u16 ttf, u16 size, const char *buffer )
 {
 	u32 state = UTF8_ACCEPT;
 	u32 codepoint;

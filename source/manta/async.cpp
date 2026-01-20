@@ -21,7 +21,7 @@ bool AsyncQueue::free()
 }
 
 
-bool AsyncQueue::update( const Delta delta )
+bool AsyncQueue::update( Delta delta )
 {
 	if( events.count() == 0 ) { return true; }
 
@@ -46,7 +46,7 @@ void AsyncQueue::push_back( const AsyncEvent &event )
 }
 
 
-void AsyncQueue::push( const AsyncEvent &event, const bool skipQueue )
+void AsyncQueue::push( const AsyncEvent &event, bool skipQueue )
 {
 	if( skipQueue ) { push_front( event ); } else { push_back( event ); }
 }

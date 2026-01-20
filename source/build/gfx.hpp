@@ -28,6 +28,12 @@ enum_type( ShaderStage, u32 )
 	ShaderStage_Vertex,
 	ShaderStage_Fragment,
 	ShaderStage_Compute,
+	ShaderStage_RayGenerate,
+	ShaderStage_RayHitAny,
+	ShaderStage_RayHitClosest,
+	ShaderStage_RayMiss,
+	ShaderStage_RayIntersection,
+	ShaderStage_RayCallable,
 	SHADERSTAGE_COUNT,
 };
 
@@ -37,13 +43,19 @@ constexpr const char *ShaderStageName[SHADERSTAGE_COUNT] =
 	"Vertex Shader", // ShaderStage_Vertex
 	"Fragment Shader", // ShaderStage_Fragment
 	"Compute Shader", // ShaderStage_Compute
+	"Ray Generate Shader", // ShaderStage_RayGenerate
+	"Ray Hit-Any Shader", // ShaderStage_RayHitAny
+	"Ray Hit-Closest Shader", // ShaderStage_RayHitClosest
+	"Ray Miss Shader", // ShaderStage_RayMiss
+	"Ray Intersection Shader", // ShaderStage_RayIntersection
+	"Ray Callable Shader", // ShaderStage_RayCallable
 };
 
 
 struct Shader
 {
 	Shader() = default;
-	Shader( const char *name, const ShaderType type ) : name{ name }, type{ type } { }
+	Shader( const char *name, ShaderType type ) : name { name }, type { type } { }
 
 	String name;
 	ShaderType type;
@@ -145,7 +157,7 @@ namespace Gfx
 	// Stages
 	extern void begin();
 	extern void end();
-	extern u32 gather( const char *path, const bool recurse );
+	extern u32 gather( const char *path, bool recurse );
 	extern void build();
 	extern void codegen();
 

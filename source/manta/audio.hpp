@@ -35,12 +35,11 @@ namespace CoreAudio
 	extern bool free_backend();
 	extern void audio_mixer( i16 *output, u32 frames );
 
-	extern int_v2 draw_debug( const Delta delta, const float x, const float y );
+	extern int_v2 draw_debug( const Delta delta, float x, float y );
 	extern bool draw_bus( const Delta delta, const int id, float &x, float &y );
-	extern bool draw_voice( const Delta delta, const int id, float &x, float &y );
-	extern bool draw_stream( const Delta delta, const int id, float &x, float &y );
-	extern bool draw_effect( const Delta delta, class Effect &effect, const int type,
-		float &x, float &y );
+	extern bool draw_voice( const Delta delta, int id, float &x, float &y );
+	extern bool draw_stream( const Delta delta, int id, float &x, float &y );
+	extern bool draw_effect( const Delta delta, class Effect &effect, int type, float &x, float &y );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -107,11 +106,11 @@ namespace CoreAudio
 	class Effect
 	{
 	public:
-		float get_parameter( const EffectParam param, const bool incrementTime = false );
-		void set_parameter_default( const EffectParam param, const float value );
-		void set_parameter( const EffectParam param, const float value );
-		void set_parameter( const EffectParam param, const float value, const usize timeMS );
-		void set_parameter( const EffectParam param, const float valueFrom, const float valueTo, const usize timeMS );
+		float get_parameter( EffectParam param, bool incrementTime = false );
+		void set_parameter_default( EffectParam param, float value );
+		void set_parameter( EffectParam param, float value );
+		void set_parameter( EffectParam param, float value, usize timeMS );
+		void set_parameter( EffectParam param, float valueFrom, float valueTo, usize timeMS );
 
 	public:
 		struct Parameter
@@ -244,11 +243,11 @@ namespace CoreAudio
 	float get_##name();
 
 #define __AUDIO_EFFECT_PARAM_GET_SET_IMPL(effectType,name,effectParam) \
-	void AudioEffects::set_##name( const float value, const usize timeMS ) \
+	void AudioEffects::set_##name( float value, usize timeMS ) \
 	{ \
 		effects[effectType].set_parameter( effectParam, value, timeMS ); \
 	} \
-	void AudioEffects::set_##name( const float valueFrom, const float valueTo, const usize timeMS ) \
+	void AudioEffects::set_##name( float valueFrom, float valueTo, usize timeMS ) \
 	{ \
 		effects[effectType].set_parameter( effectParam, valueFrom, valueTo, timeMS ); \
 	} \
@@ -258,7 +257,7 @@ namespace CoreAudio
 	}
 
 #define __AUDIO_EFFECT_PARAM_GET_SET_NOAUTOMATION_IMPL(effectType,name,effectParam) \
-	void AudioEffects::set_##name( const float value ) \
+	void AudioEffects::set_##name( float value ) \
 	{ \
 		effects[effectType].set_parameter( effectParam, value, 0.0f ); \
 	} \
@@ -273,8 +272,8 @@ class AudioEffects
 {
 public:
 	AudioEffects() { init(); }
-    CoreAudio::Effect &operator[]( const usize index ) { return effects[index]; }
-	const CoreAudio::Effect &operator[]( const usize index ) const { return effects[index]; }
+    CoreAudio::Effect &operator[]( usize index ) { return effects[index]; }
+	const CoreAudio::Effect &operator[]( usize index ) const { return effects[index]; }
 
 public:
 	// EffectType_Core
@@ -315,7 +314,7 @@ class SoundHandle
 {
 public:
 	SoundHandle() : idVoice{ U16_MAX }, idStream{ U16_MAX }, generation { U32_MAX } { };
-	SoundHandle( const u16 idVoice, const u16 idStream, const u32 generation ) :
+	SoundHandle( u16 idVoice, u16 idStream, u32 generation ) :
 		idVoice{ idVoice }, idStream{ idStream }, generation{ generation } { };
 	SoundHandle( const SoundHandle &other ) :
 		idVoice{ other.idVoice }, idStream { other.idStream }, generation { other.generation } { };
@@ -337,20 +336,19 @@ public:
 class AudioContext
 {
 public:
-	AudioContext() : idBus{ -1 } { };
+	AudioContext() : idBus { -1 } { };
 
 	void init( const AudioEffects &effects = { }, const char *name = "" );
 	void free();
 
 	bool is_paused() const;
-	bool pause( const bool pause ) const;
+	bool pause( bool pause ) const;
 
-	void set_listener( const float lookX, const float lookY, const float lookZ,
-		const float upX, const float upY, const float upZ );
+	void set_listener( float lookX, float lookY, float lookZ, float upX, float upY, float upZ );
 
 	AudioEffects *operator->() const;
 
-	SoundHandle play_sound( const u32 sound, const AudioEffects &effects = { },
+	SoundHandle play_sound( u32 sound, const AudioEffects &effects = { },
 		const AudioDescription &description = { } );
 public:
 	const char *name;
@@ -428,10 +426,10 @@ namespace CoreAudio
 	};
 
 
-	extern SoundHandle play_voice( const int idBus, const i16 *const samples, const u32 samplesCount,
-		const int channels, const AudioEffects &effects, const AudioDescription &description, const char *name );
+	extern SoundHandle play_voice( int idBus, const i16 *samples, u32 samplesCount, int channels,
+		const AudioEffects &effects, const AudioDescription &description, const char *name );
 
-	extern SoundHandle play_stream( const int idBus, const u32 assetID,
+	extern SoundHandle play_stream( int idBus, u32 assetID,
 		const AudioEffects &effects, const AudioDescription &description, const char *name );
 }
 

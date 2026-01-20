@@ -27,7 +27,7 @@ void Skeleton2Ds::make_new( const Skeleton2D &skeleton )
 }
 
 
-usize Skeleton2Ds::gather( const char *path, const bool recurse )
+usize Skeleton2Ds::gather( const char *path, bool recurse )
 {
 	// Gather Skeletons
 	List<FileInfo> files;
@@ -146,7 +146,7 @@ void Skeleton2Ds::build()
 		assets_group( header );
 
 		// Enums
-		header.append( "enum_class_type\n(\n\tSkeleton, u32,\n\n" );
+		header.append( "enum_class\n(\n\tSkeleton, u32,\n\n" );
 		for( Skeleton2D &sk : skeletons ) { header.append( "\t" ).append( sk.name ).append( ",\n" ); }
 		header.append( "\n\tNull = 0,\n" );
 		header.append( ");\n\n" );
@@ -197,8 +197,8 @@ void Skeleton2Ds::build()
 	if( verbose_output() )
 	{
 		const usize count = skeletons.size();
-		PrintColor( LOG_WHITE, TAB TAB "Wrote %d skeleton2D%s", count, count == 1 ? "" : "s" );
-		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+		Print( PrintColor_White, TAB TAB "Wrote %d skeleton2D%s", count, count == 1 ? "" : "s" );
+		PrintLn( PrintColor_White, " (%.3f ms)", timer.elapsed_ms() );
 	}
 }
 

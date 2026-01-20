@@ -18,6 +18,7 @@ public:
 	float sample_fbm_unorm_fast( float x, float y, float f, float a, float l, float p, int o ) const;
 
 	float sample( float x, float y ) const;
+	float sample_tiled( float x, float y, int period ) const;
 	float sample_unorm( float x, float y ) const;
 	float sample_fbm( float x, float y, float f, float a, float l, float p, int o ) const;
 	float sample_fbm_unorm( float x, float y, float f, float a, float l, float p, int o ) const;

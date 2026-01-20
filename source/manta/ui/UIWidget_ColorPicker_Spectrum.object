@@ -90,20 +90,20 @@ PROTECTED void update( const Delta delta )
 	const bool isHoveringAlpha = canHoverAlpha && point_in_rect( mX, mY, pA.x, pA.y, pA.z, pA.w );
 
 	// Tweens
-	tween( tweenHover, isHovering ? 1.0f : 0.0f, 0.1f, delta, 0.01f );
-	tween( tweenAlert, 0.0f, 0.1f, delta, 0.01f );
-	tween( tweenError, 0.0f, 0.1f, delta, 0.01f );
-	tween( tweenClick, 0.0f, 0.1f, delta, 0.01f );
+	tweenf( tweenHover, isHovering ? 1.0f : 0.0f, 0.1f, delta, 0.01f );
+	tweenf( tweenAlert, 0.0f, 0.1f, delta, 0.01f );
+	tweenf( tweenError, 0.0f, 0.1f, delta, 0.01f );
+	tweenf( tweenClick, 0.0f, 0.1f, delta, 0.01f );
 
 	// Spectrum Tween
-	tween( tweenHoverSpectrum, ( isHoveringSpectrum || slidingSpectrum ) ? 1.0f : 0.0f, 0.05f, delta, 0.01f );
-	tween( tweenClickSpectrum, slidingSpectrum ? 1.0f : 0.0f, 0.05f, delta, 0.01f );
+	tweenf( tweenHoverSpectrum, ( isHoveringSpectrum || slidingSpectrum ) ? 1.0f : 0.0f, 0.05f, delta, 0.01f );
+	tweenf( tweenClickSpectrum, slidingSpectrum ? 1.0f : 0.0f, 0.05f, delta, 0.01f );
 
 	// Hue Tween
 	if( showHueSlider )
 	{
-		tween( tweenHoverHue, ( isHoveringHue || slidingHue ) ? 1.0f : 0.0f, 0.05f, delta, 0.01f );
-		tween( tweenClickHue, slidingHue ? 1.0f : 0.0f, 0.05f, delta, 0.01f );
+		tweenf( tweenHoverHue, ( isHoveringHue || slidingHue ) ? 1.0f : 0.0f, 0.05f, delta, 0.01f );
+		tweenf( tweenClickHue, slidingHue ? 1.0f : 0.0f, 0.05f, delta, 0.01f );
 	}
 	else
 	{
@@ -114,8 +114,8 @@ PROTECTED void update( const Delta delta )
 	// Alpha Tween
 	if( showAlphaSlider )
 	{
-		tween( tweenHoverAlpha, ( isHoveringAlpha || slidingAlpha ) ? 1.0f : 0.0f, 0.05f, delta, 0.01f );
-		tween( tweenClickAlpha, slidingAlpha ? 1.0f : 0.0f, 0.05f, delta, 0.01f );
+		tweenf( tweenHoverAlpha, ( isHoveringAlpha || slidingAlpha ) ? 1.0f : 0.0f, 0.05f, delta, 0.01f );
+		tweenf( tweenClickAlpha, slidingAlpha ? 1.0f : 0.0f, 0.05f, delta, 0.01f );
 	}
 	else
 	{

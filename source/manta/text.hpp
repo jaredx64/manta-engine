@@ -28,11 +28,11 @@ class TextFormat
 {
 public:
 	constexpr TextFormat() :
-		font{ fnt_iosevka.id }, size{ 12 },
-		bold{ false }, italic{ false }, underline{ false }, highlight{ false },
-		alignment{ 0 },
-		color{ c_white },
-		payload{ 0 } { }
+		font { fnt_iosevka.id }, size { 12 },
+		bold { false }, italic { false }, underline { false }, highlight { false },
+		alignment { 0 },
+		color { c_white },
+		payload { 0 } { }
 
 public:
 	// 2 bytes
@@ -40,16 +40,16 @@ public:
 	u8 size;
 
 	// 1 Byte
-	u16 bold          : 1;
-	u16 italic        : 1;
-	u16 underline     : 1;
+	u16 bold : 1;
+	u16 italic : 1;
+	u16 underline : 1;
 	u16 strikethrough : 1;
-	u16 highlight     : 1;
-	u16 _unused0	  : 3;
+	u16 highlight : 1;
+	u16 _unused0 : 3;
 
 	// 1 Byte
-	u16 alignment	  : 3;
-	u16 _unused1      : 5;
+	u16 alignment : 3;
+	u16 _unused1 : 5;
 
 	// 4 bytes
 	Color color;
@@ -65,8 +65,8 @@ static_assert( sizeof( TextFormat ) == 12, "TextFormat must be 12 bytes!" );
 class TextChar
 {
 public:
-	constexpr TextChar( const u32 codepoint = 0, const TextFormat format = { } ) :
-		codepoint{ codepoint }, format{ format } { }
+	constexpr TextChar( u32 codepoint = 0, TextFormat format = { } ) :
+		codepoint { codepoint }, format { format } { }
 
 	explicit operator bool() const { return codepoint != 0; }
 	bool is_whitespace() const;
@@ -74,7 +74,7 @@ public:
 
 	u16 get_ttf() const;
 	CoreFonts::FontGlyphInfo &get_glyph() const;
-	u16_v2 get_glyph_dimensions( const usize index ) const;
+	u16_v2 get_glyph_dimensions( usize index ) const;
 	u16_v2 get_glyph_dimensions_raw() const;
 
 public:
@@ -93,21 +93,18 @@ public:
 	Text( const Text &other ) { copy( other ); }
 	Text( Text &&other ) { move( static_cast<Text &&>( other ) ); }
 	~Text() { free(); }
-
 	Text &operator=( const Text &other ) { return copy( other ); }
 	Text &operator=( Text &&other ) { return move( static_cast<Text &&>( other ) ); }
 #else
 	Text<T> &operator=( const Text &other ) { Error( "Text: assignment disabled" ); return *this; }
 	Text<T> &operator=( Text &&other ) { Error( "Text: assignment disabled" ); return *this; }
-
 #if MEMORY_ASSERTS
 	~Text()
 	{
-		// Memory Leak Detection
 		if( Debug::memoryLeakDetection && Debug::exitCode == 0 )
 		{
 			MemoryAssertMsg( data == nullptr, "ERROR: Memory leak in Text (%p) (size: %.2f kb)",
-			                 this, KB( size_allocated_bytes() ) );
+				this, KB( size_allocated_bytes() ) );
 		}
 	}
 #endif
@@ -123,42 +120,40 @@ public:
 	Text &move( Text &&other );
 
 	void clear();
-	void remove( const usize index, const usize count );
+	void remove( usize index, usize count );
 
 	usize append( const TextChar &c );
 	usize append( const char *string, TextFormat format );
 	usize append( const char *string );
-	usize append( const Text &string, const TextFormat format );
+	usize append( const Text &string, TextFormat format );
 	usize append( const Text &string );
 
-	usize insert( const usize index, const TextChar &c );
-	usize insert( const usize index, const char *string, TextFormat format );
-	usize insert( const usize index, const char *string );
-	usize insert( const usize index, const Text &string, const TextFormat format );
-	usize insert( const usize index, const Text &string );
+	usize insert( usize index, const TextChar &c );
+	usize insert( usize index, const char *string, TextFormat format );
+	usize insert( usize index, const char *string );
+	usize insert( usize index, const Text &string, TextFormat format );
+	usize insert( usize index, const Text &string );
 
 	usize size_allocated_bytes() const;
 	usize length_bytes() const;
 	usize length() const;
 
-	TextChar &char_at( const usize index );
-	const TextChar &char_at( const usize index ) const;
+	TextChar &char_at( usize index );
+	const TextChar &char_at( usize index ) const;
 	void string( class String &string );
-	String substr( const usize start, const usize end );
-	void cstr( char *buffer, const usize size );
+	String substr( usize start, usize end );
+	void cstr( char *buffer, usize size );
 
-	void draw_selection( const float x, const float y, const usize begin, const usize end,
-			const Alpha alpha = { } );
-	void draw_caret( const float x, const float y, const usize caret,
-			float_v4 *outCorners = nullptr, const Alpha alpha = { } );
-	int_v2 draw( const float x, const float y, const Alpha alpha = { } );
+	void draw_selection( float x, float y, usize begin, usize end, const Alpha alpha = { } );
+	void draw_caret( float x, float y, usize caret, float_v4 *outCorners = nullptr, Alpha alpha = { } );
+	int_v2 draw( float x, float y, Alpha alpha = { } );
 
-	usize get_index_from_position( const int x, const int y, const float bias = 1.0f );
-	int_v3 get_position_from_index( const usize index );
+	usize get_index_from_position( int x, int y, float bias = 1.0f );
+	int_v3 get_position_from_index( usize index );
 	int_v2 get_dimensions();
 
-	TextChar &operator[]( const usize index ) { return char_at( index ); }
-	const TextChar &operator[]( const usize index ) const { return char_at( index ); }
+	TextChar &operator[]( usize index ) { return char_at( index ); }
+	const TextChar &operator[]( usize index ) const { return char_at( index ); }
 
 	static bool filter_ascii( Text &text, u32 codepoint );
 	static bool filter_emoji( Text &text, u32 codepoint );
@@ -185,8 +180,8 @@ private:
 	};
 	static_assert( sizeof( LineInfo ) == 32, "LineInfo must be 32 bytes!" );
 
-	TextFormat get_format( const usize index ) const;
-	LineInfo get_line( const usize index );
+	TextFormat get_format( usize index ) const;
+	LineInfo get_line( usize index );
 
 	bool limit_characters();
 	bool limit_dimensions();
@@ -199,9 +194,9 @@ public:
 
 public:
 	usize limitCharacters = 0; // Max character count
-	u16 limitWidth = 0;        // Maximum width
-	u16 limitHeight = 0;       // Maximum height
-	u16 pageWidth = 0;         // Word-wrap width
+	u16 limitWidth = 0; // Maximum width
+	u16 limitHeight = 0; // Maximum height
+	u16 pageWidth = 0; // Word-wrap width
 
 	// bool filter( Text &text, u32 codepoint )
 	bool ( *filter )( Text &, u32 ) = nullptr;
@@ -210,7 +205,7 @@ public:
 	void ( *callbackOnUpdate )( Text & ) = nullptr;
 
 	// void callbackError( TextEditor &ime, const TextErr error )
-	void ( *callbackOnError )( Text &, const TextErr ) = nullptr;
+	void ( *callbackOnError )( Text &, TextErr ) = nullptr;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -267,7 +262,7 @@ public:
 	constexpr operator const char *() const { return data; }
 
 private:
-	constexpr void append( const char *buffer, const usize a )
+	constexpr void append( const char *buffer, usize a )
 	{
 		for( usize i = 0; i < a; i++ ) { data[current++] = buffer[i]; }
 	}
@@ -353,7 +348,7 @@ public:
 	static void listen();
 	void activate();
 	void deactivate();
-	void update( const u64 codepoint );
+	void update( u64 codepoint );
 	void update( const char *buffer );
 	void clear();
 
@@ -384,44 +379,44 @@ public:
 	usize caret_get_start() const { return caretStart; }
 	usize caret_get_end() const { return caretEnd; }
 
-	void caret_alert( const Color color );
-	void caret_set_color( const Color color );
-	void caret_set_root( const usize position );
-	void caret_set_position( const usize position );
+	void caret_alert( Color color );
+	void caret_set_color( Color color );
+	void caret_set_root( usize position );
+	void caret_set_position( usize position );
 	void caret_set_position_start();
 	void caret_set_position_end();
-	void caret_set_selection( const usize start, const usize end );
-	void caret_set_selection_word( const usize index );
-	void caret_set_selection_paragraph( const usize index );
+	void caret_set_selection( usize start, usize end );
+	void caret_set_selection_word( usize index );
+	void caret_set_selection_paragraph( usize index );
 	void caret_reset_selection();
 
-	int_v2 draw( const Delta delta, const float x, const float y, const Alpha alpha = { } );
+	int_v2 draw( Delta delta, float x, float y, Alpha alpha = { } );
 
 	// Handle
 	Text *operator->() { MemoryAssert( text.data != nullptr ); return &text; }
 
 	// Indexer
-	TextChar &operator[]( const usize index ) { return text.char_at( index ); }
-	const TextChar &operator[]( const usize index ) const { return text.char_at( index ); }
+	TextChar &operator[]( usize index ) { return text.char_at( index ); }
+	const TextChar &operator[]( usize index ) const { return text.char_at( index ); }
 
 private:
 	void poll();
 	void text_append( const char *buffer );
-	usize text_replace( const usize start, const usize end, const char *buffer );
+	usize text_replace( usize start, usize end, const char *buffer );
 
-	u32 codepoint_at( const usize index ) const;
+	u32 codepoint_at( usize index ) const;
 	void validate_selection();
 
 private:
-	static void text_callback_error( Text &text, const TextErr error );
+	static void text_callback_error( Text &text, TextErr error );
 	static void text_callback_update( Text &text );
 
 private:
 	Text text;
-	usize caretStart = 0; // insertion & highlight begin
-	usize caretEnd = USIZE_MAX; // highlight end
-	usize caretRoot = USIZE_MAX; // root for shift selection seeking
-	usize caretSeek = USIZE_MAX; // current shift selection seek
+	usize caretStart = 0; // Insertion & highlight begin
+	usize caretEnd = USIZE_MAX; // Highlight end
+	usize caretRoot = USIZE_MAX; // Root for shift selection seeking
+	usize caretSeek = USIZE_MAX; // Current shift selection seek
 
 	float caretTimer = 0.0;
 	float caretTimerAlert = 0.0;
@@ -452,11 +447,11 @@ public:
 	// void callbackListen( TextEditor &ime )
 	void ( *callbackOnListen )( TextEditor & ) = nullptr;
 
-	// void callbackError( TextEditor &ime, const TextErr error )
-	void ( *callbackOnError )( TextEditor &, const TextErr ) = nullptr;
+	// void callbackError( TextEditor &ime, TextErr error )
+	void ( *callbackOnError )( TextEditor &, TextErr ) = nullptr;
 
-	// void callbackDraw( TextEditor &ime, const Delta delta detla, const float x, const float y )
-	void ( *callbackOnDraw )( TextEditor &, const Delta, const float, const float, const Alpha ) = nullptr;
+	// void callbackDraw( TextEditor &ime, Delta delta detla, float x, float y )
+	void ( *callbackOnDraw )( TextEditor &, Delta, float, float, Alpha ) = nullptr;
 };
 
 

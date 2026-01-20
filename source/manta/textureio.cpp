@@ -10,7 +10,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Texture2DBuffer::init( const u16 width, const u16 height )
+void Texture2DBuffer::init( u16 width, u16 height )
 {
 	// Free existing data
 	if( data != nullptr ) { free(); }
@@ -66,10 +66,8 @@ bool Texture2DBuffer::save( const char *path )
 
 bool Texture2DBuffer::load( const char *path )
 {
-	// Free existing data
 	if( data != nullptr ) { free(); }
 
-	// Load PNG
 	int w, h, channels;
 	data = reinterpret_cast<rgba *>( stbi_load( path, &w, &h, &channels, sizeof( rgba ) ) );
 	if( data == nullptr ) { width = 0; height = 0; return false; }
@@ -78,19 +76,20 @@ bool Texture2DBuffer::load( const char *path )
 		w, h, U16_MAX, U16_MAX );
 	width = static_cast<u16>( w );
 	height = static_cast<u16>( h );
+
 	return true;
 }
 
 
-void Texture2DBuffer::clear( const rgba color )
+void Texture2DBuffer::clear( rgba color )
 {
 	const int length = width * height;
 	for( int i = 0; i < length; i++ ) { data[i] = color; }
 }
 
 
-void Texture2DBuffer::splice( Texture2DBuffer &source,
-	const u16 srcX1, const u16 srcY1, const u16 srcX2, const u16 srcY2, const u16 dstX, const u16 dstY )
+void Texture2DBuffer::splice( Texture2DBuffer &source, u16 srcX1, u16 srcY1, u16 srcX2, u16 srcY2,
+	u16 dstX, u16 dstY )
 {
 	// Error checking
 	ErrorIf( !source, "%s: Attempting to splice null Texture2DBuffer", __FUNCTION__ );

@@ -11,7 +11,7 @@
 class SchedulerJob
 {
 public:
-	void execute( const Delta delta );
+	void execute( Delta delta );
 	void rebalance();
 
 public:
@@ -20,7 +20,7 @@ public:
 	float cost = 0.0f; // Average cost of a step of work (ms)
 	int steps = 0; // Amount of work to do this frame
 	double time = 0.0; // Time (ms) since last execution
-	void ( *work )( const Delta delta ) = nullptr;
+	void ( *work )( Delta delta ) = nullptr;
 
 	const char *name = "";
 	Color color = c_white;
@@ -33,12 +33,12 @@ public:
 class Scheduler
 {
 public:
-	void init( const float budget );
+	void init( float budget );
 	void free();
-	SchedulerJob &register_job( const char *name, const Color color, float targetFrequency,
-		float minimumFrequency, void ( *func )( const Delta ) );
-	void update( const Delta delta );
-	void draw( const int x, const int y, const Delta delta );
+	SchedulerJob &register_job( const char *name, Color color, float targetFrequency,
+		float minimumFrequency, void ( *func )( Delta ) );
+	void update( Delta delta );
+	void draw( int x, int y, Delta delta );
 
 public:
 	List<SchedulerJob> jobs;

@@ -71,7 +71,7 @@ extern bool file_rename( const char *path, const char *name );
 extern bool file_copy( const char *source, const char *destination );
 
 extern bool directory_create( const char *path );
-extern bool directory_iterate( List<FileInfo> &list, const char *path, const char *extension, const bool recurse );
+extern bool directory_iterate( List<FileInfo> &list, const char *path, const char *extension, bool recurse );
 extern bool directory_delete( const char *path );
 extern bool directory_rename( const char *path, const char *name );
 extern bool directory_copy( const char *source, const char *destination );
@@ -81,13 +81,13 @@ extern bool directory_copy( const char *source, const char *destination );
 extern bool path_is_directory( const char *path );
 extern bool path_is_file( const char *path );
 
-extern void path_get_directory( char *buffer, const usize size, const char *path );
-extern void path_get_filename( char *buffer, const usize size, const char *path );
-extern void path_get_extension( char *buffer, const usize size, const char *path );
+extern void path_get_directory( char *buffer, usize size, const char *path );
+extern void path_get_filename( char *buffer, usize size, const char *path );
+extern void path_get_extension( char *buffer, usize size, const char *path );
 
-extern void path_change_extension( char *buffer, const usize size, const char *path, const char *extension );
-extern void path_remove_extension( char *path, const usize size );
-extern void path_remove_extensions( char *path, const usize size );
+extern void path_change_extension( char *buffer, usize size, const char *path, const char *extension );
+extern void path_remove_extension( char *path, usize size );
+extern void path_remove_extensions( char *path, usize size );
 
 extern void swrite( const char *string, FILE *file );
 extern usize fsize( FILE *file );

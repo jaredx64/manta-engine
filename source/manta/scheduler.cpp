@@ -2,11 +2,12 @@
 
 #include <core/debug.hpp>
 
+#include <manta/profiler.hpp>
 #include <manta/draw.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void SchedulerJob::execute( const Delta delta )
+void SchedulerJob::execute( Delta delta )
 {
 	Timer timer;
 	work( delta ); // Perform work
@@ -26,7 +27,7 @@ void SchedulerJob::rebalance()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Scheduler::init( const float budget )
+void Scheduler::init( float budget )
 {
 	this->budget = budget;
 	rollingCost = 0.0;
@@ -49,8 +50,8 @@ void Scheduler::free()
 }
 
 
-SchedulerJob &Scheduler::register_job( const char *name, const Color color, float targetFrequency, float minimumFrequency,
-	void ( *func )( const Delta ) )
+SchedulerJob &Scheduler::register_job( const char *name, Color color, float targetFrequency, float minimumFrequency,
+	void ( *func )( Delta ) )
 {
 	SchedulerJob &job = jobs.add( SchedulerJob { } );
 	job.name = name;
@@ -62,8 +63,9 @@ SchedulerJob &Scheduler::register_job( const char *name, const Color color, floa
 }
 
 
-void Scheduler::update( const Delta delta )
+void Scheduler::update( Delta delta )
 {
+	PROFILE_SCOPE( "Scheduler Update" );
 	frame = ( frame + 1 ) % 128;
 	frames[frame].clear();
 
@@ -161,7 +163,7 @@ void Scheduler::update( const Delta delta )
 };
 
 
-void Scheduler::draw( const int x, const int y, const Delta delta )
+void Scheduler::draw( int x, int y, Delta delta )
 {
 	const int xScale = 8;
 	const int yScale = 16;

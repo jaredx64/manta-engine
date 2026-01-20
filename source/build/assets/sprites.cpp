@@ -32,7 +32,7 @@ void Sprites::make_new( const Sprite &sprite )
 }
 
 
-usize Sprites::gather( const char *path, const bool recurse )
+usize Sprites::gather( const char *path, bool recurse )
 {
 	// Gather Sprites
 	List<FileInfo> files;
@@ -197,7 +197,7 @@ void Sprites::build()
 		assets_group( header );
 
 		// Enums
-		header.append( "enum_class_type\n(\n\tSprite, u32,\n\n" );
+		header.append( "enum_class\n(\n\tSprite, u32,\n\n" );
 		for( Sprite &sprite : sprites ) { header.append( "\t" ).append( sprite.name ).append( ",\n" ); }
 		header.append( "\n\tNull = 0,\n" );
 		header.append( ");\n\n" );
@@ -253,8 +253,8 @@ void Sprites::build()
 	if( verbose_output() )
 	{
 		const usize count = sprites.size();
-		PrintColor( LOG_WHITE, TAB TAB "Wrote %d sprite%s", count, count == 1 ? "" : "s" );
-		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+		Print( PrintColor_White, TAB TAB "Wrote %d sprite%s", count, count == 1 ? "" : "s" );
+		PrintLn( PrintColor_White, " (%.3f ms)", timer.elapsed_ms() );
 	}
 }
 

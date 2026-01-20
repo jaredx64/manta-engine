@@ -114,7 +114,7 @@ EVENT_UPDATE
 
 	// Bullets
 	const float radiusSqr = ( radius * size ) * ( radius * size );
-	for( auto projectile : Scene::objects.iterator_all<Object::obj_projectile>() )
+	for( auto projectile : Scene::objects.iterator<Object::obj_projectile>() )
 	{
 		if( float_v2_distance_sqr( { x, y }, { projectile->x, projectile->y } ) < radiusSqr )
 		{

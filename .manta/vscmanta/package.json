@@ -24,7 +24,8 @@
 			{ "command": "vscmanta.selectArchitecture", "title": "Manta: Select Architecture" },
 			{ "command": "vscmanta.selectToolchain",    "title": "Manta: Select Toolchain" },
 			{ "command": "vscmanta.selectConfig",       "title": "Manta: Select Configuration" },
-			{ "command": "vscmanta.selectRenderer",     "title": "Manta: Select Renderer" },
+			{ "command": "vscmanta.selectGraphics",     "title": "Manta: Select Graphics API" },
+			{ "command": "vscmanta.selectMultiLaunch",  "title": "Manta: Select Multi-Launch Count" },
 
 			{ "command": "vscmanta.setWorkspace",       "title": "Manta: Select VSCode Workspace" },
 
@@ -35,7 +36,9 @@
 			{ "command": "vscmanta.package",            "title": "Manta: Package" },
 			{ "command": "vscmanta.debugRuntime",       "title": "Manta: Debug Runtime" },
 			{ "command": "vscmanta.renderdoc",          "title": "Manta: RenderDoc" },
-			{ "command": "vscmanta.insertCommentBreak", "title": "Manta: Inserts comment break" }
+			{ "command": "vscmanta.insertCommentBreak", "title": "Manta: Inserts comment break" },
+			{ "command": "vscmanta.insertRandomHex32",  "title": "Manta: Inserts a random 32 bit number (hex formatted)" },
+			{ "command": "vscmanta.insertRandomHex64",  "title": "Manta: Inserts a random 64 bit number (hex formatted)" }
 		],
 		"languages": [
 			{ "id": "shader", "aliases": [ "Shader", "shader" ], "extensions": [ ".shader" ], "configuration": "syntax/shader.config.json" }

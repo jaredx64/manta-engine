@@ -67,9 +67,9 @@ enum_type( GfxColorFormat, u8 )
 	GfxColorFormat_R8G8B8A8_FLOAT,
 	GfxColorFormat_R8G8B8A8_UINT,
 	GfxColorFormat_R10G10B10A2_FLOAT,
-	GfxColorFormat_R8,
+	GfxColorFormat_R8_UINT,
 	GfxColorFormat_R8G8,
-	GfxColorFormat_R16,
+	GfxColorFormat_R16_UINT,
 	GfxColorFormat_R16_FLOAT,
 	GfxColorFormat_R16G16,
 	GfxColorFormat_R16G16F_FLOAT,
@@ -89,9 +89,9 @@ constexpr u32 colorFormatPixelSizeBytes[GFXCOLORFORMAT_COUNT] =
 	4,  // GfxColorFormat_R8G8B8A8_FLOAT
 	4,  // GfxColorFormat_R8G8B8A8_UINT
 	4,  // GfxColorFormat_R10G10B10A2_FLOAT
-	1,  // GfxColorFormat_R8
+	1,  // GfxColorFormat_R8_UINT
 	2,  // GfxColorFormat_R8G8
-	2,  // GfxColorFormat_R16
+	2,  // GfxColorFormat_R16_UINT
 	2,  // GfxColorFormat_R16_FLOAT
 	4,  // GfxColorFormat_R16G16
 	4,  // GfxColorFormat_R16G16F_FLOAT
@@ -178,7 +178,7 @@ static bool mip_generate_next_2d( void *data, const u16 width, const u16 height,
 
 		switch( format )
 		{
-			case GfxColorFormat_R8:
+			case GfxColorFormat_R8_UINT:
 			{
 				u32 v = p00[0] + p10[0] + p01[0] + p11[0];
 				out[0] = static_cast<u8>( v / 4 );
@@ -204,7 +204,7 @@ static bool mip_generate_next_2d( void *data, const u16 width, const u16 height,
 			}
 			break;
 
-			case GfxColorFormat_R16:
+			case GfxColorFormat_R16_UINT:
 			case GfxColorFormat_R16_FLOAT:
 			{
 				u16 *o = reinterpret_cast<u16 *>( out );
@@ -642,7 +642,7 @@ TextureID Textures::make_new( String &name )
 }
 
 
-usize Textures::gather( const char *path, const bool recurse )
+usize Textures::gather( const char *path, bool recurse )
 {
 	// Gather & Load Textures
 	List<FileInfo> files;
@@ -928,7 +928,7 @@ void Textures::build()
 
 #if 1
 		// Enums
-		header.append( "enum_class_type\n(\n\tTexture, u32,\n\n" );
+		header.append( "enum_class\n(\n\tTexture, u32,\n\n" );
 		for( Texture &texture : textures ) { header.append( "\t" ).append( texture.name ).append( ",\n" ); }
 		header.append( "\n\tNull = 0,\n" );
 		header.append( ");\n\n" );
@@ -981,8 +981,8 @@ void Textures::build()
 	if( verbose_output() )
 	{
 		const usize count = textures.size();
-		PrintColor( LOG_WHITE, TAB TAB "Wrote %d texture%s", count, count == 1 ? "" : "s", MB( sizeBytes ) );
-		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+		Print( PrintColor_White, TAB TAB "Wrote %d texture%s", count, count == 1 ? "" : "s", MB( sizeBytes ) );
+		PrintLn( PrintColor_White, " (%.3f ms)", timer.elapsed_ms() );
 	}
 }
 

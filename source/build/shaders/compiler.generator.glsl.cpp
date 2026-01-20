@@ -924,9 +924,7 @@ void GeneratorGLSL::generate_structure( NodeStruct *node )
 			case StructType_VertexOutput: { out.hasBody = false; out.hasIn = false; out.hasOut = true;  out.hasLayout = true; } break;
 			case StructType_FragmentInput: { out.hasBody = false; out.hasIn = true;  out.hasOut = false; out.hasLayout = true; } break;
 			case StructType_FragmentOutput: { out.hasBody = false; out.hasIn = false; out.hasOut = true;  out.hasLayout = true; } break;
-			case StructType_ComputeInput: { out.hasBody = false; out.hasIn = true;  out.hasOut = false; out.hasLayout = false; } break;
-			case StructType_ComputeOutput: { out.hasBody = false; out.hasIn = false; out.hasOut = true;  out.hasLayout = false; } break;
-		}
+	}
 		return out;
 	};
 
@@ -1085,8 +1083,6 @@ void GeneratorGLSL::generate_structure( NodeStruct *node )
 		"",                         // StructType_VertexOutput
 		"",                         // StructType_FragmentInput
 		"",                         // StructType_FragmentOutput
-		"",                         // StructType_ComputeInput
-		"",                         // StructType_ComputeOutput
 	};
 	static_assert( ARRAY_LENGTH( structNames ) == STRUCTTYPE_COUNT,
 		"Missing TextureType" );

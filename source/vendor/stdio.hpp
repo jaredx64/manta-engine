@@ -17,27 +17,28 @@
 
 	#define EOF ( -1 )
 
-	extern "C" FILE *fopen( char const *filename, char const *mode );
-	extern "C" errno_t fopen_s( FILE **pFile, const char *filename, const char *mode );
+	extern "C" FILE *fopen( char const *, char const * );
+	extern "C" errno_t fopen_s( FILE **, const char *, const char * );
+	extern "C" errno_t freopen_s( FILE **, char const*, char const *, FILE * );
 	extern "C" int fclose( FILE * );
-	extern "C" size_t fwrite( void const *ptr, size_t size, size_t count, FILE *stream );
-	extern "C" size_t fread( void *ptr, size_t size, size_t count, FILE *stream );
-	extern "C" int fseek( FILE *stream, size_t offset, int origin );
-	extern "C" size_t ftell( FILE *stream );
-	extern "C" int fgetc( FILE *stream );
-	extern "C" int getc( FILE *stream );
-	extern "C" int ungetc( int ch, FILE *stream );
-	extern "C" int ungetc( int ch, FILE *stream );
-	extern "C" int feof( FILE *stream );
-	extern "C" int ferror( FILE *stream );
-	extern "C" char *fgets( char *str, int count, FILE *stream );
+	extern "C" size_t fwrite( void const *, size_t, size_t, FILE * );
+	extern "C" size_t fread( void *, size_t, size_t, FILE * );
+	extern "C" int fseek( FILE *, size_t, int );
+	extern "C" size_t ftell( FILE * );
+	extern "C" int fgetc( FILE * );
+	extern "C" int getc( FILE * );
+	extern "C" int ungetc( int, FILE * );
+	extern "C" int ungetc( int, FILE * );
+	extern "C" int feof( FILE * );
+	extern "C" int ferror( FILE * );
+	extern "C" char *fgets( char *, int, FILE  );
 
 	#if PIPELINE_OS_WINDOWS
-		extern "C" FILE *_popen( const char *command, const char *mode );
-		extern "C" int _pclose( FILE *stream );
+		extern "C" FILE *_popen( const char *, const char * );
+		extern "C" int _pclose( FILE * );
 	#else
-		extern "C" FILE *popen( const char *command, const char *mode );
-		extern "C" int pclose( FILE *stream );
+		extern "C" FILE *popen( const char *, const char * );
+		extern "C" int pclose( FILE * );
 	#endif
 
 	#if PIPELINE_OS_WINDOWS
@@ -65,9 +66,12 @@
 		#define stdout ( __acrt_iob_func( 1 ) )
 		#define stderr ( __acrt_iob_func( 2 ) )
 
-		extern "C" int __stdio_common_vsscanf(unsigned long long, char const *, size_t, char const *, _locale_t, va_list);
-		extern "C" int __stdio_common_vsprintf(unsigned long long, char *, size_t, char const *, _locale_t, va_list);
-		extern "C" int __stdio_common_vfprintf(unsigned long long, FILE *, const char *, _locale_t, va_list);
+		extern "C" int __stdio_common_vsscanf(unsigned long long, char const *, size_t, char const *,
+			_locale_t, va_list);
+		extern "C" int __stdio_common_vsprintf(unsigned long long, char *, size_t, char const *,
+			_locale_t, va_list);
+		extern "C" int __stdio_common_vfprintf(unsigned long long, FILE *, const char *,
+			_locale_t, va_list);
 		extern "C" FILE *__acrt_iob_func(unsigned);
 
 		inline int sscanf(char const *const buffer, char const *const format, ...)
@@ -75,7 +79,8 @@
 			int result;
 			va_list args;
 			va_start(args, format);
-			result = __stdio_common_vsscanf(_CRT_INTERNAL_LOCAL_SCANF_OPTIONS, buffer, (size_t)-1, format, nullptr, args);
+			result = __stdio_common_vsscanf(_CRT_INTERNAL_LOCAL_SCANF_OPTIONS, buffer, (size_t)-1,
+				format, nullptr, args);
 			va_end(args);
 			return result;
 		}
@@ -145,7 +150,7 @@
 			return result < 0 ? -1 : result;
 		}
 
-		inline int vsnprintf(char *buffer, size_t size, const char *format, va_list args)
+		inline int vsnprintf( char *buffer, size_t size, const char *format, va_list args )
 		{
 			int result;
 			result = __stdio_common_vsprintf(
@@ -159,25 +164,27 @@
 			return result < 0 ? -1 : result;
 		}
 	#else
-		extern "C" int sscanf(const char *, const char *, ...);
-		extern "C" int printf(const char *, ... );
-		extern "C" int sprintf(char *, const char *, ... );
-		extern "C" int snprintf(char *, size_t, const char *, ... );
-		extern "C" int vprintf(const char *, __builtin_va_list );
-		extern "C" int vsprintf(char *, const char *, __builtin_va_list );
-		extern "C" int vsnprintf(char *, size_t, const char *, __builtin_va_list );
+		extern "C" int sscanf( const char *, const char *, ... );
+		extern "C" int printf( const char *, ... );
+		extern "C" int sprintf( char *, const char *, ... );
+		extern "C" int snprintf( char *, size_t, const char *, ... );
+		extern "C" int vprintf( const char *, __builtin_va_list );
+		extern "C" int vsprintf( char *, const char *, __builtin_va_list );
+		extern "C" int vsnprintf( char *, size_t, const char *, __builtin_va_list );
 
 		extern "C" FILE *stdin;
 		extern "C" FILE *stdout;
 		extern "C" FILE *stderr;
 
-		extern "C" int remove(const char *);
-		extern "C" int rename(const char *, const char *);
+		extern "C" int remove( const char * );
+		extern "C" int rename( const char *, const char * );
+	#endif
+
+	#if PIPELINE_OS_WINDOWS
+		#define popen(command, mode) _popen( command, mode )
+		#define pclose(stream) _pclose( stream )
 	#endif
 
 #endif
 
-#if PIPELINE_OS_WINDOWS
-	#define popen(command, mode) _popen( command, mode )
-	#define pclose(stream) _pclose( stream )
-#endif
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

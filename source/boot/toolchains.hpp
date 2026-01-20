@@ -13,7 +13,7 @@ struct Toolchain
 		// MSVC
 		if( strcmp( toolchain, "msvc" ) == 0 )
 		{
-#if 0
+#if 1
 			compilerName = "cl";
 			compilerFlags = "-c -O2 -showIncludes -nologo -std:c++20 -EHsc -DUNICODE -DCOMPILE_BUILD -DCOMPILE_ASSERTS";
 			compilerFlagsIncludes = "-I\"%s\" -I\"%s\" -I\"%s\"";
@@ -99,7 +99,7 @@ struct Toolchain
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static void linkerflags_add_library( char *buffer, const usize size, const Toolchain &tc, const char *library )
+static void linkerflags_add_library( char *buffer, usize size, const Toolchain &tc, const char *library )
 {
 #if PIPELINE_OS_MACOS
 	CoreText::macro_strappend( size, buffer, "-framework " );
@@ -119,10 +119,10 @@ static const char *ninja_path()
 {
 	auto ninja_warning = [&]()
 	{
-		PrintLnColor( LOG_YELLOW, "\nWARNING:\n" );
-		PrintLnColor( LOG_YELLOW, "Ninja: unrecognized operating system or architecture!" );
-		PrintLnColor( LOG_YELLOW, "Attempting system installed ninja..." );
-		PrintLnColor( LOG_YELLOW, "If ninja fails, download: https://github.com/ninja-build/ninja/releases\n" );
+		PrintLn( PrintColor_Yellow, "\nWARNING:\n" );
+		PrintLn( PrintColor_Yellow, "Ninja: unrecognized operating system or architecture!" );
+		PrintLn( PrintColor_Yellow, "Attempting system installed ninja..." );
+		PrintLn( PrintColor_Yellow, "If ninja fails, download: https://github.com/ninja-build/ninja/releases\n" );
 	};
 
 	// Windows

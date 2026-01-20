@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vendor/vendor.hpp>
+
 #include <core/types.hpp>
 #include <core/buffer.hpp>
 
@@ -9,12 +11,12 @@ struct SerializerKey
 {
 	SerializerKey() = delete;
 
-	consteval SerializerKey( const char *key ) : hash{ 5381 }
+	consteval SerializerKey( const char *key ) : hash { 5381 }
 	{
 		while( *key ) { hash = ( ( hash << 5 ) + hash ) + static_cast<u32>( *key++ ); }
 	}
 
-	SerializerKey( char *key ) : hash{ 5381 }
+	SerializerKey( char *key ) : hash { 5381 }
 	{
 		while( *key ) { hash = ( ( hash << 5 ) + hash ) + static_cast<u32>( *key++ ); }
 	}
@@ -23,6 +25,8 @@ struct SerializerKey
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+namespace Serialization { };
 
 class Serializer
 {
@@ -60,7 +64,7 @@ public:
 		buffer->poke<usize>( endTell, buffer->tell );
 	}
 
-	template <typename T> void write( const u32 hash, const T &variable )
+	template <typename T> void write( u32 hash, const T &variable )
 	{
 		// Update the previous element's 'next' offset
 		if( nextTell != USIZE_MAX )
@@ -85,12 +89,12 @@ public:
 		}
 	}
 
-	template <typename T> void write( const SerializerKey name, const T &variable )
+	template <typename T> void write( SerializerKey name, const T &variable )
 	{
 		write<T>( name.hash, variable );
 	}
 
-	template <typename T> void write_array( const u32 hash, const T *array, const usize length )
+	template <typename T> void write_array( u32 hash, const T *array, usize length )
 	{
 		// Update the previous element's 'next' offset
 		if( nextTell != USIZE_MAX )
@@ -118,9 +122,32 @@ public:
 		}
 	}
 
-	template <typename T> void write_array( const SerializerKey name, const T *array, const usize length )
+	template <typename T> void write_array( SerializerKey name, const T *array, usize length )
 	{
 		write_array<T>( name.hash, array, length );
+	}
+
+	void write_data( u32 hash, const void *data, usize size )
+	{
+		// Update the previous element's 'next' offset
+		if( nextTell != USIZE_MAX )
+		{
+			buffer->poke<usize>( nextTell, buffer->tell );
+		}
+
+		// Write name hash & temporary 'next' offset
+		buffer->write<u32>( hash );
+		nextTell = buffer->tell;
+		buffer->write<usize>( USIZE_MAX );
+
+		// Write data & size
+		buffer->write<usize>( size );
+		buffer->write( data, size );
+	}
+
+	void write_data( SerializerKey name, const void *data, usize size )
+	{
+		write_data( name.hash, data, size );
 	}
 };
 
@@ -129,24 +156,23 @@ public:
 class Deserializer
 {
 private:
-	// custom deserialize() must be: static void T::deserialize( Buffer &buffer, T &type ) { ... }
+	// custom deserialize() must be: static bool T::deserialize( Buffer &buffer, T &type ) { ... }
 	template <typename T> struct HasCustomDeserialize
 	{
 		template <typename U> static auto test( int ) ->
-			decltype( static_cast<void (*)( Buffer &, T & )>( &U::deserialize ), true_type() );
+			decltype( static_cast<bool (*)( Buffer &, T & )>( &U::deserialize ), true_type() );
 		template <typename U> static false_type test( ... );
 		static const bool value = decltype( test<T>( 0 ) )::value;
 	};
 
 	Buffer *buffer = nullptr;
-	bool failure = false;
 	usize endTell = USIZE_MAX;
 	usize firstTell = USIZE_MAX;
 
 public:
 	u32 version = 0;
 
-	void begin( Buffer &buffer, const u32 version )
+	void begin( Buffer &buffer, u32 version )
 	{
 		// Set state
 		this->buffer = &buffer;
@@ -160,19 +186,13 @@ public:
 
 	void end()
 	{
-		// Skip if failure
-		if( failure ) { return; }
-
 		// Update buffer tell
 		Assert( this->buffer != nullptr );
 		buffer->seek_to( endTell );
 	}
 
-	template <typename T> bool read( const u32 hash, T &variable )
+	template <typename T> NO_DISCARD bool read( u32 hash, T &variable )
 	{
-		// Skip if failure
-		if( failure ) { return false; }
-
 		// Seek buffer to first element
 		buffer->seek_to( firstTell );
 		if( firstTell == endTell ) { return false; }
@@ -191,13 +211,12 @@ public:
 				using Type = typename remove_reference<T>::type;
 				if constexpr ( Deserializer::HasCustomDeserialize<Type>::value )
 				{
-					Type::deserialize( *buffer, variable );
+					return Type::deserialize( *buffer, variable );
 				}
 				else
 				{
-					buffer->read<Type>( variable );
+					return buffer->read<Type>( variable );
 				}
-				return true;
 			}
 			else
 			// This isn't our element, continue or return
@@ -207,42 +226,18 @@ public:
 				continue;
 			}
 		}
+
+		// Element not found
+		return false;
 	}
 
-	template <typename T> bool read( const SerializerKey name, T &variable )
+	template <typename T> NO_DISCARD bool read( const SerializerKey name, T &variable )
 	{
 		return read<T>( name.hash, variable );
 	}
 
-	template <typename TypePrevious, typename TypeCurrent>
-	bool reinterpret( const u32 hash, TypeCurrent &variable )
+	template <typename T> NO_DISCARD bool read_array( u32 hash, T *array, usize length )
 	{
-		// Skip if failure
-		if( failure ) { return false; }
-
-		TypePrevious previous;
-		if( !read<TypePrevious>( hash, previous ) ) { return false; }
-		variable = static_cast<TypeCurrent>( previous );
-		return true;
-	}
-
-	template <typename TypePrevious, typename TypeCurrent>
-	bool reinterpret( const SerializerKey name, TypeCurrent &variable )
-	{
-		// Skip if failure
-		if( failure ) { return false; }
-
-		TypePrevious previous;
-		if( !read<TypePrevious>( name.hash, previous ) ) { return false; }
-		variable = static_cast<TypeCurrent>( previous );
-		return true;
-	}
-
-	template <typename T> bool read_array( const u32 hash, T *array, const usize length )
-	{
-		// Skip if failure
-		if( failure ) { return false; }
-
 		// Seek buffer to first element
 		buffer->seek_to( firstTell );
 		if( firstTell == endTell ) { return false; }
@@ -266,12 +261,19 @@ public:
 				using Type = typename remove_reference<T>::type;
 				if constexpr ( Deserializer::HasCustomDeserialize<Type>::value )
 				{
-					for( usize i = 0; i < count; i++ ) { Type::deserialize( *buffer, array[i] ); }
+					for( usize i = 0; i < count; i++ )
+					{
+						if( !Type::deserialize( *buffer, array[i] ) ) { return false; };
+					}
 				}
 				else
 				{
-					for( usize i = 0; i < count; i++ ) { buffer->read<Type>( array[i] ); }
+					for( usize i = 0; i < count; i++ )
+					{
+						if( !buffer->read<Type>( array[i] ) ) { return false; };
+					}
 				}
+
 				return true;
 			}
 			else
@@ -282,11 +284,76 @@ public:
 				continue;
 			}
 		}
+
+		// Array not found
+		return false;
 	}
 
-	template <typename T> bool read_array( const SerializerKey name, T *array, const usize length )
+	template <typename T> NO_DISCARD bool read_array( SerializerKey name, T *array, usize length )
 	{
 		return read_array<T>( name.hash, array, length );
+	}
+
+	NO_DISCARD bool read_data( u32 hash, void *data, usize size )
+	{
+		// Seek buffer to first element
+		buffer->seek_to( firstTell );
+		if( firstTell == endTell ) { return false; }
+
+		// Search for element by name
+		for( ;; )
+		{
+			// Read hash
+			const u32 thisHash = buffer->read<u32>();
+			const usize nextTell = buffer->read<usize>();
+
+			// Found our element?
+			if( thisHash == hash )
+			{
+				// Read size
+				const usize sizeSerialized = buffer->read<usize>();
+				ErrorIf( sizeSerialized != size, "Deserializing data buffer of mismatched size (e %llu, a: %llu)!",
+					size, sizeSerialized );
+
+				// Read data
+				void *dataSerialized = buffer->read_bytes( sizeSerialized );
+				memory_copy( data, dataSerialized, sizeSerialized );
+				return true;
+			}
+			else
+			// This isn't our element, continue or return
+			{
+				if( nextTell == USIZE_MAX ) { return false; }
+				buffer->seek_to( nextTell );
+				continue;
+			}
+		}
+
+		// Data not found
+		return false;
+	}
+
+	NO_DISCARD bool read_data( SerializerKey name, void *data, usize size )
+	{
+		return read_data( name.hash, data, size );
+	}
+
+	template <typename TypePrevious, typename TypeCurrent>
+	NO_DISCARD bool reinterpret( u32 hash, TypeCurrent &variable )
+	{
+		TypePrevious previous;
+		if( !read<TypePrevious>( hash, previous ) ) { return false; }
+		variable = static_cast<TypeCurrent>( previous );
+		return true;
+	}
+
+	template <typename TypePrevious, typename TypeCurrent>
+	NO_DISCARD bool reinterpret( SerializerKey name, TypeCurrent &variable )
+	{
+		TypePrevious previous;
+		if( !read<TypePrevious>( name.hash, previous ) ) { return false; }
+		variable = static_cast<TypeCurrent>( previous );
+		return true;
 	}
 };
 

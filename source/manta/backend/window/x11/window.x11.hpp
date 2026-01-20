@@ -10,7 +10,7 @@ namespace CoreWindow
 	extern XDisplay *display;
 	extern XWindow handle;
 
-	// X11 has a kinda weird coupling between window and context creation.
+	// X11 has a weird coupling between window and context creation:
 	// Basically, any graphics API that wants to support X11 will need to
 	// implement this function and return a visual for the window. This is
 	// just called from the X11 window implementation.

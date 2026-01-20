@@ -33,7 +33,7 @@ struct HashMap
 {
 public:
 #if MEMORY_RAII
-	HashMap( const u32 reserve = 32, const V &nullElement = { } ) { init( reserve, nullElement ); }
+	HashMap( u32 reserve = 32, const V &nullElement = { } ) { init( reserve, nullElement ); }
 	HashMap( const HashMap<K, V> &other ) { copy( other ); }
 	HashMap( HashMap<K, V> &&other ) { move( static_cast<HashMap<K, V> &&>( other ) ); }
 	~HashMap() { free(); }
@@ -47,11 +47,10 @@ public:
 #if MEMORY_ASSERTS
 	~HashMap()
 	{
-		// Memory Leak Detection
 		if( Debug::memoryLeakDetection && Debug::exitCode == 0 )
 		{
 			MemoryAssertMsg( data == nullptr, "ERROR: Memory leak in HashMap (%p) (size: %.2f kb)",
-			                 this, KB( size_allocated_bytes() ) );
+				this, KB( size_allocated_bytes() ) );
 		}
 	}
 #endif
@@ -145,19 +144,16 @@ private:
 public:
 	void init( const u32 reserve = 32, const V &nullElement = { } )
 	{
-		// Set state
 		Assert( reserve >= 1 );
 		capacity = align_pow2( reserve );
 		size = 0;
 		new ( &null ) V( nullElement );
 
-		// Allocate 'data' memory
 		MemoryAssert( data == nullptr );
 		data = reinterpret_cast<KeyValue *>( memory_alloc( capacity * sizeof( KeyValue ) ) );
 		MemoryAssert( deadslot == nullptr );
 		deadslot = reinterpret_cast<bool *>( memory_alloc( capacity * sizeof( bool ) ) );
 
-		// Initialize new slots
 		for( u32 i = 0; i < capacity; i++ )
 		{
 			deadslot[i] = false;
@@ -176,20 +172,17 @@ public:
 		#endif
 		}
 
-		// Free slots
 		for( u32 i = 0; i < capacity; i++ )
 		{
 			if( Hash::is_null( data[i].key ) ) { continue; }
 			data[i].~KeyValue();
 		}
 
-		// Free memory
 		memory_free( data );
 		data = nullptr;
 		memory_free( deadslot );
 		deadslot = nullptr;
 
-		// Reset state
 		capacity = 0LLU;
 		size = 0LLU;
 		null.~V();
@@ -201,19 +194,16 @@ public:
 		if( this == &other ) { return *this; }
 		if( data != nullptr ) { free(); }
 
-		// Copy state
 		capacity = other.capacity;
 		Assert( capacity >= 1 );
 		size = other.size;
 		null.~V();
 		new ( &null ) V( other.null );
 
-		// Allocate memory
 		MemoryAssert( data == nullptr );
 		data = reinterpret_cast<KeyValue *>( memory_alloc( capacity * sizeof( KeyValue ) ) );
 		deadslot = reinterpret_cast<bool *>( memory_alloc( capacity * sizeof( bool ) ) );
 
-		// Copy memory
 		for( u32 i = 0; i < capacity; i++ )
 		{
 			deadslot[i] = other.deadslot[i];
@@ -222,7 +212,6 @@ public:
 			new ( &data[i].value ) V( other.data[i].value );
 		}
 
-		// Return this
 		return *this;
 	}
 
@@ -232,7 +221,6 @@ public:
 		if( this == &other ) { return *this; }
 		if( data != nullptr ) { free(); }
 
-		// Move the other HashMap's resources
 		data = other.data;
 		deadslot = other.deadslot;
 		capacity = other.capacity;
@@ -240,20 +228,17 @@ public:
 		null.~V();
 		null = static_cast<V &&>( other.null );
 
-		// Reset other HashMap to null state
 		other.data = nullptr;
 		other.deadslot = nullptr;
 		other.capacity = 0;
 		other.size = 0;
 		other.null.~V();
 
-		// Return this
 		return *this;
 	}
 
 	void clear()
 	{
-		// Free slots
 		MemoryAssert( data != nullptr && deadslot != nullptr );
 		for( u32 i = 0; i < capacity; i++ )
 		{
@@ -263,7 +248,6 @@ public:
 			Hash::set_null( data[i].key );
 		}
 
-		// Reset state
 		size = 0;
 	}
 
@@ -301,6 +285,11 @@ public:
 
 		// Free old data
 		memory_free( dataOld );
+	}
+
+	bool is_initialized() const
+	{
+		return data != nullptr;
 	}
 
 	V &get( const K &key )
@@ -412,17 +401,11 @@ public:
 		return capacity * ( sizeof( KeyValue ) + sizeof( bool ) );
 	}
 
-	// Equality
     bool operator==( const HashMap<K, V> &other ) const { return  equals( other ); }
 	bool operator!=( const HashMap<K, V> &other ) const { return !equals( other ); }
 
-	// Indexer
 	V &operator[]( const K &key ) { return get( key ); }
 
-	// Initialization check
-    explicit operator bool() const { return data != nullptr; }
-
-	// Forward Iterator
 	class forward_iterator
 	{
 	public:
@@ -452,16 +435,15 @@ public:
 	forward_iterator begin() const { return forward_iterator( &data[0], &data[capacity] ); }
 	forward_iterator end() const { return forward_iterator( &data[capacity] ); }
 
+    explicit operator bool() const { return data != nullptr; }
+
 public:
 	static void write( Buffer &buffer, const HashMap<K, V> &hashmap )
 	{
 		MemoryAssert( buffer.data != nullptr );
 		MemoryAssert( hashmap.data != nullptr );
 
-		// Save current
 		buffer.write<u32>( hashmap.size );
-
-		// Save elements
 		for( usize i = 0; i < hashmap.capacity; i++ )
 		{
 			if( Hash::is_null( hashmap.data[i].key ) ) { continue; }
@@ -470,22 +452,24 @@ public:
 		}
 	}
 
-	static void read( Buffer &buffer, HashMap<K, V> &hashmap )
+	NO_DISCARD static bool read( Buffer &buffer, HashMap<K, V> &hashmap )
 	{
-		if( hashmap.data != nullptr ) { hashmap.free(); }
-		MemoryAssert( hashmap.data == nullptr );
+		u32 size;
+		if( !buffer.read<u32>( size ) ) { return false; }
 
-		// Initialize memory
-		const u32 size = buffer.read<u32>();
+		const bool hashmapAlreadyInitialized = hashmap.data != nullptr;
+		auto cleanup_failure = [&]() { if( !hashmapAlreadyInitialized ) { hashmap.free(); } };
+		if( hashmapAlreadyInitialized ) { hashmap.free(); }
 		hashmap.init( size );
 
-		// Read elements
 		for( usize i = 0; i < size; i++ )
 		{
 			K key;
-			buffer.read<K>( key );
-			buffer.read<V>( hashmap.get( key ) );
+			if( !buffer.read<K>( key ) ) { cleanup_failure(); return false; };
+			if( !buffer.read<V>( hashmap.get( key ) ) ) { cleanup_failure(); return false; };
 		}
+
+		return true;
 	}
 
 	static void serialize( Buffer &buffer, const HashMap<K, V> &hashmap )
@@ -494,10 +478,11 @@ public:
 		Error( "TODO: Implement this!" );
 	}
 
-	static void deserialize( Buffer &buffer, const HashMap<K, V> &hashmap )
+	NO_DISCARD static bool deserialize( Buffer &buffer, const HashMap<K, V> &hashmap )
 	{
 		// TODO: Implement HashMap deserialize() function
 		Error( "TODO: Implement this!" );
+		return true;
 	}
 
 private:

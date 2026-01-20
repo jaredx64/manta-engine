@@ -13,8 +13,17 @@
 	#define min CONFLICT_min
 	#define max CONFLICT_max
 
+	// gl.h
+	#define GLuint64 CONFLICT_GLuint64
+
 	// stdlib.h
 	#define random CONFLICT_random
+
+	// docobj.h
+	#define Print CONFLICT_Print
+
+	// Finder.h
+	#define FileInfo CONFLICT_FileInfo
 
 	// x11.hpp
 	#define Atom XAtom
@@ -34,8 +43,17 @@
 	#undef min
 	#undef max
 
+	// gl.h
+	#undef GLuint64
+
 	// stdlib.h
 	#undef random
+
+	// docobj.h
+	#undef Print
+
+	// Finder.h
+	#undef FileInfo
 
 	// x11.h
 	#undef Font

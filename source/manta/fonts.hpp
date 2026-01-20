@@ -12,13 +12,13 @@
 class Font
 {
 public:
-	constexpr Font( const u16 id, const u16 ttf ) : id{ id }, ttf{ ttf } { };
+	constexpr Font( const u16 id, const u16 ttf ) : id { id }, ttf { ttf } { };
 	constexpr operator u8() const { return static_cast<u8>( id ); }
 
-	/*constexpr */Font regular() const { return Font { id, CoreAssets::fonts[id].ttfs[0] }; }
-	/*constexpr */Font italics() const { return Font { id, CoreAssets::fonts[id].ttfs[1] }; }
-	/*constexpr */Font bold() const { return Font { id, CoreAssets::fonts[id].ttfs[2] }; }
-	/*constexpr */Font bold_italics() const { return Font { id, CoreAssets::fonts[id].ttfs[3] }; }
+	Font regular() const { return Font { id, CoreAssets::fonts[id].ttfs[0] }; }
+	Font italics() const { return Font { id, CoreAssets::fonts[id].ttfs[1] }; }
+	Font bold() const { return Font { id, CoreAssets::fonts[id].ttfs[2] }; }
+	Font bold_italics() const { return Font { id, CoreAssets::fonts[id].ttfs[3] }; }
 
 	const u16 id, ttf;
 };
@@ -54,10 +54,10 @@ namespace CoreFonts
 
 	struct FontGlyphInfo
 	{
-		bool get_glyph_metrics( const u32 codepoint, const u16 ttf, const u16 size );
+		bool get_glyph_metrics( u32 codepoint, u16 ttf, u16 size );
 
-		u32 u       : 12; // 4096 max
-		u32 v       : 12; // 4096 max
+		u32 u : 12; // 4096 max
+		u32 v : 12; // 4096 max
 		u32 advance :  8; //  256 max
 		u8 width, height;
 		i8 xshift, yshift;
@@ -77,8 +77,8 @@ namespace CoreFonts
 	extern CoreFonts::FontGlyphInfo &get( CoreFonts::FontGlyphKey key );
 	extern bool pack( CoreFonts::FontGlyphInfo &glyphInfo );
 
-	extern void cache( const u16 ttf, const u16 size, const u32 start, const u32 end );
-	extern void cache( const u16 ttf, const u16 size, const char *buffer );
+	extern void cache( u16 ttf, u16 size, u32 start, u32 end );
+	extern void cache( u16 ttf, u16 size, const char *buffer );
 
 	extern GfxTexture glyphAtlasTexture;
 }

@@ -50,6 +50,18 @@ var WIDGET_TOOLCHAIN_OPTIONS = [];
 var WIDGET_GRAPHICS = vscode.window.createStatusBarItem();
 var WIDGET_GRAPHICS_OPTIONS = [];
 
+var WIDGET_MULTILAUNCH = vscode.window.createStatusBarItem();
+var WIDGET_MULTILAUNCH_OPTIONS = [
+	{ label: "1" },
+	{ label: "2" },
+	{ label: "3" },
+	{ label: "4" },
+	{ label: "5" },
+	{ label: "6" },
+	{ label: "7" },
+	{ label: "8" }
+];
+
 // Status Bar Actions
 var WIDGET_BUILD = vscode.window.createStatusBarItem();
 var WIDGET_BUILD_RUN = vscode.window.createStatusBarItem();
@@ -59,6 +71,12 @@ var WIDGET_RENDERDOC = vscode.window.createStatusBarItem();
 var WIDGET_CLEAN = vscode.window.createStatusBarItem();
 var WIDGET_NEW_PROJECT = vscode.window.createStatusBarItem();
 var WIDGET_WORKSPACE = vscode.window.createStatusBarItem();
+
+
+// Environment
+var ENV_PIPELINE_VULKAN_SDK = "";
+var ENV_CLANGD_ENABLED = true;
+var ENV_CLANGD_CHEADERS = false;
 
 
 /**
@@ -85,6 +103,7 @@ async function activate( context )
 	context.subscriptions.push( vscode.commands.registerCommand( "vscmanta.selectToolchain", CommandSelectToolchain ) );
 	context.subscriptions.push( vscode.commands.registerCommand( "vscmanta.selectConfig", CommandSelectConfig ) );
 	context.subscriptions.push( vscode.commands.registerCommand( "vscmanta.selectGraphics", CommandSelectRender ) );
+	context.subscriptions.push( vscode.commands.registerCommand( "vscmanta.selectMultiLaunch", CommandSelectMultiLaunch ) );
 	context.subscriptions.push( vscode.commands.registerCommand( "vscmanta.buildAndRun", CommandBuildAndRun ) );
 	context.subscriptions.push( vscode.commands.registerCommand( "vscmanta.build", CommandBuild ) );
 	context.subscriptions.push( vscode.commands.registerCommand( "vscmanta.run", CommandAbout ) );
@@ -92,6 +111,8 @@ async function activate( context )
 	context.subscriptions.push( vscode.commands.registerCommand( "vscmanta.debugRuntime", CommandDebugRuntime ) );
 	context.subscriptions.push( vscode.commands.registerCommand( "vscmanta.renderdoc", CommandRenderDoc ) );
 	context.subscriptions.push( vscode.commands.registerCommand( "vscmanta.insertCommentBreak", CommandInsertCommentBreak ) );
+	context.subscriptions.push( vscode.commands.registerCommand( "vscmanta.insertRandomHex32", CommandInsertRandomHex32 ) );
+	context.subscriptions.push( vscode.commands.registerCommand( "vscmanta.insertRandomHex64", CommandInsertRandomHex64 ) );
 
 	// Build Configuration Widgets
 	WidgetCreate( context, WIDGET_WORKSPACE, "[]", "vscmanta.setWorkspace" );
@@ -114,6 +135,9 @@ async function activate( context )
 
 	WidgetCreate( context, WIDGET_GRAPHICS, "[]", "vscmanta.selectGraphics" );
 	WIDGET_GRAPHICS.tooltip = "Select a graphics API";
+
+	WidgetCreate( context, WIDGET_MULTILAUNCH, "[]", "vscmanta.selectMultiLaunch" );
+	WIDGET_MULTILAUNCH.tooltip = "Select a multilaunch count";
 
 	// Action Widgets
 	WidgetCreate( context, WIDGET_BUILD, "🔵 Build", "vscmanta.build", "#75acff" );
@@ -201,6 +225,9 @@ function WorkspaceUpdate( switchProject = true )
 	WIDGET_WORKSPACE.text = WORKSPACE_IS_PROJECT ? "🔺" : "🔻";
 	WIDGET_WORKSPACE.tooltip = WORKSPACE_IS_PROJECT ? "Open engine workspace" : "Open project workspace";
 
+	// Environment
+	LoadEnvironmentJSON();
+
 	// Switch Workspaces?
 	if( WORKSPACE_IS_PROJECT && switchProject )
 	{
@@ -231,6 +258,7 @@ function WorkspaceUpdate( switchProject = true )
 		WidgetValueSet( WIDGET_ARCHITECTURE, WIDGET_ARCHITECTURE_OPTIONS, WIDGET_ARCHITECTURE.name, false );
 		WidgetValueSet( WIDGET_TOOLCHAIN, WIDGET_TOOLCHAIN_OPTIONS, WIDGET_TOOLCHAIN.name, false );
 		WidgetValueSet( WIDGET_GRAPHICS, WIDGET_GRAPHICS_OPTIONS, WIDGET_GRAPHICS.name, false );
+		WidgetValueSet( WIDGET_MULTILAUNCH, WIDGET_MULTILAUNCH_OPTIONS, WIDGET_MULTILAUNCH.name, false );
 
 		// Update VSCode settings
 		SaveVSCodeSettings();
@@ -303,6 +331,33 @@ function LoadMantaConfigJSON()
 }
 
 
+function LoadEnvironmentJSON()
+{
+	try
+	{
+		const pathEnvironmentJSON = path.join( PATH_ENGINE, "environment.json" );
+		if( !fs.existsSync( pathEnvironmentJSON ) ) { return; }
+		const raw = fs.readFileSync( pathEnvironmentJSON, "utf8" );
+		const json = JSON.parse( raw );
+
+		ENV_PIPELINE_VULKAN_SDK = "";
+		if( json.pipeline && typeof json.pipeline.vulkanSDK === "string" )
+		{
+			ENV_PIPELINE_VULKAN_SDK = json.pipeline.vulkanSDK;
+		}
+
+		if( json.clangd )
+		{
+			ENV_CLANGD_ENABLED = true;
+			if( typeof json.clangd.enabled === "boolean" ) { ENV_CLANGD_ENABLED = json.clangd.enabled; }
+			ENV_CLANGD_CHEADERS = false;
+			if( typeof json.clangd.cheaders === "boolean" ) { ENV_CLANGD_CHEADERS = json.clangd.cheaders; }
+		}
+	}
+	catch( err ) { }
+}
+
+
 function SaveProjectCache()
 {
 	// Save Build Configurations
@@ -314,6 +369,7 @@ function SaveProjectCache()
 		architecture: WIDGET_ARCHITECTURE.name,
 		toolchain: WIDGET_TOOLCHAIN.name,
 		gfx: WIDGET_GRAPHICS.name,
+		multilaunch: WIDGET_MULTILAUNCH.name,
 	};
 
 	// Save Cache
@@ -338,6 +394,7 @@ async function LoadProjectCache( engineCache = false )
 		WIDGET_ARCHITECTURE.name = loadedValues.architecture;
 		WIDGET_TOOLCHAIN.name = loadedValues.toolchain;
 		WIDGET_GRAPHICS.name = loadedValues.gfx;
+		WIDGET_MULTILAUNCH.name = loadedValues.multilaunch;
 	}
 	catch ( error )	{ }
 
@@ -392,9 +449,11 @@ function PlatformIsLinux() { return PLATFORM == "linux"; }
 function DetectPlatform()
 {
 	if( PlatformIsWindows() ) { WIDGET_OS_OPTIONS = [ { label: "windows" } ]; } else
-	if( PlatformIsMacOS() )   { WIDGET_OS_OPTIONS = [ { label: "macOS" } ]; } else
-	if( PlatformIsLinux() )   { WIDGET_OS_OPTIONS = [ { label: "linux" } ]; } else
-							  { WIDGET_OS_OPTIONS = [ { label: "unknown" } ]; }
+	if( PlatformIsMacOS() ) { WIDGET_OS_OPTIONS = [ { label: "macOS" } ]; } else
+	if( PlatformIsLinux() ) { WIDGET_OS_OPTIONS = [ { label: "linux" } ]; } else
+	{
+		WIDGET_OS_OPTIONS = [ { label: "unknown" } ];
+	}
 }
 
 
@@ -654,7 +713,9 @@ function ClangdSourceFlags( filepath )
 
 	if( extension === "mm" )
 	{
-		return '-x objective-c++ -nostdinc++';
+		var flags = "-x objective-c++";
+		if( !ENV_CLANGD_CHEADERS ) { flags += " -nostdinc++"; }
+		return flags;
 	}
 	else if( extension === "shader" )
 	{
@@ -668,15 +729,15 @@ function ClangdSourceFlags( filepath )
 		{
 			flags += " -DSHADER_HLSL=1 -DSHADER_D3D12=1";
 		}
-		else if( WIDGET_GRAPHICS.name === 'opengl' )
+		else if( WIDGET_GRAPHICS.name === "opengl" )
 		{
 			flags += " -DSHADER_GLSL=1 -DSHADER_OPENGL=1";
 		}
-		else if( WIDGET_GRAPHICS.name === 'vulkan' )
+		else if( WIDGET_GRAPHICS.name === "vulkan" )
 		{
 			flags += " -DSHADER_GLSL=1 -DSHADER_VULKAN=1";
 		}
-		else if( WIDGET_GRAPHICS.name === 'metal' )
+		else if( WIDGET_GRAPHICS.name === "metal" )
 		{
 			flags += " -DSHADER_METAL=1";
 		}
@@ -685,9 +746,17 @@ function ClangdSourceFlags( filepath )
 	}
 
 	// .cpp, .object
-	return "-x c++ -nostdinc -nostdinc++";
+	var flags = "-x c++";
+	if( !ENV_CLANGD_CHEADERS )
+	{
+		flags += " -nostdinc -nostdinc++";
+	}
+	else if( WIDGET_GRAPHICS.name === "vulkan" && ENV_PIPELINE_VULKAN_SDK )
+	{
+		flags += ( " -I" + ENV_PIPELINE_VULKAN_SDK + "/Include" );
+	}
+	return flags;
 }
-
 
 function WriteClangdCompileCommandsJSON()
 {
@@ -714,8 +783,8 @@ function WriteClangdCompileCommandsJSON()
 			json.push( {
 				directory: pathEngine,
 				command: [
-					"clang++ -std=c++20 -fsyntax-only", ClangdSourceFlags( pathFile ),
-					"-DCOMPILE_DEBUG=1",
+					"clang++ -std=c++20 -fsyntax-only -DCOMPILE_DEBUG=1",
+					ClangdSourceFlags( pathFile ),
 					"-I" + path.posix.join( pathEngine, "source" ),
 					"-I" + path.posix.join( pathEngine, "projects", WIDGET_PROJECT.name, "output", "generated" ),
 					pathFile
@@ -732,8 +801,8 @@ function WriteClangdCompileCommandsJSON()
 			json.push( {
 				directory: pathEngine,
 				command: [
-					"clang++ -std=c++20 -fsyntax-only", ClangdSourceFlags( pathFile ),
-					"-DCOMPILE_DEBUG=1",
+					"clang++ -std=c++20 -fsyntax-only -DCOMPILE_DEBUG=1",
+					ClangdSourceFlags( pathFile ),
 					"-I" + path.posix.join( pathEngine, "source" ),
 					"-I" + path.posix.join( pathEngine, "projects", WIDGET_PROJECT.name, "output", "generated" ),
 					pathFile
@@ -750,8 +819,8 @@ function WriteClangdCompileCommandsJSON()
 			json.push( {
 				directory: pathEngine,
 				command: [
-					"clang++ -std=c++20 -fsyntax-only", ClangdSourceFlags( pathFile ),
-					"-DCOMPILE_DEBUG=1",
+					"clang++ -std=c++20 -fsyntax-only -DCOMPILE_DEBUG=1",
+					ClangdSourceFlags( pathFile ),
 					"-I" + path.posix.join( pathEngine, "source" ),
 					"-I" + path.posix.join( pathEngine, "source", "boot" ),
 					pathFile
@@ -768,9 +837,8 @@ function WriteClangdCompileCommandsJSON()
 			json.push( {
 				directory: pathEngine,
 				command: [
-					"clang++ -std=c++20 -fsyntax-only", ClangdSourceFlags( pathFile ),
-					"-DUNICODE",
-					"-DCOMPILE_DEBUG=1",
+					"clang++ -std=c++20 -fsyntax-only -DUNICODE -DCOMPILE_DEBUG=1",
+					ClangdSourceFlags( pathFile ),
 					"-I" + path.posix.join( pathEngine, "source" ),
 					"-I" + path.posix.join( pathEngine, "projects", WIDGET_PROJECT.name, "build" ),
 					"-I" + path.posix.join( pathEngine, "projects", WIDGET_PROJECT.name, "output", "generated" ),
@@ -789,9 +857,8 @@ function WriteClangdCompileCommandsJSON()
 			json.push( {
 				directory: pathEngine,
 				command: [
-					"clang++ -std=c++20 -fsyntax-only", ClangdSourceFlags( pathFile ),
-					"-DUNICODE",
-					"-DCOMPILE_DEBUG=1",
+					"clang++ -std=c++20 -fsyntax-only -DUNICODE -DCOMPILE_DEBUG=1",
+					ClangdSourceFlags( pathFile ),
 					"-I" + path.posix.join( pathEngine, "source" ),
 					"-I" + path.posix.join( pathEngine, "projects", WIDGET_PROJECT.name, "build" ),
 					"-I" + path.posix.join( pathEngine, "projects", WIDGET_PROJECT.name, "output", "generated" ),
@@ -865,9 +932,8 @@ function WriteClangdCompileCommandsJSON()
 			json.push( {
 				directory: pathEngine,
 				command: [
-					"clang++ -std=c++20 -fsyntax-only", ClangdSourceFlags( pathFile ),
-					"-DCOMPILE_ENGINE",
-					"-DCOMPILE_DEBUG=1",
+					"clang++ -std=c++20 -fsyntax-only -DCOMPILE_ENGINE -DCOMPILE_DEBUG=1",
+					ClangdSourceFlags( pathFile ),
 					"-I" + path.posix.join( pathEngine, "source" ),
 					"-I" + path.posix.join( pathEngine, "projects", WIDGET_PROJECT.name, "runtime" ),
 					"-I" + path.posix.join( pathEngine, "projects", WIDGET_PROJECT.name, "output", "generated" ),
@@ -902,9 +968,8 @@ function WriteClangdCompileCommandsJSON()
 			json.push( {
 				directory: pathEngine,
 				command: [
-					"clang++ -std=c++20 -fsyntax-only", ClangdSourceFlags( pathFile ),
-					"-DCOMPILE_ENGINE",
-					"-DCOMPILE_DEBUG=1",
+					"clang++ -std=c++20 -fsyntax-only -DCOMPILE_ENGINE -DCOMPILE_DEBUG=1",
+					ClangdSourceFlags( pathFile ),
 					"-I" + path.posix.join( pathEngine, "source" ),
 					"-I" + path.posix.join( pathEngine, "projects", WIDGET_PROJECT.name, "runtime" ),
 					"-I" + path.posix.join( pathEngine, "projects", WIDGET_PROJECT.name, "output", "generated" ),
@@ -991,6 +1056,7 @@ function GetBootCommand()
 		`-architecture=${WIDGET_ARCHITECTURE.name}`,
 		`-toolchain=${WIDGET_TOOLCHAIN.name}`,
 		`-gfx=${WIDGET_GRAPHICS.name}`,
+		`-multilaunch=${WIDGET_MULTILAUNCH.name}`,
 	];
 	bootArgs = bootArgs.join( " " );
 
@@ -1071,6 +1137,12 @@ function CommandSelectConfig()
 function CommandSelectRender()
 {
 	WidgetValueChoosePrompt( WIDGET_GRAPHICS, WIDGET_GRAPHICS_OPTIONS, true, WriteClangdCompileCommandsJSON );
+}
+
+
+function CommandSelectMultiLaunch()
+{
+	WidgetValueChoosePrompt( WIDGET_MULTILAUNCH, WIDGET_MULTILAUNCH_OPTIONS, true );
 }
 
 
@@ -1245,19 +1317,39 @@ async function CommandStartDebugging( args )
 
 function CommandInsertCommentBreak()
 {
-	// Get the active text editor
 	const editor = vscode.window.activeTextEditor;
+	if( !editor ) { return; }
 
-	if( editor )
+	const position = editor.selection.active;
+	editor.edit( editBuilder =>
 	{
-		// Insert Comment Break
-		const position = editor.selection.active;
-		editor.edit( editBuilder =>
-		{
-			editBuilder.insert( position, "////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////" );
-		} );
-	}
+		editBuilder.insert( position, "////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////" );
+	} );
 }
+
+
+function CommandInsertRandomHex32()
+{
+	const editor = vscode.window.activeTextEditor;
+	if( !editor ) { return; }
+	const value = Math.floor( Math.random() * 0xFFFFFFFF );
+	const hex = "0x" + value.toString( 16 ).padStart( 8, "0" ).toUpperCase();
+	const position = editor.selection.active;
+	editor.edit( editBuilder => { editBuilder.insert( position, hex ); } );
+}
+
+function CommandInsertRandomHex64() {
+	const editor = vscode.window.activeTextEditor;
+	if( !editor ) { return; }
+	const hi = Math.floor( Math.random() * 0xFFFFFFFF );
+	const lo = Math.floor( Math.random() * 0xFFFFFFFF );
+	const hex = "0x" +
+		hi.toString( 16 ).padStart( 8, "0" ).toUpperCase() +
+		lo.toString( 16 ).padStart( 8, "0" ).toUpperCase();
+	const position = editor.selection.active;
+	editor.edit( editBuilder => { editBuilder.insert( position, hex ); } );
+}
+
 
 async function OpenFile( path )
 {

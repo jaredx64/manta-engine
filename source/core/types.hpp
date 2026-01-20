@@ -4,9 +4,13 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//#define public public
-//#define protected protected
-//#define private private
+#if defined( _MSC_VER )
+	#define RESTRICT __restrict
+#elif defined( __clang__ ) || defined( __GNUC__ )
+	#define RESTRICT __restrict__
+#else
+	#define RESTRICT
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -92,17 +96,19 @@ template <typename T> struct remove_reference<T &&> { using type = T; };
 
 #define enum_type(name, type) using name = type; enum : type
 
-#define enum_class_type(name, type, ...) \
+#define enum_class(name, type, ...) \
 	class name \
 	{ \
 	private: \
 		type value; \
 	public: \
-		enum : type { __VA_ARGS__ }; \
+		enum : type { __VA_ARGS__ COUNT }; \
 		constexpr name() : value { } { } \
 		constexpr name( type v ) : value { v } { } \
 		constexpr operator type() const { return value; } \
 	};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define enum_namespace( name, type, ... ) \
 	namespace name                        \
@@ -112,6 +118,71 @@ template <typename T> struct remove_reference<T &&> { using type = T; };
 			__VA_ARGS__                   \
 		};			                      \
 	}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Usage:
+//
+// serialization_table
+// (
+//     BlockSerialization, Block, Block::COUNT,
+//     serialization_table_entry( 0xE4F3C28E, Block::Stone ),
+//     serialization_table_entry( 0x45618F42, Block::Granite ),
+// );
+//
+// Block granite = BlockSerialization::GetElement( 0x45618F42 );
+// u32 key = BlockSerialization::GetKey( Block::Granite );
+//
+
+#define serialization_table( name, type, count, ... ) \
+	struct name \
+	{ \
+		struct Entry { u32 key; type value; }; \
+		static constexpr Entry entries[] = { __VA_ARGS__ }; \
+		static_assert( ARRAY_LENGTH( entries ) == count, "Missing entry!" ); \
+		static constexpr usize numEntries = static_cast<usize>( count ); \
+		static u32 GetKey( type element, u32 nullKey = entries[0].key ) \
+		{ \
+			const usize c = static_cast<usize>( count ); \
+			for( usize i = 0; i < c; i++ ) \
+			{ \
+				if( entries[i].value == element ) { return entries[i].key; } \
+			} \
+			return nullKey; \
+		} \
+		static bool TryGetKey( type element, u32 &key ) \
+		{ \
+			const usize c = static_cast<usize>( count ); \
+			for( usize i = 0; i < c; i++ ) \
+			{ \
+				if( entries[i].value == element ) { key = entries[i].key; return true; } \
+			} \
+			return false; \
+		} \
+		static type GetElement( u32 key, type nullElement = entries[0].value ) \
+		{ \
+			const usize c = static_cast<usize>( count ); \
+			for( usize i = 0; i < c; i++ ) \
+			{ \
+				if( entries[i].key == key ) { return entries[i].value; } \
+			} \
+			return nullElement; \
+		} \
+		static bool TryGetElement( u32 key, type &element ) \
+		{ \
+			const usize c = static_cast<usize>( count ); \
+			for( usize i = 0; i < c; i++ ) \
+			{ \
+				if( entries[i].key == key ) { element = entries[i].value; return true; } \
+			} \
+			return false; \
+		} \
+		static void serialize( class Buffer &buffer, const name &type ); \
+		static bool deserialize( class Buffer &buffer, const name &type ); \
+	};
+
+#define serialization_table_entry( key, value ) \
+	Entry { key, value }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -27,7 +27,7 @@ SoundID Sounds::make_new( const Sound &sound )
 }
 
 
-usize Sounds::gather( const char *path, const bool recurse )
+usize Sounds::gather( const char *path, bool recurse )
 {
 	// Gather Sounds
 	List<FileInfo> files;
@@ -196,7 +196,7 @@ void Sounds::build()
 		assets_group( header );
 
 		// Enums
-		header.append( "enum_class_type\n(\n\tSound, u32,\n\n" );
+		header.append( "enum_class\n(\n\tSound, u32,\n\n" );
 		for( Sound &sound : sounds ) { header.append( "\t" ).append( sound.name ).append( ",\n" ); }
 		header.append( "\n\tNull = 0,\n" );
 		header.append( ");\n\n" );
@@ -259,8 +259,8 @@ void Sounds::build()
 	if( verbose_output() )
 	{
 		const usize count = sounds.size();
-		PrintColor( LOG_WHITE, TAB TAB "Wrote %d sound%s", count, count == 1 ? "" : "s" );
-		PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+		Print( PrintColor_White, TAB TAB "Wrote %d sound%s", count, count == 1 ? "" : "s" );
+		PrintLn( PrintColor_White, " (%.3f ms)", timer.elapsed_ms() );
 	}
 }
 

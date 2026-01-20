@@ -63,9 +63,9 @@ PROTECTED void update( const Delta delta )
 	const bool isHovering = isInteractable && is_hovering();
 
 	// Tweens
-	tween( tweenAlert, 0.0f, 0.1f, delta, 0.01f );
-	tween( tweenError, 0.0f, 0.1f, delta, 0.01f );
-	tween( tweenClick, 0.0f, 0.1f, delta, 0.01f );
+	tweenf( tweenAlert, 0.0f, 0.1f, delta, 0.01f );
+	tweenf( tweenError, 0.0f, 0.1f, delta, 0.01f );
+	tweenf( tweenClick, 0.0f, 0.1f, delta, 0.01f );
 
 	// Positions
 	const int_v2 sliderDim = slider_dimensions();
@@ -87,8 +87,8 @@ PROTECTED void update( const Delta delta )
 	if( isHovering )
 	{
 		// Tween
-		tween( tweenSlider, isHoveringSlider ? 1.0f : 0.0f, 0.1f, delta, 0.01f );
-		tween( tweenHover, sliding || !isHoveringSlider ? 1.0f : 0.0f, 0.1f, delta, 0.01f );
+		tweenf( tweenSlider, isHoveringSlider ? 1.0f : 0.0f, 0.1f, delta, 0.01f );
+		tweenf( tweenHover, sliding || !isHoveringSlider ? 1.0f : 0.0f, 0.1f, delta, 0.01f );
 
 		// Activate Sliding
 		if( Mouse::check_pressed( mb_left ) && renderEnabled )
@@ -102,8 +102,8 @@ PROTECTED void update( const Delta delta )
 	else
 	{
 		// No hover
-		tween( tweenSlider, 0.0f, 1.0f, delta, 0.01f );
-		tween( tweenHover, 0.0f, 1.0f, delta, 0.01f );
+		tweenf( tweenSlider, 0.0f, 1.0f, delta, 0.01f );
+		tweenf( tweenHover, 0.0f, 1.0f, delta, 0.01f );
 	}
 
 	// Sliding
@@ -120,7 +120,7 @@ PROTECTED void update( const Delta delta )
 	}
 
 	// Scrollbar Position
-	const bool slidingValue = tween( value, valueTo, 0.025f, delta, 0.01f );
+	const bool slidingValue = tweenf( value, valueTo, 0.025f, delta, 0.01f );
 
 	// Interact Callback
 	if( callbackOnInteract )

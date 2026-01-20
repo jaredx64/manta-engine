@@ -62,8 +62,8 @@ void Assets::codegen()
 	{
 		if( verbose_output() )
 		{
-			PrintColor( LOG_WHITE, TAB TAB "Write " );
-			PrintColor( LOG_CYAN, "%s", Assets::pathHeader );
+			Print( PrintColor_White, TAB TAB "Write " );
+			Print( PrintColor_Cyan, "%s", Assets::pathHeader );
 		}
 		Timer timer;
 
@@ -89,7 +89,7 @@ void Assets::codegen()
 
 		if( verbose_output() )
 		{
-			PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+			PrintLn( PrintColor_White, " (%.3f ms)", timer.elapsed_ms() );
 		}
 	}
 
@@ -97,8 +97,8 @@ void Assets::codegen()
 	{
 		if( verbose_output() )
 		{
-			PrintColor( LOG_WHITE, TAB TAB "Write " );
-			PrintColor( LOG_CYAN, "%s", Assets::pathSource );
+			Print( PrintColor_White, TAB TAB "Write " );
+			Print( PrintColor_Cyan, "%s", Assets::pathSource );
 		}
 		Timer timer;
 
@@ -125,7 +125,7 @@ void Assets::codegen()
 
 		if( verbose_output() )
 		{
-			PrintLnColor( LOG_WHITE, " (%.3f ms)", timer.elapsed_ms() );
+			PrintLn( PrintColor_White, " (%.3f ms)", timer.elapsed_ms() );
 		}
 	}
 }
@@ -195,7 +195,7 @@ void Assets::log_asset_cache( const char *type, const char *name )
 {
 	assetsCached++;
 	if( !verbose_output() ) { return; }
-	PrintLnColor( LOG_MAGENTA, TAB TAB "%s '%s' cached", type, name );
+	PrintLn( PrintColor_Magenta, TAB TAB "%s '%s' cached", type, name );
 }
 
 
@@ -203,7 +203,7 @@ void Assets::log_asset_build( const char *type, const char *name )
 {
 	assetsBuilt++;
 	if( !verbose_output() ) { return; }
-	PrintLnColor( LOG_RED, TAB TAB "%s '%s' built", type, name );
+	PrintLn( PrintColor_Red, TAB TAB "%s '%s' built", type, name );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

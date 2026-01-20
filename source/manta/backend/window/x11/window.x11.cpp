@@ -37,7 +37,7 @@ namespace CoreWindow
 	XDisplay *display;
 	XWindow handle;
 
-	bool init( const int defaultWidth, const int defaultHeight )
+	bool init( int defaultWidth, int defaultHeight )
 	{
 	#if WINDOW_ENABLED
 		XVisualInfo *visual = nullptr;
@@ -50,40 +50,48 @@ namespace CoreWindow
 
 		// Open XDisplay
 		if( ( CoreWindow::display = XOpenDisplay( nullptr ) ) == nullptr )
-			{ ErrorReturnMsg( false, "X11: Failed to open X11 display" ); }
+		{
+			ErrorReturnMsg( false, "X11: Failed to open X11 display" );
+		}
 
 	#if GRAPHICS_OPENGL
 		// Setup Window Visual
 		if( ( visual = CoreWindow::x11_create_visual() ) == nullptr )
-			{ ErrorReturnMsg( false, "X11: Failed to create X11 visual" ); }
+		{
+			ErrorReturnMsg( false, "X11: Failed to create X11 visual" );
+		}
 	#endif
 
 		// Setup Window Attribute
 		attributes.background_pixel = BlackPixel( CoreWindow::display, DefaultScreen( CoreWindow::display ) );
 		attributes.border_pixel = BlackPixel( CoreWindow::display, DefaultScreen( CoreWindow::display ) );
 		attributes.event_mask = KeyPressMask | KeyReleaseMask | ButtonPressMask |
-		                        ButtonReleaseMask | PointerMotionMask | FocusChangeMask | StructureNotifyMask;
+			ButtonReleaseMask | PointerMotionMask | FocusChangeMask | StructureNotifyMask;
+		attributes.override_redirect = false;
 
 		// TODO: dependency on 'visual'
 		attributes.colormap = XCreateColormap( CoreWindow::display, DefaultRootWindow( CoreWindow::display ),
-		                                       visual != nullptr ? visual->visual : 0, AllocNone );
+			visual != nullptr ? visual->visual : 0, AllocNone );
 
 		// Create Window
-		CoreWindow::handle =
-			XCreateWindow(
-				CoreWindow::display,
-				DefaultRootWindow( CoreWindow::display ),
-				0,
-				0,
-				Window::width,
-				Window::height,
-				0,
-			 	visual != nullptr ?	visual->depth : 0,
-				InputOutput,
-				visual != nullptr ? visual->visual : 0,
-				CWBackPixel | CWBorderPixel | CWEventMask | CWColormap,
-				&attributes
-			);
+		CoreWindow::handle = XCreateWindow(
+			CoreWindow::display,
+			DefaultRootWindow( CoreWindow::display ),
+			0,
+			0,
+			Window::width,
+			Window::height,
+			0,
+			visual != nullptr ?	visual->depth : 0,
+			InputOutput,
+			visual != nullptr ? visual->visual : 0,
+			CWBackPixel | CWBorderPixel | CWEventMask | CWColormap,
+			&attributes );
+
+		XAtom windowType = XInternAtom( CoreWindow::display, "_NET_WM_WINDOW_TYPE_NORMAL", false);
+		XAtom wmWindowType = XInternAtom( CoreWindow::display, "_NET_WM_WINDOW_TYPE", false);
+		XChangeProperty( CoreWindow::display, CoreWindow::handle, wmWindowType,
+			XA_ATOM, 32, PropModeReplace, reinterpret_cast<unsigned char *>( &windowType ), 1 );
 
 		// Setup Atoms
 		WM_DELETE_WINDOW = XInternAtom( CoreWindow::display, "WM_DELETE_WINDOW", false );
@@ -98,7 +106,9 @@ namespace CoreWindow
 
 		// Setup Protocols
 		if( !XSetWMProtocols( CoreWindow::display, CoreWindow::handle, &WM_DELETE_WINDOW, 1 ) )
-			{ ErrorReturnMsg( false, "X11: Failed to set X11 WM protocols" ); }
+		{
+			ErrorReturnMsg( false, "X11: Failed to set X11 WM protocols" );
+		}
 
 		// Setup Size
 		hints.flags = PMinSize;
@@ -331,6 +341,13 @@ namespace CoreWindow
 	}
 
 
+	void terminal_init()
+	{
+	#if WINDOW_ENABLED
+	#endif
+	}
+
+
 	void mouse_get_position( double &x, double &y )
 	{
 	#if WINDOW_ENABLED
@@ -407,7 +424,7 @@ namespace Window
 
 		// Send the message to the window manager
 		XSendEvent( CoreWindow::display, DefaultRootWindow( CoreWindow::display ),
-		            false, SubstructureRedirectMask | SubstructureNotifyMask, &event );
+			false, SubstructureRedirectMask | SubstructureNotifyMask, &event );
 
 		// Don't forget to update the internal fullscreen state!
 		Window::fullscreen = enabled;
@@ -415,7 +432,7 @@ namespace Window
 	}
 
 
-	void show_cursor( const bool enabled )
+	void show_cursor( bool enabled )
 	{
 	#if WINDOW_ENABLED
 		// TODO
@@ -445,7 +462,7 @@ namespace Window
 	}
 
 
-	bool get_clipboard( char *buffer, const usize size )
+	bool get_clipboard( char *buffer, usize size )
 	{
 	#if WINDOW_ENABLED
 		// Request the clipboard
@@ -529,7 +546,7 @@ namespace Window
 	}
 
 
-	bool get_selection( char *buffer, const usize size )
+	bool get_selection( char *buffer, usize size )
 	{
 	#if WINDOW_ENABLED
 		// Request the selection

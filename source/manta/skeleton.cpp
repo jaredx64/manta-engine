@@ -9,14 +9,14 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void EasedFloat::update( const Delta delta )
+void EasedFloat::update( Delta delta )
 {
 	if( easeCurrent < 0.0f ) { easeCurrent = 0.0f; return; }
 	easeCurrent -= delta * easeFactor;
 }
 
 
-void EasedFloat::set_value( const float value, const float ease )
+void EasedFloat::set_value( float value, float ease )
 {
 	valueStart = get_value();
 	valueTarget = value;
@@ -36,7 +36,7 @@ constexpr float ANIMATION_SPEED = 1.0;
 constexpr u16 ANIMATION_KEYFRAMES = 8;
 
 
-float Animation::get_value( const Timeline timeline ) const
+float Animation::get_value( Timeline timeline ) const
 {
 	const AnimationEntry &animationEntry = animationEntries[index];
 	if( animationEntry.keyframeCount[timeline] == 0 ) { return 0.0f; }
@@ -57,7 +57,7 @@ float Animation::get_value( const Timeline timeline ) const
 }
 
 
-float Animation::get_rotation( const Timeline timeline ) const
+float Animation::get_rotation( Timeline timeline ) const
 {
 	const AnimationEntry &animationEntry = animationEntries[index];
 	if( animationEntry.keyframeCount[timeline] == 0 ) { return 0.0f; }
@@ -78,7 +78,7 @@ float Animation::get_rotation( const Timeline timeline ) const
 }
 
 
-void Animation::update( const Delta delta )
+void Animation::update( Delta delta )
 {
 	const AnimationEntry &animationEntry = animationEntries[index];
 	const Delta dt = ( delta * speed ) / animationEntry.duration;// * ANIMATION_SPEED * speed;
@@ -96,40 +96,40 @@ void Animation::update( const Delta delta )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Attachment::set_sprite( const int sprite, int subimg )
+void Attachment::set_sprite( int sprite, int subimg )
 {
 	this->sprite = sprite;
 	this->subimg = subimg;
 }
 
 
-void Attachment::set_color( const Color color )
+void Attachment::set_color( Color color )
 {
 	this->color = color;
 }
 
 
-void Attachment::set_scale( const float scale )
+void Attachment::set_scale( float scale )
 {
 	this->scaleX = scale;
 	this->scaleY = scale;
 }
 
 
-void Attachment::set_rotation( const float angleDegrees )
+void Attachment::set_rotation( float angleDegrees )
 {
 	this->rotation = angleDegrees;
 }
 
 
-void Attachment::set_translation( const float x, const float y )
+void Attachment::set_translation( float x, float y )
 {
 	this->x = x;
 	this->y = y;
 }
 
 
-void Attachment::draw( const Bone &bone, const Delta delta, float drawX, float drawY, Color drawColor, float depth )
+void Attachment::draw( const Bone &bone, Delta delta, float drawX, float drawY, Color drawColor, float depth )
 {
 	const float cosParent = cosf( bone.rotation * DEG2RAD_F );
     const float sinParent = sinf( bone.rotation * DEG2RAD_F );
@@ -200,7 +200,7 @@ void Bone::animation_time( AnimationID animation, float time )
 }
 
 
-bool Bone::attachment_clear( const u8 attachmentIndex )
+bool Bone::attachment_clear( u8 attachmentIndex )
 {
 	Assert( attachmentIndex < BONE_ATTACHMENTS_COUNT );
 	if( attachments[attachmentIndex].sprite == 0 ) { return false; }
@@ -209,14 +209,14 @@ bool Bone::attachment_clear( const u8 attachmentIndex )
 }
 
 
-Attachment &Bone::get_attachment( const u8 attachmentIndex )
+Attachment &Bone::get_attachment( u8 attachmentIndex )
 {
 	Assert( attachmentIndex < BONE_ATTACHMENTS_COUNT );
 	return attachments[attachmentIndex];
 }
 
 
-void Bone::set_color( const Color color )
+void Bone::set_color( Color color )
 {
 	customColor = color;
 }
@@ -228,7 +228,7 @@ Color Bone::get_color() const
 }
 
 
-void Bone::set_scale( const float scaleX, const float scaleY )
+void Bone::set_scale( float scaleX, float scaleY )
 {
 	customScaleX = scaleX;
 	customScaleY = scaleY;
@@ -247,7 +247,7 @@ float Bone::get_scale_y() const
 }
 
 
-void Bone::set_rotation( const float angle )
+void Bone::set_rotation( float angle )
 {
 	customRotation = angle;
 }
@@ -259,7 +259,7 @@ float Bone::get_rotation() const
 }
 
 
-void Bone::set_translation( const float x, const float y )
+void Bone::set_translation( float x, float y )
 {
 	customX = x;
 	customY = y;
@@ -278,7 +278,7 @@ float Bone::get_translation_y() const
 }
 
 
-void Bone::update( const BoneEntry &boneEntry, const Delta delta )
+void Bone::update( const BoneEntry &boneEntry, Delta delta )
 {
 	// Fetch Parent
 	const bool hasParent = ( boneEntry.parent != U32_MAX );
@@ -360,7 +360,7 @@ void Bone::update( const BoneEntry &boneEntry, const Delta delta )
 }
 
 
-void Bone::draw( const Delta delta, float drawX, float drawY, Color drawColor, float depth )
+void Bone::draw( Delta delta, float drawX, float drawY, Color drawColor, float depth )
 {
 	const float x1 = x + drawX;
 	const float y1 = y + drawY;
@@ -423,7 +423,7 @@ bool Skeleton2D::free()
 	return true;
 }
 
-Bone &Skeleton2D::get_bone( const BoneID boneID )
+Bone &Skeleton2D::get_bone( BoneID boneID )
 {
 	Assert( boneID < skeletonEntries[type].boneCount );
 	MemoryAssert( bones != nullptr );
@@ -473,35 +473,35 @@ void Skeleton2D::animation_time( AnimationID animation, float time )
 }
 
 
-void Skeleton2D::set_color( const Color color )
+void Skeleton2D::set_color( Color color )
 {
 	MemoryAssert( bones != nullptr );
 	bones[0].set_color( color );
 }
 
 
-void Skeleton2D::set_scale( const float scaleX, const float scaleY )
+void Skeleton2D::set_scale( float scaleX, float scaleY )
 {
 	MemoryAssert( bones != nullptr );
 	bones[0].set_scale( scaleX, scaleY );
 }
 
 
-void Skeleton2D::set_rotation( const float angle )
+void Skeleton2D::set_rotation( float angle )
 {
 	MemoryAssert( bones != nullptr );
 	bones[0].set_rotation( angle );
 }
 
 
-void Skeleton2D::set_translation( const float x, const float y )
+void Skeleton2D::set_translation( float x, float y )
 {
 	MemoryAssert( bones != nullptr );
 	bones[0].set_translation( x, y );
 }
 
 
-void Skeleton2D::update( const Delta delta )
+void Skeleton2D::update( Delta delta )
 {
 	MemoryAssert( bones != nullptr );
 	SkeletonEntry &skeletonEntry = skeletonEntries[this->type];
@@ -515,7 +515,7 @@ void Skeleton2D::update( const Delta delta )
 }
 
 
-void Skeleton2D::draw( const Delta delta, float x, float y, Color color, float depth )
+void Skeleton2D::draw( Delta delta, float x, float y, Color color, float depth )
 {
 	MemoryAssert( bones != nullptr );
 	SkeletonEntry &skeletonEntry = skeletonEntries[this->type];

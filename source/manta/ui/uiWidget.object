@@ -142,7 +142,7 @@ PROTECTED bool is_interactable()
 }
 
 
-PROTECTED bool is_hovering()
+PUBLIC bool is_hovering()
 {
 	return context->get_widget_hover() == id;
 }

@@ -25,7 +25,7 @@ bool CoreUI::free()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void UI::update( const Delta delta )
+void UI::update( Delta delta )
 {
 	if( Mouse::check( mb_left ) ) { return; }
 	hoverWidgetID = ObjectInstance { };
@@ -147,7 +147,7 @@ ObjectInstance UIContext::create_widget_window( u16 type, int x, int y, int widt
 
 
 ObjectInstance UIContext::create_widget_scrollable_region( u16 type, int x, int y, int width, int height,
-	const bool hasVerticalScrollbar, const bool hasHorizontalScrollbar, ObjectInstance parent )
+	bool hasVerticalScrollbar, bool hasHorizontalScrollbar, ObjectInstance parent )
 {
 	// Validate Type
 	AssertMsg( type == Object::UIWidget_ScrollableRegion ||
@@ -204,7 +204,8 @@ ObjectInstance UIContext::create_widget_button( u16 type, int x, int y, int widt
 }
 
 
-ObjectInstance UIContext::create_widget_checkbox( u16 type, int x, int y, int width, int height, bool enabled, ObjectInstance parent )
+ObjectInstance UIContext::create_widget_checkbox( u16 type, int x, int y, int width, int height, bool enabled,
+	ObjectInstance parent )
 {
 	// Validate Type
 	AssertMsg( type ==Object::UIWidget_Checkbox ||
@@ -435,26 +436,26 @@ void UIContext::scissor_set_nested( const UIScissor &s )
 		return;
 	}
 
-	// Nest Scissor
 	if( !scissor.scissoring ) { scissor_set( s ); return; }
+	if( s.x1 >= scissor.x2 || s.x2 < scissor.x1 || s.y1 >= scissor.y2 || s.y2 < scissor.y1 ) { return; }
+
 	scissor.scissoring = true;
 	scissor.x1 = max( scissor.x1, s.x1 );
 	scissor.y1 = max( scissor.y1, s.y1 );
 	scissor.x2 = min( scissor.x2, s.x2 );
 	scissor.y2 = min( scissor.y2, s.y2 );
-	Gfx::scissor_set( scissor.x1, scissor.y1, scissor.x2, scissor.y2 );
 
-	//draw_rectangle( 0, 0, 2000, 2000, c_purple );
+	Gfx::scissor_set( scissor.x1, scissor.y1, scissor.x2, scissor.y2 );
 }
 
 
-float_v2 UIContext::position_float_v2( const float x, const float y )
+float_v2 UIContext::position_float_v2( float x, float y )
 {
 	return float_v2( x, y ).multiply( this->matrix );
 }
 
 
-int_v2 UIContext::position_i32( const int x, const int y )
+int_v2 UIContext::position_i32( int x, int y )
 {
 	return int_v2( x, y ).multiply( this->matrix );
 }
@@ -506,7 +507,7 @@ ObjectInstance UIContext::get_widget_top()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void UIContext::update_widgets( const Delta delta )
+void UIContext::update_widgets( Delta delta )
 {
 	// Mouse & Top Widget
 	hoverWidget = ( !Mouse::check( mb_left ) ) ? ObjectInstance { } : hoverWidget;
@@ -531,7 +532,7 @@ void UIContext::update_widgets( const Delta delta )
 }
 
 
-void UIContext::render_widgets( const Delta delta, const Alpha alpha )
+void UIContext::render_widgets( Delta delta, Alpha alpha )
 {
 	// Draw Widgets
 	for( const ObjectInstance &widget : widgets )
@@ -546,7 +547,7 @@ void UIContext::render_widgets( const Delta delta, const Alpha alpha )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void UIContext::update_widget( const ObjectInstance &widget, const Delta delta )
+void UIContext::update_widget( const ObjectInstance &widget, Delta delta )
 {
 	// Update Widget
 	ObjectHandle<Object::UIWidget> widgetHandle = objects.handle<Object::UIWidget>( widget );
@@ -554,7 +555,7 @@ void UIContext::update_widget( const ObjectInstance &widget, const Delta delta )
 }
 
 
-void UIContext::render_widget( const ObjectInstance &widget, const Delta delta, const Alpha alpha )
+void UIContext::render_widget( const ObjectInstance &widget, Delta delta, Alpha alpha )
 {
 	// Draw Widget
 	ObjectHandle<Object::UIWidget> widgetHandle = objects.handle<Object::UIWidget>( widget );
@@ -563,7 +564,7 @@ void UIContext::render_widget( const ObjectInstance &widget, const Delta delta, 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void UIContext::update_widget( ObjectHandle<Object::UIWidget> &widgetHandle, const Delta delta )
+void UIContext::update_widget( ObjectHandle<Object::UIWidget> &widgetHandle, Delta delta )
 {
 	// Update Widget
 	if( widgetHandle->callbackOnUpdate ) { widgetHandle->callbackOnUpdate( *this, widgetHandle->id ); }
@@ -588,8 +589,7 @@ void UIContext::update_widget( ObjectHandle<Object::UIWidget> &widgetHandle, con
 }
 
 
-void UIContext::render_widget( ObjectHandle<Object::UIWidget> &widgetHandle,
-	const Delta delta, const Alpha alpha )
+void UIContext::render_widget( ObjectHandle<Object::UIWidget> &widgetHandle, Delta delta, Alpha alpha )
 {
 	// Skip invisible widgets
 	if( !widgetHandle->renderEnabled ) { return; }

@@ -16,17 +16,17 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-extern void *memory_alloc( const usize size );
+extern void *memory_alloc( usize size );
 
-extern void *memory_realloc( void *block, const usize size );
+extern void *memory_realloc( void *block, usize size );
 
-extern void memory_copy( void *dst, const void *src, const usize size );
+extern void memory_copy( void *dst, const void *src, usize size );
 
-extern void memory_move( void *dst, const void *src, const usize size );
+extern void memory_move( void *dst, const void *src, usize size );
 
-extern void memory_set( void *block, int c, const usize length );
+extern void memory_set( void *block, int c, usize length );
 
-extern int memory_compare( const void *a, const void *b, const usize size );
+extern int memory_compare( const void *a, const void *b, usize size );
 
 extern void memory_free( void *block );
 

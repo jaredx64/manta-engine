@@ -183,7 +183,7 @@ float4 integrate_atmosphere( float3 start, float3 forward,
 		alphaFinal = min( 1.0, alphaFinal + absorption.air * ( 1.0 - nightness * 0.33 ) );
 
 #ifdef CLOUDS
-		// Cloud
+		// int_v2
 		float cloudStrength = texture_sample_2d_level( textureLightHeightCloud,
 			sampleUVAltitude.xy, Uniforms.cloudsMip ).z;
 		if( cloudStrength > 0.0 )

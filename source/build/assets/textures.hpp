@@ -40,11 +40,11 @@ struct Textures
 {
 	TextureID make_new( String &name );
 
-	usize gather( const char *path, const bool recurse = true );
+	usize gather( const char *path, bool recurse = true );
 	void process( const char *path );
 	void build();
 
-	Texture &operator[]( const TextureID id ) { return textures[id]; }
+	Texture &operator[]( TextureID id ) { return textures[id]; }
 
 	List<Texture> textures;
 };

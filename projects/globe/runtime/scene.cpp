@@ -184,7 +184,7 @@ void scene_draw_ui( const Delta delta )
 	lineWH = text_dimensions( fnt_iosevka, size, line );
 	draw_text( fnt_iosevka, size, Window::width_logical() - 8.0f - lineWH.x, 8.0f + 20.0 * 8, c_ltgray, line );
 
-	draw_text_f( fnt_iosevka, 16, 8.0f, Window::height_logical() - 20, c_gray, "MANTA ENGINE DEMO PROJECT 2025" );
+	draw_text_f( fnt_iosevka, 16, 8.0f, Window::height_logical() - 20, c_gray, "MANTA ENGINE DEMO PROJECT 2026" );
 	draw_text_f( fnt_iosevka, 16, 8.0f, 8.0f, c_white, "FPS: %d", Frame::fps );
 
 	// Debug

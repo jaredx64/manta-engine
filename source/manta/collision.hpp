@@ -13,9 +13,7 @@ struct CollisionResult
 	double_v3 point; // Hit point (optional)
 };
 
-extern CollisionResult sweep_sphere_vs_triangles(
-	const double_v3 &center, double radius,
-	const double_v3 &displacement,
-	const double_v3 *vertices, usize count );
+extern CollisionResult sweep_sphere_vs_triangles( const double_v3 &center, double radius,
+	const double_v3 &displacement, const double_v3 *vertices, usize count );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

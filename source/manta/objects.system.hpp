@@ -22,21 +22,13 @@ class Deserializer; // <core/serializer.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Loop over all active instances of a specified object type
+// Loop over all instances of a specified object type
 #define foreach_object( objectContext, objectType, handle ) \
 	for( ObjectHandle<objectType> handle : objectContext.template iterator<objectType>() )
 
-// Loop over all active instances of a specified object type and its derived child types
+// Loop over all instances of a specified object type and its derived child types
 #define foreach_object_polymorphic( objectContext, objectType, handle ) \
 	for( ObjectHandle<objectType> handle : objectContext.template iterator_polymorphic<objectType>() )
-
-// Loop over all instances (including deactivated) of a specified object type
-#define foreach_object_all( objectContext, objectType, handle ) \
-	for( ObjectHandle<objectType> handle : objectContext.template iterator_all<objectType>() )
-
-// Loop over all instances (including deactivated) of a specified object type and its derived child types
-#define foreach_object_polymorphic_all( objectContext, objectType, handle ) \
-	for( ObjectHandle<objectType> handle : objectContext.template iterator_polymorphic_all<objectType>() )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -74,26 +66,25 @@ namespace CoreObjects
 	extern bool free();
 
 	extern void write( Buffer &buffer, const ObjectContext &context );
-	extern void read( Buffer &buffer, ObjectContext &context );
+	NO_DISCARD extern bool read( Buffer &buffer, ObjectContext &context );
 	extern void serialize( Serializer &serializer, const ObjectContext &context );
-	extern void deserialize( Deserializer &deserializer, ObjectContext &context );
+	NO_DISCARD extern bool deserialize( Deserializer &deserializer, ObjectContext &context );
 };
 
-extern bool object_is_parent_of( const Object thisType, const Object otherType );
-extern bool object_is_child_of( const Object thisType, const Object otherType );
+extern bool object_is_parent_of( Object thisType, Object otherType );
+extern bool object_is_child_of( Object thisType, Object otherType );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class ObjectInstance
 {
 public:
-	ObjectInstance() : alive{ 0 }, deactivated{ 0 }, type{ 0 }, generation{ 0 }, bucketID{ 0 }, index{ 0 } { }
-	ObjectInstance( const u16 type, const u16 generation, const u16 bucket, const u16 index ) :
-		alive{ 0 }, deactivated{ 0 }, type{ type }, generation{ generation }, bucketID{ bucket }, index{ index } { }
+	ObjectInstance() : alive { 0 }, type { 0 }, generation { 0 }, bucketID { 0 }, index { 0 } { }
+	ObjectInstance( u16 type, u16 generation, u16 bucket, u16 index ) :
+		alive { 0 }, type { type }, generation { generation }, bucketID { bucket }, index { index } { }
 
 	u16 alive : 1; // alive flag
-	u16 deactivated : 1; // deactivated flag (skips foreach)
-	u16 type : 14; // object type (id)
+	u16 type : 15; // object type (id)
 	u16 generation; // age in ObjectBucket
 	u16 bucketID; // index into ObjectContext bucket array
 	u16 index; // object's index within ObjectBucket
@@ -104,7 +95,7 @@ public:
 
 #if COMPILE_DEBUG
 	u64 id() const;
-	void id_string( char *buffer, const usize length ) const;
+	void id_string( char *buffer, usize length ) const;
 	operator u64() const { return id(); }
 #endif
 
@@ -116,50 +107,50 @@ public:
 
 		struct InstanceTable
 		{
+			void init( u32 reserve );
+			void free();
+			void add( u32 key );
+			u32 get_instance_key_from_serialized_index( u32 index ) const;
+			u32 get_serialized_index_from_instance_key( u32 key ) const;
 			u32 *keys = nullptr;
 			u32 capacity = 0;
 			u32 current = 0;
-			void init( const u32 reserve );
-			void free();
-			void add( const u32 key );
-			u32 get_key( const u32 instance ) const;
-			u32 find_instance( const u32 key ) const;
 		};
 
 	public:
 		static void init();
 		static void free();
 		static void prepare( const ObjectContext &context );
-		static u32 instance_from_object( const ObjectInstance &object );
-		static ObjectInstance object_from_instance( const Object type, const u32 instance );
+		static u32 get_serialized_index_from_instance( const ObjectInstance &instance );
+		static ObjectInstance get_instance_from_serialized_index( Object type, u32 index );
 
 	private:
-		static InstanceTable instances[];
+		static InstanceTable instanceTable[];
 		static const ObjectContext *context;
 
 	public:
 		static bool dirty;
 	};
 
-	static void serialize( Buffer &buffer, const ObjectInstance &object );
-	static void deserialize( Buffer &buffer, ObjectInstance &object );
+	static void serialize( Buffer &buffer, const ObjectInstance &instance );
+	NO_DISCARD static bool deserialize( Buffer &buffer, ObjectInstance &instance );
 
 private:
-	struct SerializedObject
+	struct SerializedObjectInstance
 	{
-		SerializedObject() : hash{ 0 }, instance{ 0 } { }
-		SerializedObject( const u32 hash, const u32 instance ) : hash{ hash }, instance{ instance } { }
-		u32 hash, instance;
+		SerializedObjectInstance() : hash { 0 }, index { 0 } { }
+		SerializedObjectInstance( u32 hash, u32 index ) : hash { hash }, index { index } { }
+		u32 hash; // Hash for the object type (see: CoreObjects::TYPE_HASH[...])
+		u32 index; // Index into a serialized, linear list of ObjectInstance
 	};
 
 	bool equals( const ObjectInstance &other ) const
 	{
 		return ( other.alive == alive &&
-		//       other.deactivated = deactivated (NOTE: purposefully ignored)
-				 other.type == type &&
-				 other.generation == generation &&
-				 other.bucketID == bucketID &&
-				 other.index == index );
+			other.type == type &&
+			other.generation == generation &&
+			other.bucketID == bucketID &&
+			other.index == index );
 	}
 };
 static_assert( sizeof( ObjectInstance ) == 8, "Object size changed!" );
@@ -174,7 +165,7 @@ private:
 
 public:
 	ObjectContext() : category { 0 } { };
-	ObjectContext( const ObjectCategory category ) : category{ category } { };
+	ObjectContext( ObjectCategory category ) : category{ category } { };
 
 	bool init();
 	bool free();
@@ -183,7 +174,7 @@ public:
 	byte *get_object_pointer( const ObjectInstance &object ) const;
 	bool exists( const ObjectInstance &object ) const { return get_object_pointer( object ) != nullptr; }
 
-	ObjectInstance create( const Object type ); // Default Constructor
+	ObjectInstance create( Object type ); // Default Constructor
 
 	template <Object_t T, typename... Args> ObjectInstance create( Args... args ) // Custom Constructor
 	{
@@ -203,10 +194,6 @@ public:
 	void destroy_all();
 	void destroy_all_type( const Object type );
 
-	bool activate( ObjectInstance &instance, const bool setActive );
-	void activate_all( const bool setActive );
-	void activate_all_type( const Object type, const bool setActive );
-
 	u32 count( const Object type ) const;
 	u32 count_all() const;
 
@@ -214,32 +201,32 @@ public:
 	void event_create();
 	void event_destroy();
 	void event_initialize();
-	void event_frame_start( const Delta delta );
-	void event_frame_end( const Delta delta );
-	void event_update_custom( const Delta delta );
-	void event_update_gui( const Delta delta );
-	void event_update( const Delta delta );
-	void event_render_custom( const Delta delta );
-	void event_render_gui( const Delta delta );
-	void event_render( const Delta delta );
-	void event_custom( const Delta delta );
+	void event_frame_start( Delta delta );
+	void event_frame_end( Delta delta );
+	void event_update_custom( Delta delta );
+	void event_update_gui( Delta delta );
+	void event_update( Delta delta );
+	void event_render_custom( Delta delta );
+	void event_render_gui( Delta delta );
+	void event_render( Delta delta );
+	void event_custom( Delta delta );
 	void event_prepare();
 	bool event_test();
-	void event_sleep( const Delta delta );
-	void event_wake( const Delta delta );
-	void event_flag( const u64 code );
+	void event_sleep( Delta delta );
+	void event_wake( Delta delta );
+	void event_flag( u64 code );
 	void event_partition( void *ptr );
 	bool event_network_send( Buffer &buffer );
 	bool event_network_receive( Buffer &buffer );
 
 	// impl: objects.generated.cpp
 	static void write( Buffer &buffer, const ObjectContext &context );
-	static void read( Buffer &buffer, ObjectContext &context );
+	NO_DISCARD static bool read( Buffer &buffer, ObjectContext &context );
 	static void serialize( Buffer &buffer, const ObjectContext &context );
-	static void deserialize( Buffer &buffer, ObjectContext &context );
+	NO_DISCARD static bool deserialize( Buffer &buffer, ObjectContext &context );
 
 #if COMPILE_DEBUG
-	void draw( const Delta delta, const float x, const float y );
+	void draw( Delta delta, float x, float y );
 #endif
 
 private:
@@ -260,12 +247,12 @@ private:
 		void *new_object_pointer();
 		ObjectInstance new_object( void *ptr );
 
-		bool delete_object( const u16 index, const u16 generation );
+		bool delete_object( u16 index, u16 generation );
 
-		byte *get_object_pointer( const u16 index, const u16 generation ) const;
-		const ObjectInstance &get_object_id( const u16 index ) const;
+		byte *get_object_pointer( u16 index, u16 generation ) const;
+		const ObjectInstance &get_object_id( u16 index ) const;
 
-		bool init( const u16 type );
+		bool init( u16 type );
 		void free();
 		void clear();
 
@@ -276,17 +263,17 @@ private:
 
 	struct ObjectIterator
 	{
-		ObjectIterator( bool ( *find_object_ptr )( ObjectIterator &, const ObjectBucket *const, const u16 ),
+		ObjectIterator( bool ( *find_object_ptr )( ObjectIterator &, const ObjectBucket *const, u16 ),
 			const ObjectContext &context, u16 type, bool polymorphic ) :
-			find_object_ptr{ find_object_ptr },
-			context{ context }, ptr{ nullptr }, type{ type }, polymorphic{ polymorphic }, index{ 0 },
-			bucketID{ CoreObjects::CATEGORY_TYPE_BUCKET[context.category][type] } { find_first(); } // begin() & end()
+			find_object_ptr { find_object_ptr },
+			context { context }, ptr { nullptr }, type { type }, polymorphic { polymorphic }, index { 0 },
+			bucketID { CoreObjects::CATEGORY_TYPE_BUCKET[context.category][type] } { find_first(); } // begin() & end()
 
-		void find_object( const u32 startIndex );
+		void find_object( u32 startIndex );
 		void find_first() { find_object( 0 ); }
 		void find_next() { find_object( index + 1 ); }
 
-		bool ( *find_object_ptr )( ObjectIterator &, const ObjectBucket *const, const u16 );
+		bool ( *find_object_ptr )( ObjectIterator &, const ObjectBucket *const, u16 );
 		const ObjectContext &context; // parent ObjectContext
 		byte *ptr; // pointer to current object instance data
 		u16 type : 15; // object type to iterate over
@@ -295,78 +282,47 @@ private:
 		u16 bucketID; // current ObjectBucket index
 	};
 
-	struct ObjectIteratorActive : public ObjectIterator
-	{
-		ObjectIteratorActive( const ObjectContext &context, u16 type, bool poly ) :
-			ObjectIterator{ &find_object_ptr, context, type, poly } { }
-		static bool find_object_ptr( ObjectIterator &itr, const ObjectBucket *const bucket, const u16 start );
-	};
-
 	struct ObjectIteratorAll : public ObjectIterator
 	{
 		ObjectIteratorAll( const ObjectContext &context, u16 type, bool poly ) :
-			ObjectIterator{ &find_object_ptr, context, type, poly } { }
-		static bool find_object_ptr( ObjectIterator &itr, const ObjectBucket *const bucket, const u16 start );
+			ObjectIterator { &find_object_ptr, context, type, poly } { }
+		static bool find_object_ptr( ObjectIterator &itr, const ObjectBucket *const bucket, u16 start );
 	};
 
 	bool grow();
 
-	u16 new_bucket( const u16 type );
-	ObjectBucket *new_object( const u16 type );
-	ObjectInstance create_object( const u16 type );
+	u16 new_bucket( u16 type );
+	ObjectBucket *new_object( u16 type );
+	ObjectInstance create_object( u16 type );
 
 public:
-	template <Object_t T> struct IteratorAll
+	template <Object_t T> struct Iterator
 	{
-		IteratorAll() = delete;
-		IteratorAll( const ObjectContext &context, u16 type, bool poly ) : itr{ context, type, poly } { }
-		IteratorAll<T> begin() { return { itr.context, itr.type, static_cast<bool>( itr.polymorphic ) }; }
-		IteratorAll<T> end() { return { itr.context, 0, static_cast<bool>( itr.polymorphic ) }; }
-		bool operator!=( const IteratorAll<T> &other ) const { return itr.ptr != other.itr.ptr; }
-		IteratorAll<T> &operator++() { itr.find_next(); return *this; }
+		Iterator() = delete;
+		Iterator( const ObjectContext &context, u16 type, bool poly ) : itr { context, type, poly } { }
+		Iterator<T> begin() { return { itr.context, itr.type, static_cast<bool>( itr.polymorphic ) }; }
+		Iterator<T> end() { return { itr.context, 0, static_cast<bool>( itr.polymorphic ) }; }
+		bool operator!=( const Iterator<T> &other ) const { return itr.ptr != other.itr.ptr; }
+		Iterator<T> &operator++() { itr.find_next(); return *this; }
 		ObjectHandle<T> operator*() const { return ObjectHandle<T>{ itr.ptr }; }
 		ObjectIteratorAll itr;
 	};
 
-	template <Object_t T> IteratorAll<T> iterator_all() const
+	template <Object_t T> Iterator<T> iterator() const
 	{
 		Assert( buckets != nullptr );
-		return IteratorAll<T> { *this, T, false };
+		return Iterator<T> { *this, T, false };
 	}
 
-	template <Object_t T> IteratorAll<T> iterator_polymorphic_all() const
+	template <Object_t T> Iterator<T> iterator_polymorphic() const
 	{
 		Assert( buckets != nullptr );
-		return IteratorAll<T> { *this, T, true };
-	}
-
-	template <Object_t T> struct IteratorActive
-	{
-		IteratorActive() = delete;
-		IteratorActive( const ObjectContext &context, u16 type, bool poly ) : itr{ context, type, poly } { }
-		IteratorActive<T> begin() { return { itr.context, itr.type, static_cast<bool>( itr.polymorphic ) }; }
-		IteratorActive<T> end() { return { itr.context, 0, static_cast<bool>( itr.polymorphic ) }; }
-		bool operator!=( const IteratorActive<T> &other ) const { return itr.ptr != other.itr.ptr; }
-		IteratorActive<T> &operator++() { itr.find_next(); return *this; }
-		ObjectHandle<T> operator*() const { return ObjectHandle<T>{ itr.ptr }; }
-		ObjectIteratorActive itr;
-	};
-
-	template <Object_t T> IteratorActive<T> iterator() const
-	{
-		Assert( buckets != nullptr );
-		return IteratorActive<T> { *this, T, false };
-	}
-
-	template <Object_t T> IteratorActive<T> iterator_polymorphic() const
-	{
-		Assert( buckets != nullptr );
-		return IteratorActive<T> { *this, T, true };
+		return Iterator<T> { *this, T, true };
 	}
 
 	template <Object_t T> ObjectHandle<T> handle( const ObjectInstance &object ) const
 	{
-		return ObjectHandle<T>{ get_object_pointer( object ) };
+		return ObjectHandle<T> { get_object_pointer( object ) };
 	}
 
 private:
@@ -386,34 +342,43 @@ namespace CoreObjects
 {
 	template <Object_t T> struct ObjectContextSerializer
 	{
-		ObjectContextSerializer( const ObjectContext &context ) : context{ context } { }
+		ObjectContextSerializer( const ObjectContext &context ) : context { context } { }
 		const ObjectContext &context;
 		static void serialize( Buffer &buffer, const ObjectContextSerializer &s )
 		{
 			buffer.write<u32>( s.context.count( T ) );
-			foreach_object_all( s.context, T, h ) { ObjectHandle<T>::serialize( buffer, h ); }
+			foreach_object( s.context, T, h ) { ObjectHandle<T>::serialize( buffer, h ); }
 		}
 	};
 
 	template <Object_t T> struct ObjectContextDeserializerA
 	{
-		ObjectContextDeserializerA( ObjectContext &context ) : context{ context } { }
+		ObjectContextDeserializerA( ObjectContext &context ) : context { context } { }
 		ObjectContext &context;
-		static void deserialize( Buffer &buffer, ObjectContextDeserializerA &d )
+		NO_DISCARD static bool deserialize( Buffer &buffer, ObjectContextDeserializerA &d )
 		{
-			const u32 count = buffer.read<u32>();
+			// NOTE: Step 1 - Create objects
+			u32 count = 0U;
+			if( !buffer.read<u32>( count ) ) { return false; }
 			for( u32 i = 0; i < count; i++ ) { d.context.create( T ); }
+			return true;
 		}
 	};
 
 	template <Object_t T> struct ObjectContextDeserializerB
 	{
-		ObjectContextDeserializerB( ObjectContext &context ) : context{ context } { }
+		ObjectContextDeserializerB( ObjectContext &context ) : context { context } { }
 		ObjectContext &context;
-		static void deserialize( Buffer &buffer, ObjectContextDeserializerB &d )
+		NO_DISCARD static bool deserialize( Buffer &buffer, ObjectContextDeserializerB &d )
 		{
-			const u32 count = buffer.read<u32>();
-			foreach_object_all( d.context, T, h ) { ObjectHandle<T>::deserialize( buffer, h ); }
+			// NOTE: Step 2 - Deserialize object data into objects from step 1
+			u32 count = 0U;
+			if( !buffer.read<u32>( count ) ) { return false; }
+			foreach_object( d.context, T, h )
+			{
+				if( !ObjectHandle<T>::deserialize( buffer, h ) ) { return false; }
+			}
+			return true;
 		}
 	};
 };

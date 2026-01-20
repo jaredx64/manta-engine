@@ -202,7 +202,6 @@ static bool next_face( const String &file, usize &tell, List<Vertex> &vertices )
 	next_u32( file, tell, v3.uv );
 	next_u32( file, tell, v3.normal );
 
-	// Success
 	return true;
 };
 
@@ -261,7 +260,6 @@ bool MeshObj::load( const char *path )
 		vertex.a = 255;
 	}
 
-	// Success!
 	return true;
 }
 
