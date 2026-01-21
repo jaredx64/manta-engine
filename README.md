@@ -1,8 +1,8 @@
-## Note: This is an early fork of the engine for showcase purposes only! Manta is a personal learning project not meant for open use. That said, the source is available here to browse as you please!
+## Note: This is an early fork of the engine for showcase purposes only! Manta is a personal learning/hobby project not meant for general open use (i.e. it isn't a "product" and won't be officially supported)!
 
 # Engine Overview:
 
-Manta is C++ game engine & build system currently under development designed to achieve the following:
+Manta is C++ game engine & build system currently in development designed to achieve the following:
 
 - Provide a simple library for creating games quickly
 - Provide abstraction layers for cross-platform compilation (Windows/MacOS/Linux) and graphics API backends (OpenGL, DirectX, Metal, Vulkan)
@@ -32,7 +32,7 @@ git clone https://github.com/jaredx64/manta-engine
 cd manta-engine
 ```
 
-Note: Manta uses Ninja for efficient compilation & linking (https://ninja-build.org/). The executables are included in the repository (`manta-engine\.manta\ninja-build`). If Ninja fails, it may need manual setup: https://github.com/ninja-build/ninja/releases
+Note: Manta uses Ninja for efficient compilation & linking (https://ninja-build.org/). The executables are included in the repository (`manta-engine\.manta\ninja-build`) for convenience. If Ninja fails, it may need manual setup: https://github.com/ninja-build/ninja/releases
 
 ### 2. Building + Running Project:
 
@@ -87,8 +87,6 @@ VSCManta is essentially a wrapper around explicit calls to the `manta-engine\boo
 
 **Clangd**: VSCManta plugin also generates `compile_commands.json` for Clangd C++ language server/intellisense. Clangd is significantly more responsive than Microsoft's C/C++ extension so I highly recommend using it! (https://marketplace.visualstudio.com/items?itemName=llvm-vs-code-extensions.vscode-clangd)
 
-**Clangd**: VSCManta plugin also generates `compile_commands.json` for Clangd C++ language server/intellisense. Clangd is significantly more responsive than Microsoft's C/C++ extension so I highly recommend using it! (https://marketplace.visualstudio.com/items?itemName=llvm-vs-code-extensions.vscode-clangd)
-
 # Engine Repository Structure:
 
 1. `manta-engine\.manta\`
@@ -102,7 +100,7 @@ VSCManta is essentially a wrapper around explicit calls to the `manta-engine\boo
 5. `manta-engine\source\manta\` (project.exe - engine)
 	- Source files for the manta runtime library
 6. `manta-engine\source\core\`
-	- Source files shared between /build, /manta, and projects/*project*
+	- Source files shared between \build, \manta, and projects\*project*
 7. `manta-engine\source\vendor\*`
 	- Headers for external libraries and wrappers around C headers
 	- As a compile time optimization (for development builds), Manta supports a "USE_OFFICIAL_HEADERS" macro which (when false) uses trimmed C headers
@@ -142,7 +140,7 @@ In general terms, `source\boot`, `source\build`, and `source\manta` are separate
 		- -config=*config name*
 		- -gfx=*opengl/d3d11/d3d12/vulkan/metal*
 		- -clean=*0/1*
-		- -run=*0/1*
+		- -run=*0/1/2*
 	- Compiles boot.exe if it doesn't exist
 	- Runs boot.exe
 
