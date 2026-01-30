@@ -119,10 +119,33 @@
 		long long tv_nsec;
 	};
 
+	// struct_tm.h
+	struct tm
+	{
+		int tm_sec;
+		int tm_min;
+		int tm_hour;
+		int tm_mday;
+		int tm_mon;
+		int tm_year;
+		int tm_wday;
+		int tm_yday;
+		int tm_isdst;
+	# ifdef	__USE_MISC
+		long int tm_gmtoff;
+		const char *tm_zone;
+	# else
+		long int __tm_gmtoff;
+		const char *__tm_zone;
+	# endif
+	};
+
 	// time.h
 	#define CLOCK_MONOTONIC 1
+	#define time_t long long int
 
 	extern "C" int clock_gettime( int, timespec * );
+	extern "C" struct tm *localtime_r( const time_t *, struct tm * );
 
 	// struct_stat.h
 	struct stat

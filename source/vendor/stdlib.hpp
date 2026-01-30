@@ -10,18 +10,20 @@
 	#include <vendor/vendor.hpp>
 	#include <vendor/stddef.hpp>
 
-	extern "C" int* __cdecl __p___argc(void);
-	extern "C" char*** __cdecl __p___argv(void);
-	extern "C" wchar_t*** __cdecl __p___wargv(void);
+	#if PIPELINE_OS_WINDOWS
+		extern "C" int* __cdecl __p___argc(void);
+		extern "C" char*** __cdecl __p___argv(void);
+		extern "C" wchar_t*** __cdecl __p___wargv(void);
 
-	#ifdef _CRT_DECLARE_GLOBAL_VARIABLES_DIRECTLY
-		extern int __argc;
-		extern char**__argv;
-		extern wchar_t** __wargv;
-	#else
-		#define __argc (*__p___argc())
-		#define __argv (*__p___argv())
-		#define __wargv (*__p___wargv())
+		#ifdef _CRT_DECLARE_GLOBAL_VARIABLES_DIRECTLY
+			extern int __argc;
+			extern char**__argv;
+			extern wchar_t** __wargv;
+		#else
+			#define __argc (*__p___argc())
+			#define __argv (*__p___argv())
+			#define __wargv (*__p___wargv())
+		#endif
 	#endif
 
 	extern "C" MALLOC_LIKE void *malloc(size_t);
