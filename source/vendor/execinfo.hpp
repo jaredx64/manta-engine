@@ -7,7 +7,12 @@
 		#include <execinfo.h>
 	#include <vendor/conflicts.hpp>
 #else
-	extern "C" int backtrace( void **buffer, int size );
-	extern "C" char **backtrace_symbols( void *const *buffer, int size );
-	extern "C" void backtrace_symbols_fd( void *const *buffer, int size, int fd );
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// execinfo.h
+
+	extern "C" int backtrace( void **, int );
+	extern "C" char **backtrace_symbols( void *const *, int );
+	extern "C" void backtrace_symbols_fd( void *const *, int, int );
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #endif

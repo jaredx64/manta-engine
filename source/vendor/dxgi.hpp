@@ -3,23 +3,36 @@
 
 #if USE_OFFICIAL_HEADERS
 	#include <vendor/conflicts.hpp>
-		// TODO...
+		#include <dxgi.h>
 	#include <vendor/conflicts.hpp>
 #else
 	#include <vendor/com.hpp>
 
-	#define DXGI_USAGE_SHADER_INPUT 0x010
-	#define DXGI_USAGE_RENDER_TARGET_OUTPUT 0x020
-	#define DXGI_USAGE_BACK_BUFFER 0x040
-	#define DXGI_USAGE_SHARED 0x080
-	#define DXGI_USAGE_READ_ONLY 0x100
-	#define DXGI_USAGE_DISCARD_ON_PRESENT 0x200
-	#define DXGI_USAGE_UNORDERED_ACCESS 0x400
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// d3dcommon.h
 
-	#define DXGI_PRESENT_ALLOW_TEARING 0x200
+	enum D3D_FEATURE_LEVEL
+	{
+		D3D_FEATURE_LEVEL_1_0_CORE = 0x1000,
+		D3D_FEATURE_LEVEL_9_1 = 0x9100,
+		D3D_FEATURE_LEVEL_9_2 = 0x9200,
+		D3D_FEATURE_LEVEL_9_3 = 0x9300,
+		D3D_FEATURE_LEVEL_10_0 = 0xA000,
+		D3D_FEATURE_LEVEL_10_1 = 0xA100,
+		D3D_FEATURE_LEVEL_11_0 = 0xB000,
+		D3D_FEATURE_LEVEL_11_1 = 0xB100,
+		D3D_FEATURE_LEVEL_12_0 = 0xC000,
+		D3D_FEATURE_LEVEL_12_1 = 0xC100,
+	};
 
-	#define DXGI_MWA_NO_WINDOW_CHANGES (1 << 0)
-	#define DXGI_MWA_NO_ALT_ENTER (1 << 1)
+	struct DXGI_RATIONAL
+	{
+		UINT Numerator;
+		UINT Denominator;
+	};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// dxgiformat.h
 
 	enum DXGI_FORMAT
 	{
@@ -147,6 +160,11 @@
 		DXGI_FORMAT_FORCE_UINT = 0xFFFFFFFF,
 	};
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// dxgitype.h
+
+	using DXGI_USAGE = UINT; // dxgi.h
+
 	enum DXGI_MODE_SCANLINE_ORDER
 	{
 		DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED,
@@ -160,51 +178,6 @@
 		DXGI_MODE_SCALING_UNSPECIFIED,
 		DXGI_MODE_SCALING_CENTERED,
 		DXGI_MODE_SCALING_STRETCHED,
-	};
-
-	enum DXGI_SWAP_EFFECT
-	{
-		DXGI_SWAP_EFFECT_DISCARD,
-		DXGI_SWAP_EFFECT_SEQUENTIAL,
-		DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL = 3,
-		DXGI_SWAP_EFFECT_FLIP_DISCARD,
-	};
-
-	enum DXGI_SWAP_CHAIN_FLAG
-	{
-		DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT = 64,
-		DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING = 2048,
-	};
-
-	enum D3D_FEATURE_LEVEL
-	{
-		D3D_FEATURE_LEVEL_1_0_CORE = 0x1000,
-		D3D_FEATURE_LEVEL_9_1 = 0x9100,
-		D3D_FEATURE_LEVEL_9_2 = 0x9200,
-		D3D_FEATURE_LEVEL_9_3 = 0x9300,
-		D3D_FEATURE_LEVEL_10_0 = 0xA000,
-		D3D_FEATURE_LEVEL_10_1 = 0xA100,
-		D3D_FEATURE_LEVEL_11_0 = 0xB000,
-		D3D_FEATURE_LEVEL_11_1 = 0xB100,
-		D3D_FEATURE_LEVEL_12_0 = 0xC000,
-		D3D_FEATURE_LEVEL_12_1 = 0xC100,
-	};
-
-	using DXGI_USAGE = UINT;
-
-	struct IDXGIOutput;
-	struct IDXGIAdapter;
-	struct IDXGIAdapter1;
-	struct DXGI_FRAME_STATISTICS;
-	struct DXGI_SWAP_CHAIN_DESC1;
-	struct DXGI_SWAP_CHAIN_FULLSCREEN_DESC;
-	struct DXGI_MODE_ROTATION;
-	struct DXGI_RGBA;
-
-	struct DXGI_RATIONAL
-	{
-		UINT Numerator;
-		UINT Denominator;
 	};
 
 	struct DXGI_MODE_DESC
@@ -223,6 +196,14 @@
 		UINT Quality;
 	};
 
+	enum DXGI_SWAP_EFFECT // dxgi.h
+	{
+		DXGI_SWAP_EFFECT_DISCARD,
+		DXGI_SWAP_EFFECT_SEQUENTIAL,
+		DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL = 3,
+		DXGI_SWAP_EFFECT_FLIP_DISCARD,
+	};
+
 	struct DXGI_SWAP_CHAIN_DESC
 	{
 		DXGI_MODE_DESC BufferDesc;
@@ -235,63 +216,71 @@
 		UINT Flags;
 	};
 
-	struct DXGI_PRESENT_PARAMETERS
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// dxgi.h
+
+	#define DXGI_USAGE_SHADER_INPUT 0x010
+	#define DXGI_USAGE_RENDER_TARGET_OUTPUT 0x020
+	#define DXGI_USAGE_BACK_BUFFER 0x040
+	#define DXGI_USAGE_SHARED 0x080
+	#define DXGI_USAGE_READ_ONLY 0x100
+	#define DXGI_USAGE_DISCARD_ON_PRESENT 0x200
+	#define DXGI_USAGE_UNORDERED_ACCESS 0x400
+
+	#define DXGI_PRESENT_ALLOW_TEARING 0x200
+
+	#define DXGI_MWA_NO_WINDOW_CHANGES (1 << 0)
+	#define DXGI_MWA_NO_ALT_ENTER (1 << 1)
+
+	struct IDXGIOutput;
+	struct IDXGIAdapter;
+	struct IDXGIAdapter1;
+	struct DXGI_FRAME_STATISTICS;
+	struct DXGI_SWAP_CHAIN_DESC1;
+	struct DXGI_SWAP_CHAIN_FULLSCREEN_DESC;
+	struct DXGI_MODE_ROTATION;
+	struct DXGI_RGBA;
+
+	enum DXGI_SWAP_CHAIN_FLAG
 	{
-		UINT DirtyRectsCount;
-		RECT *pDirtyRects;
-		RECT *pScrollRect;
-		POINT *pScrollOffset;
+		DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT = 64,
+		DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING = 2048,
 	};
 
 	MIDL_INTERFACE IDXGIObject : IUnknown
 	{
-		virtual HRESULT STD_CALL SetPrivateData(const GUID &, UINT, const void *) = 0;
-		virtual HRESULT STD_CALL SetPrivateDataInterface(const GUID &, const IUnknown *) = 0;
-		virtual HRESULT STD_CALL GetPrivateData(const GUID &, UINT *, void *) = 0;
-		virtual HRESULT STD_CALL GetParent(const GUID &, void **) = 0;
+		virtual HRESULT STD_CALL SetPrivateData( const GUID &, UINT, const void * ) = 0;
+		virtual HRESULT STD_CALL SetPrivateDataInterface( const GUID &, const IUnknown * ) = 0;
+		virtual HRESULT STD_CALL GetPrivateData( const GUID &, UINT *, void * ) = 0;
+		virtual HRESULT STD_CALL GetParent( const GUID &, void ** ) = 0;
 	};
 
 	MIDL_INTERFACE IDXGIDeviceSubObject : IDXGIObject
 	{
-		virtual HRESULT STD_CALL GetDevice(const GUID &, void **) = 0;
+		virtual HRESULT STD_CALL GetDevice( const GUID &, void ** ) = 0;
 	};
 
 	MIDL_INTERFACE IDXGISwapChain : IDXGIDeviceSubObject
 	{
-		virtual HRESULT STD_CALL Present(UINT, UINT) = 0;
-		virtual HRESULT STD_CALL GetBuffer(UINT, const GUID &, void **) = 0;
-		virtual HRESULT STD_CALL SetFullscreenState(BOOL, IDXGIOutput *) = 0;
-		virtual HRESULT STD_CALL GetFullscreenState(BOOL *, IDXGIOutput **) = 0;
-		virtual HRESULT STD_CALL GetDesc(DXGI_SWAP_CHAIN_DESC *) = 0;
-		virtual HRESULT STD_CALL ResizeBuffers(UINT, UINT, UINT, DXGI_FORMAT, UINT) = 0;
-		virtual HRESULT STD_CALL ResizeTarget(const DXGI_MODE_DESC *) = 0;
-		virtual HRESULT STD_CALL GetContainingOutput(IDXGIOutput **) = 0;
-		virtual HRESULT STD_CALL GetFrameStatistics(DXGI_FRAME_STATISTICS *) = 0;
-		virtual HRESULT STD_CALL GetLastPresentCount(UINT *) = 0;
-	};
-
-	MIDL_INTERFACE IDXGISwapChain1 : IDXGISwapChain
-	{
-		virtual HRESULT STD_CALL GetDesc1(DXGI_SWAP_CHAIN_DESC1 *) = 0;
-		virtual HRESULT STD_CALL GetFullscreenDesc(DXGI_SWAP_CHAIN_FULLSCREEN_DESC *) = 0;
-		virtual HRESULT STD_CALL GetHwnd(HWND *) = 0;
-		virtual HRESULT STD_CALL GetCoreWindow(const GUID &, void **) = 0;
-		virtual HRESULT STD_CALL Present1(UINT, UINT, const DXGI_PRESENT_PARAMETERS *) = 0;
-		virtual BOOL STD_CALL IsTemporaryMonoSupported() = 0;
-		virtual HRESULT STD_CALL GetRestrictToOutput(IDXGIOutput **) = 0;
-		virtual HRESULT STD_CALL SetBackgroundColor(const DXGI_RGBA *) = 0;
-		virtual HRESULT STD_CALL GetBackgroundColor(DXGI_RGBA *) = 0;
-		virtual HRESULT STD_CALL SetRotation(DXGI_MODE_ROTATION) = 0;
-		virtual HRESULT STD_CALL GetRotation(DXGI_MODE_ROTATION *) = 0;
+		virtual HRESULT STD_CALL Present( UINT, UINT ) = 0;
+		virtual HRESULT STD_CALL GetBuffer( UINT, const GUID &, void ** ) = 0;
+		virtual HRESULT STD_CALL SetFullscreenState( BOOL, IDXGIOutput * ) = 0;
+		virtual HRESULT STD_CALL GetFullscreenState( BOOL *, IDXGIOutput ** ) = 0;
+		virtual HRESULT STD_CALL GetDesc( DXGI_SWAP_CHAIN_DESC * ) = 0;
+		virtual HRESULT STD_CALL ResizeBuffers( UINT, UINT, UINT, DXGI_FORMAT, UINT ) = 0;
+		virtual HRESULT STD_CALL ResizeTarget( const DXGI_MODE_DESC * ) = 0;
+		virtual HRESULT STD_CALL GetContainingOutput( IDXGIOutput ** ) = 0;
+		virtual HRESULT STD_CALL GetFrameStatistics( DXGI_FRAME_STATISTICS * ) = 0;
+		virtual HRESULT STD_CALL GetLastPresentCount( UINT * ) = 0;
 	};
 
 	MIDL_INTERFACE IDXGIFactory : IDXGIObject
 	{
-		virtual HRESULT STD_CALL EnumAdapters(UINT, IDXGIAdapter **) = 0;
-		virtual HRESULT STD_CALL MakeWindowAssociation(HWND, UINT) = 0;
-		virtual HRESULT STD_CALL GetWindowAssociation(HWND *) = 0;
-		virtual HRESULT STD_CALL CreateSwapChain(IUnknown *, DXGI_SWAP_CHAIN_DESC *, IDXGISwapChain **) = 0;
-		virtual HRESULT STD_CALL CreateSoftwareAdapter(HMODULE, IDXGIAdapter **) = 0;
+		virtual HRESULT STD_CALL EnumAdapters( UINT, IDXGIAdapter ** ) = 0;
+		virtual HRESULT STD_CALL MakeWindowAssociation( HWND, UINT ) = 0;
+		virtual HRESULT STD_CALL GetWindowAssociation( HWND * ) = 0;
+		virtual HRESULT STD_CALL CreateSwapChain( IUnknown *, DXGI_SWAP_CHAIN_DESC *, IDXGISwapChain ** ) = 0;
+		virtual HRESULT STD_CALL CreateSoftwareAdapter( HMODULE, IDXGIAdapter ** ) = 0;
 	};
 
 	MIDL_INTERFACE IDXGIFactory1 : IDXGIFactory
@@ -300,5 +289,33 @@
 		virtual BOOL STD_CALL IsCurrent() = 0;
 	};
 
-	extern "C" DLL_IMPORT  HRESULT STD_CALL CreateDXGIFactory(const GUID &, void **);
+	extern "C" DLL_IMPORT HRESULT STD_CALL CreateDXGIFactory( const GUID &, void ** );
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// dxgi1_2.h
+
+	struct DXGI_PRESENT_PARAMETERS
+	{
+		UINT DirtyRectsCount;
+		RECT *pDirtyRects;
+		RECT *pScrollRect;
+		POINT *pScrollOffset;
+	};
+
+	MIDL_INTERFACE IDXGISwapChain1 : IDXGISwapChain
+	{
+		virtual HRESULT STD_CALL GetDesc1( DXGI_SWAP_CHAIN_DESC1 * ) = 0;
+		virtual HRESULT STD_CALL GetFullscreenDesc( DXGI_SWAP_CHAIN_FULLSCREEN_DESC * ) = 0;
+		virtual HRESULT STD_CALL GetHwnd( HWND * ) = 0;
+		virtual HRESULT STD_CALL GetCoreWindow( const GUID &, void ** ) = 0;
+		virtual HRESULT STD_CALL Present1( UINT, UINT, const DXGI_PRESENT_PARAMETERS * ) = 0;
+		virtual BOOL STD_CALL IsTemporaryMonoSupported() = 0;
+		virtual HRESULT STD_CALL GetRestrictToOutput( IDXGIOutput ** ) = 0;
+		virtual HRESULT STD_CALL SetBackgroundColor( const DXGI_RGBA * ) = 0;
+		virtual HRESULT STD_CALL GetBackgroundColor( DXGI_RGBA * ) = 0;
+		virtual HRESULT STD_CALL SetRotation( DXGI_MODE_ROTATION ) = 0;
+		virtual HRESULT STD_CALL GetRotation( DXGI_MODE_ROTATION * ) = 0;
+	};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #endif

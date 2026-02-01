@@ -10,6 +10,9 @@
 	#include <vendor/vendor.hpp>
 	#include <vendor/windows.hpp>
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// wingdi.h
+
 	#define PFD_DOUBLEBUFFER 0x01
 	#define PFD_STEREO 0x02
 	#define PFD_DRAW_TO_WINDOW 0x04
@@ -55,15 +58,21 @@
 		DWORD dwDamageMask;
 	};
 
-	// OPENGL32.dll
-	extern "C" DLL_IMPORT HGLRC STD_CALL wglCreateContext(HDC);
-	extern "C" DLL_IMPORT BOOL STD_CALL wglDeleteContext(HGLRC);
-	extern "C" DLL_IMPORT PROC STD_CALL wglGetProcAddress(LPCSTR);
-	extern "C" DLL_IMPORT BOOL STD_CALL wglMakeCurrent(HDC, HGLRC);
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// OPENGL32.dll
 
-	// GDI32.dll
-	extern "C" DLL_IMPORT int STD_CALL ChoosePixelFormat(HDC, const PIXELFORMATDESCRIPTOR *);
-	extern "C" DLL_IMPORT int STD_CALL DescribePixelFormat(HDC, int, UINT, PIXELFORMATDESCRIPTOR *);
-	extern "C" DLL_IMPORT BOOL STD_CALL SetPixelFormat(HDC, int, const PIXELFORMATDESCRIPTOR *);
-	extern "C" DLL_IMPORT BOOL STD_CALL SwapBuffers(HDC);
+	extern "C" DLL_IMPORT HGLRC STD_CALL wglCreateContext( HDC );
+	extern "C" DLL_IMPORT BOOL STD_CALL wglDeleteContext( HGLRC );
+	extern "C" DLL_IMPORT PROC STD_CALL wglGetProcAddress( LPCSTR );
+	extern "C" DLL_IMPORT BOOL STD_CALL wglMakeCurrent( HDC, HGLRC );
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// GDI32.dll
+
+	extern "C" DLL_IMPORT int STD_CALL ChoosePixelFormat( HDC, const PIXELFORMATDESCRIPTOR * );
+	extern "C" DLL_IMPORT int STD_CALL DescribePixelFormat( HDC, int, UINT, PIXELFORMATDESCRIPTOR * );
+	extern "C" DLL_IMPORT BOOL STD_CALL SetPixelFormat( HDC, int, const PIXELFORMATDESCRIPTOR * );
+	extern "C" DLL_IMPORT BOOL STD_CALL SwapBuffers( HDC );
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #endif

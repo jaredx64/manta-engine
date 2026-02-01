@@ -8,6 +8,9 @@
 	#include <vendor/conflicts.hpp>
 #else
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// winnt.h
+
 	using VOID = void;
 	using PVOID = void *;
 	using LPVOID = void *;
@@ -52,7 +55,9 @@
 	using u_int = unsigned int;
 	using u_long = unsigned long;
 
-	// inaddr.h
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// inaddr.h
+
 	struct in_addr
 	{
 		union
@@ -72,10 +77,14 @@
 	typedef in_addr *PIN_ADDR;
 	typedef in_addr *LPIN_ADDR;
 
-	// winerror.h
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// winerror.h
+
 	#define WSAEWOULDBLOCK 10035L
 
-	// ws2def.h
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// ws2def.h
+
 	#define AF_UNSPEC 0
 	#define AF_UNIX 1
 	#define AF_INET 2
@@ -149,7 +158,9 @@
 	typedef addrinfo ADDRINFOA;
 	typedef addrinfo *PADDRINFOA;
 
-	// winsock2.h
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// winsock2.h
+
 	#define SOCK_STREAM 1
 	#define SOCK_DGRAM 2
 	#define SOCK_RAW 3
@@ -245,13 +256,17 @@
 	};
 	typedef WSANETWORKEVENTS *LPWSANETWORKEVENTS;
 
-	// ws2tcpip.h
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// ws2tcpip.h
+
 	extern "C" DLL_IMPORT INT STD_CALL getaddrinfo( PCSTR, PCSTR, const ADDRINFOA *, PADDRINFOA * );
 	extern "C" DLL_IMPORT VOID STD_CALL freeaddrinfo( PADDRINFOA );
 	extern "C" DLL_IMPORT INT STD_CALL inet_pton( INT, PCSTR, PVOID pAddrBuf );
 	extern "C" DLL_IMPORT PCSTR STD_CALL inet_ntop( INT, const VOID *, PSTR, size_t );
 
-	// winsock2.h
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// winsock2.h
+
 	extern "C" DLL_IMPORT SOCKET STD_CALL socket( int, int, int );
 	extern "C" DLL_IMPORT SOCKET STD_CALL accept( SOCKET, struct sockaddr *, int * );
 	extern "C" DLL_IMPORT int STD_CALL closesocket( SOCKET );
@@ -278,4 +293,5 @@
 	extern "C" DLL_IMPORT BOOL STD_CALL WSACloseEvent( WSAEVENT );
 	extern "C" DLL_IMPORT int STD_CALL WSAGetLastError();
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #endif

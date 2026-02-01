@@ -12,7 +12,9 @@
 	#include <vendor/conflicts.hpp>
 #else
 
-	// intrin.h
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// intrin.h
+
 	#if !defined( _INTRIN_DEFINED )
 		extern "C" short __cdecl _InterlockedCompareExchange16( short volatile *, short, short );
 		#pragma intrinsic( _InterlockedCompareExchange16 )
@@ -50,7 +52,9 @@
 		#pragma intrinsic( _InterlockedXor64 )
 	#endif
 
-	// winnt.h
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// winnt.h
+
 	#define _MM_HINT_T0 1
 	#define _MM_HINT_T1 2
 	#define _MM_HINT_T2 3
@@ -67,4 +71,5 @@
 	extern "C" void __cdecl _mm_prefetch( char const *, int );
 	#pragma intrinsic( _mm_prefetch )
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #endif

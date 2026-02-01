@@ -5,9 +5,10 @@
 	// ...
 	#include <vendor/conflicts.hpp>
 #else
-
 	#include <vendor/config.hpp>
 	#include <vendor/windows.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	#if PIPELINE_COMPILER_MSVC
 		#define MIDL_INTERFACE struct __declspec(novtable)
@@ -34,7 +35,7 @@
 
 	MIDL_INTERFACE IUnknown
 	{
-		virtual HRESULT STD_CALL QueryInterface(const GUID &, void **) = 0;
+		virtual HRESULT STD_CALL QueryInterface( const GUID &, void ** ) = 0;
 		virtual ULONG STD_CALL AddRef() = 0;
 		virtual ULONG STD_CALL Release() = 0;
 	};
@@ -43,4 +44,5 @@
 	extern "C" DLL_IMPORT HRESULT STD_CALL CoCreateInstance( const GUID &, IUnknown *, DWORD, const GUID &, void ** );
 	extern "C" DLL_IMPORT void STD_CALL CoTaskMemFree( LPVOID );
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #endif

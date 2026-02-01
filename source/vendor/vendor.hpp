@@ -1,9 +1,10 @@
 #pragma once
 #include <vendor/config.hpp>
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 #if defined( _MSC_VER )
 
-	// MSVC
 	#ifndef STD_CALL
 	#define STD_CALL __stdcall
 	#endif
@@ -54,7 +55,6 @@
 
 #elif defined( __GNUC__ )
 
-	// GCC/G++
 	#ifndef STD_CALL
 	#define STD_CALL __attribute__ ((stdcall))
 	#endif
@@ -105,7 +105,6 @@
 
 #elif defined( __clang__ )
 
-	// CLANG
 	#ifndef STD_CALL
 	#define STD_CALL __attribute__ ((stdcall))
 	#endif
@@ -156,15 +155,18 @@
 
 #endif
 
-	// All
-	#ifndef UNUSED
-	#define UNUSED [[maybe_unused]]
-	#endif
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	#ifndef NO_DISCARD
-	#define NO_DISCARD [[nodiscard]]
-	#endif
+#ifndef UNUSED
+#define UNUSED [[maybe_unused]]
+#endif
 
-	#ifndef DEPRECATED
-	#define DEPRECATED(str) [[deprecated(str)]]
-	#endif
+#ifndef NO_DISCARD
+#define NO_DISCARD [[nodiscard]]
+#endif
+
+#ifndef DEPRECATED
+#define DEPRECATED(str) [[deprecated(str)]]
+#endif
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

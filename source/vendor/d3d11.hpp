@@ -11,11 +11,14 @@
 #else
 	#include <vendor/dxgi.hpp>
 
-	#define	D3D11_SDK_VERSION 7
-	#define D3D11_FLOAT32_MAX 3.402823466e+38f
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// winerror.h
 
 	#define S_OK ((HRESULT)0L)
 	#define S_FALSE ((HRESULT)1L)
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// d3dcommon.h
 
 	enum D3D_DRIVER_TYPE
 	{
@@ -26,6 +29,13 @@
 		D3D_DRIVER_TYPE_SOFTWARE,
 		D3D_DRIVER_TYPE_WARP,
 	};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// d3d11.h
+
+	#define	D3D11_SDK_VERSION 7
+	#define D3D11_FLOAT32_MAX 3.402823466e+38f
+
 
 	enum D3D11_CREATE_DEVICE_FLAG
 	{
@@ -646,238 +656,238 @@
 
 	MIDL_INTERFACE ID3D11Device : IUnknown
 	{
-		virtual HRESULT STD_CALL CreateBuffer(const D3D11_BUFFER_DESC *, const D3D11_SUBRESOURCE_DATA *,
-			ID3D11Buffer **) = 0;
-		virtual HRESULT STD_CALL CreateTexture1D(const D3D11_TEXTURE1D_DESC *, const D3D11_SUBRESOURCE_DATA *,
-			ID3D11Texture1D **) = 0;
-		virtual HRESULT STD_CALL CreateTexture2D(const D3D11_TEXTURE2D_DESC *, const D3D11_SUBRESOURCE_DATA *,
-			ID3D11Texture2D **) = 0;
-		virtual HRESULT STD_CALL CreateTexture3D(const D3D11_TEXTURE3D_DESC *, const D3D11_SUBRESOURCE_DATA *,
-			ID3D11Texture3D **) = 0;
-		virtual HRESULT STD_CALL CreateShaderResourceView(ID3D11Resource *, const D3D11_SHADER_RESOURCE_VIEW_DESC *,
-			ID3D11ShaderResourceView **) = 0;
-		virtual HRESULT STD_CALL CreateUnorderedAccessView(ID3D11Resource *, const D3D11_UNORDERED_ACCESS_VIEW_DESC *,
-			ID3D11UnorderedAccessView **) = 0;
-		virtual HRESULT STD_CALL CreateRenderTargetView(ID3D11Resource *, const D3D11_RENDER_TARGET_VIEW_DESC *,
-			ID3D11RenderTargetView **) = 0;
-		virtual HRESULT STD_CALL CreateDepthStencilView(ID3D11Resource *, const D3D11_DEPTH_STENCIL_VIEW_DESC *,
-			ID3D11DepthStencilView **) = 0;
-		virtual HRESULT STD_CALL CreateInputLayout(const D3D11_INPUT_ELEMENT_DESC *, UINT, const void *, SIZE_T,
-			ID3D11InputLayout **) = 0;
-		virtual HRESULT STD_CALL CreateVertexShader(const void *, SIZE_T, ID3D11ClassLinkage *,
-			ID3D11VertexShader **) = 0;
-		virtual HRESULT STD_CALL CreateGeometryShader(const void *, SIZE_T, ID3D11ClassLinkage *,
-			ID3D11GeometryShader **) = 0;
-		virtual HRESULT STD_CALL CreateGeometryShaderWithStreamOutput(const void *, SIZE_T,
+		virtual HRESULT STD_CALL CreateBuffer( const D3D11_BUFFER_DESC *, const D3D11_SUBRESOURCE_DATA *,
+			ID3D11Buffer ** ) = 0;
+		virtual HRESULT STD_CALL CreateTexture1D( const D3D11_TEXTURE1D_DESC *, const D3D11_SUBRESOURCE_DATA *,
+			ID3D11Texture1D ** ) = 0;
+		virtual HRESULT STD_CALL CreateTexture2D( const D3D11_TEXTURE2D_DESC *, const D3D11_SUBRESOURCE_DATA *,
+			ID3D11Texture2D ** ) = 0;
+		virtual HRESULT STD_CALL CreateTexture3D( const D3D11_TEXTURE3D_DESC *, const D3D11_SUBRESOURCE_DATA *,
+			ID3D11Texture3D ** ) = 0;
+		virtual HRESULT STD_CALL CreateShaderResourceView( ID3D11Resource *, const D3D11_SHADER_RESOURCE_VIEW_DESC *,
+			ID3D11ShaderResourceView ** ) = 0;
+		virtual HRESULT STD_CALL CreateUnorderedAccessView( ID3D11Resource *, const D3D11_UNORDERED_ACCESS_VIEW_DESC *,
+			ID3D11UnorderedAccessView ** ) = 0;
+		virtual HRESULT STD_CALL CreateRenderTargetView( ID3D11Resource *, const D3D11_RENDER_TARGET_VIEW_DESC *,
+			ID3D11RenderTargetView ** ) = 0;
+		virtual HRESULT STD_CALL CreateDepthStencilView( ID3D11Resource *, const D3D11_DEPTH_STENCIL_VIEW_DESC *,
+			ID3D11DepthStencilView ** ) = 0;
+		virtual HRESULT STD_CALL CreateInputLayout( const D3D11_INPUT_ELEMENT_DESC *, UINT, const void *, SIZE_T,
+			ID3D11InputLayout ** ) = 0;
+		virtual HRESULT STD_CALL CreateVertexShader( const void *, SIZE_T, ID3D11ClassLinkage *,
+			ID3D11VertexShader ** ) = 0;
+		virtual HRESULT STD_CALL CreateGeometryShader( const void *, SIZE_T, ID3D11ClassLinkage *,
+			ID3D11GeometryShader ** ) = 0;
+		virtual HRESULT STD_CALL CreateGeometryShaderWithStreamOutput( const void *, SIZE_T,
 			const D3D11_SO_DECLARATION_ENTRY *, UINT, const UINT *, UINT, UINT, ID3D11ClassLinkage *,
-			ID3D11GeometryShader **) = 0;
-		virtual HRESULT STD_CALL CreatePixelShader(const void *, SIZE_T, ID3D11ClassLinkage *,
-			ID3D11PixelShader **) = 0;
-		virtual HRESULT STD_CALL CreateHullShader(const void *, SIZE_T, ID3D11ClassLinkage *,
-			ID3D11HullShader **) = 0;
-		virtual HRESULT STD_CALL CreateDomainShader(const void *, SIZE_T, ID3D11ClassLinkage *,
-			ID3D11DomainShader **) = 0;
-		virtual HRESULT STD_CALL CreateComputeShader(const void *, SIZE_T, ID3D11ClassLinkage *,
-			ID3D11ComputeShader **) = 0;
-		virtual HRESULT STD_CALL CreateClassLinkage(ID3D11ClassLinkage **) = 0;
-		virtual HRESULT STD_CALL CreateBlendState(const D3D11_BLEND_DESC *, ID3D11BlendState **) = 0;
-		virtual HRESULT STD_CALL CreateDepthStencilState(const D3D11_DEPTH_STENCIL_DESC *,
-			ID3D11DepthStencilState **) = 0;
-		virtual HRESULT STD_CALL CreateRasterizerState(const D3D11_RASTERIZER_DESC *,
-			ID3D11RasterizerState **) = 0;
-		virtual HRESULT STD_CALL CreateSamplerState(const D3D11_SAMPLER_DESC *, ID3D11SamplerState **) = 0;
-		virtual HRESULT STD_CALL CreateQuery(const D3D11_QUERY_DESC *, ID3D11Query **) = 0;
-		virtual HRESULT STD_CALL CreatePredicate(const D3D11_QUERY_DESC *, ID3D11Predicate **) = 0;
-		virtual HRESULT STD_CALL CreateCounter(const D3D11_COUNTER_DESC *, ID3D11Counter **) = 0;
-		virtual HRESULT STD_CALL CreateDeferredContext(UINT, ID3D11DeviceContext **) = 0;
-		virtual HRESULT STD_CALL OpenSharedResource(HANDLE, const GUID &, void **) = 0;
-		virtual HRESULT STD_CALL CheckFormatSupport(DXGI_FORMAT, UINT *) = 0;
-		virtual HRESULT STD_CALL CheckMultisampleQualityLevels(DXGI_FORMAT, UINT, UINT *) = 0;
-		virtual void STD_CALL CheckCounterInfo(D3D11_COUNTER_INFO *) = 0;
-		virtual HRESULT STD_CALL CheckCounter(const D3D11_COUNTER_DESC *, D3D11_COUNTER_TYPE *, UINT *,
-			LPSTR, UINT *, LPSTR, UINT *, LPSTR, UINT *) = 0;
-		virtual HRESULT STD_CALL CheckFeatureSupport(D3D11_FEATURE, void *, UINT) = 0;
-		virtual HRESULT STD_CALL GetPrivateData(const GUID &, UINT *, void *) = 0;
-		virtual HRESULT STD_CALL SetPrivateData(const GUID &, UINT, const void *) = 0;
-		virtual HRESULT STD_CALL SetPrivateDataInterface(const GUID &, const IUnknown *) = 0;
+			ID3D11GeometryShader ** ) = 0;
+		virtual HRESULT STD_CALL CreatePixelShader( const void *, SIZE_T, ID3D11ClassLinkage *,
+			ID3D11PixelShader ** ) = 0;
+		virtual HRESULT STD_CALL CreateHullShader( const void *, SIZE_T, ID3D11ClassLinkage *,
+			ID3D11HullShader ** ) = 0;
+		virtual HRESULT STD_CALL CreateDomainShader( const void *, SIZE_T, ID3D11ClassLinkage *,
+			ID3D11DomainShader ** ) = 0;
+		virtual HRESULT STD_CALL CreateComputeShader( const void *, SIZE_T, ID3D11ClassLinkage *,
+			ID3D11ComputeShader ** ) = 0;
+		virtual HRESULT STD_CALL CreateClassLinkage( ID3D11ClassLinkage ** ) = 0;
+		virtual HRESULT STD_CALL CreateBlendState( const D3D11_BLEND_DESC *, ID3D11BlendState ** ) = 0;
+		virtual HRESULT STD_CALL CreateDepthStencilState( const D3D11_DEPTH_STENCIL_DESC *,
+			ID3D11DepthStencilState ** ) = 0;
+		virtual HRESULT STD_CALL CreateRasterizerState( const D3D11_RASTERIZER_DESC *,
+			ID3D11RasterizerState ** ) = 0;
+		virtual HRESULT STD_CALL CreateSamplerState( const D3D11_SAMPLER_DESC *, ID3D11SamplerState ** ) = 0;
+		virtual HRESULT STD_CALL CreateQuery( const D3D11_QUERY_DESC *, ID3D11Query ** ) = 0;
+		virtual HRESULT STD_CALL CreatePredicate( const D3D11_QUERY_DESC *, ID3D11Predicate ** ) = 0;
+		virtual HRESULT STD_CALL CreateCounter( const D3D11_COUNTER_DESC *, ID3D11Counter ** ) = 0;
+		virtual HRESULT STD_CALL CreateDeferredContext( UINT, ID3D11DeviceContext ** ) = 0;
+		virtual HRESULT STD_CALL OpenSharedResource( HANDLE, const GUID &, void ** ) = 0;
+		virtual HRESULT STD_CALL CheckFormatSupport( DXGI_FORMAT, UINT * ) = 0;
+		virtual HRESULT STD_CALL CheckMultisampleQualityLevels( DXGI_FORMAT, UINT, UINT * ) = 0;
+		virtual void STD_CALL CheckCounterInfo( D3D11_COUNTER_INFO * ) = 0;
+		virtual HRESULT STD_CALL CheckCounter( const D3D11_COUNTER_DESC *, D3D11_COUNTER_TYPE *, UINT *,
+			LPSTR, UINT *, LPSTR, UINT *, LPSTR, UINT * ) = 0;
+		virtual HRESULT STD_CALL CheckFeatureSupport( D3D11_FEATURE, void *, UINT ) = 0;
+		virtual HRESULT STD_CALL GetPrivateData( const GUID &, UINT *, void * ) = 0;
+		virtual HRESULT STD_CALL SetPrivateData( const GUID &, UINT, const void * ) = 0;
+		virtual HRESULT STD_CALL SetPrivateDataInterface( const GUID &, const IUnknown * ) = 0;
 		virtual D3D_FEATURE_LEVEL STD_CALL GetFeatureLevel() = 0;
 		virtual UINT STD_CALL GetCreationFlags() = 0;
 		virtual HRESULT STD_CALL GetDeviceRemovedReason() = 0;
-		virtual void STD_CALL GetImmediateContext(ID3D11DeviceContext **) = 0;
-		virtual HRESULT STD_CALL SetExceptionMode(UINT) = 0;
+		virtual void STD_CALL GetImmediateContext( ID3D11DeviceContext ** ) = 0;
+		virtual HRESULT STD_CALL SetExceptionMode( UINT ) = 0;
 		virtual UINT STD_CALL GetExceptionMode() = 0;
 	};
 
 	MIDL_INTERFACE ID3D11DeviceChild : IUnknown
 	{
-		virtual void STD_CALL GetDevice(ID3D11Device **) = 0;
-		virtual HRESULT STD_CALL GetPrivateData(const GUID &, UINT *, void *) = 0;
-		virtual HRESULT STD_CALL SetPrivateData(const GUID &, UINT, const void *) = 0;
-		virtual HRESULT STD_CALL SetPrivateDataInterface(const GUID &, const IUnknown *) = 0;
+		virtual void STD_CALL GetDevice( ID3D11Device ** ) = 0;
+		virtual HRESULT STD_CALL GetPrivateData( const GUID &, UINT *, void * ) = 0;
+		virtual HRESULT STD_CALL SetPrivateData( const GUID &, UINT, const void * ) = 0;
+		virtual HRESULT STD_CALL SetPrivateDataInterface( const GUID &, const IUnknown * ) = 0;
 	};
 
 	MIDL_INTERFACE ID3D11DeviceContext : ID3D11DeviceChild
 	{
-		virtual void STD_CALL VSSetConstantBuffers(UINT, UINT, ID3D11Buffer *const *) = 0;
-		virtual void STD_CALL PSSetShaderResources(UINT, UINT, ID3D11ShaderResourceView *const *) = 0;
-		virtual void STD_CALL PSSetShader(ID3D11PixelShader *, ID3D11ClassInstance *const *, UINT) = 0;
-		virtual void STD_CALL PSSetSamplers(UINT, UINT, ID3D11SamplerState *const *) = 0;
-		virtual void STD_CALL VSSetShader(ID3D11VertexShader *, ID3D11ClassInstance *const *, UINT) = 0;
-		virtual void STD_CALL DrawIndexed(UINT, UINT, INT) = 0;
-		virtual void STD_CALL Draw(UINT, UINT) = 0;
-		virtual HRESULT STD_CALL Map(ID3D11Resource *, UINT, D3D11_MAP, UINT, D3D11_MAPPED_SUBRESOURCE *) = 0;
-		virtual void STD_CALL Unmap(ID3D11Resource *, UINT) = 0;
-		virtual void STD_CALL PSSetConstantBuffers(UINT, UINT, ID3D11Buffer *const *) = 0;
-		virtual void STD_CALL IASetInputLayout(ID3D11InputLayout *) = 0;
-		virtual void STD_CALL IASetVertexBuffers(UINT, UINT, ID3D11Buffer *const *, const UINT *, const UINT *) = 0;
-		virtual void STD_CALL IASetIndexBuffer(ID3D11Buffer *, DXGI_FORMAT, UINT) = 0;
-		virtual void STD_CALL DrawIndexedInstanced(UINT, UINT, UINT, INT, UINT) = 0;
-		virtual void STD_CALL DrawInstanced(UINT, UINT, UINT, UINT) = 0;
-		virtual void STD_CALL GSSetConstantBuffers(UINT, UINT, ID3D11Buffer *const *) = 0;
-		virtual void STD_CALL GSSetShader(ID3D11GeometryShader *, ID3D11ClassInstance *const *, UINT) = 0;
-		virtual void STD_CALL IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY) = 0;
-		virtual void STD_CALL VSSetShaderResources(UINT, UINT, ID3D11ShaderResourceView *const *) = 0;
-		virtual void STD_CALL VSSetSamplers(UINT, UINT, ID3D11SamplerState *const *) = 0;
-		virtual void STD_CALL Begin(ID3D11Asynchronous *) = 0;
-		virtual void STD_CALL End(ID3D11Asynchronous *) = 0;
-		virtual HRESULT STD_CALL GetData(ID3D11Asynchronous *, void *, UINT, UINT) = 0;
-		virtual void STD_CALL SetPredication(ID3D11Predicate *, BOOL) = 0;
-		virtual void STD_CALL GSSetShaderResources(UINT, UINT, ID3D11ShaderResourceView *const *) = 0;
-		virtual void STD_CALL GSSetSamplers(UINT, UINT, ID3D11SamplerState *const *) = 0;
-		virtual void STD_CALL OMSetRenderTargets(UINT, ID3D11RenderTargetView *const *, ID3D11DepthStencilView *) = 0;
-		virtual void STD_CALL OMSetRenderTargetsAndUnorderedAccessViews(UINT, ID3D11RenderTargetView *const *,
-			ID3D11DepthStencilView *, UINT, UINT, ID3D11UnorderedAccessView *const *, const UINT *) = 0;
-		virtual void STD_CALL OMSetBlendState(ID3D11BlendState *, const FLOAT[4], UINT) = 0;
-		virtual void STD_CALL OMSetDepthStencilState(ID3D11DepthStencilState *, UINT) = 0;
-		virtual void STD_CALL SOSetTargets(UINT, ID3D11Buffer *const *, const UINT *) = 0;
+		virtual void STD_CALL VSSetConstantBuffers( UINT, UINT, ID3D11Buffer *const * ) = 0;
+		virtual void STD_CALL PSSetShaderResources( UINT, UINT, ID3D11ShaderResourceView *const * ) = 0;
+		virtual void STD_CALL PSSetShader( ID3D11PixelShader *, ID3D11ClassInstance *const *, UINT ) = 0;
+		virtual void STD_CALL PSSetSamplers( UINT, UINT, ID3D11SamplerState *const * ) = 0;
+		virtual void STD_CALL VSSetShader( ID3D11VertexShader *, ID3D11ClassInstance *const *, UINT ) = 0;
+		virtual void STD_CALL DrawIndexed( UINT, UINT, INT ) = 0;
+		virtual void STD_CALL Draw( UINT, UINT ) = 0;
+		virtual HRESULT STD_CALL Map(ID3D11Resource *, UINT, D3D11_MAP, UINT, D3D11_MAPPED_SUBRESOURCE * ) = 0;
+		virtual void STD_CALL Unmap( ID3D11Resource *, UINT ) = 0;
+		virtual void STD_CALL PSSetConstantBuffers( UINT, UINT, ID3D11Buffer *const * ) = 0;
+		virtual void STD_CALL IASetInputLayout( ID3D11InputLayout * ) = 0;
+		virtual void STD_CALL IASetVertexBuffers( UINT, UINT, ID3D11Buffer *const *, const UINT *, const UINT * ) = 0;
+		virtual void STD_CALL IASetIndexBuffer( ID3D11Buffer *, DXGI_FORMAT, UINT ) = 0;
+		virtual void STD_CALL DrawIndexedInstanced( UINT, UINT, UINT, INT, UINT ) = 0;
+		virtual void STD_CALL DrawInstanced( UINT, UINT, UINT, UINT ) = 0;
+		virtual void STD_CALL GSSetConstantBuffers( UINT, UINT, ID3D11Buffer *const * ) = 0;
+		virtual void STD_CALL GSSetShader( ID3D11GeometryShader *, ID3D11ClassInstance *const *, UINT ) = 0;
+		virtual void STD_CALL IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY ) = 0;
+		virtual void STD_CALL VSSetShaderResources( UINT, UINT, ID3D11ShaderResourceView *const * ) = 0;
+		virtual void STD_CALL VSSetSamplers( UINT, UINT, ID3D11SamplerState *const * ) = 0;
+		virtual void STD_CALL Begin( ID3D11Asynchronous * ) = 0;
+		virtual void STD_CALL End( ID3D11Asynchronous * ) = 0;
+		virtual HRESULT STD_CALL GetData( ID3D11Asynchronous *, void *, UINT, UINT ) = 0;
+		virtual void STD_CALL SetPredication( ID3D11Predicate *, BOOL ) = 0;
+		virtual void STD_CALL GSSetShaderResources( UINT, UINT, ID3D11ShaderResourceView *const * ) = 0;
+		virtual void STD_CALL GSSetSamplers( UINT, UINT, ID3D11SamplerState *const * ) = 0;
+		virtual void STD_CALL OMSetRenderTargets( UINT, ID3D11RenderTargetView *const *, ID3D11DepthStencilView * ) = 0;
+		virtual void STD_CALL OMSetRenderTargetsAndUnorderedAccessViews( UINT, ID3D11RenderTargetView *const *,
+			ID3D11DepthStencilView *, UINT, UINT, ID3D11UnorderedAccessView *const *, const UINT * ) = 0;
+		virtual void STD_CALL OMSetBlendState( ID3D11BlendState *, const FLOAT[4], UINT ) = 0;
+		virtual void STD_CALL OMSetDepthStencilState( ID3D11DepthStencilState *, UINT ) = 0;
+		virtual void STD_CALL SOSetTargets( UINT, ID3D11Buffer *const *, const UINT * ) = 0;
 		virtual void STD_CALL DrawAuto() = 0;
-		virtual void STD_CALL DrawIndexedInstancedIndirect(ID3D11Buffer *, UINT) = 0;
-		virtual void STD_CALL DrawInstancedIndirect(ID3D11Buffer *, UINT) = 0;
-		virtual void STD_CALL Dispatch(UINT, UINT, UINT) = 0;
-		virtual void STD_CALL DispatchIndirect(ID3D11Buffer *, UINT) = 0;
-		virtual void STD_CALL RSSetState(ID3D11RasterizerState *) = 0;
-		virtual void STD_CALL RSSetViewports(UINT, const D3D11_VIEWPORT *) = 0;
-		virtual void STD_CALL RSSetScissorRects(UINT, const D3D11_RECT *) = 0;
-		virtual void STD_CALL CopySubresourceRegion(ID3D11Resource *, UINT, UINT, UINT, UINT, ID3D11Resource *,
-			UINT, const D3D11_BOX *) = 0;
-		virtual void STD_CALL CopyResource(ID3D11Resource *, ID3D11Resource *) = 0;
-		virtual void STD_CALL UpdateSubresource(ID3D11Resource *, UINT, const D3D11_BOX *,
-			const void *, UINT, UINT) = 0;
-		virtual void STD_CALL CopyStructureCount(ID3D11Buffer *, UINT, ID3D11UnorderedAccessView *) = 0;
-		virtual void STD_CALL ClearRenderTargetView(ID3D11RenderTargetView *, const FLOAT[4]) = 0;
-		virtual void STD_CALL ClearUnorderedAccessViewUint(ID3D11UnorderedAccessView *, const UINT[4]) = 0;
-		virtual void STD_CALL ClearUnorderedAccessViewFloat(ID3D11UnorderedAccessView *, const FLOAT[4]) = 0;
-		virtual void STD_CALL ClearDepthStencilView(ID3D11DepthStencilView *, UINT, FLOAT, UINT8) = 0;
-		virtual void STD_CALL GenerateMips(ID3D11ShaderResourceView *) = 0;
-		virtual void STD_CALL SetResourceMinLOD(ID3D11Resource *, FLOAT) = 0;
-		virtual FLOAT STD_CALL GetResourceMinLOD(ID3D11Resource *) = 0;
-		virtual void STD_CALL ResolveSubresource(ID3D11Resource *, UINT, ID3D11Resource *,
-			UINT, DXGI_FORMAT) = 0;
-		virtual void STD_CALL ExecuteCommandList(ID3D11CommandList *, BOOL) = 0;
-		virtual void STD_CALL HSSetShaderResources(UINT, UINT, ID3D11ShaderResourceView *const *) = 0;
-		virtual void STD_CALL HSSetShader(ID3D11HullShader *, ID3D11ClassInstance *const *, UINT) = 0;
-		virtual void STD_CALL HSSetSamplers(UINT, UINT, ID3D11SamplerState *const *) = 0;
-		virtual void STD_CALL HSSetConstantBuffers(UINT, UINT, ID3D11Buffer *const *) = 0;
-		virtual void STD_CALL DSSetShaderResources(UINT, UINT, ID3D11ShaderResourceView *const *) = 0;
-		virtual void STD_CALL DSSetShader(ID3D11DomainShader *, ID3D11ClassInstance *const *, UINT) = 0;
-		virtual void STD_CALL DSSetSamplers(UINT, UINT, ID3D11SamplerState *const *) = 0;
-		virtual void STD_CALL DSSetConstantBuffers(UINT, UINT, ID3D11Buffer *const *) = 0;
-		virtual void STD_CALL CSSetShaderResources(UINT, UINT, ID3D11ShaderResourceView *const *) = 0;
-		virtual void STD_CALL CSSetUnorderedAccessViews(UINT, UINT, ID3D11UnorderedAccessView *const *,
-			const UINT *) = 0;
-		virtual void STD_CALL CSSetShader(ID3D11ComputeShader *, ID3D11ClassInstance *const *, UINT) = 0;
-		virtual void STD_CALL CSSetSamplers(UINT, UINT, ID3D11SamplerState *const *) = 0;
-		virtual void STD_CALL CSSetConstantBuffers(UINT, UINT, ID3D11Buffer *const *) = 0;
-		virtual void STD_CALL VSGetConstantBuffers(UINT, UINT, ID3D11Buffer **) = 0;
-		virtual void STD_CALL PSGetShaderResources(UINT, UINT, ID3D11ShaderResourceView **) = 0;
-		virtual void STD_CALL PSGetShader(ID3D11PixelShader **, ID3D11ClassInstance **, UINT *) = 0;
-		virtual void STD_CALL PSGetSamplers(UINT, UINT, ID3D11SamplerState **) = 0;
-		virtual void STD_CALL VSGetShader(ID3D11VertexShader **, ID3D11ClassInstance **, UINT *) = 0;
-		virtual void STD_CALL PSGetConstantBuffers(UINT, UINT, ID3D11Buffer **) = 0;
-		virtual void STD_CALL IAGetInputLayout(ID3D11InputLayout **) = 0;
-		virtual void STD_CALL IAGetVertexBuffers(UINT, UINT, ID3D11Buffer **, UINT *, UINT *) = 0;
-		virtual void STD_CALL IAGetIndexBuffer(ID3D11Buffer **, DXGI_FORMAT *, UINT *) = 0;
-		virtual void STD_CALL GSGetConstantBuffers(UINT, UINT, ID3D11Buffer **) = 0;
-		virtual void STD_CALL GSGetShader(ID3D11GeometryShader **, ID3D11ClassInstance **, UINT *) = 0;
-		virtual void STD_CALL IAGetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY *) = 0;
-		virtual void STD_CALL VSGetShaderResources(UINT, UINT, ID3D11ShaderResourceView **) = 0;
-		virtual void STD_CALL VSGetSamplers(UINT, UINT, ID3D11SamplerState **) = 0;
-		virtual void STD_CALL GetPredication(ID3D11Predicate **, BOOL *) = 0;
-		virtual void STD_CALL GSGetShaderResources(UINT, UINT, ID3D11ShaderResourceView **) = 0;
-		virtual void STD_CALL GSGetSamplers(UINT, UINT, ID3D11SamplerState **) = 0;
-		virtual void STD_CALL OMGetRenderTargets(UINT, ID3D11RenderTargetView **, ID3D11DepthStencilView **) = 0;
-		virtual void STD_CALL OMGetRenderTargetsAndUnorderedAccessViews(UINT, ID3D11RenderTargetView **,
-			ID3D11DepthStencilView **, UINT, UINT, ID3D11UnorderedAccessView **) = 0;
-		virtual void STD_CALL OMGetBlendState(ID3D11BlendState **, FLOAT[4], UINT *) = 0;
-		virtual void STD_CALL OMGetDepthStencilState(ID3D11DepthStencilState **, UINT *) = 0;
-		virtual void STD_CALL SOGetTargets(UINT, ID3D11Buffer **) = 0;
-		virtual void STD_CALL RSGetState(ID3D11RasterizerState **) = 0;
-		virtual void STD_CALL RSGetViewports(UINT *, D3D11_VIEWPORT *) = 0;
-		virtual void STD_CALL RSGetScissorRects(UINT *, D3D11_RECT *) = 0;
-		virtual void STD_CALL HSGetShaderResources(UINT, UINT, ID3D11ShaderResourceView **) = 0;
-		virtual void STD_CALL HSGetShader(ID3D11HullShader **, ID3D11ClassInstance **, UINT *) = 0;
-		virtual void STD_CALL HSGetSamplers(UINT, UINT, ID3D11SamplerState **) = 0;
-		virtual void STD_CALL HSGetConstantBuffers(UINT, UINT, ID3D11Buffer **) = 0;
-		virtual void STD_CALL DSGetShaderResources(UINT, UINT, ID3D11ShaderResourceView **) = 0;
-		virtual void STD_CALL DSGetShader(ID3D11DomainShader **, ID3D11ClassInstance **, UINT *) = 0;
-		virtual void STD_CALL DSGetSamplers(UINT, UINT, ID3D11SamplerState **) = 0;
-		virtual void STD_CALL DSGetConstantBuffers(UINT, UINT, ID3D11Buffer **) = 0;
-		virtual void STD_CALL CSGetShaderResources(UINT, UINT, ID3D11ShaderResourceView **) = 0;
-		virtual void STD_CALL CSGetUnorderedAccessViews(UINT, UINT, ID3D11UnorderedAccessView **) = 0;
-		virtual void STD_CALL CSGetShader(ID3D11ComputeShader **, ID3D11ClassInstance **, UINT *) = 0;
-		virtual void STD_CALL CSGetSamplers(UINT, UINT, ID3D11SamplerState **) = 0;
-		virtual void STD_CALL CSGetConstantBuffers(UINT, UINT, ID3D11Buffer **) = 0;
+		virtual void STD_CALL DrawIndexedInstancedIndirect( ID3D11Buffer *, UINT ) = 0;
+		virtual void STD_CALL DrawInstancedIndirect( ID3D11Buffer *, UINT ) = 0;
+		virtual void STD_CALL Dispatch( UINT, UINT, UINT ) = 0;
+		virtual void STD_CALL DispatchIndirect( ID3D11Buffer *, UINT ) = 0;
+		virtual void STD_CALL RSSetState( ID3D11RasterizerState * ) = 0;
+		virtual void STD_CALL RSSetViewports( UINT, const D3D11_VIEWPORT * ) = 0;
+		virtual void STD_CALL RSSetScissorRects( UINT, const D3D11_RECT * ) = 0;
+		virtual void STD_CALL CopySubresourceRegion( ID3D11Resource *, UINT, UINT, UINT, UINT, ID3D11Resource *,
+			UINT, const D3D11_BOX * ) = 0;
+		virtual void STD_CALL CopyResource( ID3D11Resource *, ID3D11Resource * ) = 0;
+		virtual void STD_CALL UpdateSubresource( ID3D11Resource *, UINT, const D3D11_BOX *,
+			const void *, UINT, UINT ) = 0;
+		virtual void STD_CALL CopyStructureCount( ID3D11Buffer *, UINT, ID3D11UnorderedAccessView * ) = 0;
+		virtual void STD_CALL ClearRenderTargetView( ID3D11RenderTargetView *, const FLOAT[4] ) = 0;
+		virtual void STD_CALL ClearUnorderedAccessViewUint( ID3D11UnorderedAccessView *, const UINT[4] ) = 0;
+		virtual void STD_CALL ClearUnorderedAccessViewFloat( ID3D11UnorderedAccessView *, const FLOAT[4] ) = 0;
+		virtual void STD_CALL ClearDepthStencilView( ID3D11DepthStencilView *, UINT, FLOAT, UINT8 ) = 0;
+		virtual void STD_CALL GenerateMips( ID3D11ShaderResourceView * ) = 0;
+		virtual void STD_CALL SetResourceMinLOD( ID3D11Resource *, FLOAT ) = 0;
+		virtual FLOAT STD_CALL GetResourceMinLOD( ID3D11Resource * ) = 0;
+		virtual void STD_CALL ResolveSubresource( ID3D11Resource *, UINT, ID3D11Resource *,
+			UINT, DXGI_FORMAT ) = 0;
+		virtual void STD_CALL ExecuteCommandList( ID3D11CommandList *, BOOL ) = 0;
+		virtual void STD_CALL HSSetShaderResources( UINT, UINT, ID3D11ShaderResourceView *const * ) = 0;
+		virtual void STD_CALL HSSetShader( ID3D11HullShader *, ID3D11ClassInstance *const *, UINT ) = 0;
+		virtual void STD_CALL HSSetSamplers( UINT, UINT, ID3D11SamplerState *const * ) = 0;
+		virtual void STD_CALL HSSetConstantBuffers( UINT, UINT, ID3D11Buffer *const * ) = 0;
+		virtual void STD_CALL DSSetShaderResources( UINT, UINT, ID3D11ShaderResourceView *const * ) = 0;
+		virtual void STD_CALL DSSetShader( ID3D11DomainShader *, ID3D11ClassInstance *const *, UINT ) = 0;
+		virtual void STD_CALL DSSetSamplers( UINT, UINT, ID3D11SamplerState *const * ) = 0;
+		virtual void STD_CALL DSSetConstantBuffers( UINT, UINT, ID3D11Buffer *const * ) = 0;
+		virtual void STD_CALL CSSetShaderResources( UINT, UINT, ID3D11ShaderResourceView *const * ) = 0;
+		virtual void STD_CALL CSSetUnorderedAccessViews( UINT, UINT, ID3D11UnorderedAccessView *const *,
+			const UINT * ) = 0;
+		virtual void STD_CALL CSSetShader( ID3D11ComputeShader *, ID3D11ClassInstance *const *, UINT ) = 0;
+		virtual void STD_CALL CSSetSamplers( UINT, UINT, ID3D11SamplerState *const * ) = 0;
+		virtual void STD_CALL CSSetConstantBuffers( UINT, UINT, ID3D11Buffer *const * ) = 0;
+		virtual void STD_CALL VSGetConstantBuffers( UINT, UINT, ID3D11Buffer ** ) = 0;
+		virtual void STD_CALL PSGetShaderResources( UINT, UINT, ID3D11ShaderResourceView ** ) = 0;
+		virtual void STD_CALL PSGetShader( ID3D11PixelShader **, ID3D11ClassInstance **, UINT * ) = 0;
+		virtual void STD_CALL PSGetSamplers( UINT, UINT, ID3D11SamplerState ** ) = 0;
+		virtual void STD_CALL VSGetShader( ID3D11VertexShader **, ID3D11ClassInstance **, UINT * ) = 0;
+		virtual void STD_CALL PSGetConstantBuffers( UINT, UINT, ID3D11Buffer ** ) = 0;
+		virtual void STD_CALL IAGetInputLayout( ID3D11InputLayout ** ) = 0;
+		virtual void STD_CALL IAGetVertexBuffers( UINT, UINT, ID3D11Buffer **, UINT *, UINT * ) = 0;
+		virtual void STD_CALL IAGetIndexBuffer( ID3D11Buffer **, DXGI_FORMAT *, UINT * ) = 0;
+		virtual void STD_CALL GSGetConstantBuffers( UINT, UINT, ID3D11Buffer ** ) = 0;
+		virtual void STD_CALL GSGetShader( ID3D11GeometryShader **, ID3D11ClassInstance **, UINT * ) = 0;
+		virtual void STD_CALL IAGetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY * ) = 0;
+		virtual void STD_CALL VSGetShaderResources( UINT, UINT, ID3D11ShaderResourceView ** ) = 0;
+		virtual void STD_CALL VSGetSamplers( UINT, UINT, ID3D11SamplerState ** ) = 0;
+		virtual void STD_CALL GetPredication( ID3D11Predicate **, BOOL * ) = 0;
+		virtual void STD_CALL GSGetShaderResources( UINT, UINT, ID3D11ShaderResourceView ** ) = 0;
+		virtual void STD_CALL GSGetSamplers( UINT, UINT, ID3D11SamplerState ** ) = 0;
+		virtual void STD_CALL OMGetRenderTargets( UINT, ID3D11RenderTargetView **, ID3D11DepthStencilView ** ) = 0;
+		virtual void STD_CALL OMGetRenderTargetsAndUnorderedAccessViews( UINT, ID3D11RenderTargetView **,
+			ID3D11DepthStencilView **, UINT, UINT, ID3D11UnorderedAccessView ** ) = 0;
+		virtual void STD_CALL OMGetBlendState( ID3D11BlendState **, FLOAT[4], UINT * ) = 0;
+		virtual void STD_CALL OMGetDepthStencilState( ID3D11DepthStencilState **, UINT * ) = 0;
+		virtual void STD_CALL SOGetTargets( UINT, ID3D11Buffer ** ) = 0;
+		virtual void STD_CALL RSGetState( ID3D11RasterizerState ** ) = 0;
+		virtual void STD_CALL RSGetViewports( UINT *, D3D11_VIEWPORT * ) = 0;
+		virtual void STD_CALL RSGetScissorRects( UINT *, D3D11_RECT * ) = 0;
+		virtual void STD_CALL HSGetShaderResources( UINT, UINT, ID3D11ShaderResourceView ** ) = 0;
+		virtual void STD_CALL HSGetShader( ID3D11HullShader **, ID3D11ClassInstance **, UINT * ) = 0;
+		virtual void STD_CALL HSGetSamplers( UINT, UINT, ID3D11SamplerState ** ) = 0;
+		virtual void STD_CALL HSGetConstantBuffers( UINT, UINT, ID3D11Buffer ** ) = 0;
+		virtual void STD_CALL DSGetShaderResources( UINT, UINT, ID3D11ShaderResourceView ** ) = 0;
+		virtual void STD_CALL DSGetShader( ID3D11DomainShader **, ID3D11ClassInstance **, UINT * ) = 0;
+		virtual void STD_CALL DSGetSamplers( UINT, UINT, ID3D11SamplerState ** ) = 0;
+		virtual void STD_CALL DSGetConstantBuffers( UINT, UINT, ID3D11Buffer ** ) = 0;
+		virtual void STD_CALL CSGetShaderResources( UINT, UINT, ID3D11ShaderResourceView ** ) = 0;
+		virtual void STD_CALL CSGetUnorderedAccessViews( UINT, UINT, ID3D11UnorderedAccessView ** ) = 0;
+		virtual void STD_CALL CSGetShader( ID3D11ComputeShader **, ID3D11ClassInstance **, UINT * ) = 0;
+		virtual void STD_CALL CSGetSamplers( UINT, UINT, ID3D11SamplerState ** ) = 0;
+		virtual void STD_CALL CSGetConstantBuffers( UINT, UINT, ID3D11Buffer ** ) = 0;
 		virtual void STD_CALL ClearState() = 0;
 		virtual void STD_CALL Flush() = 0;
 		virtual D3D11_DEVICE_CONTEXT_TYPE STD_CALL GetType() = 0;
 		virtual UINT STD_CALL GetContextFlags() = 0;
-		virtual HRESULT STD_CALL FinishCommandList(BOOL, ID3D11CommandList **) = 0;
+		virtual HRESULT STD_CALL FinishCommandList( BOOL, ID3D11CommandList ** ) = 0;
 	};
 
 	MIDL_INTERFACE ID3DUserDefinedAnnotation : IUnknown
 	{
 	public:
-		virtual INT STD_CALL BeginEvent(LPCWSTR) = 0;
-		virtual INT STD_CALL EndEvent(void) = 0;
-		virtual void STD_CALL SetMarker(LPCWSTR Name) = 0;
-		virtual BOOL STD_CALL GetStatus(void) = 0;
+		virtual INT STD_CALL BeginEvent( LPCWSTR ) = 0;
+		virtual INT STD_CALL EndEvent( void ) = 0;
+		virtual void STD_CALL SetMarker( LPCWSTR ) = 0;
+		virtual BOOL STD_CALL GetStatus( void ) = 0;
 	};
 
 	MIDL_INTERFACE ID3D11Multithread : public IUnknown
 	{
 	public:
-		virtual void STD_CALL Enter( void) = 0;
-		virtual void STD_CALL Leave(void) = 0;
-		virtual BOOL STD_CALL SetMultithreadProtected(BOOL bMTProtect) = 0;
-		virtual BOOL STD_CALL GetMultithreadProtected(void) = 0;
+		virtual void STD_CALL Enter( void ) = 0;
+		virtual void STD_CALL Leave( void ) = 0;
+		virtual BOOL STD_CALL SetMultithreadProtected( BOOL ) = 0;
+		virtual BOOL STD_CALL GetMultithreadProtected( void ) = 0;
 	};
 
 	MIDL_INTERFACE ID3D11Asynchronous : ID3D11DeviceChild
 	{
-		virtual UINT STD_CALL GetDataSize(void) = 0;
+		virtual UINT STD_CALL GetDataSize( void ) = 0;
 	};
 
 	MIDL_INTERFACE ID3D11Query : ID3D11Asynchronous
 	{
 	public:
-		virtual void STD_CALL GetDesc(D3D11_QUERY_DESC *) = 0;
+		virtual void STD_CALL GetDesc( D3D11_QUERY_DESC * ) = 0;
 	};
 
 	MIDL_INTERFACE ID3D11Resource : ID3D11DeviceChild
 	{
-		virtual void STD_CALL GetType(D3D11_RESOURCE_DIMENSION *) = 0;
-		virtual void STD_CALL SetEvictionPriority(UINT) = 0;
+		virtual void STD_CALL GetType( D3D11_RESOURCE_DIMENSION * ) = 0;
+		virtual void STD_CALL SetEvictionPriority( UINT ) = 0;
 		virtual UINT STD_CALL GetEvictionPriority() = 0;
 	};
 
 	MIDL_INTERFACE ID3D11Buffer : ID3D11Resource
 	{
-		virtual void STD_CALL GetDesc(D3D11_BUFFER_DESC *) = 0;
+		virtual void STD_CALL GetDesc( D3D11_BUFFER_DESC * ) = 0;
 	};
 
 	MIDL_INTERFACE ID3D11Texture2D : ID3D11Resource
 	{
-		virtual void STD_CALL GetDesc(D3D11_TEXTURE2D_DESC *) = 0;
+		virtual void STD_CALL GetDesc( D3D11_TEXTURE2D_DESC * ) = 0;
 	};
 
 	MIDL_INTERFACE ID3D11VertexShader : ID3D11DeviceChild
@@ -898,49 +908,51 @@
 
 	MIDL_INTERFACE ID3D11View : ID3D11DeviceChild
 	{
-		virtual void STD_CALL GetResource(ID3D11Resource **) = 0;
+		virtual void STD_CALL GetResource( ID3D11Resource ** ) = 0;
 	};
 
 	MIDL_INTERFACE ID3D11RenderTargetView : ID3D11View
 	{
-		virtual void STD_CALL GetDesc(D3D11_RENDER_TARGET_VIEW_DESC *) = 0;
+		virtual void STD_CALL GetDesc( D3D11_RENDER_TARGET_VIEW_DESC * ) = 0;
 	};
 
 	MIDL_INTERFACE ID3D11ShaderResourceView : ID3D11View
 	{
-		virtual void STD_CALL GetDesc(D3D11_SHADER_RESOURCE_VIEW_DESC *) = 0;
+		virtual void STD_CALL GetDesc( D3D11_SHADER_RESOURCE_VIEW_DESC * ) = 0;
 	};
 
 	MIDL_INTERFACE ID3D11RasterizerState : ID3D11DeviceChild
 	{
-		virtual void STD_CALL GetDesc(D3D11_RASTERIZER_DESC *) = 0;
+		virtual void STD_CALL GetDesc( D3D11_RASTERIZER_DESC * ) = 0;
 	};
 
 	MIDL_INTERFACE ID3D11SamplerState : ID3D11DeviceChild
 	{
-		virtual void STD_CALL GetDesc(D3D11_SAMPLER_DESC *) = 0;
+		virtual void STD_CALL GetDesc( D3D11_SAMPLER_DESC * ) = 0;
 	};
 
 	MIDL_INTERFACE ID3D11BlendState : ID3D11DeviceChild
 	{
-		virtual void STD_CALL GetDesc(D3D11_BLEND_DESC *) = 0;
+		virtual void STD_CALL GetDesc( D3D11_BLEND_DESC * ) = 0;
 	};
 
 	MIDL_INTERFACE ID3D11DepthStencilState : ID3D11DeviceChild
 	{
-		virtual void STD_CALL GetDesc(D3D11_DEPTH_STENCIL_DESC *) = 0;
+		virtual void STD_CALL GetDesc( D3D11_DEPTH_STENCIL_DESC * ) = 0;
 	};
 
 	MIDL_INTERFACE ID3D11DepthStencilView : ID3D11View
 	{
-		virtual void STD_CALL GetDesc(D3D11_DEPTH_STENCIL_VIEW_DESC *) = 0;
+		virtual void STD_CALL GetDesc( D3D11_DEPTH_STENCIL_VIEW_DESC * ) = 0;
 	};
 
 	MIDL_INTERFACE ID3D11UnorderedAccessView : ID3D11View
 	{
-		virtual void STD_CALL GetDesc(D3D11_UNORDERED_ACCESS_VIEW_DESC *) = 0;
+		virtual void STD_CALL GetDesc( D3D11_UNORDERED_ACCESS_VIEW_DESC * ) = 0;
 	};
 
-	extern "C" DLL_IMPORT  HRESULT STD_CALL D3D11CreateDevice(IDXGIAdapter *, D3D_DRIVER_TYPE, HMODULE, UINT,
-		const D3D_FEATURE_LEVEL *, UINT, UINT, ID3D11Device **, D3D_FEATURE_LEVEL *, ID3D11DeviceContext **);
+	extern "C" DLL_IMPORT  HRESULT STD_CALL D3D11CreateDevice( IDXGIAdapter *, D3D_DRIVER_TYPE, HMODULE, UINT,
+		const D3D_FEATURE_LEVEL *, UINT, UINT, ID3D11Device **, D3D_FEATURE_LEVEL *, ID3D11DeviceContext ** );
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #endif

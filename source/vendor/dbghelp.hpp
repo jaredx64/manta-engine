@@ -8,6 +8,9 @@
 #else
 	#include <vendor/windows.hpp>
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// dbghelp.h
+
 	struct SYMBOL_INFO
 	{
 		ULONG SizeOfStruct;
@@ -54,11 +57,13 @@
 		PCHAR FileName;
 		DWORD Address;
 	};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #endif
 
-// dbghelp.dll should be dynamically linked only when necessary
-typedef BOOL (*SymInitializeFunc)(HANDLE, PCSTR, BOOL);
-typedef WORD (*RtlCaptureStackBackTraceFunc)(DWORD, DWORD, PVOID *, DWORD *);
-typedef BOOL (*SymFromAddrFunc)(HANDLE, DWORD64, DWORD64 *, SYMBOL_INFO *);
-typedef BOOL (*SymGetLineFromAddrFunc)(HANDLE, DWORD64, DWORD *, IMAGEHLP_LINE *);
-typedef BOOL (*SymCleanupFunc)(HANDLE);
+// dbghelp.dll (NOTE: Link to the DLL only when necessary (debug builds)
+typedef BOOL ( *SymInitializeFunc )( HANDLE, PCSTR, BOOL );
+typedef WORD ( *RtlCaptureStackBackTraceFunc )( DWORD, DWORD, PVOID *, DWORD * );
+typedef BOOL ( *SymFromAddrFunc )( HANDLE, DWORD64, DWORD64 *, SYMBOL_INFO * );
+typedef BOOL ( *SymGetLineFromAddrFunc )( HANDLE, DWORD64, DWORD *, IMAGEHLP_LINE * );
+typedef BOOL ( *SymCleanupFunc )( HANDLE );

@@ -6,13 +6,9 @@
 		#include <pthread.h>
 	#include <vendor/conflicts.hpp>
 #else
-	// pthread.h
-	using pthread_t = unsigned long int;
-	using pthread_attr_t = void *; // not really, but we don't use it...
-	using pthread_mutexattr_t = void *; // not really, but we don't use it...
-	using pthread_condattr_t = void *; // not really, but we don't use it...
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// wordsize.h
 
-	// <bits/wordsize.h>
 	#if defined __x86_64__ && !defined __ILP32__
 		# define __WORDSIZE	64
 	#else
@@ -27,7 +23,9 @@
 		# define __SYSCALL_WORDSIZE 64
 	#endif
 
-	// pthreadtypes-arch.h
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// pthreadtypes-arch.h
+
 	#ifdef __x86_64__
 		#if __WORDSIZE == 64
 			#define __SIZEOF_PTHREAD_MUTEX_T 40
@@ -56,24 +54,10 @@
 	#define __LOCK_ALIGNMENT
 	#define __ONCE_ALIGNMENT
 
-	// pthread.h
-	enum
-	{
-		PTHREAD_MUTEX_TIMED_NP,
-		PTHREAD_MUTEX_RECURSIVE_NP,
-		PTHREAD_MUTEX_ERRORCHECK_NP,
-		PTHREAD_MUTEX_ADAPTIVE_NP,
-		PTHREAD_MUTEX_NORMAL = PTHREAD_MUTEX_TIMED_NP,
-		PTHREAD_MUTEX_RECURSIVE = PTHREAD_MUTEX_RECURSIVE_NP,
-		PTHREAD_MUTEX_ERRORCHECK = PTHREAD_MUTEX_ERRORCHECK_NP,
-		PTHREAD_MUTEX_DEFAULT = PTHREAD_MUTEX_NORMAL
-		#ifdef __USE_GNU
-		, PTHREAD_MUTEX_FAST_NP = PTHREAD_MUTEX_TIMED_NP
-		#endif
-	};
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// atomic_wide_counter.h
 
-	// atomic_wide_counter.h
-	typedef union
+	union __atomic_wide_counter
 	{
 		__extension__ unsigned long long int __value64;
 		struct
@@ -81,13 +65,32 @@
 			unsigned int __low;
 			unsigned int __high;
 		} __value32;
-	} __atomic_wide_counter;
+	};
 
-	typedef struct __pthread_internal_list
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// thread-shared-types.h
+
+	struct __pthread_internal_list
 	{
 		struct __pthread_internal_list *__prev;
 		struct __pthread_internal_list *__next;
-	} __pthread_list_t;
+	};
+	using __pthread_list_t = __pthread_internal_list;
+
+	struct __pthread_cond_s
+	{
+		__atomic_wide_counter __wseq;
+		__atomic_wide_counter __g1_start;
+		unsigned int __g_size[2] __LOCK_ALIGNMENT;
+		unsigned int __g1_orig_size;
+		unsigned int __wrefs;
+		unsigned int __g_signals[2];
+		unsigned int __unused_initialized_1;
+		unsigned int __unused_initialized_2;
+	};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// struct_mutex.h
 
 	struct __pthread_mutex_s
 	{
@@ -120,33 +123,45 @@
 		#endif
 	};
 
-	typedef union
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// pthreadtypes.h
+
+	using pthread_t = unsigned long int;
+	using pthread_attr_t = void *; // not really, but we don't use it...
+	using pthread_mutexattr_t = void *; // not really, but we don't use it...
+	using pthread_condattr_t = void *; // not really, but we don't use it...
+
+	enum
+	{
+		PTHREAD_MUTEX_TIMED_NP,
+		PTHREAD_MUTEX_RECURSIVE_NP,
+		PTHREAD_MUTEX_ERRORCHECK_NP,
+		PTHREAD_MUTEX_ADAPTIVE_NP,
+		PTHREAD_MUTEX_NORMAL = PTHREAD_MUTEX_TIMED_NP,
+		PTHREAD_MUTEX_RECURSIVE = PTHREAD_MUTEX_RECURSIVE_NP,
+		PTHREAD_MUTEX_ERRORCHECK = PTHREAD_MUTEX_ERRORCHECK_NP,
+		PTHREAD_MUTEX_DEFAULT = PTHREAD_MUTEX_NORMAL
+		#ifdef __USE_GNU
+		, PTHREAD_MUTEX_FAST_NP = PTHREAD_MUTEX_TIMED_NP
+		#endif
+	};
+
+	union pthread_mutex_t
 	{
 		struct __pthread_mutex_s __data;
 		char __size[__SIZEOF_PTHREAD_MUTEX_T];
 		long int __align;
-	} pthread_mutex_t;
-
-
-	struct __pthread_cond_s
-	{
-		__atomic_wide_counter __wseq;
-		__atomic_wide_counter __g1_start;
-		unsigned int __g_size[2] __LOCK_ALIGNMENT;
-		unsigned int __g1_orig_size;
-		unsigned int __wrefs;
-		unsigned int __g_signals[2];
-		unsigned int __unused_initialized_1;
-		unsigned int __unused_initialized_2;
 	};
 
-	typedef union
+	union pthread_cond_t
 	{
 		struct __pthread_cond_s __data;
 		char __size[__SIZEOF_PTHREAD_COND_T];
 		__extension__ long long int __align;
-	} pthread_cond_t;
+	};
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// pthread.h
 
 	extern "C" int pthread_create( pthread_t *, const pthread_attr_t *, void *(*)(void *), void * );
 	extern "C" pthread_t pthread_self( void );
@@ -165,4 +180,6 @@
 	extern "C" int pthread_cond_wait( pthread_cond_t *, pthread_mutex_t * );
 	extern "C" int pthread_cond_signal( pthread_cond_t * );
 	extern "C" int pthread_cond_broadcast( pthread_cond_t * );
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #endif

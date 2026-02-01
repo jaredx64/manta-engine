@@ -6,6 +6,8 @@
 		#include <stdint.h>
 	#include <vendor/conflicts.hpp>
 #else
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// stdint.h
 
 	typedef signed char int8_t;
 	typedef short int16_t;
@@ -37,7 +39,7 @@
 	typedef long long intmax_t;
 	typedef unsigned long long uintmax_t;
 
-	// These macros must exactly match those in the Windows SDK's intsafe.h.
+	// These macros must exactly match those in the Windows SDK's intsafe.h
 	#define INT8_MIN (-127i8 - 1)
 	#define INT16_MIN (-32767i16 - 1)
 	#define INT32_MIN (-2147483647i32 - 1)
@@ -95,7 +97,7 @@
 	#define PTRDIFF_MAX INTPTR_MAX
 
 	#ifndef SIZE_MAX
-		// SIZE_MAX definition must match exactly with limits.h for modules support.
+		// SIZE_MAX definition must match exactly with limits.h for modules support
 		#ifdef _WIN64
 			#define SIZE_MAX 0xffffffffffffffffui64
 		#else
@@ -125,4 +127,5 @@
 	#define INTMAX_C(x) INT64_C(x)
 	#define UINTMAX_C(x) UINT64_C(x)
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #endif
