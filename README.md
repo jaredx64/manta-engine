@@ -278,7 +278,7 @@ void fragment_main( FragmentInput In, FragmentOutput Out, UniformsPhong Phong )
 }
 ```
 
-**C++ Render Command (Game Code, GPU):**
+**C++ Render Command (Game Code, CPU):**
 ```c++
 GfxRenderCommand drawPhong;
 drawPhong.shader( Shader::sh_phong );

@@ -5,8 +5,8 @@
 	# -config=         release, debug, ... (from projects/<project>/configs.json)
 	# -gfx=            opengl, d3d11
 	# -os=             windows, linux, macos
-	# -toolchain=      msvc, llvm, gnu
-	# -architecture=   x64, arm32, arm64
+	# -toolchain=      llvm, gnu
+	# -architecture=   x64, arm64
 	# -os=             windows, linux, macos
 	# -clean=          0 - cached build, 1 - clears build cache
 	# -run=            0 - build only, 1 - runs executable
@@ -27,7 +27,7 @@ print_usage()
 	echo "  -gfx=            opengl, d3d11"
 	echo "  -os=             windows, linux, macos"
 	echo "  -toolchain=      msvc, llvm, gnu"
-	echo "  -architecture=   x64, arm32, arm64"
+	echo "  -architecture=   x64, arm64"
 	echo "  -os=             windows, linux, macos"
 	echo "  -clean=          0 - cached build, 1 - clears build cache"
 	echo "  -run=            0 - build only, 1 - runs executable"
