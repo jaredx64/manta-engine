@@ -823,6 +823,23 @@ float_m44 float_m44_from_double_m44( const double_m44 &matrix )
 	return result;
 }
 
+
+float_m44 float_m44_extract_rotation_forward_x( const float_m44 &matrix )
+{
+	// NOTE: Assumption: +X forward, +Y right, +Z up
+	float_m44 m = float_m44_build_identity();
+	m[0x0] = -matrix[0x2];
+	m[0x1] = -matrix[0x6];
+	m[0x2] = -matrix[0xA];
+	m[0x4] = matrix[0x0];
+	m[0x5] = matrix[0x4];
+	m[0x6] = matrix[0x8];
+	m[0x8] = matrix[0x1];
+	m[0x9] = matrix[0x5];
+	m[0xA] = matrix[0x9];
+	return m;
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // 4x4 Matrix (Double)
 
@@ -1366,6 +1383,23 @@ double_m44 double_m44_from_float_m44( const double_m44 &matrix )
 	double_m44 result;
 	for( int i = 0; i < 16; ++i ) { result.data[i] = static_cast<double>( matrix.data[i] ); }
 	return result;
+}
+
+
+double_m44 double_m44_extract_rotation_forward_x( const double_m44 &matrix )
+{
+	// NOTE: Assumption: +X forward, +Y right, +Z up
+	double_m44 m = double_m44_build_identity();
+	m[0x0] = -matrix[0x2];
+	m[0x1] = -matrix[0x6];
+	m[0x2] = -matrix[0xA];
+	m[0x4] = matrix[0x0];
+	m[0x5] = matrix[0x4];
+	m[0x6] = matrix[0x8];
+	m[0x8] = matrix[0x1];
+	m[0x9] = matrix[0x5];
+	m[0xA] = matrix[0x9];
+	return m;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

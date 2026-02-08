@@ -5,7 +5,7 @@
 	static_assert( false, "winnt.h intrinsics only supported by MSVC compiler!" );
 #endif
 
-#if USE_OFFICIAL_HEADERS
+#if !USE_CUSTOM_C_HEADERS
 	#include <vendor/conflicts.hpp>
 		#include <winnt.h>
 		#include <intrin.h>

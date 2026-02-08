@@ -803,6 +803,11 @@ public:
 	void init( u32 shaderID, const struct ShaderEntry &shaderEntry );
 	void free();
 
+	bool is_initialized() const
+	{
+		return resource != nullptr;
+	}
+
 public:
 	GfxShaderResource *resource = nullptr;
 	u32 id = 0;
@@ -864,7 +869,7 @@ public:
 		resource = nullptr;
 	}
 
-	inline u32 current() const
+	u32 current() const
 	{
 		return CoreGfx::api_vertex_buffer_current( resource );
 	}
@@ -890,6 +895,11 @@ public:
 	{
 		Assert( size % sizeof( VertexFormat ) == 0 );
 		CoreGfx::api_vertex_buffer_write( resource, data, size );
+	}
+
+	bool is_initialized() const
+	{
+		return resource != nullptr;
 	}
 
 public:
@@ -960,6 +970,11 @@ public:
 		CoreGfx::api_instance_buffer_write( resource, data, size );
 	}
 
+	bool is_initialized() const
+	{
+		return resource != nullptr;
+	}
+
 public:
 	GfxInstanceBufferResource *resource = nullptr;
 };
@@ -991,6 +1006,11 @@ public:
 		if( resource == nullptr ) { return; }
 		ErrorIf( !CoreGfx::api_index_buffer_free( resource ), "Failed to free index buffer!" );
 		resource = nullptr;
+	}
+
+	bool is_initialized() const
+	{
+		return resource != nullptr;
 	}
 
 public:
@@ -1050,6 +1070,11 @@ public:
 	void init_2d( void *data, u16 width, u16 height, const GfxColorFormat &format );
 	void init_2d( void *data, u16 width, u16 height, u16 levels, const GfxColorFormat &format );
 	void free();
+
+	bool is_initialized() const
+	{
+		return resource != nullptr;
+	}
 
 public:
 	GfxTextureResource *resource = nullptr;
@@ -1157,6 +1182,11 @@ public:
 	void resize( u16 width, u16 height );
 	void bind( int slot = 0 );
 	void release();
+
+	bool is_initialized() const
+	{
+		return resource != nullptr;
+	}
 
 public:
 	GfxRenderTargetResource *resource = nullptr;

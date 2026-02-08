@@ -27,6 +27,8 @@ namespace Assets
 	Glyphs glyphs;
 	Sprites sprites;
 	Materials materials;
+	Meshes meshes;
+	Models models;
 	Fonts fonts;
 	Sounds sounds;
 	Skeleton2Ds skeleton2Ds;

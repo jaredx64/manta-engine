@@ -21,7 +21,7 @@ struct Skeleton2D
 
 struct Skeleton2Ds
 {
-	void make_new( const Skeleton2D &skeleton );
+	void allocate_new( const Skeleton2D &skeleton );
 
 	usize gather( const char *path, bool recurse = true );
 	void process( const char *path );

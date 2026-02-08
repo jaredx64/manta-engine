@@ -36,6 +36,8 @@ extern bool strneq( const char *str1, const char *str2, usize size );
 extern bool streq_case_insensitive( const char *str1, const char *str2 );
 extern bool strneq_case_insensitive( const char *str1, const char *str2, usize size );
 extern bool strstr_case_insensitive( const char *str1, const char *str2 );
+extern bool strcontains( const char *str, const char *substr );
+extern bool strcontains_case_insensitive( const char *str, const char *substr );
 
 extern bool char_is_whitespace( const char c );
 

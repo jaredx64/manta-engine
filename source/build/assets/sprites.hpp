@@ -26,7 +26,7 @@ struct Sprite
 
 struct Sprites
 {
-	void make_new( const Sprite &sprite );
+	void allocate_new( const Sprite &sprite );
 
 	usize gather( const char *path, bool recurse = true );
 	void process( const char *path );

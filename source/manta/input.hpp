@@ -332,36 +332,31 @@ enum
 
 class Mouse
 {
-private:
-	static Mouse *mouse;
-
 public:
-	Mouse()
-	{
-		mouse_clear();
-	}
-
-#if COMPILE_DEBUG
-	~Mouse()
-	{
-		if( !Debug::memoryLeakDetection ) { return; }
-		AssertMsg( Mouse::mouse != this, "Mouse: destructor called for primary bound Mouse!" );
-	}
-#endif
+	Mouse() { mouse_clear(); }
 
 	struct State
 	{
-		float positionX, positionY;
-		float positionXPrevious, positionYPrevious;
-		int wheelX, wheelY;
-		float wheelXVelocity, wheelYVelocity;
-		int buttonCurrent, buttonPrevious;
+		float deltaX;
+		float deltaY;
+		float positionX;
+		float positionY;
+		float positionXPrevious;
+		float positionYPrevious;
+		int wheelX;
+		int wheelY;
+		float wheelXVelocity;
+		float wheelYVelocity;
+		int buttonCurrent;
+		int buttonPrevious;
 	};
 
+public:
 	static State &state();
 
 	static void reset_active();
 	static void set_active( Mouse &mouse );
+	static void set_mouselook( bool enabled );
 
 	static float x();
 	static float y();
@@ -372,6 +367,9 @@ public:
 	static float y_logical();
 	static float x_logical_previous();
 	static float y_logical_previous();
+
+	static float delta_x();
+	static float delta_y();
 
 	static bool check( u8 button ) { return mouse->mouse_check( button ); }
 	static bool check_pressed( u8 button ) { return mouse->mouse_check_pressed( button ); }
@@ -388,7 +386,7 @@ public:
 	static bool moved() { return mouse->mouse_moved(); }
 
 	static void get_position_precise( double &x, double & y ) { mouse->mouse_get_position_precise( x, y ); }
-	static void set_position( int x, int y ) { mouse->mouse_set_position( x, y ); }
+	static void set_position( int x, int y ) { mouse->mouse_set_position( x, y ); };
 
 	static void update( Delta delta ) { mouse->mouse_update( delta ); }
 	static void clear() { mouse->mouse_clear(); }
@@ -416,6 +414,9 @@ private:
 
 public:
 	State mouseState;
+
+private:
+	static Mouse *mouse;
 };
 
 
@@ -445,5 +446,13 @@ enum
 #define mouse_y_logical ( Mouse::y_logical() )
 #define mouse_x_logical_prev ( Mouse::x_logical_previous() )
 #define mouse_y_logical_prev ( Mouse::y_logical_previous() )
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+namespace Input
+{
+	extern void update( Delta delta );
+	extern void reset_active();
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

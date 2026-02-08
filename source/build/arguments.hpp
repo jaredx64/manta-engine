@@ -79,7 +79,7 @@ struct Arguments
 		parse_argument( argc, argv, "-config=", config, ARG_OPTIONAL, "" );
 
 		// Verbose
-		parse_argument( argc, argv, "-verbose=", verbose, ARG_OPTIONAL, "1", "0" );
+		parse_argument( argc, argv, "-verbose=", verbose, ARG_OPTIONAL, "0", "1" );
 
 		// Clean
 		parse_argument( argc, argv, "-clean=", clean, ARG_OPTIONAL, "0", "1" );
@@ -91,7 +91,7 @@ struct Arguments
 		parse_argument( argc, argv, "-build=", build, ARG_OPTIONAL, "1", "0" );
 
 		// Package
-		parse_argument( argc, argv, "-package=", package, ARG_OPTIONAL, "1", "0" );
+		parse_argument( argc, argv, "-package=", package, ARG_OPTIONAL, "0", "1" );
 
 		// Run
 		parse_argument( argc, argv, "-run=", run, ARG_OPTIONAL, "1", "0", "2" );

@@ -1295,7 +1295,7 @@ void GfxRenderTarget::copy_part( GfxRenderTarget &source,
 void GfxRenderCommand::shader( const GfxShader &shader )
 {
 #if GRAPHICS_ENABLED
-	Assert( shader.resource != nullptr );
+	Assert( shader.is_initialized() );
 	this->pipeline.shader = shader.resource;
 #endif
 }
@@ -1526,7 +1526,7 @@ void GfxRenderPass::target( int slot, const GfxRenderTarget &target )
 {
 #if GRAPHICS_ENABLED
 	Assert( slot >= 0 && slot < GFX_RENDER_TARGET_SLOT_COUNT );
-	Assert( target.resource != nullptr );
+	Assert( target.is_initialized() );
 	this->targets[slot] = target.resource;
 #endif
 }

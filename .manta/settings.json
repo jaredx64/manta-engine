@@ -1,0 +1,142 @@
+{
+    // Input, Scrolling, Zooming Behavior
+    "editor.mouseWheelScrollSensitivity": 4,
+    "workbench.list.mouseWheelScrollSensitivity": 4,
+    "terminal.integrated.mouseWheelScrollSensitivity": 4,
+    "editor.mouseWheelZoom": true,
+
+    "editor.smoothScrolling": true,
+    "workbench.list.smoothScrolling": true,
+    "terminal.integrated.smoothScrolling": true,
+
+    "editor.cursorSmoothCaretAnimation": "explicit",
+
+    // Formatting, Whitespace, Text Behavior
+    "editor.insertSpaces": false,
+    "files.eol": "\n",
+    "files.trimTrailingWhitespace": true,
+    "files.trimFinalNewlines": true,
+    "diffEditor.ignoreTrimWhitespace": false,
+
+    // Theme / Visual Settings
+    "editor.fontFamily": "Iosevka",
+    "terminal.integrated.fontFamily": "Iosevka",
+
+    "workbench.colorCustomizations": {
+        "editor.background": "#0A0A0A",
+        "editor.selectionBackground": "#FFFFFF30"
+    },
+
+    "workbench.iconTheme": "file-icons",
+    "workbench.activityBar.location": "hidden",
+    "workbench.tree.indent": 12,
+    "workbench.startupEditor": "none",
+    "workbench.secondarySideBar.defaultVisibility": "hidden",
+    "workbench.editor.empty.hint": "hidden",
+
+    "editor.minimap.enabled": false,
+    "editor.dragAndDrop": false,
+
+    "window.commandCenter": false,
+    "window.customTitleBarVisibility": "auto",
+
+    // Explorer & File Management Behavior
+    "explorer.compactFolders": false,
+    "explorer.autoReveal": "focusNoScroll",
+    "files.exclude": {
+        "**/.manta_": true,
+        "**/.vscode_": true,
+        "**/output_/": true
+    },
+
+    // Git / SCM Behavior
+    "git.enabled": true,
+    "git.autofetch": true,
+    "git.confirmSync": false,
+    "git.enableSmartCommit": true,
+    "git.openRepositoryInParentFolders": "never",
+    "scm.alwaysShowActions": true,
+
+    // Output & Panel Behavior
+    "output.smartScroll.enabled": false,
+    "debug.openExplorerOnEnd": true,
+
+    // Terminal
+    "terminal.integrated.defaultProfile.windows": "Command Prompt",
+    "terminal.integrated.enablePersistentSessions": false,
+    "terminal.integrated.persistentSessionReviveProcess": "never",
+    "terminal.integrated.hideOnStartup": "whenEmpty",
+
+    // CMake
+    "cmake.configureOnOpen": true,
+    "cmake.useCMakePresets": "always",
+    "cmake.options.statusBarVisibility": "visible",
+    "cmake.showConfigureWithDebuggerNotification": false,
+    "cmake.pinnedCommands": [
+        "workbench.action.tasks.configureTaskRunner",
+        "workbench.action.tasks.runTask"
+    ],
+
+    // File Associations
+    "files.associations": {
+        "*.mx": "nx",
+        "*.opp": "cpp",
+        "*.hpp": "cpp",
+        "*.shader": "cpp",
+        "*.object": "cpp",
+        "*.metal": "cpp"
+    },
+
+    // Language Overrides
+    "[cpp]": {
+        "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+    },
+    "[c]": {
+        "editor.wordBasedSuggestions": "off",
+        "editor.suggest.insertMode": "replace",
+        "editor.semanticHighlighting.enabled": true
+    },
+    "[python]": {
+        "editor.formatOnType": true
+    },
+
+    // Editor Assistance / Intelligence
+    "C_Cpp.intelliSenseEngine": "disabled",
+    "clangd.arguments": [
+        "--header-insertion=never",
+        "--function-arg-placeholders=0"
+    ],
+
+    "editor.hover.enabled": "on",
+    "editor.parameterHints.enabled": true,
+    "editor.quickSuggestions": {
+        "other": true,
+        "comments": true,
+        "strings": true
+    },
+    "editor.inlayHints.enabled": "offUnlessPressed",
+    "editor.links": false,
+    "editor.codeLens": false,
+    "editor.stickyScroll.enabled": false,
+
+    // Workspace Trust & Security
+    "security.workspace.trust.enabled": false,
+    "security.workspace.trust.untrustedFiles": "open",
+
+    // Chat / AI Controls
+    "chat.commandCenter.enabled": false,
+    "chat.disableAIFeatures": true,
+
+    // Extensions & Feature Toggles
+    "extensions.ignoreRecommendations": true,
+    "better-comments.multilineComments": true,
+    "dotnetAcquisitionExtension.suppressOutput": true,
+
+    // Sync Ignored Settings
+    "settingsSync.ignoredSettings": [
+        "editor.mouseWheelScrollSensitivity",
+        "workbench.list.mouseWheelScrollSensitivity",
+        "terminal.integrated.mouseWheelScrollSensitivity",
+        "C_Cpp.intelliSenseEngine"
+    ],
+}

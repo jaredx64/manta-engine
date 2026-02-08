@@ -103,7 +103,7 @@ VSCManta is essentially a wrapper around explicit calls to the `manta-engine\boo
 	- Source files shared between \build, \manta, and projects\*project*
 7. `manta-engine\source\vendor\*`
 	- Headers for external libraries and wrappers around C headers
-	- As a compile time optimization (for development builds), Manta supports a "USE_OFFICIAL_HEADERS" macro which (when false) uses trimmed C headers
+	- NOTE: As a compile speed optimization (for dev builds), Manta supports a `USE_CUSTOM_C_HEADERS` macro which uses trimmed C headers
 8. `manta-engine\projects\...` (project.exe - application)
 	- Location for project repositories (either copy template project here, or use VSCManta plugin to create a new project)
 
@@ -170,7 +170,7 @@ The reasons for this are:
 - Build caching is already done in the boot.exe and build.exe stages (with C++ compilation caching managed by ninja)
 - The build tool generates C++ boilerplate for various runtime systems (assets, objects, graphics backend) which would cause frequent rebuilds of precompiled headers
 - The engine library code will likely update continously alongside project code (until the engine matures)
-- Compile times are already quite fast due to restrictions on C++ STL includes, "unofficial" C headers for development builds (USE_OFFICIAL_HEADERS = 0), and general project structure
+- Compile times are already quite fast due to restrictions on C++ STL includes, custom "trimmed" C headers for development builds (with macro `USE_CUSTOM_C_HEADERS`), and general project structure
 - It is easier to reason about, understand, and maintain a system when it is simpler
 
 This may change in later versions of the engine, but for now it is structured this way.

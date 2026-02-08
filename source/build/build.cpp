@@ -170,7 +170,6 @@ void Build::configuration_save()
 
 	char pathHeader[PATH_SIZE];
 	strjoin_path( pathHeader, Build::pathOutputGenerated, "configuration.generated.hpp" );
-	PrintLn( "%s", pathHeader );
 	header.save( pathHeader );
 }
 
@@ -321,11 +320,9 @@ void Build::package_generate_rc()
 
 	char pathSrc[PATH_SIZE];
 	char pathObj[PATH_SIZE];
-
 	strjoin( pathSrc, Build::pathOutputRuntime, SLASH, Build::args.project, ".rc" );
 	strjoin( pathObj, "objects" SLASH, Build::args.project, ".res" );
 
-	PrintLn( "%s", pathSrc );
 	ErrorIf( !rc.save( pathSrc ), "Failed to save %s", pathSrc );
 
 	Build::packageRC.srcPath = pathSrc;
@@ -944,6 +941,11 @@ void BuilderCore::assets_gather()
 	numMaterials += Assets::materials.gather( Build::pathProject );
 	verbose_log_gather( "material", numMaterials );
 
+	usize numModels = 0LLU;
+	numModels += Assets::models.gather( Build::pathEngine );
+	numModels += Assets::models.gather( Build::pathProject );
+	verbose_log_gather( "model", numModels );
+
 	usize numFonts = 0LLU;
 	numFonts += Assets::fonts.gather( Build::pathEngine );
 	numFonts += Assets::fonts.gather( Build::pathProject );
@@ -987,6 +989,8 @@ void BuilderCore::assets_build()
 		Assets::glyphs.build();
 		Assets::sprites.build();
 		Assets::materials.build();
+		Assets::meshes.build();
+		Assets::models.build();
 		Assets::fonts.build();
 		Assets::sounds.build();
 		Assets::skeleton2Ds.build();
@@ -1312,7 +1316,7 @@ void BuilderCore::compile_engine()
 			ErrorIf( !count, "No backend found for 'window' (%s)", path );
 			if( OS_WINDOWS ) { Build::compile_add_library( "user32" ); Build::compile_add_library( "Shell32" ); }
 			if( OS_MACOS ) { Build::compile_add_framework( "Cocoa" ); }
-			if( OS_LINUX ) { Build::compile_add_library( "X11" ); }
+			if( OS_LINUX ) { Build::compile_add_library( "X11" ); Build::compile_add_library( "Xi" ); }
 
 			// Steam
 			if( Build::config.steam )

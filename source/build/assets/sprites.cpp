@@ -26,7 +26,7 @@ struct CacheSprite
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Sprites::make_new( const Sprite &sprite )
+void Sprites::allocate_new( const Sprite &sprite )
 {
 	sprites.add( sprite );
 }
@@ -140,7 +140,7 @@ void Sprites::process( const char *path )
 	sprite.height = static_cast<u16>( imageHeight );
 	sprite.xorigin = static_cast<i16>( xorigin );
 	sprite.yorigin = static_cast<i16>( yorigin );
-	sprite.textureID = Assets::textures.make_new( atlasName );
+	sprite.textureID = Assets::textures.allocate_new( atlasName );
 	sprite.glyphID = GLYPHID_MAX;
 
 	// Split sprite into individual glyphs
@@ -148,6 +148,7 @@ void Sprites::process( const char *path )
 	{
 		Glyph glyph;
 #if 0
+		memory_set( cacheIDBuffer, 0, sizeof( cacheIDBuffer ) );
 		snprintf( cacheIDBuffer, sizeof( cacheIDBuffer ), "subimg %u|%u", cacheID, i );
 		glyph.cacheID = checksum_xcrc32( cacheIDBuffer, sizeof( cacheIDBuffer ), 0 );
 #else

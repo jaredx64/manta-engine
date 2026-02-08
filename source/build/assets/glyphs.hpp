@@ -6,13 +6,14 @@
 #include <core/string.hpp>
 
 #include <build/cache.hpp>
-#include <build/textureio.hpp>
+#include <build/textures.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 struct Glyph
 {
 	CacheID cacheID;
+
 	String texturePath;
 	Texture2DBuffer textureBuffer;
 
@@ -28,13 +29,14 @@ struct Glyph
 
 using GlyphID = u32;
 #define GLYPHID_MAX ( U32_MAX )
+#define GLYPHID_NULL ( GLYPHID_MAX )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 struct Glyphs
 {
-	GlyphID make_new( const Glyph &glyph );
-	GlyphID make_new( Glyph &&glyph );
+	GlyphID allocate_new( const Glyph &glyph );
+	GlyphID allocate_new( Glyph &&glyph );
 
 	void build();
 

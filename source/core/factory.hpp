@@ -432,6 +432,11 @@ public:
 		null.~T();
 	}
 
+	bool is_initialized() const
+	{
+		return buckets != nullptr;
+	}
+
 	Factory<T> &copy( const Factory<T> &other )
 	{
 		MemoryAssert( other.buckets != nullptr );

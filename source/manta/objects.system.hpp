@@ -49,6 +49,7 @@ namespace CoreObjects
 	DEBUG( extern const char *CATEGORY_NAME[CoreObjects::CATEGORY_COUNT]; )
 
 	extern const u16 TYPE_SIZE[CoreObjects::TYPE_COUNT];
+	extern const u16 TYPE_ALIGNMENT[CoreObjects::TYPE_COUNT];
 	DEBUG( extern const char *TYPE_NAME[CoreObjects::TYPE_COUNT]; )
 	extern const u16 TYPE_BUCKET_CAPACITY[CoreObjects::TYPE_COUNT];
 	extern const u32 TYPE_MAX_COUNT[CoreObjects::TYPE_COUNT];
@@ -169,7 +170,7 @@ public:
 
 	bool init();
 	bool free();
-	bool initialized() const { return buckets != nullptr; }
+	bool is_initialized() const { return buckets != nullptr; }
 
 	byte *get_object_pointer( const ObjectInstance &object ) const;
 	bool exists( const ObjectInstance &object ) const { return get_object_pointer( object ) != nullptr; }

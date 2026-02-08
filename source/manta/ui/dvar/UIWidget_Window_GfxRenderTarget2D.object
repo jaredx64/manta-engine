@@ -227,7 +227,7 @@ PROTECTED void render( const Delta delta, const Alpha alpha )
 			const u16 v2 = showInverted ? 0x0000 : 0xFFFF;
 
 			GfxTexture &texture = showDepth ? rt->textureDepth : rt->textureColor;
-			if( texture.resource != nullptr )
+			if( texture.is_initialized() )
 			{
 				Gfx::bind_texture( 0, texture );
 				draw_quad_uv( x1, y1, x2, y2, u1, v1, u2, v2 );

@@ -2049,9 +2049,16 @@ void Objects::generate_source_system( String &output )
 	for( usize i = 0, j = 0; i < objectFilesSorted.size(); i++, j++ )
 	{
 		ObjectFile &object = *objectFilesSorted[i];
-		output.append( "sizeof( CoreObjects::" );
-		output.append( object.type );
-		output.append( ( j % 2 == 0 && j != 0 && i != objectFilesSorted.size() - 1 ) ? " ),\n\t" : " ), " );
+		output.append( "sizeof( CoreObjects::" ).append( object.type ).append( " ),\n\t" );
+	}
+	output.append( "\n};\n\n" );
+
+	// TYPE_ALIGNMENT
+	output.append( "const u16 CoreObjects::TYPE_ALIGNMENT[CoreObjects::TYPE_COUNT] =\n{\n\t" );
+	for( usize i = 0, j = 0; i < objectFilesSorted.size(); i++, j++ )
+	{
+		ObjectFile &object = *objectFilesSorted[i];
+		output.append( "alignof( CoreObjects::" ).append( object.type ).append( " ),\n\t" );
 	}
 	output.append( "\n};\n\n" );
 

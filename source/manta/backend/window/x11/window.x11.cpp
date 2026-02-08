@@ -32,6 +32,10 @@ static XAtom TARGETS;
 static XAtom UTF8_STRING;
 static XAtom target;
 
+static int xInputOpCode = -1;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 namespace CoreWindow
 {
 	XDisplay *display;
@@ -123,6 +127,23 @@ namespace CoreWindow
 
 		// Enable detectable key auto-repeat #include <X11/XKBlib.h>
 		XkbSetDetectableAutoRepeat( CoreWindow::display, true, 0 );
+
+		// XInput
+		int event, error;
+		if( !XQueryExtension( CoreWindow::display, "XInputExtension", &xInputOpCode, &event, &error ) )
+		{
+			ErrorReturnMsg( false, "X11: XInput2 not available!" );
+		}
+
+		XIEventMask mask;
+		unsigned char bits[XIMaskLen( XI_RawMotion )] = { 0 };
+		mask.deviceid = XIAllMasterDevices;
+		mask.mask_len = sizeof( bits );
+		mask.mask = bits;
+		XISetMask( bits, XI_RawMotion );
+		XISelectEvents( CoreWindow::display, DefaultRootWindow( CoreWindow::display ), &mask, 1 );
+		XFlush( CoreWindow::display );
+
 	#endif
 		return true;
 	}
@@ -335,6 +356,32 @@ namespace CoreWindow
 					}
 				}
 				break;
+
+				case GenericEvent:
+				{
+					if( event.xcookie.extension != xInputOpCode ||
+						!XGetEventData( CoreWindow::display, &event.xcookie ) )
+					{
+						break;
+					}
+
+					if( event.xcookie.evtype == XI_RawMotion )
+					{
+						XIRawEvent *raw = reinterpret_cast<XIRawEvent *>( event.xcookie.data );
+
+						double dx = 0.0;
+						double dy = 0.0;
+
+						if( XIMaskIsSet( raw->valuators.mask, 0 ) ) { dx = raw->raw_values[0]; }
+						if( XIMaskIsSet( raw->valuators.mask, 1 ) ) { dy = raw->raw_values[1]; }
+
+						Mouse::state().deltaX += static_cast<float>( dx );
+						Mouse::state().deltaY += static_cast<float>( dy );
+					}
+
+					XFreeEventData( CoreWindow::display, &event.xcookie );
+				}
+				break;
 			}
 		}
 	#endif
@@ -363,6 +410,14 @@ namespace CoreWindow
 	#if WINDOW_ENABLED
 		XWarpPointer( CoreWindow::display, None, CoreWindow::handle, 0, 0, 0, 0, x, y );
 		XSync( CoreWindow::display, false );
+	#endif
+	}
+
+
+	void set_mouselook( bool enabled )
+	{
+	#if WINDOW_ENABLED
+		// ...
 	#endif
 	}
 };

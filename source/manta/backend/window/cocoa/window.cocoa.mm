@@ -333,8 +333,11 @@ static void metal_drawable_resize( CGFloat scaleFactor )
 - (void)mouseMoved:(NSEvent *)event
 {
 #if WINDOW_ENABLED
-	NSRect frame = [self frame];
+	Mouse::state().deltaX = static_cast<float>( [event deltaX] );
+	Mouse::state().deltaY = static_cast<float>( [event deltaY] );
+
 	NSPoint point = [event locationInWindow];
+	NSRect frame = [self frame];
 
 	if( point.x < 0.0 || point.x >= frame.size.width ||
 		point.y < 0.0 || point.y >= frame.size.height )
@@ -596,9 +599,17 @@ namespace CoreWindow
 	#if WINDOW_ENABLED
 		NSRect rect = [CoreWindow::window frame];
 		CGWarpMouseCursorPosition( CGPointMake( rect.origin.x + x, rect.origin.y + y ) );
+	#endif
+	}
 
-		// HACK
-		CGAssociateMouseAndMouseCursorPosition( true );
+
+	void set_mouselook( bool enabled )
+	{
+	#if WINDOW_ENABLED
+		static bool mouselookEnabled = true;
+		if( enabled == mouselookEnabled ) { return; }
+		mouselookEnabled = enabled;
+		CGAssociateMouseAndMouseCursorPosition( enabled );
 	#endif
 	}
 };

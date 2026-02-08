@@ -8,19 +8,19 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-GlyphID Glyphs::make_new( const Glyph &glyph )
+GlyphID Glyphs::allocate_new( const Glyph &glyph )
 {
 	AssertMsg( glyphs.size() < GLYPHID_MAX, "Exceeded max number of Glyphs" );
 	glyphs.add( glyph );
-	return glyphs.size() - 1;
+	return static_cast<GlyphID>( glyphs.size() - 1 );
 }
 
 
-GlyphID Glyphs::make_new( Glyph &&glyph )
+GlyphID Glyphs::allocate_new( Glyph &&glyph )
 {
 	AssertMsg( glyphs.size() < GLYPHID_MAX, "Exceeded max number of Glyphs" );
 	glyphs.add( static_cast<Glyph &&>( glyph ) );
-	return glyphs.size() - 1;
+	return static_cast<GlyphID>( glyphs.size() - 1 );
 }
 
 

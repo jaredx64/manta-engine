@@ -76,7 +76,7 @@ extern u64 ceilpow2( u64 v );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#if !USE_OFFICIAL_HEADERS
+#if !!USE_CUSTOM_C_HEADERS
 inline float fabsf( float value ) { return static_cast<float>( fabs( value ) ); }
 #endif
 
@@ -300,6 +300,8 @@ extern float_m44 float_m44_build_ndc( float width, float height );
 
 extern float_m44 float_m44_from_double_m44( const double_m44 &matrix );
 
+extern float_m44 float_m44_extract_rotation_forward_x( const float_m44 &matrix );
+
 struct float_m44
 {
 	float data[16];
@@ -366,6 +368,8 @@ extern double_m44 double_m44_build_lookat( double x, double y, double z, double 
 extern double_m44 double_m44_build_ndc( double width, double height );
 
 extern double_m44 double_m44_from_float_m44( const double_m44 &matrix );
+
+extern double_m44 double_m44_extract_rotation_forward_x( const double_m44 &matrix );
 
 struct double_m44
 {
@@ -469,8 +473,9 @@ struct Vector2D
 
 		for( int i = 0; i < 16; ++i ) { r[i % 4] += matrix[i] * h[i / 4]; }
 
-		x = static_cast<T>( r[0] / r[3] );
-		y = static_cast<T>( r[1] / r[3] );
+		const float invR3 = r[3] == 0.0f ? 1.0f : 1.0f / r[3];
+		x = static_cast<T>( r[0] * invR3 );
+		y = static_cast<T>( r[1] * invR3 );
 		return *this;
 	}
 
@@ -488,8 +493,9 @@ struct Vector2D
 
 		for( int i = 0; i < 16; ++i ) { r[i % 4] += matrix[i] * h[i / 4]; }
 
-		x = static_cast<T>( r[0] / r[3] );
-		y = static_cast<T>( r[1] / r[3] );
+		const float invR3 = r[3] == 0.0 ? 1.0 : 1.0 / r[3];
+		x = static_cast<T>( r[0] * invR3 );
+		y = static_cast<T>( r[1] * invR3 );
 		return *this;
 	}
 
@@ -710,9 +716,10 @@ struct Vector3D
 
 		for( int i = 0; i < 16; ++i ) { r[i % 4] += matrix[i] * h[i / 4]; }
 
-		x = static_cast<T>( r[0] / r[3] );
-		y = static_cast<T>( r[1] / r[3] );
-		z = static_cast<T>( r[2] / r[3] );
+		const float invR3 = r[3] == 0.0f ? 1.0f : 1.0f / r[3];
+		x = static_cast<T>( r[0] * invR3 );
+		y = static_cast<T>( r[1] * invR3 );
+		z = static_cast<T>( r[2] * invR3 );
 		return *this;
 	}
 
@@ -730,9 +737,10 @@ struct Vector3D
 
 		for( int i = 0; i < 16; ++i ) { r[i % 4] += matrix[i] * h[i / 4]; }
 
-		x = static_cast<T>( r[0] / r[3] );
-		y = static_cast<T>( r[1] / r[3] );
-		z = static_cast<T>( r[2] / r[3] );
+		const float invR3 = r[3] == 0.0 ? 1.0 : 1.0 / r[3];
+		x = static_cast<T>( r[0] * invR3 );
+		y = static_cast<T>( r[1] * invR3 );
+		z = static_cast<T>( r[2] * invR3 );
 		return *this;
 	}
 
@@ -986,9 +994,10 @@ struct Vector4D
 
 		for( int i = 0; i < 16; ++i ) { r[i % 4] += matrix[i] * h[i / 4]; }
 
-		x = static_cast<T>( r[0] / r[3] );
-		y = static_cast<T>( r[1] / r[3] );
-		z = static_cast<T>( r[2] / r[3] );
+		const float invR3 = r[3] == 0.0f ? 1.0f : 1.0f / r[3];
+		x = static_cast<T>( r[0] * invR3 );
+		y = static_cast<T>( r[1] * invR3 );
+		z = static_cast<T>( r[2] * invR3 );
 		w = static_cast<T>( r[3] );
 		return *this;
 	}
@@ -1007,9 +1016,10 @@ struct Vector4D
 
 		for( int i = 0; i < 16; ++i ) { r[i % 4] += matrix[i] * h[i / 4]; }
 
-		x = static_cast<T>( r[0] / r[3] );
-		y = static_cast<T>( r[1] / r[3] );
-		z = static_cast<T>( r[2] / r[3] );
+		const float invR3 = r[3] == 0.0 ? 1.0 : 1.0 / r[3];
+		x = static_cast<T>( r[0] * invR3 );
+		y = static_cast<T>( r[1] * invR3 );
+		z = static_cast<T>( r[2] * invR3 );
 		w = static_cast<T>( r[3] );
 		return *this;
 	}

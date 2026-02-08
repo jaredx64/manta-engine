@@ -114,7 +114,7 @@ set project=
 	)
 
 :strap
-	call projects\%project%\output\boot\boot.exe -package=0 -verbose=0 %*
+	call projects\%project%\output\boot\boot.exe %*
 	goto final
 
 :print_usage

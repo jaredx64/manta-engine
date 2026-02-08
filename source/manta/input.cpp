@@ -161,6 +161,12 @@ void Mouse::set_active( Mouse &mouse )
 }
 
 
+void Mouse::set_mouselook( bool enabled )
+{
+	CoreWindow::set_mouselook( enabled );
+}
+
+
 float Mouse::x()
 {
 #if DPI_WINDOW
@@ -222,6 +228,18 @@ float Mouse::x_logical_previous()
 float Mouse::y_logical_previous()
 {
 	return Mouse::state().positionYPrevious;
+}
+
+
+float Mouse::delta_x()
+{
+	return Mouse::state().deltaX;
+}
+
+
+float Mouse::delta_y()
+{
+	return Mouse::state().deltaY;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -303,6 +321,8 @@ void Mouse::mouse_update( Delta delta )
 {
 	mouseState.buttonPrevious = mouseState.buttonCurrent;
 
+	mouseState.deltaX = 0.0f;
+	mouseState.deltaY = 0.0f;
 	mouseState.wheelX = 0;
 	mouseState.wheelY = 0;
 	mouseState.wheelXVelocity = 0.0f;
@@ -319,6 +339,21 @@ void Mouse::mouse_clear()
 
 	mouseState.buttonCurrent = 0;
 	mouseState.buttonPrevious = 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Input::update( Delta delta )
+{
+	Keyboard::update( delta );
+	Mouse::update( delta );
+}
+
+
+void Input::reset_active()
+{
+	Keyboard::reset_active();
+	Mouse::reset_active();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

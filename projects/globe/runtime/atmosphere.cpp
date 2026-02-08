@@ -1,6 +1,6 @@
 #include <atmosphere.hpp>
 
-#include <manta/geometry.hpp>
+#include <manta/3d.hpp>
 #include <manta/input.hpp>
 #include <manta/console.hpp>
 
@@ -34,7 +34,7 @@ static void generate_mesh_atmosphere( GfxVertexBuffer<GfxVertex::VertexAtmospher
 	if( indexBuffer.resource != nullptr ) { indexBuffer.free(); }
 	List<u32> indices; indices.init();
 
-	const u32 count = geometry_generate_sphere_latlon( MESH_RESOLUTION, &positions, nullptr, nullptr, &indices );
+	const u32 count = sphere_generate_geometry_latlon( MESH_RESOLUTION, &positions, nullptr, nullptr, &indices );
 
 	vertexBuffer.init( count, GfxWriteMode_OVERWRITE );
 	vertexBuffer.write_begin();

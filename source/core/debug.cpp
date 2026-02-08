@@ -526,7 +526,7 @@ static bool callstack_symbol_clean_path( const char *path, char *buffer, usize s
 		return true;
 	}
 
-#elif OS_MACOS && USE_OFFICIAL_HEADERS
+#elif OS_MACOS && !USE_CUSTOM_C_HEADERS
 	#include <vendor/execinfo.hpp>
 	#include <mach-o/dyld.h>
 
@@ -806,7 +806,7 @@ bool Debug::snprint_callstack( char *buffer, unsigned int size, int skip, const 
 
 #if OS_WINDOWS
 	if( !callstack_symbols_windows( symbols, count ) ) { return false; }
-#elif OS_MACOS && USE_OFFICIAL_HEADERS
+#elif OS_MACOS && !USE_CUSTOM_C_HEADERS
 	if( !callstack_symbols_macos( symbols, count ) ) { return false; }
 #elif OS_LINUX
 	if( !callstack_symbols_linux( symbols, count ) ) { return false; }

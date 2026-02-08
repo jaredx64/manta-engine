@@ -21,7 +21,7 @@ struct CacheSkeleton2D
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Skeleton2Ds::make_new( const Skeleton2D &skeleton )
+void Skeleton2Ds::allocate_new( const Skeleton2D &skeleton )
 {
 	skeletons.add( skeleton );
 }

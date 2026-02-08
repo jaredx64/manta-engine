@@ -111,6 +111,61 @@ namespace Assets
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+class Mesh; // u32
+
+namespace Assets
+{
+	// NOTE: Must maintain parity with build/assets/mesh.hpp
+	enum_type( MeshFormatTypeVertex, int )
+	{
+		MeshFormatTypeVertex_Default = 0,
+	};
+
+	// NOTE: Must maintain parity with build/assets/mesh.hpp
+	enum_type( MeshFormatTypeIndex, int )
+	{
+		MeshFormatTypeIndex_U32 = 0,
+		MeshFormatTypeIndex_U16,
+	};
+
+	struct MeshEntry
+	{
+		MeshFormatTypeVertex formatVertex;
+		usize offsetVertex;
+		usize sizeVertex;
+		MeshFormatTypeVertex formatIndex;
+		usize offsetIndex;
+		usize sizeIndex;
+		float x1, y1, z1;
+		float x2, y2, z2;
+	};
+
+	inline u32 mesh_count() { return CoreAssets::meshCount; }
+	extern const Assets::MeshEntry &mesh( Mesh mesh );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class Model; // u32
+
+namespace Assets
+{
+	struct ModelEntry
+	{
+		u8 meshCount;
+		u32 meshes[32];
+		u32 materials[32];
+		float x1, y1, z1;
+		float x2, y2, z2;
+		DEBUG( const char *name );
+	};
+
+	inline u32 model_count() { return CoreAssets::modelCount; }
+	extern const Assets::ModelEntry &model( Model model );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 class TTF; // u32
 
 namespace Assets

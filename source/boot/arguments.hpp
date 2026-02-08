@@ -69,7 +69,7 @@ struct Arguments
 	void parse( int argc, char **argv )
 	{
 		// Verbose
-		parse_argument( argc, argv, "-verbose=", verbose, ARG_OPTIONAL, "1", "0" );
+		parse_argument( argc, argv, "-verbose=", verbose, ARG_OPTIONAL, "0", "1" );
 
 		// Project
 		parse_argument( argc, argv, "-project=", project, ARG_REQUIRED, "" );
@@ -98,11 +98,11 @@ struct Arguments
 
 		// Toolchain
 		#if PIPELINE_OS_WINDOWS
-			parse_argument( argc, argv, "-toolchain=", toolchain, ARG_OPTIONAL, "msvc", "llvm", "gnu" );
+			parse_argument( argc, argv, "-toolchain=", toolchain, ARG_OPTIONAL, "msvc", "gnu", "llvm" );
 		#elif PIPELINE_OS_LINUX
-			parse_argument( argc, argv, "-toolchain=", toolchain, ARG_OPTIONAL, "llvm", "gnu" );
+			parse_argument( argc, argv, "-toolchain=", toolchain, ARG_OPTIONAL, "gnu", "llvm" );
 		#elif PIPELINE_OS_MACOS
-			parse_argument( argc, argv, "-toolchain=", toolchain, ARG_OPTIONAL, "llvm" );
+			parse_argument( argc, argv, "-toolchain=", toolchain, ARG_OPTIONAL, "gnu", "llvm" );
 		#endif
 
 		// Graphics

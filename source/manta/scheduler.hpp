@@ -35,10 +35,11 @@ class Scheduler
 public:
 	void init( float budget );
 	void free();
-	SchedulerJob &register_job( const char *name, Color color, float targetFrequency,
-		float minimumFrequency, void ( *func )( Delta ) );
 	void update( Delta delta );
 	void draw( int x, int y, Delta delta );
+
+	SchedulerJob &register_job( const char *name, Color color, float targetFrequency,
+		float minimumFrequency, void ( *func )( Delta ) );
 
 public:
 	List<SchedulerJob> jobs;

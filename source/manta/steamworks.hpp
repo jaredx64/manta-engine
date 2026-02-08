@@ -10,8 +10,8 @@ namespace Steamworks
 	extern bool free();
 	extern void callbacks();
 
-	extern u64 user_get_id_u64();
-	extern bool user_get_name( char *buffer, usize size );
+	extern u64 get_userid_u64();
+	extern bool get_username( char *buffer, usize size );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

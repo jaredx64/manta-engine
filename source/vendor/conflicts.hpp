@@ -1,8 +1,8 @@
-// For compile times, there are optional defines 'OFFICIAL_HEADERS' and
-// 'USE_OFFICIAL_HEADERS' that wrap around C headers with our own implentations
+// For improved compile speeds in dev builds, there are optional macros 'CUSTOM_C_HEADERS'
+// and 'USE_CUSTOM_C_HEADERS' that stub in our own trimmed C header implementations
 //
-// Doing so significantly reduces the size and complexity of headers,
-// which in turn reduces preprocessing and compile times
+// Doing so significantly reduces the size and complexity of headers, which improves
+// compile times by reducing preprocessing, parsing, and linking complexity
 //
 // Since we're already wrapping C headers in this way, it also allows us to
 // circumvent global namespace conflicts such as stdlib's monopoly of 'random'

@@ -24,9 +24,11 @@ struct CacheMaterial
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Materials::make_new( const Material &material )
+MaterialID Materials::allocate_new( const Material &material )
 {
+	AssertMsg( materials.size() < MATERIALID_MAX, "Exceeded max number of Materials" );
 	materials.add( material );
+	return static_cast<MaterialID>( materials.size() - 1 );
 }
 
 
@@ -122,7 +124,7 @@ void Materials::process( const char *path )
 	// Register Material
 	Material &material = materials.add( Material { } );
 	material.name = fileDefinition.name;
-	material.textureIDColor = Assets::textures.make_new( material.name );
+	material.textureIDColor = Assets::textures.allocate_new( material.name );
 	Texture &colorTextureAsset = Assets::textures[material.textureIDColor];
 	colorTextureAsset.atlasTexture = false;
 	colorTextureAsset.generateMips = true;

@@ -3,7 +3,7 @@
 
 #include <vendor/x11.hpp>
 
-#if USE_OFFICIAL_HEADERS
+#if !USE_CUSTOM_C_HEADERS
 	#include <vendor/conflicts.hpp>
 		#include <GL/glx.h>
 	#include <vendor/conflicts.hpp>

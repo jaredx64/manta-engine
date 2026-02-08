@@ -286,7 +286,7 @@ bool ObjectContext::init()
 	{
 		const u16 bucketID = i - 1;
 		ObjectBucket *bucket = &buckets[bucketID];
-		new ( bucket ) ObjectBucket{ *this };
+		new ( bucket ) ObjectBucket { *this };
 		bucket->bucketID = bucketID;
 		bucket->type = CoreObjects::CATEGORY_TYPES[category][bucketID];
 		bucket->bucketIDNext = i == capacity ? NULL_BUCKET : i;
@@ -429,6 +429,7 @@ ObjectInstance ObjectContext::create( Object type )
 
 	// Create Object
 	void *const object = bucket->data + ( bucket->current * CoreObjects::TYPE_SIZE[type] );
+	Assert( reinterpret_cast<usize>( object ) % CoreObjects::TYPE_ALIGNMENT[type] == 0 );
 	CoreObjects::TYPE_CONSTRUCT[type]( object ); // Constructor
 	return bucket->new_object( object );
 }
@@ -517,7 +518,7 @@ bool ObjectContext::read( Buffer &buffer, ObjectContext &context )
 
 void ObjectContext::serialize( Buffer &buffer, const ObjectContext &context )
 {
-	Assert( context.initialized() );
+	Assert( context.is_initialized() );
 
 	Serializer serializer;
 	serializer.begin( buffer, 0 );
@@ -528,7 +529,7 @@ void ObjectContext::serialize( Buffer &buffer, const ObjectContext &context )
 
 bool ObjectContext::deserialize( Buffer &buffer, ObjectContext &context )
 {
-	if( context.initialized() ) { context.free(); context.init(); }
+	if( context.is_initialized() ) { context.free(); context.init(); }
 
 	context.disableEvents = true;
 	Deserializer deserializer;

@@ -2,7 +2,7 @@
 #include <vendor/config.hpp>
 
 
-#if USE_OFFICIAL_HEADERS
+#if !USE_CUSTOM_C_HEADERS
 	#include <vendor/conflicts.hpp>
 		#include <d3d11_4.h>
 		#include <dxgi1_3.h>

@@ -1,7 +1,7 @@
 #pragma once
 #include <vendor/config.hpp>
 
-#if USE_OFFICIAL_HEADERS
+#if !USE_CUSTOM_C_HEADERS
 	#include <vendor/conflicts.hpp>
 		#include <dbghelp.h>
 	#include <vendor/conflicts.hpp>

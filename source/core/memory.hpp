@@ -2,6 +2,7 @@
 
 #include <core/types.hpp>
 
+#include <vendor/vendor.hpp>
 #include <vendor/stdio.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -17,8 +18,10 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 extern void *memory_alloc( usize size );
+NO_DISCARD extern bool memory_try_alloc( void *&block, usize size, void *fallback = nullptr );
 
 extern void *memory_realloc( void *block, usize size );
+NO_DISCARD extern bool memory_realloc( void *&block, usize size, void *fallback = nullptr );
 
 extern void memory_copy( void *dst, const void *src, usize size );
 

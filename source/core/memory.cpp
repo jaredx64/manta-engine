@@ -18,12 +18,30 @@ void *memory_alloc( usize size )
 }
 
 
+NO_DISCARD bool memory_try_alloc( void *&block, usize size, void *fallback )
+{
+	block = memory_alloc( size );
+	if( block == nullptr ) { block = fallback; return false; }
+	return true;
+}
+
+
 void *memory_realloc( void *block, usize size )
 {
 	Assert( block != nullptr );
 	void *ptr = realloc( block, size );
 	ErrorIf( ptr == nullptr, "Memory reallocation failure! Out of memory?" );
 	return ptr;
+}
+
+
+NO_DISCARD bool memory_try_realloc( void *&block, usize size, void *fallback )
+{
+	Assert( block != nullptr );
+	void *ptr = realloc( block, size );
+	if( ptr == nullptr ) { block = fallback; return false; }
+	block = ptr;
+	return true;
 }
 
 

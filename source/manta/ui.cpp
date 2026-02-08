@@ -66,54 +66,38 @@ void UIContext::clear()
 
 bool UIContext::destroy_widget( ObjectInstance &widget )
 {
-	// Validate Type
 	if( !widget ) { return true; }
+
 	AssertMsg( object_is_child_of( widget.type, Object::UIWidget ),
 		"Attempting to destroy UIWidget of UIWidget type! (%s)", CoreObjects::TYPE_NAME[widget.type] );
 
-	// Destroy widget
 	return objects.destroy( widget );
 }
 
 
 ObjectInstance UIContext::instantiate_widget( u16 type, ObjectInstance parent )
 {
-	// Validate Type
 	AssertMsg( object_is_child_of( type, Object::UIWidget ),
 		"Attempting to create widget of non-UIWidget type! (%s)", CoreObjects::TYPE_NAME[type] );
 
-	// Create Widget
 	ObjectInstance widget = objects.create( type );
-
-	// Initialize Widget
-	ObjectHandle<Object::UIWidget> widgetHandle = objects.handle<Object::UIWidget>( widget );
-	if( widgetHandle )
+	if( auto handle = objects.handle<Object::UIWidget>( widget ); handle )
 	{
-		// State
-		widgetHandle->context = this;
-		widgetHandle->parent = parent;
-
-		// Properties
-		widgetHandle->hoverable = true;
-		widgetHandle->sortable = true;
-		widgetHandle->container = false;
+		handle->context = this;
+		handle->parent = parent;
+		handle->hoverable = true;
+		handle->sortable = true;
+		handle->container = false;
 	}
 
-	// Return
 	return widget;
 }
 
 
 ObjectInstance UIContext::create_widget( u16 type, ObjectInstance parent )
 {
-	// Create Widget
 	const ObjectInstance widget = instantiate_widget( type, parent );
-
-	// Initialize Widget
-	ObjectHandle<Object::UIWidget> handle = objects.handle<Object::UIWidget>( widget );
-	if( handle ) { handle->init(); }
-
-	// Return
+	if( auto handle = objects.handle<Object::UIWidget>( widget ); handle ) { handle->init(); }
 	return widget;
 }
 
@@ -121,17 +105,12 @@ ObjectInstance UIContext::create_widget( u16 type, ObjectInstance parent )
 ObjectInstance UIContext::create_widget_window( u16 type, int x, int y, int width, int height,
 	bool resizeable, ObjectInstance parent )
 {
-	// Validate Type
 	AssertMsg( type == Object::UIWidget_Window ||
 		object_is_child_of( type, Object::UIWidget_Window ),
 		"Attempting to create button of non-UIWidget_Window type! (%s)", CoreObjects::TYPE_NAME[type] );
 
-	// Create Widget
 	const ObjectInstance widget = instantiate_widget( type, parent );
-
-	// Initialize Widget
-	ObjectHandle<Object::UIWidget_Window> handle = objects.handle<Object::UIWidget_Window>( widget );
-	if( handle )
+	if( auto handle = objects.handle<Object::UIWidget_Window>( widget ); handle )
 	{
 		handle->x = x;
 		handle->y = y;
@@ -141,7 +120,6 @@ ObjectInstance UIContext::create_widget_window( u16 type, int x, int y, int widt
 		handle->init();
 	}
 
-	// Return
 	return widget;
 }
 
@@ -149,18 +127,12 @@ ObjectInstance UIContext::create_widget_window( u16 type, int x, int y, int widt
 ObjectInstance UIContext::create_widget_scrollable_region( u16 type, int x, int y, int width, int height,
 	bool hasVerticalScrollbar, bool hasHorizontalScrollbar, ObjectInstance parent )
 {
-	// Validate Type
 	AssertMsg( type == Object::UIWidget_ScrollableRegion ||
 		object_is_child_of( type, Object::UIWidget_ScrollableRegion ),
 		"Attempting to create button of non-UIWidget_ScrollableRegion type! (%s)", CoreObjects::TYPE_NAME[type] );
 
-	// Create Widget
 	const ObjectInstance widget = instantiate_widget( type, parent );
-
-	// Initialize Widget
-	ObjectHandle<Object::UIWidget_ScrollableRegion> handle =
-		objects.handle<Object::UIWidget_ScrollableRegion>( widget );
-	if( handle )
+	if( auto handle = objects.handle<Object::UIWidget_ScrollableRegion>( widget ); handle )
 	{
 		handle->x = x;
 		handle->y = y;
@@ -168,29 +140,23 @@ ObjectInstance UIContext::create_widget_scrollable_region( u16 type, int x, int 
 		handle->height = height;
 		handle->viewWidth = width;
 		handle->viewHeight = height;
-		handle->hideScrollbarVertical = false;//!hasVerticalScrollbar;
-		handle->hideScrollbarHorizontal = false;//!hasHorizontalScrollbar;
+		handle->hideScrollbarVertical = false;
+		handle->hideScrollbarHorizontal = false;
 		handle->init();
 	}
 
-	// Return
 	return widget;
 }
 
 
 ObjectInstance UIContext::create_widget_button( u16 type, int x, int y, int width, int height, ObjectInstance parent )
 {
-	// Validate Type
 	AssertMsg( type == Object::UIWidget_Button ||
 		object_is_child_of( type, Object::UIWidget_Button ),
 		"Attempting to create button of non-UIWidget_Button type! (%s)", CoreObjects::TYPE_NAME[type] );
 
-	// Create Widget
 	const ObjectInstance widget = instantiate_widget( type, parent );
-
-	// Initialize Widget
-	ObjectHandle<Object::UIWidget_Button> handle = objects.handle<Object::UIWidget_Button>( widget );
-	if( handle )
+	if( auto handle = objects.handle<Object::UIWidget_Button>( widget ); handle )
 	{
 		handle->x = x;
 		handle->y = y;
@@ -199,7 +165,6 @@ ObjectInstance UIContext::create_widget_button( u16 type, int x, int y, int widt
 		handle->init();
 	}
 
-	// Return
 	return widget;
 }
 
@@ -207,17 +172,12 @@ ObjectInstance UIContext::create_widget_button( u16 type, int x, int y, int widt
 ObjectInstance UIContext::create_widget_checkbox( u16 type, int x, int y, int width, int height, bool enabled,
 	ObjectInstance parent )
 {
-	// Validate Type
 	AssertMsg( type ==Object::UIWidget_Checkbox ||
 		object_is_child_of( type, Object::UIWidget_Checkbox ),
 		"Attempting to create button of non-UIWidget_Checkbox type! (%s)", CoreObjects::TYPE_NAME[type] );
 
-	// Create Widget
 	const ObjectInstance widget = instantiate_widget( type, parent );
-
-	// Initialize Widget
-	ObjectHandle<Object::UIWidget_Checkbox> handle = objects.handle<Object::UIWidget_Checkbox>( widget );
-	if( handle )
+	if( auto handle = objects.handle<Object::UIWidget_Checkbox>( widget ); handle )
 	{
 		handle->x = x;
 		handle->y = y;
@@ -227,7 +187,6 @@ ObjectInstance UIContext::create_widget_checkbox( u16 type, int x, int y, int wi
 		handle->init();
 	}
 
-	// Return
 	return widget;
 }
 
@@ -235,17 +194,12 @@ ObjectInstance UIContext::create_widget_checkbox( u16 type, int x, int y, int wi
 ObjectInstance UIContext::create_widget_slider( u16 type, int x, int y, int width, int height, bool vertical,
 	float value, int steps, ObjectInstance parent )
 {
-	// Validate Type
 	AssertMsg( type == Object::UIWidget_Slider ||
 		object_is_child_of( type, Object::UIWidget_Slider ),
 		"Attempting to create button of non-UIWidget_Slider type! (%s)", CoreObjects::TYPE_NAME[type] );
 
-	// Create Widget
 	const ObjectInstance widget = instantiate_widget( type, parent );
-
-	// Initialize Widget
-	ObjectHandle<Object::UIWidget_Slider> handle = objects.handle<Object::UIWidget_Slider>( widget );
-	if( handle )
+	if( auto handle = objects.handle<Object::UIWidget_Slider>( widget ); handle )
 	{
 		handle->x = x;
 		handle->y = y;
@@ -260,7 +214,6 @@ ObjectInstance UIContext::create_widget_slider( u16 type, int x, int y, int widt
 		handle->init();
 	}
 
-	// Return
 	return widget;
 }
 
@@ -268,17 +221,12 @@ ObjectInstance UIContext::create_widget_slider( u16 type, int x, int y, int widt
 ObjectInstance UIContext::create_widget_scrollbar( u16 type, int x, int y, int width, int height, bool vertical,
 	float value, ObjectInstance parent )
 {
-	// Validate Type
 	AssertMsg( type == Object::UIWidget_Scrollbar ||
 		object_is_child_of( type, Object::UIWidget_Scrollbar ),
 		"Attempting to create button of non-UIWidget_Scrollbar type! (%s)", CoreObjects::TYPE_NAME[type] );
 
-	// Create Widget
 	const ObjectInstance widget = instantiate_widget( type, parent );
-
-	// Initialize Widget
-	ObjectHandle<Object::UIWidget_Scrollbar> handle = objects.handle<Object::UIWidget_Scrollbar>( widget );
-	if( handle )
+	if( auto handle = objects.handle<Object::UIWidget_Scrollbar>( widget ); handle )
 	{
 		handle->x = x;
 		handle->y = y;
@@ -292,7 +240,6 @@ ObjectInstance UIContext::create_widget_scrollbar( u16 type, int x, int y, int w
 		handle->init();
 	}
 
-	// Return
 	return widget;
 }
 
@@ -300,17 +247,12 @@ ObjectInstance UIContext::create_widget_scrollbar( u16 type, int x, int y, int w
 ObjectInstance UIContext::create_widget_textbox( u16 type, int x, int y, int width, int height,
 	TextFormat format, ObjectInstance parent )
 {
-	// Validate Type
 	AssertMsg( type ==Object::UIWidget_TextBox ||
 		object_is_child_of( type, Object::UIWidget_TextBox ),
 		"Attempting to create button of non-UIWidget_TextBox type! (%s)", CoreObjects::TYPE_NAME[type] );
 
-	// Create Widget
 	const ObjectInstance widget = instantiate_widget( type, parent );
-
-	// Initialize Widget
-	ObjectHandle<Object::UIWidget_TextBox> handle = objects.handle<Object::UIWidget_TextBox>( widget );
-	if( handle )
+	if( auto handle = objects.handle<Object::UIWidget_TextBox>( widget ); handle )
 	{
 		handle->x = x;
 		handle->y = y;
@@ -326,7 +268,6 @@ ObjectInstance UIContext::create_widget_textbox( u16 type, int x, int y, int wid
 		handle->init();
 	}
 
-	// Return
 	return widget;
 }
 
@@ -334,17 +275,12 @@ ObjectInstance UIContext::create_widget_textbox( u16 type, int x, int y, int wid
 ObjectInstance UIContext::create_widget_textline( u16 type, int x, int y, int width, int height,
 	TextFormat format, ObjectInstance parent )
 {
-	// Validate Type
 	AssertMsg( type == Object::UIWidget_TextBox ||
 		object_is_child_of( type, Object::UIWidget_TextBox ),
 		"Attempting to create button of non-UIWidget_TextBox type! (%s)", CoreObjects::TYPE_NAME[type] );
 
-	// Create Widget
 	const ObjectInstance widget = instantiate_widget( type, parent );
-
-	// Initialize Widget
-	ObjectHandle<Object::UIWidget_TextBox> handle = objects.handle<Object::UIWidget_TextBox>( widget );
-	if( handle )
+	if( auto handle = objects.handle<Object::UIWidget_TextBox>( widget ); handle )
 	{
 		handle->x = x;
 		handle->y = y;
@@ -362,7 +298,6 @@ ObjectInstance UIContext::create_widget_textline( u16 type, int x, int y, int wi
 		handle->input.allowTabs = false;
 	}
 
-	// Return
 	return widget;
 }
 
@@ -370,17 +305,12 @@ ObjectInstance UIContext::create_widget_textline( u16 type, int x, int y, int wi
 ObjectInstance UIContext::create_widget_labeltext( u16 type, int x, int y, const char *label,
 	int width, int height, ObjectInstance parent )
 {
-	// Validate Type
 	AssertMsg( type == Object::UIWidget_LabelText ||
 		object_is_child_of( type, Object::UIWidget_LabelText ),
 		"Attempting to create button of non-UIWidget_LabelText type! (%s)", CoreObjects::TYPE_NAME[type] );
 
-	// Create Widget
 	const ObjectInstance widget = instantiate_widget( type, parent );
-
-	// Initialize Widget
-	ObjectHandle<Object::UIWidget_LabelText> handle = objects.handle<Object::UIWidget_LabelText>( widget );
-	if( handle )
+	if( auto handle = objects.handle<Object::UIWidget_LabelText>( widget ); handle )
 	{
 		handle->x = x;
 		handle->y = y;
@@ -392,7 +322,6 @@ ObjectInstance UIContext::create_widget_labeltext( u16 type, int x, int y, const
 		handle->init();
 	}
 
-	// Return
 	return widget;
 }
 
@@ -419,11 +348,8 @@ void UIContext::scissor_set( const UIScissor &s )
 		return;
 	}
 
-	// Set Scissor
 	scissor = s;
 	Gfx::scissor_set( scissor.x1, scissor.y1, scissor.x2, scissor.y2 );
-
-	//draw_rectangle( 0, 0, 2000, 2000, c_red );
 }
 
 
@@ -549,7 +475,6 @@ void UIContext::render_widgets( Delta delta, Alpha alpha )
 
 void UIContext::update_widget( const ObjectInstance &widget, Delta delta )
 {
-	// Update Widget
 	ObjectHandle<Object::UIWidget> widgetHandle = objects.handle<Object::UIWidget>( widget );
 	if( widgetHandle ) { update_widget( widgetHandle, delta ); }
 }
@@ -557,7 +482,6 @@ void UIContext::update_widget( const ObjectInstance &widget, Delta delta )
 
 void UIContext::render_widget( const ObjectInstance &widget, Delta delta, Alpha alpha )
 {
-	// Draw Widget
 	ObjectHandle<Object::UIWidget> widgetHandle = objects.handle<Object::UIWidget>( widget );
 	if( widgetHandle ) { render_widget( widgetHandle, delta, alpha ); }
 }
@@ -566,14 +490,13 @@ void UIContext::render_widget( const ObjectInstance &widget, Delta delta, Alpha 
 
 void UIContext::update_widget( ObjectHandle<Object::UIWidget> &widgetHandle, Delta delta )
 {
-	// Update Widget
+	// Widget
 	if( widgetHandle->callbackOnUpdate ) { widgetHandle->callbackOnUpdate( *this, widgetHandle->id ); }
 	widgetHandle->update( delta );
 
-	// Update Children
+	// Children
 	if( widgetHandle->children.count() > 0 )
 	{
-		// Update Matrix
 		const float_m44 matrix = matrix_get();
 		widgetHandle->apply_matrix();
 
@@ -583,7 +506,6 @@ void UIContext::update_widget( ObjectHandle<Object::UIWidget> &widgetHandle, Del
 			if( childHandle ) { update_widget( childHandle, delta ); }
 		}
 
-		// Reset matrix
 		matrix_set( matrix );
 	}
 }
@@ -649,7 +571,6 @@ bool UIContext::test_widget( ObjectHandle<Object::UIWidget> &widgetHandle )
 	// Test Children
 	if( widgetHandle->children.count() > 0 && ( hovering || !widgetHandle->container ) )
 	{
-		// Update Matrix
 		const float_m44 matrix = matrix_get();
 		widgetHandle->apply_matrix();
 
@@ -663,7 +584,6 @@ bool UIContext::test_widget( ObjectHandle<Object::UIWidget> &widgetHandle )
 			}
 		}
 
-		// Reset Matrix
 		matrix_set( matrix );
 	}
 

@@ -31,7 +31,7 @@ struct Sound
 
 struct Sounds
 {
-	SoundID make_new( const Sound &voice );
+	SoundID allocate_new( const Sound &voice );
 
 	usize gather( const char *path, bool recurse = true );
 	void process( const char *path );

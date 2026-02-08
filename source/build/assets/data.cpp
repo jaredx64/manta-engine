@@ -19,7 +19,7 @@ struct CacheDataAsset
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void DataAssets::make_new( const DataAsset &asset )
+void DataAssets::allocate_new( const DataAsset &asset )
 {
 	dataAssets.add( asset );
 }

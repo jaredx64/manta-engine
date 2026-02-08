@@ -142,7 +142,7 @@ public:
 			data, capacity * sizeof( T ) );
 	}
 
-	bool initialized() const
+	bool is_initialized() const
 	{
 		return data != nullptr;
 	}

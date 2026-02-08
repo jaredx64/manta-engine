@@ -112,15 +112,11 @@ namespace Engine
 				{
 					PROFILE_SCOPE( "Frame" );
 
-					// Platform
-					STEAMWORKS( Steamworks::callbacks() );
-
 					// Pre-Engine
-					Keyboard::update( Frame::delta );
-					Mouse::update( Frame::delta );
+					STEAMWORKS( Steamworks::callbacks() );
+					Input::update( Frame::delta );
 					Window::update( Frame::delta );
-					Keyboard::reset_active();
-					Mouse::reset_active();
+					Input::reset_active();
 
 					// Project
 					project.update( Frame::delta );

@@ -23,7 +23,7 @@ struct DataAsset
 
 struct DataAssets
 {
-	void make_new( const DataAsset &asset );
+	void allocate_new( const DataAsset &asset );
 
 	usize gather( const char *path, bool recurse = true );
 	void process( const char *path );

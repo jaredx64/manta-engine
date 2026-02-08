@@ -17,7 +17,7 @@ bool Steamworks::init()
 
 	#if STEAMWORKS_DISTRIBUTE
 		// NOTE: For distribute builds using Steam API, Steam must be running and the application must be
-		// launched by by Steam. The following function starts the Steam client and relaunches the application.
+		// launched by Steam. The following function starts the Steam client and relaunches the application.
 		if( SteamAPI_RestartAppIfNecessary( static_cast<u32>( STEAMWORKS_APP_ID ) ) ) { Engine::exit( 1 ); }
 	#endif
 
@@ -39,7 +39,7 @@ bool Steamworks::init()
 	// Verify Ownership
 	if( !SteamApps()->BIsSubscribedApp( SteamUtils()->GetAppID() ) )
 	{
-		DEBUG( ErrorReturnMsg( false, "Steam API: User is not logged in!" ) );
+		DEBUG( ErrorReturnMsg( false, "Steam API: User does not own the AppID!" ) );
 		return false;
 	}
 
@@ -71,7 +71,7 @@ void Steamworks::callbacks()
 };
 
 
-u64 Steamworks::user_get_id_u64()
+u64 Steamworks::get_userid_u64()
 {
 #if COMPILE_STEAMWORKS
 	return static_cast<u64>( SteamUser()->GetSteamID().ConvertToUint64() );
@@ -81,7 +81,7 @@ u64 Steamworks::user_get_id_u64()
 };
 
 
-bool Steamworks::user_get_name( char *buffer, usize size )
+bool Steamworks::get_username( char *buffer, usize size )
 {
 #if COMPILE_STEAMWORKS
 	const char *persona = SteamFriends()->GetPersonaName();
@@ -94,6 +94,5 @@ bool Steamworks::user_get_name( char *buffer, usize size )
 	return false;
 #endif
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

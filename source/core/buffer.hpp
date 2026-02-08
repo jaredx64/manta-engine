@@ -65,6 +65,8 @@ public:
 	Buffer &copy( const Buffer &other );
 	Buffer &move( Buffer &&other );
 
+	bool is_initialized() const { return data != nullptr; }
+
 	bool shrink();
 	void clear();
 

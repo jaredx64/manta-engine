@@ -20,7 +20,7 @@ struct CacheSound
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-SoundID Sounds::make_new( const Sound &sound )
+SoundID Sounds::allocate_new( const Sound &sound )
 {
 	sounds.add( sound );
 	return sounds.size() - 1;

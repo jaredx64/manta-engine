@@ -12,9 +12,9 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static const Assets::SpriteEntry &nullSprite = Assets::sprite( Sprite::SPRITE_DEFAULT );
-static const Assets::GlyphEntry &nullGlyph = Assets::glyph( nullSprite.glyph );
-static const GfxTexture *const nullTexture = &CoreGfx::textures[nullSprite.texture];
+static const Assets::SpriteEntry &spriteEntryNull = Assets::sprite( Sprite::SPRITE_DEFAULT );
+static const Assets::GlyphEntry &glyphEntryNull = Assets::glyph( spriteEntryNull.glyph );
+static const GfxTexture *const textureNull = &CoreGfx::textures[spriteEntryNull.texture];
 
 static Align halign = Align_Left;
 static Align valign = Align_Top;
@@ -142,18 +142,19 @@ void draw_quad_uv_color( float x1, float y1, float x2, float y2, float x3, float
 void draw_sprite( Sprite sprite, u16 subimg, float x, float y, float xscale, float yscale, Color color, float depth )
 {
 #if GRAPHICS_ENABLED
-	const Assets::SpriteEntry &dSprite = Assets::sprite( sprite );
-	const Assets::GlyphEntry &dGlyph = Assets::glyph( dSprite.glyph + ( subimg % Assets::sprite( sprite ).count ) );
-	GfxTexture *texture = &CoreGfx::textures[dSprite.texture];
+	const Assets::SpriteEntry &spriteEntry = Assets::sprite( sprite );
+	const Assets::GlyphEntry &glyphEntry =
+		Assets::glyph( spriteEntry.glyph + ( subimg % Assets::sprite( sprite ).count ) );
+	GfxTexture *texture = &CoreGfx::textures[spriteEntry.texture];
 
-	float width  = dSprite.width * xscale;
-	float height = dSprite.height * yscale;
+	float width  = spriteEntry.width * xscale;
+	float height = spriteEntry.height * yscale;
 
-	x -= dSprite.xorigin * xscale;
-	y -= dSprite.yorigin * yscale;
+	x -= spriteEntry.xorigin * xscale;
+	y -= spriteEntry.yorigin * yscale;
 
 	Gfx::quad_batch_write( x, y, x + width, y + height,
-		dGlyph.u1, dGlyph.v1, dGlyph.u2, dGlyph.v2, color, texture, depth );
+		glyphEntry.u1, glyphEntry.v1, glyphEntry.u2, glyphEntry.v2, color, texture, depth );
 #endif
 }
 
@@ -162,21 +163,22 @@ void draw_sprite_part( Sprite sprite, u16 subimg, float x, float y, float u1, fl
 	float xscale, float yscale, Color color, float depth )
 {
 #if GRAPHICS_ENABLED
-	const Assets::SpriteEntry &dSprite = Assets::sprite( sprite );
-	const Assets::GlyphEntry &dGlyph = Assets::glyph( dSprite.glyph + ( subimg % Assets::sprite( sprite ).count ) );
-	const GfxTexture *const texture = &CoreGfx::textures[dSprite.texture];
+	const Assets::SpriteEntry &spriteEntry = Assets::sprite( sprite );
+	const Assets::GlyphEntry &glyphEntry =
+		Assets::glyph( spriteEntry.glyph + ( subimg % Assets::sprite( sprite ).count ) );
+	const GfxTexture *const texture = &CoreGfx::textures[spriteEntry.texture];
 
-	float width  = dSprite.width * xscale;
-	float height = dSprite.height * yscale;
+	float width  = spriteEntry.width * xscale;
+	float height = spriteEntry.height * yscale;
 
-	x -= dSprite.xorigin * xscale;
-	y -= dSprite.yorigin * yscale;
+	x -= spriteEntry.xorigin * xscale;
+	y -= spriteEntry.yorigin * yscale;
 
-	const u16 u = dGlyph.u2 - dGlyph.u1;
-	const u16 v = dGlyph.v2 - dGlyph.v1;
+	const u16 u = glyphEntry.u2 - glyphEntry.u1;
+	const u16 v = glyphEntry.v2 - glyphEntry.v1;
 	Gfx::quad_batch_write( x, y, x + width, y + height,
-		dGlyph.u1 + static_cast<u16>( u1 * u ), dGlyph.v1 + static_cast<u16>( v1 * v ),
-		dGlyph.u1 + static_cast<u16>( u2 * v ), dGlyph.v1 + static_cast<u16>( v2 * v ),
+		glyphEntry.u1 + static_cast<u16>( u1 * u ), glyphEntry.v1 + static_cast<u16>( v1 * v ),
+		glyphEntry.u1 + static_cast<u16>( u2 * v ), glyphEntry.v1 + static_cast<u16>( v2 * v ),
 		color, texture, depth );
 #endif
 }
@@ -186,15 +188,16 @@ void draw_sprite_part_quad( Sprite sprite, u16 subimg, float x1, float y1, float
 	float u1, float v1, float u2, float v2, Color color, float depth )
 {
 #if GRAPHICS_ENABLED
-	const Assets::SpriteEntry &dSprite = Assets::sprite( sprite );
-	const Assets::GlyphEntry &dGlyph = Assets::glyph( dSprite.glyph + ( subimg % Assets::sprite( sprite ).count ) );
-	const GfxTexture *const texture = &CoreGfx::textures[dSprite.texture];
+	const Assets::SpriteEntry &spriteEntry = Assets::sprite( sprite );
+	const Assets::GlyphEntry &glyphEntry =
+		Assets::glyph( spriteEntry.glyph + ( subimg % Assets::sprite( sprite ).count ) );
+	const GfxTexture *const texture = &CoreGfx::textures[spriteEntry.texture];
 
-	const u16 u = dGlyph.u2 - dGlyph.u1;
-	const u16 v = dGlyph.v2 - dGlyph.v1;
+	const u16 u = glyphEntry.u2 - glyphEntry.u1;
+	const u16 v = glyphEntry.v2 - glyphEntry.v1;
 	Gfx::quad_batch_write( x1, y1, x2, y2,
-		dGlyph.u1 + static_cast<u16>( u1 * u ), dGlyph.v1 + static_cast<u16>( v1 * v ),
-		dGlyph.u1 + static_cast<u16>( u2 * v ), dGlyph.v1 + static_cast<u16>( v2 * v ),
+		glyphEntry.u1 + static_cast<u16>( u1 * u ), glyphEntry.v1 + static_cast<u16>( v1 * v ),
+		glyphEntry.u1 + static_cast<u16>( u2 * v ), glyphEntry.v1 + static_cast<u16>( v2 * v ),
 		color, texture, depth );
 #endif
 }
@@ -204,14 +207,15 @@ void draw_sprite_angle( Sprite sprite, u16 subimg, float x, float y, float angle
 	Color color, float depth )
 {
 #if GRAPHICS_ENABLED
-	const Assets::SpriteEntry &dSprite = Assets::sprite( sprite );
-	const Assets::GlyphEntry &dGlyph = Assets::glyph( dSprite.glyph + ( subimg % Assets::sprite( sprite ).count ) );
-	const GfxTexture *const texture = &CoreGfx::textures[dSprite.texture];
+	const Assets::SpriteEntry &spriteEntry = Assets::sprite( sprite );
+	const Assets::GlyphEntry &glyphEntry =
+		Assets::glyph( spriteEntry.glyph + ( subimg % Assets::sprite( sprite ).count ) );
+	const GfxTexture *const texture = &CoreGfx::textures[spriteEntry.texture];
 
-	const float width = dSprite.width * xscale;
-	const float height = dSprite.height * yscale;
-	const float dx = dSprite.xorigin * xscale;
-	const float dy = dSprite.yorigin * yscale;
+	const float width = spriteEntry.width * xscale;
+	const float height = spriteEntry.height * yscale;
+	const float dx = spriteEntry.xorigin * xscale;
+	const float dy = spriteEntry.yorigin * yscale;
 
 #if 0
 	const float s = sinf( angle * DEG2RAD_F );
@@ -231,7 +235,7 @@ void draw_sprite_angle( Sprite sprite, u16 subimg, float x, float y, float angle
 	const float y4 = y - ( dx - width ) * s - ( dy - height ) * c;
 
 	Gfx::quad_batch_write( x1, y1, x2, y2, x3, y3, x4, y4,
-		dGlyph.u1, dGlyph.v1, dGlyph.u2, dGlyph.v2, color, texture, depth );
+		glyphEntry.u1, glyphEntry.v1, glyphEntry.u2, glyphEntry.v2, color, texture, depth );
 #endif
 }
 
@@ -239,56 +243,56 @@ void draw_sprite_angle( Sprite sprite, u16 subimg, float x, float y, float angle
 void draw_sprite_fast( Sprite sprite, u16 subimg, float x, float y, Color color )
 {
 #if GRAPHICS_ENABLED
-	const Assets::SpriteEntry &dSprite = Assets::sprite( sprite );
-	const Assets::GlyphEntry &dGlyph = Assets::glyph( dSprite.glyph + subimg );
-	const GfxTexture *const texture = &CoreGfx::textures[dSprite.texture];
+	const Assets::SpriteEntry &spriteEntry = Assets::sprite( sprite );
+	const Assets::GlyphEntry &glyphEntry = Assets::glyph( spriteEntry.glyph + subimg );
+	const GfxTexture *const texture = &CoreGfx::textures[spriteEntry.texture];
 
-	const float width = dSprite.width;
-	const float height = dSprite.height;
+	const float width = spriteEntry.width;
+	const float height = spriteEntry.height;
 
 	Gfx::quad_batch_write( x, y, x + width, y + height,
-		dGlyph.u1, dGlyph.v1, dGlyph.u2, dGlyph.v2, color, texture, 0.0f );
+		glyphEntry.u1, glyphEntry.v1, glyphEntry.u2, glyphEntry.v2, color, texture, 0.0f );
 #endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void draw_render_target( const GfxRenderTarget &surface, float x, float y, float xscale, float yscale,
+void draw_render_target( const GfxRenderTarget &rt, float x, float y, float xscale, float yscale,
 	Color color, float depth )
 {
 #if GRAPHICS_ENABLED
 	const float x1 = x;
-	const float x2 = x + surface.width * xscale;
+	const float x2 = x + rt.width * xscale;
 	const float y1 = y;
-	const float y2 = y + surface.height * yscale;
+	const float y2 = y + rt.height * yscale;
 
 	const u16 u1 = 0;
 	const u16 u2 = 0xFFFF;
 	const u16 v1 = 0; // Render target memory is 'upside down' relative to default UV sampling
 	const u16 v2 = 0xFFFF;
 
-	Assert( surface.textureColor.resource != nullptr );
-	Gfx::quad_batch_write( x1, y1, x2, y2, u1, v1, u2, v2, color, &surface.textureColor, depth );
+	Assert( rt.textureColor.is_initialized() );
+	Gfx::quad_batch_write( x1, y1, x2, y2, u1, v1, u2, v2, color, &rt.textureColor, depth );
 #endif
 }
 
 
-void draw_render_target_depth( const GfxRenderTarget &surface, float x, float y, float xscale,  float yscale,
+void draw_render_target_depth( const GfxRenderTarget &rt, float x, float y, float xscale,  float yscale,
 	Color color, float depth )
 {
 #if GRAPHICS_ENABLED
 	const float x1 = x;
-	const float x2 = x + surface.width * xscale;
+	const float x2 = x + rt.width * xscale;
 	const float y1 = y;
-	const float y2 = y + surface.height * yscale;
+	const float y2 = y + rt.height * yscale;
 
 	const u16 u1 = 0;
 	const u16 u2 = 0xFFFF;
 	const u16 v1 = 0xFFFF; // NOTE: Render target memory is 'upside down' relative to default UV sampling
 	const u16 v2 = 0;
 
-	Assert( surface.textureDepth.resource != nullptr );
-	Gfx::quad_batch_write( x1, y1, x2, y2, u1, v1, u2, v2, color, &surface.textureDepth, depth );
+	Assert( rt.textureDepth.is_initialized() );
+	Gfx::quad_batch_write( x1, y1, x2, y2, u1, v1, u2, v2, color, &rt.textureDepth, depth );
 #endif
 }
 
@@ -311,8 +315,8 @@ void draw_rectangle( float x1, float y1, float x2, float y2, Color color, bool o
 	}
 	else
 	{
-		const Assets::GlyphEntry &g = nullGlyph;
-		Gfx::quad_batch_write( x1, y1, x2, y2, g.u1, g.v1, g.u2, g.v2, color, nullTexture, depth );
+		const Assets::GlyphEntry &g = glyphEntryNull;
+		Gfx::quad_batch_write( x1, y1, x2, y2, g.u1, g.v1, g.u2, g.v2, color, textureNull, depth );
 	}
 #endif
 }
@@ -354,7 +358,7 @@ void draw_rectangle_angle( float x1, float y1, float x2, float y2, float angle,
 	}
 	else
 	{
-		const Assets::GlyphEntry &g = nullGlyph;
+		const Assets::GlyphEntry &g = glyphEntryNull;
 
 		if( angle != 0.0f )
 		{
@@ -362,11 +366,11 @@ void draw_rectangle_angle( float x1, float y1, float x2, float y2, float angle,
 			const float_v2 x1y2 = float_v2( x1, y2 ).rotate( angle, { x1, y1 } );
 			const float_v2 x2y2 = float_v2( x2, y2 ).rotate( angle, { x1, y1 } );
 			Gfx::quad_batch_write( x1, y1, x2y1.x, x2y1.y, x1y2.x, x1y2.y, x2y2.x, x2y2.y,
-			                       g.u1, g.v1, g.u2, g.v2, color, nullTexture, depth );
+			                       g.u1, g.v1, g.u2, g.v2, color, textureNull, depth );
 		}
 		else
 		{
-			Gfx::quad_batch_write( x1, y1, x2, y2, g.u1, g.v1, g.u2, g.v2, color, nullTexture, depth );
+			Gfx::quad_batch_write( x1, y1, x2, y2, g.u1, g.v1, g.u2, g.v2, color, textureNull, depth );
 		}
 	}
 #endif
@@ -391,8 +395,8 @@ void draw_rectangle_gradient( float x1, float y1, float x2, float y2, Color c1, 
 	}
 	else
 	{
-		const Assets::GlyphEntry &g = nullGlyph;
-		Gfx::quad_batch_write( x1, y1, x2, y2, g.u1, g.v1, g.u2, g.v2, c1, c2, c3, c4, nullTexture, depth );
+		const Assets::GlyphEntry &g = glyphEntryNull;
+		Gfx::quad_batch_write( x1, y1, x2, y2, g.u1, g.v1, g.u2, g.v2, c1, c2, c3, c4, textureNull, depth );
 	}
 #endif
 }
@@ -434,7 +438,7 @@ void draw_rectangle_gradient_angle( float x1, float y1, float x2, float y2, floa
 	}
 	else
 	{
-		const Assets::GlyphEntry &g = nullGlyph;
+		const Assets::GlyphEntry &g = glyphEntryNull;
 
 		if( angle != 0.0f )
 		{
@@ -443,11 +447,11 @@ void draw_rectangle_gradient_angle( float x1, float y1, float x2, float y2, floa
 			const float_v2 x2y2 = float_v2( x2, y2 ).rotate( angle, { x1, y1 } );
 
 			Gfx::quad_batch_write( x1, y1, x2y1.x, x2y1.y, x1y2.x, x1y2.y, x2y2.x, x2y2.y,
-			                       g.u1, g.v1, g.u2, g.v2, c1, c2, c3, c4, nullTexture, depth );
+				g.u1, g.v1, g.u2, g.v2, c1, c2, c3, c4, textureNull, depth );
 		}
 		else
 		{
-			Gfx::quad_batch_write( x1, y1, x2, y2, g.u1, g.v1, g.u2, g.v2, c1, c2, c3, c4, nullTexture, depth );
+			Gfx::quad_batch_write( x1, y1, x2, y2, g.u1, g.v1, g.u2, g.v2, c1, c2, c3, c4, textureNull, depth );
 		}
 	}
 #endif
@@ -499,10 +503,10 @@ void draw_circle_gradient( float x, float y, float radius, Color c1, Color c2, u
 		float x4 = x + radius * cos( angle2 );
 		float y4 = y + radius * sin( angle2 );
 
-		const Assets::GlyphEntry &g = nullGlyph;
+		const Assets::GlyphEntry &g = glyphEntryNull;
 
 		Gfx::quad_batch_write( x1, y1, x2, y2, x3, y3, x4, y4, g.u1, g.v1, g.u2, g.v2,
-		                       c1, c2, c2, c2, nullTexture, depth );
+			c1, c2, c2, c2, textureNull, depth );
 	}
 }
 
@@ -514,7 +518,7 @@ void draw_circle_outline_gradient( float x, float y, float radius, float thickne
 	const float increment = 2.0f * PI / resolution;
 	const float radiusOuter = ( radius + thickness * 0.5f );
 	const float radiusInner = ( radius - thickness * 0.5f );
-	const Assets::GlyphEntry &g = nullGlyph;
+	const Assets::GlyphEntry &g = glyphEntryNull;
 
 	for( u32 i = 0; i < resolution; i++ )
 	{
@@ -533,7 +537,7 @@ void draw_circle_outline_gradient( float x, float y, float radius, float thickne
         const float innerY2 = y + radiusInner * sin( angle2 );
 
 		Gfx::quad_batch_write( innerX1, innerY1, innerX2, innerY2, outerX1, outerY1, outerX2, outerY2,
-			g.u1, g.v1, g.u2, g.v2, c1, c1, c2, c2, nullTexture, depth );
+			g.u1, g.v1, g.u2, g.v2, c1, c1, c2, c2, textureNull, depth );
 	}
 }
 

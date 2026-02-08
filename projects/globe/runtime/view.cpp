@@ -60,12 +60,12 @@ static double_v2 point_ecef_to_yaw_pitch( double_v3 point )
 void view_controls( const Delta delta )
 {
 	// Pick
-	double_r3 pickRay = ray_screen_point_to_world_perspective(
-		double_v2 { Mouse::x_logical(), Mouse::y_logical() },
-		double_v2 { Window::width_logical(), Window::height_logical() },
+	float_r3 pickRay = ray_screen_point_to_world_perspective(
+		float_v2 { Mouse::x_logical(), Mouse::y_logical() },
+		float_v2 { Window::width_logical(), Window::height_logical() },
 		View::position, View::matrixView, View::matrixPerspective );
 
-	double_r3::hit pickHit;
+	float_r3::hit pickHit;
 	if( ray_intersect_triangle_list( pickRay, Earth::collision.data, Earth::collision.count(), pickHit ) )
 	{
 		View::pickPoint = pickRay.origin + pickRay.vector * pickHit.distance;

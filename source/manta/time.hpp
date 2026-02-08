@@ -46,19 +46,16 @@ public:
 
 	double elapsed_s()
 	{
-		stop();
 		return ( timeEnd - timeStart );
 	}
 
 	double elapsed_ms()
 	{
-		//stop();
 		return ( timeEnd - timeStart ) * 1000.0;
 	}
 
 	double elapsed_us()
 	{
-		//stop();
 		return ( timeEnd - timeStart ) * 1000.0 * 1000.0;
 	}
 

@@ -2,7 +2,7 @@
 #include <vendor/config.hpp>
 #include <pipeline.hpp>
 
-#if USE_OFFICIAL_HEADERS
+#if !USE_CUSTOM_C_HEADERS
 	#include <vendor/conflicts.hpp>
 		#include <execinfo.h>
 	#include <vendor/conflicts.hpp>

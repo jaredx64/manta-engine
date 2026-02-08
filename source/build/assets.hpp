@@ -12,6 +12,8 @@
 #include <build/assets/glyphs.hpp>
 #include <build/assets/sprites.hpp>
 #include <build/assets/materials.hpp>
+#include <build/assets/meshes.hpp>
+#include <build/assets/models.hpp>
 #include <build/assets/fonts.hpp>
 #include <build/assets/sounds.hpp>
 #include <build/assets/skeleton2d.hpp>
@@ -48,6 +50,8 @@ namespace Assets
 	extern Glyphs glyphs;
 	extern Sprites sprites;
 	extern Materials materials;
+	extern Meshes meshes;
+	extern Models models;
 	extern Fonts fonts;
 	extern Sounds sounds;
 	extern Skeleton2Ds skeleton2Ds;

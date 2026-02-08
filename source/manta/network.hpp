@@ -124,6 +124,7 @@ class NetworkSocketTCP
 public:
 	void init( NetworkSocketType type, NetworkPort port, void *context );
 	void free();
+	bool is_initialized() const { return resource != nullptr; }
 
 	bool listen();
 	bool connect( const char *host );
@@ -178,6 +179,8 @@ class NetworkServerTCP
 public:
 	void init( NetworkPort port, u32 connectionsCapacity, void *context );
 	void free();
+	bool is_initialized() const { return connections != nullptr; }
+
 	bool connect();
 	bool disconnect();
 
@@ -214,6 +217,8 @@ class NetworkClientTCP
 public:
 	void init( NetworkIP ip, NetworkPort port, void *context );
 	void free();
+	bool is_initialized() const { return socket.is_initialized(); }
+
 	bool connect( void ( *callbackOnConnect )( void *context ) );
 	bool disconnect( void ( *callbackOnDisconnect )( void *context ) );
 
@@ -238,6 +243,7 @@ class NetworkSocketUDP
 public:
 	void init( NetworkSocketType type, NetworkPort port, void *context );
 	void free();
+	bool is_initialized() const { return resource != nullptr; }
 
 	bool bind();
 	void disconnect();
@@ -286,6 +292,8 @@ class NetworkServerUDP
 public:
 	void init( NetworkPort port, u32 connectionsCapacity, void *context );
 	void free();
+	bool is_initialized() const { return connections != nullptr; }
+
 	bool connect();
 	bool disconnect();
 
@@ -320,6 +328,8 @@ class NetworkClientUDP
 public:
 	void init( NetworkIP ip, NetworkPort port, void *context );
 	void free();
+	bool is_initialized() const { return socket.is_initialized(); }
+
 	bool connect();
 	bool disconnect();
 

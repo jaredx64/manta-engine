@@ -60,6 +60,8 @@ public:
 	void push_back( const AsyncEvent &event );
 	void push( const AsyncEvent &event, bool skipQueue );
 
+	bool is_initialized() const { return events.is_initialized(); }
+
 private:
 	List<AsyncEvent> events;
 };

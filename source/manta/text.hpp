@@ -119,6 +119,8 @@ public:
 	Text &copy( const Text &other );
 	Text &move( Text &&other );
 
+	bool is_initialized() const { return data != nullptr; }
+
 	void clear();
 	void remove( usize index, usize count );
 

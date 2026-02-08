@@ -1,6 +1,6 @@
 #include <earth.hpp>
 
-#include <manta/geometry.hpp>
+#include <manta/3d.hpp>
 #include <manta/window.hpp>
 #include <manta/draw.hpp>
 
@@ -22,9 +22,9 @@ namespace Earth
 
 static void generate_mesh_collision( List<float_v3> &vertices )
 {
-	if( vertices.initialized() ) { vertices.free(); } vertices.init();
+	if( vertices.is_initialized() ) { vertices.free(); } vertices.init();
 
-	geometry_generate_sphere_latlon( EARTH_RESOLUTION, &vertices, nullptr, nullptr, nullptr );
+	sphere_generate_geometry_latlon( EARTH_RESOLUTION, &vertices, nullptr, nullptr, nullptr );
 
 	for( float_v3 &vertex : vertices )
 	{
@@ -46,7 +46,7 @@ static void generate_mesh_globe( GfxVertexBuffer<GfxVertex::VertexGlobe> &vertex
 	List<float_v2> uvs; uvs.init();
 	List<u32> indices; indices.init();
 
-	const u32 count = geometry_generate_sphere_latlon( EARTH_RESOLUTION, &positions, &normals, &uvs, &indices );
+	const u32 count = sphere_generate_geometry_latlon( EARTH_RESOLUTION, &positions, &normals, &uvs, &indices );
 
 	vertexBuffer.init( count, GfxWriteMode_OVERWRITE );
 	vertexBuffer.write_begin();
@@ -83,7 +83,7 @@ void earth_init()
 
 void earth_free()
 {
-	if( Earth::collision.initialized() ) { Earth::collision.free(); }
+	if( Earth::collision.is_initialized() ) { Earth::collision.free(); }
 	if( Earth::vertexBuffer.resource != nullptr ) { Earth::vertexBuffer.free(); }
 	if( Earth::indexBuffer.resource != nullptr ) { Earth::indexBuffer.free(); }
 }

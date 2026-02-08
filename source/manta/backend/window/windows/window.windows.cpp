@@ -71,7 +71,6 @@ namespace CoreWindow
 				return 0;
 			}
 
-
 			// Position
 			case WM_MOVE:
 			{
@@ -194,13 +193,36 @@ namespace CoreWindow
 				return 0;
 			}
 
-			// Mouse Movement
 			case WM_MOUSEMOVE:
 			{
 				Mouse::state().positionXPrevious = Mouse::state().positionX;
 				Mouse::state().positionYPrevious = Mouse::state().positionY;
 				Mouse::state().positionX = static_cast<float>( GET_X_LPARAM( lp ) );
 				Mouse::state().positionY = static_cast<float>( GET_Y_LPARAM( lp ) );
+				return 0;
+			}
+
+			case WM_INPUT:
+			{
+				HRAWINPUT ri = reinterpret_cast<HRAWINPUT>( lp );
+				UINT size = 0;
+
+				GetRawInputData( ri, RID_INPUT, nullptr, &size, sizeof( RAWINPUTHEADER ) );
+				alignas( RAWINPUT ) BYTE buffer[64];
+				Assert( size <= sizeof( buffer ) ); // Note: technically this should never fail, but just in case...
+
+				if( GetRawInputData( ri, RID_INPUT, buffer, &size, sizeof( RAWINPUTHEADER ) ) != size )
+				{
+					break;
+				}
+
+				RAWINPUT *raw = reinterpret_cast<RAWINPUT *>( buffer );
+				if( !( raw->data.mouse.usFlags & MOUSE_MOVE_ABSOLUTE ) )
+				{
+					Mouse::state().deltaX += static_cast<float>( raw->data.mouse.lLastX );
+					Mouse::state().deltaY += static_cast<float>( raw->data.mouse.lLastY );
+				}
+
 				return 0;
 			}
 
@@ -278,6 +300,14 @@ namespace CoreWindow
 			nullptr,
 			instance,
 			nullptr );
+
+		// Mouse Input (Delta)
+		RAWINPUTDEVICE rid = RAWINPUTDEVICE { };
+		rid.usUsagePage = 0x01;
+		rid.usUsage = 0x02;
+		rid.dwFlags = RIDEV_INPUTSINK;
+		rid.hwndTarget = CoreWindow::handle;
+		RegisterRawInputDevices( &rid, 1, sizeof( rid ) );
 
 		// Check Error
 		if( handle == nullptr ) { ErrorReturnMsg( false, "Window: Failed to get window handle" ); }
@@ -361,6 +391,14 @@ namespace CoreWindow
 		p.y = y;
 		ClientToScreen( CoreWindow::handle, &p );
 		SetCursorPos( p.x, p.y );
+	#endif
+	}
+
+
+	void set_mouselook( bool enabled )
+	{
+	#if WINDOW_ENABLED
+		// ...
 	#endif
 	}
 };

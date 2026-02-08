@@ -8,25 +8,20 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-namespace CoreTextureIO
-{
-	struct TextureBuffer
-	{
-		byte *data = nullptr;
-		u8 pixelFormat = ColorFormat_RGBA8;
-		u8 pixelSize = 4;
-		u16 width = 0;
-		u16 height = 0;
-		u16 depth = 0;
-	};
-};
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-struct Texture2DBuffer
+class Texture2DBuffer
 {
 public:
-	Texture2DBuffer() : data( nullptr ), width( 0 ), height( 0 ) { }
+	Texture2DBuffer() : data { nullptr }, width { 0 }, height { 0 } { }
+	Texture2DBuffer( u16 width, u16 height ) { init( width, height ); }
+	Texture2DBuffer( const char *path ) { load( path ); }
+	Texture2DBuffer( const Texture2DBuffer &other ) { copy( other ); }
+	Texture2DBuffer( Texture2DBuffer &&other ) { move( static_cast<Texture2DBuffer &&>( other ) ); }
+	~Texture2DBuffer() { free(); }
+
+	Texture2DBuffer &operator=( const Texture2DBuffer &other )
+		{ copy( other ); return *this; }
+	Texture2DBuffer &operator=( Texture2DBuffer &&other )
+		{ move( static_cast<Texture2DBuffer &&>( other ) ); return *this; }
 
 public:
 	void init( u16 width, u16 height );
@@ -39,39 +34,38 @@ public:
 
 	void clear( rgba color );
 
-	void splice( Texture2DBuffer &source, u16 srcX1, u16 srcY1,
-	    u16 srcX2, u16 srcY2, u16 dstX, u16 dstY );
+	void splice( Texture2DBuffer &source, u16 srcX1, u16 srcY1, u16 srcX2, u16 srcY2, u16 dstX, u16 dstY );
 
-	inline void splice( Texture2DBuffer &source, u16 dstX, u16 dstY )
+	void splice( Texture2DBuffer &source, u16 dstX, u16 dstY )
 	{
 		splice( source, 0, 0, source.width, source.height, dstX, dstY );
 	}
 
-	inline rgba &at( u32 index )
+	rgba &at( u32 index )
 	{
 		Assert( index < static_cast<u32>( width ) * static_cast<u32>( height ) );
 		return data[index];
 	}
 
-	inline rgba &at( u16 x, u16 y )
+	rgba &at( u16 x, u16 y )
 	{
 		Assert( x < width && y < height );
 		return data[ y * width + x ];
 	}
 
-	inline void set( u32 index, rgba value )
+	void set( u32 index, rgba value )
 	{
 		Assert( index < static_cast<u32>( width ) * static_cast<u32>( height ) );
 		data[index] = value;
 	}
 
-	inline void set( u16 x, u16 y, rgba value )
+	void set( u16 x, u16 y, rgba value )
 	{
 		Assert( x < width && y < height );
 		data[ y * width + x ] = value;
 	}
 
-	inline rgba &operator[]( u32 index ) { return at( index ); }
+	rgba &operator[]( u32 index ) { return at( index ); }
 	explicit operator bool() const { return data != nullptr; }
 
 public:
@@ -79,5 +73,9 @@ public:
 	u16 width;
 	u16 height;
 };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+extern bool png_to_ico( const char *pathPNG, const char *pathICO );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

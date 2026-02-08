@@ -50,19 +50,6 @@ void Scheduler::free()
 }
 
 
-SchedulerJob &Scheduler::register_job( const char *name, Color color, float targetFrequency, float minimumFrequency,
-	void ( *func )( Delta ) )
-{
-	SchedulerJob &job = jobs.add( SchedulerJob { } );
-	job.name = name;
-	job.color = color;
-	job.frequencyTarget = targetFrequency;
-	job.frequencyMinimum = minimumFrequency;
-	job.work = func;
-	return job;
-}
-
-
 void Scheduler::update( Delta delta )
 {
 	PROFILE_SCOPE( "Scheduler Update" );
@@ -196,13 +183,25 @@ void Scheduler::draw( int x, int y, Delta delta )
 		x1 - 16, y2 - cost * yScale,
 		x2 + 16, y2 - cost * yScale, c_yellow );
 
-	// Draw Jobs
 	for( usize i = 0; i < jobs.count(); i++ )
 	{
 		const SchedulerJob &job = jobs[i];
 		draw_text_f( fnt_iosevka, 16, x1, y1 + i * 20,
 			job.color, "%s: %.4f ms | %d steps/sec", job.name, job.cost, job.rollingCountPrevious );
 	}
+}
+
+
+SchedulerJob &Scheduler::register_job( const char *name, Color color, float targetFrequency, float minimumFrequency,
+	void ( *func )( Delta ) )
+{
+	SchedulerJob &job = jobs.add( SchedulerJob { } );
+	job.name = name;
+	job.color = color;
+	job.frequencyTarget = targetFrequency;
+	job.frequencyMinimum = minimumFrequency;
+	job.work = func;
+	return job;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

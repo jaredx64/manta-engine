@@ -181,6 +181,56 @@ bool strstr_case_insensitive( const char *str1, const char *str2 )
 }
 
 
+bool strcontains( const char *str, const char *substr )
+{
+	if( *substr == '\0' ) { return true; }
+
+	for( ; *str != '\0'; str++ )
+	{
+		const char *h = str;
+		const char *n = substr;
+
+		while( *h != '\0' && *n != '\0' && *h == *n )
+		{
+			h++;
+			n++;
+		}
+
+		if( *n == '\0' )
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+
+bool strcontains_case_insensitive( const char *str, const char *substr )
+{
+	if( *substr == '\0' ) { return true; }
+
+	for( ; *str != '\0'; str++ )
+	{
+		const char *h = str;
+		const char *n = substr;
+
+		while( *h != '\0' && *n != '\0' && chrlower( *h ) == chrlower( *n ) )
+		{
+			h++;
+			n++;
+		}
+
+		if( *n == '\0' )
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+
 bool char_is_whitespace( const char c )
 {
 	return c == ' ' || c == '\n' || c == '\r' || c == '\t';

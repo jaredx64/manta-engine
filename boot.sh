@@ -5,7 +5,7 @@
 	# -config=         release, debug, ... (from projects/<project>/configs.json)
 	# -gfx=            opengl, d3d11
 	# -os=             windows, linux, macos
-	# -toolchain=      llvm, gnu
+	# -toolchain=      msvc, llvm, gnu
 	# -architecture=   x64, arm64
 	# -os=             windows, linux, macos
 	# -clean=          0 - cached build, 1 - clears build cache
@@ -115,7 +115,7 @@ build()
 
 strap()
 {
-	"./projects/$project/output/boot/boot" "-package=0 -verbose=0" $args
+	"./projects/$project/output/boot/boot" "" $args
 }
 
 # Ensure the working directory matches this script's location

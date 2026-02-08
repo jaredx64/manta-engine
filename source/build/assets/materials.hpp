@@ -11,16 +11,21 @@
 
 struct Material
 {
+	CacheID cacheID;
 	TextureID textureIDColor;
 	TextureID textureIDNormal;
 	String name;
 };
 
+using MaterialID = u32;
+#define MATERIALID_MAX ( U32_MAX )
+#define MATERIALID_NULL ( MATERIALID_MAX )
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 struct Materials
 {
-	void make_new( const Material &material );
+	MaterialID allocate_new( const Material &material );
 
 	usize gather( const char *path, bool recurse = true );
 	void process( const char *path );

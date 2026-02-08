@@ -37,7 +37,7 @@ static Texture2DBuffer resourceNull;
 static List<Texture2DBuffer> resourceList;
 static HashMap<u32, usize> resourceMap;
 
-Texture2DBuffer &resource_retrieve( const char *path )
+Texture2DBuffer &texture_load_file( const char *path )
 {
 	const u32 key = Hash::hash( path );
 	if( !resourceMap.contains( key ) )
@@ -451,7 +451,7 @@ static bool mip_generate_chain_2d_alloc( void *data, const u16 width, const u16 
 GlyphID Texture::add_glyph( const Glyph &glyph )
 {
 	cacheIDs.add( glyph.cacheID );
-	const GlyphID glyphID = Assets::glyphs.make_new( glyph );
+	const GlyphID glyphID = Assets::glyphs.allocate_new( glyph );
 	glyphs.add( glyphID );
 	return glyphID;
 }
@@ -460,7 +460,7 @@ GlyphID Texture::add_glyph( const Glyph &glyph )
 GlyphID Texture::add_glyph( Glyph &&glyph )
 {
 	cacheIDs.add( glyph.cacheID );
-	const GlyphID glyphID = Assets::glyphs.make_new( static_cast<Glyph &&>( glyph ) );
+	const GlyphID glyphID = Assets::glyphs.allocate_new( static_cast<Glyph &&>( glyph ) );
 	glyphs.add( glyphID );
 	return glyphID;
 }
@@ -627,24 +627,65 @@ success:
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-TextureID Textures::make_new( String &name )
+TextureID Textures::allocate_new( String &name )
 {
-	// Check if an Texture with this name already exists
+	// NOTE: Registers a new, blank Texture resource
+
 	for( usize i = 0; i < textures.size(); i++ )
 	{
 		Texture &texture = textures[i];
 		if( texture.name.equals( name ) ) { return i; }
 	}
 
-	// Make new Texture
-	Texture &texture = textures.add( { name } );
+	AssertMsg( textures.size() < TEXTUREID_MAX, "Exceeded max number of Textures" );
+	Texture &texture = textures.add( Texture { name } );
+	return static_cast<TextureID>( textures.size() - 1 );
+}
+
+
+TextureID Textures::allocate_from_file( String &name, const char *path, bool generateMips )
+{
+	// NOTE: Registers a new texture resource loaded from a specified image file
+
+	for( usize i = 0; i < textures.size(); i++ )
+	{
+		Texture &texture = textures[i];
+		if( texture.name.equals( name ) ) { return i; }
+	}
+
+	AssetFile file;
+	if( !asset_file_register( file, path ) ) { return TEXTUREID_NULL; }
+
+	int width = 0;
+	int height = 0;
+	int channels = 0;
+	if( !stbi_info( path, &width, &height, &channels ) ) { return TEXTUREID_NULL; }
+
+	AssertMsg( textures.size() < TEXTUREID_MAX, "Exceeded max number of Textures" );
+	Texture &texture = textures.add( Texture { name } );
+	texture.atlasTexture = false;
+	texture.generateMips = generateMips;
+
+	static char cacheIDBuffer[PATH_SIZE * 3];
+	memory_set( cacheIDBuffer, 0, sizeof( cacheIDBuffer ) );
+	snprintf( cacheIDBuffer, sizeof( cacheIDBuffer ), "glyph %s|%llu", file.path, file.time.as_u64() );
+	const CacheID cacheID = checksum_xcrc32( cacheIDBuffer, sizeof( cacheIDBuffer ), 0 );
+
+	Glyph glyph;
+	glyph.cacheID = cacheID;
+	glyph.texturePath = path;
+	glyph.imageX1 = static_cast<u16>( 0 );
+	glyph.imageY1 = static_cast<u16>( 0 );
+	glyph.imageX2 = static_cast<u16>( width );
+	glyph.imageY2 = static_cast<u16>( height );
+	texture.add_glyph( static_cast<Glyph &&>( glyph ) );
+
 	return static_cast<TextureID>( textures.size() - 1 );
 }
 
 
 usize Textures::gather( const char *path, bool recurse )
 {
-	// Gather & Load Textures
 	List<FileInfo> files;
 	directory_iterate( files, path, ".texture", recurse );
 
@@ -732,7 +773,7 @@ void Textures::process( const char *path )
 		width, height, channels );
 
 	String name = fileDefinition.name;
-	Texture &texture = textures[make_new( name )];
+	Texture &texture = textures[allocate_new( name )];
 	texture.name = name;
 	texture.atlasTexture = false;
 	texture.generateMips = generateMips;
@@ -806,7 +847,7 @@ void Textures::build()
 					{
 						Glyph &glyph = Assets::glyphs[glyphID];
 						Texture2DBuffer &textureGlyph = glyph.textureBuffer.data != nullptr ?
-							glyph.textureBuffer : resource_retrieve( glyph.texturePath );
+							glyph.textureBuffer : texture_load_file( glyph.texturePath );
 
 						textureBinary.splice( textureGlyph,
 							glyph.imageX1, glyph.imageY1, glyph.imageX2, glyph.imageY2,
@@ -862,7 +903,7 @@ void Textures::build()
 					// Generate Texture Binary
 					Glyph &glyph = Assets::glyphs[texture.glyphs[0]];
 					Texture2DBuffer &textureBinary = glyph.textureBuffer.data != nullptr ?
-						glyph.textureBuffer : resource_retrieve( glyph.texturePath );
+						glyph.textureBuffer : texture_load_file( glyph.texturePath );
 
 					texture.width = textureBinary.width;
 					texture.height = textureBinary.height;

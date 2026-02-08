@@ -26,6 +26,8 @@ namespace CoreWindow
 	extern void mouse_get_position( double &x, double &y );
 	extern void mouse_set_position( int x, int y );
 
+	extern void set_mouselook( bool enabled );
+
 	extern bool ime_init();
 	extern void ime_quit();
 	extern void ime_set_focus( bool focused );

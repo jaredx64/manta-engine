@@ -1,6 +1,6 @@
 #include <universe.hpp>
 
-#include <manta/geometry.hpp>
+#include <manta/3d.hpp>
 #include <manta/input.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -26,7 +26,7 @@ static void generate_mesh_skydome( GfxVertexBuffer<GfxVertex::BuiltinVertex> &ve
 	List<float_v2> uvs; uvs.init();
 	List<u32> indices; indices.init();
 
-	const u32 count = geometry_generate_sphere_latlon( 20, &positions, nullptr, &uvs, &indices );
+	const u32 count = sphere_generate_geometry_latlon( 20, &positions, nullptr, &uvs, &indices );
 
 	if( vertexBuffer.resource != nullptr ) { vertexBuffer.free(); }
 	if( indexBuffer.resource != nullptr ) { indexBuffer.free(); }

@@ -341,6 +341,8 @@ public:
 	void init( const AudioEffects &effects = { }, const char *name = "" );
 	void free();
 
+	bool is_inisitalized() const { return idBus >= 0; }
+
 	bool is_paused() const;
 	bool pause( bool pause ) const;
 
@@ -350,8 +352,10 @@ public:
 
 	SoundHandle play_sound( u32 sound, const AudioEffects &effects = { },
 		const AudioDescription &description = { } );
+
 public:
 	const char *name;
+
 private:
 	int idBus = -1; // Bus
 };
