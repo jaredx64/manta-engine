@@ -9,29 +9,37 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct DataAsset
+class DataAsset
 {
-	CacheID cacheID;
-	String path;
-	String name;
+public:
 	Buffer data;
 	usize offset;
 	usize size;
+
+	CacheKey cacheKey;
+	String name;
+	String path;
 };
+
+using DataAssetID = u32;
+#define DATAASSETID_MAX ( U32_MAX )
+#define DATAASSETID_NULL ( DATAASSETID_MAX )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct DataAssets
+class DataAssets
 {
-	void allocate_new( const DataAsset &asset );
+public:
+	DataAssetID register_new( const DataAsset &asset = DataAsset { } );
+	DataAssetID register_new( DataAsset &&asset );
+	DataAssetID register_new_from_definition( String name, const char *path );
 
 	usize gather( const char *path, bool recurse = true );
-	void process( const char *path );
 	void build();
 
-	DataAsset &operator[]( u32 dataAssetID ) { return dataAssets[dataAssetID]; }
-
+public:
 	List<DataAsset> dataAssets;
+	DataAsset &operator[]( u32 dataAssetID ) { return dataAssets[dataAssetID]; }
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

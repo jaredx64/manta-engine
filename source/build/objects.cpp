@@ -1618,19 +1618,17 @@ usize Objects::gather( const char *directory, bool recurse )
 
 	for( FileInfo &file : objectFilesDisk )
 	{
-		// Cache
-		static char cacheIDBuffer[PATH_SIZE * 2];
-		memory_set( cacheIDBuffer, 0, sizeof( cacheIDBuffer ) );
-		snprintf( cacheIDBuffer, sizeof( cacheIDBuffer ), "object %s|%llu",
-			file.path, file.time.as_u64() );
-		const CacheID cacheID = checksum_xcrc32( cacheIDBuffer, sizeof( cacheIDBuffer ), 0 );
+		u64 hash = file.time.as_u64();
+		Hash::hash64_bytes( hash, file.path, strlen( file.path ) );
+		const CacheKey cacheKey = static_cast<CacheKey>( hash );
 
 		CacheObject cacheObject;
-		if( !Objects::cache.dirty && !Objects::cache.fetch( cacheID, cacheObject ) )
+		if( !Objects::cache.dirty && !Objects::cache.fetch( cacheKey, cacheObject ) )
 		{
 			Objects::cache.dirty |= true;
 		}
-		Objects::cache.store( cacheID, cacheObject );
+
+		Objects::cache.store( cacheKey, cacheObject );
 		Objects::cacheFileCount++;
 
 		// Add Object

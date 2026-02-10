@@ -19,32 +19,24 @@ struct CacheDataAsset
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void DataAssets::allocate_new( const DataAsset &asset )
+DataAssetID DataAssets::register_new( const DataAsset &asset )
 {
+	AssertMsg( dataAssets.count() < MATERIALID_MAX, "Exceeded max number of DataAssets" );
 	dataAssets.add( asset );
+	return static_cast<DataAssetID>( dataAssets.count() - 1 );
 }
 
 
-usize DataAssets::gather( const char *path, bool recurse )
+DataAssetID DataAssets::register_new( DataAsset &&asset )
 {
-	// Gather DataAssets
-	List<FileInfo> files;
-	directory_iterate( files, path, ".asset", recurse );
-
-	// Process DataAssets
-	for( FileInfo &fileInfo : files )
-	{
-		Assets::cacheFileCount++;
-		process( fileInfo.path );
-	}
-
-	return files.size();
+	AssertMsg( dataAssets.count() < MATERIALID_MAX, "Exceeded max number of DataAssets" );
+	dataAssets.add( static_cast<DataAsset &&>( asset ) );
+	return static_cast<DataAssetID>( dataAssets.count() - 1 );
 }
 
 
-void DataAssets::process( const char *path )
+DataAssetID DataAssets::register_new_from_definition( String name, const char *path )
 {
-	// Local Directory
 	static char pathDirectory[PATH_SIZE];
 	path_get_directory( pathDirectory, sizeof( pathDirectory ), path );
 
@@ -53,7 +45,7 @@ void DataAssets::process( const char *path )
 	if( !asset_file_register( fileDefinition, path ) )
 	{
 		Error( "Unable to locate asset file: %s", path );
-		return;
+		return DATAASSETID_NULL;
 	}
 
 	// Open Definition JSON
@@ -61,7 +53,7 @@ void DataAssets::process( const char *path )
 	if( !fileDefinitionContents.load( path ) )
 	{
 		Error( "Unable to open asset file: %s", path );
-		return;
+		return DATAASSETID_NULL;
 	}
 	JSON fileDefinitionJSON { fileDefinitionContents };
 
@@ -78,29 +70,43 @@ void DataAssets::process( const char *path )
 	if( !asset_file_register( fileAsset, pathAsset ) )
 	{
 		Error( "DataAsset '%s' - Unable to locate asset file: '%s'", fileDefinition.name, pathAsset );
-		return;
+		return DATAASSETID_NULL;
 	}
-
-	// Generate Cache ID
-	static char cacheIDBuffer[PATH_SIZE * 3];
-	memory_set( cacheIDBuffer, 0, sizeof( cacheIDBuffer ) );
-	snprintf( cacheIDBuffer, sizeof( cacheIDBuffer ), "asset %s|%llu|%s|%llu",
-		fileDefinition.path, fileDefinition.time.as_u64(),
-		fileAsset.path, fileAsset.time.as_u64() );
-	const CacheID cacheID = checksum_xcrc32( cacheIDBuffer, sizeof( cacheIDBuffer ), 0 );
 
 	// Check Cache
 	CacheDataAsset cacheAsset;
-	if( !Assets::cache.fetch( cacheID, cacheAsset ) )
+	const CacheKey cacheKey = Hash::hash64_from( fileDefinition.cache_id(), fileAsset.cache_id() );
+	if( !Assets::cache.fetch( cacheKey, cacheAsset ) )
 	{
 		Assets::cache.dirty |= true; // Dirty Cache
 	}
 
 	// Register Asset
-	DataAsset &asset = dataAssets.add( DataAsset { } );
-	asset.cacheID = cacheID;
-	asset.name = fileDefinition.name;
+	const DataAssetID dataAssetID = register_new();
+	DataAsset &asset = dataAssets[dataAssetID];
+	asset.cacheKey = cacheKey;
+	asset.name = name;
 	asset.path = fileAsset.path;
+
+	return dataAssetID;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+usize DataAssets::gather( const char *path, bool recurse )
+{
+	List<FileInfo> files;
+	directory_iterate( files, path, ".asset", recurse );
+
+	static char name[PATH_SIZE];
+	for( FileInfo &fileInfo : files )
+	{
+		Assets::cacheFileCount++;
+		path_remove_extension( name, sizeof( name ), fileInfo.name );
+		register_new_from_definition( name, fileInfo.path );
+	}
+
+	return files.size();
 }
 
 
@@ -118,7 +124,7 @@ void DataAssets::build()
 		for( DataAsset &asset : dataAssets )
 		{
 			CacheDataAsset cacheAsset;
-			if( Assets::cache.fetch( asset.cacheID, cacheAsset ) )
+			if( Assets::cache.fetch( asset.cacheKey, cacheAsset ) )
 			{
 				// Load from cached binary
 				asset.data.write_from_file( Build::pathOutputRuntimeBinary,
@@ -147,7 +153,7 @@ void DataAssets::build()
 			CacheDataAsset cacheAsset;
 			cacheAsset.offset = asset.offset;
 			cacheAsset.size = asset.size;
-			Assets::cache.store( asset.cacheID, cacheAsset );
+			Assets::cache.store( asset.cacheKey, cacheAsset );
 		}
 	}
 

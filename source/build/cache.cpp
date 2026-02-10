@@ -12,9 +12,9 @@ void Cache::read( const char *path )
 		usize entryCount = cacheFile.read<usize>();
 		for( usize i = 0; i < entryCount; i++ )
 		{
-			const CacheID id = cacheFile.read<CacheID>();
+			const CacheKey key = cacheFile.read<CacheKey>();
 			const Cache::Entry entry = cacheFile.read<Cache::Entry>();
-			entryTableReading.set( id, entry );
+			entryTableReading.set( key, entry );
 		}
 		usize cacheBufferSize = cacheFile.read<usize>();
 		cacheBufferReading.write( cacheFile.read_bytes( cacheBufferSize ), cacheBufferSize );
@@ -33,7 +33,7 @@ void Cache::write( const char *path )
 	assetCacheBuffer.write<usize>( entryTableWriting.count() );
 	for( auto &entry : entryTableWriting )
 	{
-		assetCacheBuffer.write<CacheID>( entry.key );
+		assetCacheBuffer.write<CacheKey>( entry.key );
 		assetCacheBuffer.write<Cache::Entry>( entry.value );
 	}
 	assetCacheBuffer.write<usize>( cacheBufferWriting.size() );

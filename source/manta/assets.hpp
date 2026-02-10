@@ -99,14 +99,24 @@ class Material; // u32
 
 namespace Assets
 {
+	// NOTE: Must maintain parity with build/assets/material.hpp
+	enum_type( MaterialTextureSlot, int )
+	{
+		MaterialTextureSlot_Diffuse = 0,
+		MaterialTextureSlot_Normal,
+		MaterialTextureSlot_Specular,
+		// ...
+		MATERIALTEXTURESLOT_COUNT
+	};
+
 	struct MaterialEntry
 	{
-		u16 textureColor;
-		u16 textureNormal;
+		u16 textures[MATERIALTEXTURESLOT_COUNT];
 	};
 
 	inline u32 material_count() { return CoreAssets::materialCount; }
 	extern const Assets::MaterialEntry &material( Material material );
+	extern const Texture material_get_texture( Material material, Assets::MaterialTextureSlot slot );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -138,10 +148,11 @@ namespace Assets
 		usize sizeIndex;
 		float x1, y1, z1;
 		float x2, y2, z2;
+		u32 skinSlotIndex;
 	};
 
 	inline u32 mesh_count() { return CoreAssets::meshCount; }
-	extern const Assets::MeshEntry &mesh( Mesh mesh );
+	extern const Assets::MeshEntry &mesh( u32 mesh );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -152,9 +163,8 @@ namespace Assets
 {
 	struct ModelEntry
 	{
-		u8 meshCount;
+		u32 meshCount;
 		u32 meshes[32];
-		u32 materials[32];
 		float x1, y1, z1;
 		float x2, y2, z2;
 		DEBUG( const char *name );
@@ -162,6 +172,21 @@ namespace Assets
 
 	inline u32 model_count() { return CoreAssets::modelCount; }
 	extern const Assets::ModelEntry &model( Model model );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class Skin; // u32
+
+namespace Assets
+{
+	struct SkinEntry
+	{
+		u32 materials[32];
+	};
+
+	inline u32 skin_count() { return CoreAssets::skinCount; }
+	extern const Assets::SkinEntry &skin( Skin skin );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

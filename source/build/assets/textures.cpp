@@ -45,7 +45,7 @@ Texture2DBuffer &texture_load_file( const char *path )
 		Texture2DBuffer texture;
 		if( texture.load( path ) )
 		{
-			resourceMap.set( key, resourceList.size() );
+			resourceMap.set( key, resourceList.count() );
 			return resourceList.add( static_cast<Texture2DBuffer &&>( texture ) );
 		}
 		else
@@ -450,8 +450,8 @@ static bool mip_generate_chain_2d_alloc( void *data, const u16 width, const u16 
 
 GlyphID Texture::add_glyph( const Glyph &glyph )
 {
-	cacheIDs.add( glyph.cacheID );
-	const GlyphID glyphID = Assets::glyphs.allocate_new( glyph );
+	glyphCacheKey.add( glyph.cacheKey );
+	const GlyphID glyphID = Assets::glyphs.register_new( glyph );
 	glyphs.add( glyphID );
 	return glyphID;
 }
@@ -459,8 +459,8 @@ GlyphID Texture::add_glyph( const Glyph &glyph )
 
 GlyphID Texture::add_glyph( Glyph &&glyph )
 {
-	cacheIDs.add( glyph.cacheID );
-	const GlyphID glyphID = Assets::glyphs.allocate_new( static_cast<Glyph &&>( glyph ) );
+	glyphCacheKey.add( glyph.cacheKey );
+	const GlyphID glyphID = Assets::glyphs.register_new( static_cast<Glyph &&>( glyph ) );
 	glyphs.add( glyphID );
 	return glyphID;
 }
@@ -473,7 +473,7 @@ struct Space
 	int x, y, w, h;
 
 	inline int area() const { return w * h; }
-	bool operator>(const Space& other) const { return this->area() > other.area(); }
+	bool operator>( const Space& other ) const { return this->area() > other.area(); }
 };
 
 
@@ -531,7 +531,7 @@ void Texture::pack()
 	u8 padding = 1;
 
 	// Sort Glyphs
-	quicksort_glyphs( &glyphs[0], &glyphs[glyphs.size() - 1], false );
+	quicksort_glyphs( &glyphs[0], &glyphs[glyphs.count() - 1], false );
 
 	// Pack
 	for( ;; )
@@ -549,7 +549,7 @@ void Texture::pack()
 
 			// Loop over spaces back to front (smallest spaces are at the back of the list)
 			usize index = USIZE_MAX;
-			for( usize i = spaces.size(); i > 0; i-- )
+			for( usize i = spaces.count(); i > 0; i-- )
 			{
 				Space &space = spaces[i - 1];
 				if( space.w >= glyphWidth + padding * 2 &&
@@ -627,81 +627,24 @@ success:
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-TextureID Textures::allocate_new( String &name )
+TextureID Textures::register_new( String &name )
 {
 	// NOTE: Registers a new, blank Texture resource
-
-	for( usize i = 0; i < textures.size(); i++ )
+	for( usize i = 0; i < textures.count(); i++ )
 	{
 		Texture &texture = textures[i];
 		if( texture.name.equals( name ) ) { return i; }
 	}
 
-	AssertMsg( textures.size() < TEXTUREID_MAX, "Exceeded max number of Textures" );
-	Texture &texture = textures.add( Texture { name } );
-	return static_cast<TextureID>( textures.size() - 1 );
+	AssertMsg( textures.count() < TEXTUREID_MAX, "Exceeded max number of Textures" );
+	Texture &texture = textures.add( Texture { } );
+	texture.name = name;
+	return static_cast<TextureID>( textures.count() - 1 );
 }
 
 
-TextureID Textures::allocate_from_file( String &name, const char *path, bool generateMips )
+TextureID Textures::register_new_from_definition( String name, const char *path )
 {
-	// NOTE: Registers a new texture resource loaded from a specified image file
-
-	for( usize i = 0; i < textures.size(); i++ )
-	{
-		Texture &texture = textures[i];
-		if( texture.name.equals( name ) ) { return i; }
-	}
-
-	AssetFile file;
-	if( !asset_file_register( file, path ) ) { return TEXTUREID_NULL; }
-
-	int width = 0;
-	int height = 0;
-	int channels = 0;
-	if( !stbi_info( path, &width, &height, &channels ) ) { return TEXTUREID_NULL; }
-
-	AssertMsg( textures.size() < TEXTUREID_MAX, "Exceeded max number of Textures" );
-	Texture &texture = textures.add( Texture { name } );
-	texture.atlasTexture = false;
-	texture.generateMips = generateMips;
-
-	static char cacheIDBuffer[PATH_SIZE * 3];
-	memory_set( cacheIDBuffer, 0, sizeof( cacheIDBuffer ) );
-	snprintf( cacheIDBuffer, sizeof( cacheIDBuffer ), "glyph %s|%llu", file.path, file.time.as_u64() );
-	const CacheID cacheID = checksum_xcrc32( cacheIDBuffer, sizeof( cacheIDBuffer ), 0 );
-
-	Glyph glyph;
-	glyph.cacheID = cacheID;
-	glyph.texturePath = path;
-	glyph.imageX1 = static_cast<u16>( 0 );
-	glyph.imageY1 = static_cast<u16>( 0 );
-	glyph.imageX2 = static_cast<u16>( width );
-	glyph.imageY2 = static_cast<u16>( height );
-	texture.add_glyph( static_cast<Glyph &&>( glyph ) );
-
-	return static_cast<TextureID>( textures.size() - 1 );
-}
-
-
-usize Textures::gather( const char *path, bool recurse )
-{
-	List<FileInfo> files;
-	directory_iterate( files, path, ".texture", recurse );
-
-	for( FileInfo &fileInfo : files )
-	{
-		Assets::cacheFileCount++;
-		process( fileInfo.path );
-	}
-
-	return files.size();
-}
-
-
-void Textures::process( const char *path )
-{
-	// Local Directory
 	static char pathDirectory[PATH_SIZE];
 	path_get_directory( pathDirectory, sizeof( pathDirectory ), path );
 
@@ -710,7 +653,7 @@ void Textures::process( const char *path )
 	if( !asset_file_register( fileDefinition, path ) )
 	{
 		Error( "Unable to locate texture file: %s", path );
-		return;
+		return TEXTUREID_NULL;
 	}
 
 	// Open Definition JSON
@@ -718,7 +661,7 @@ void Textures::process( const char *path )
 	if( !fileDefinitionContents.load( path ) )
 	{
 		Error( "Unable to open texture file: %s", path );
-		return;
+		return TEXTUREID_NULL;
 	}
 	JSON fileDefinitionJSON { fileDefinitionContents };
 
@@ -732,27 +675,20 @@ void Textures::process( const char *path )
 	bool generateMips = fileDefinitionJSON.get_bool( "mips" );
 
 	// Register Color Image File
-	AssetFile fileImageColor;
-	if( !asset_file_register( fileImageColor, pathImage ) )
+	AssetFile fileImage;
+	if( !asset_file_register( fileImage, pathImage ) )
 	{
 		Error( "Texture '%s' - Unable to locate image file: '%s'", fileDefinition.name, pathImage );
-		return;
+		return TEXTUREID_NULL;
 	}
-
-	// Generate Cache ID
-	static char cacheIDBuffer[PATH_SIZE * 3];
-	memory_set( cacheIDBuffer, 0, sizeof( cacheIDBuffer ) );
-	snprintf( cacheIDBuffer, sizeof( cacheIDBuffer ), "texture %s|%llu|%s|%llu",
-		fileDefinition.path, fileDefinition.time.as_u64(),
-		fileImageColor.path, fileImageColor.time.as_u64() );
-	const CacheID cacheID = checksum_xcrc32( cacheIDBuffer, sizeof( cacheIDBuffer ), 0 );
 
 	// Check Cache
 	int width = 0;
 	int height = 0;
 	int channels = 0;
 	CacheTextureEntry cacheTexture;
-	if( Assets::cache.fetch( cacheID, cacheTexture ) )
+	const CacheKey cacheKey = Hash::hash64_from( fileDefinition.cache_id(), fileImage.cache_id() );
+	if( Assets::cache.fetch( cacheKey, cacheTexture ) )
 	{
 		width = cacheTexture.width;
 		height = cacheTexture.height;
@@ -761,7 +697,7 @@ void Textures::process( const char *path )
 	else
 	{
 		Assets::cache.dirty |= true; // Dirty Cache
-		stbi_info( fileImageColor.path, &width, &height, &channels );
+		stbi_info( fileImage.path, &width, &height, &channels );
 	}
 
 	// Validate Image Dimensions
@@ -772,14 +708,14 @@ void Textures::process( const char *path )
 		"Texture '%s' has invalid dimensions: (w: %d, h: %d, c: %d)",
 		width, height, channels );
 
-	String name = fileDefinition.name;
-	Texture &texture = textures[allocate_new( name )];
+	const TextureID textureID = register_new( name );
+	Texture &texture = textures[textureID];
 	texture.name = name;
 	texture.atlasTexture = false;
 	texture.generateMips = generateMips;
 
 	Glyph glyph;
-	glyph.cacheID = cacheID;
+	glyph.cacheKey = cacheKey;
 	glyph.texturePath = pathImage;
 	glyph.imageX1 = static_cast<u16>( 0 );
 	glyph.imageY1 = static_cast<u16>( 0 );
@@ -791,7 +727,64 @@ void Textures::process( const char *path )
 	cacheTexture.width = width;
 	cacheTexture.height = height;
 	cacheTexture.channels = channels;
-	Assets::cache.store( cacheID, cacheTexture );
+	Assets::cache.store( cacheKey, cacheTexture );
+
+	return textureID;
+}
+
+
+TextureID Textures::register_new_from_file( String &name, const char *path, bool generateMips )
+{
+	// NOTE: Registers a new texture resource loaded from a specified image file
+	for( usize i = 0; i < textures.count(); i++ )
+	{
+		Texture &texture = textures[i];
+		if( texture.name.equals( name ) ) { return i; }
+	}
+
+	AssetFile file;
+	if( !asset_file_register( file, path ) ) { return TEXTUREID_NULL; }
+	const CacheKey cacheKey = Hash::hash32_from( 0x82B0FF2E, file.cache_id() );
+
+	int width = 0;
+	int height = 0;
+	int channels = 0;
+	if( !stbi_info( path, &width, &height, &channels ) ) { return TEXTUREID_NULL; }
+
+	AssertMsg( textures.count() < TEXTUREID_MAX, "Exceeded max number of Textures" );
+	Texture &texture = textures.add( Texture { } );
+	texture.name = name;
+	texture.atlasTexture = false;
+	texture.generateMips = generateMips;
+
+	Glyph glyph;
+	glyph.cacheKey = cacheKey;
+	glyph.texturePath = path;
+	glyph.imageX1 = static_cast<u16>( 0 );
+	glyph.imageY1 = static_cast<u16>( 0 );
+	glyph.imageX2 = static_cast<u16>( width );
+	glyph.imageY2 = static_cast<u16>( height );
+	texture.add_glyph( static_cast<Glyph &&>( glyph ) );
+
+	return static_cast<TextureID>( textures.count() - 1 );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+usize Textures::gather( const char *path, bool recurse )
+{
+	List<FileInfo> files;
+	directory_iterate( files, path, ".texture", recurse );
+
+	static char name[PATH_SIZE];
+	for( FileInfo &fileInfo : files )
+	{
+		Assets::cacheFileCount++;
+		path_remove_extension( name, sizeof( name ), fileInfo.name );
+		register_new_from_definition( name, fileInfo.path );
+	}
+
+	return files.count();
 }
 
 
@@ -800,7 +793,7 @@ void Textures::build()
 	Buffer &binary = Assets::binary;
 	String &header = Assets::header;
 	String &source = Assets::source;
-	const u32 count = static_cast<u32>( textures.size() );
+	const u32 count = static_cast<u32>( textures.count() );
 
 	Timer timer;
 	usize sizeBytes = 0;
@@ -809,12 +802,13 @@ void Textures::build()
 	{
 		for( Texture &texture : textures )
 		{
-			const u32 numGlyphs = texture.glyphs.size();
+			const u32 numGlyphs = texture.glyphs.count();
 			Assert( numGlyphs > 0 );
 
-			// Texture CacheID
-			const CacheID cacheID = checksum_xcrc32( reinterpret_cast<char *>( texture.cacheIDs.data ),
-				texture.cacheIDs.count() * sizeof( CacheID ), 0 );
+			// Texture CacheKey
+			const CacheKey cacheKey = static_cast<CacheKey>( checksum_xcrc32(
+				reinterpret_cast<char *>( texture.glyphCacheKey.data ),
+				texture.glyphCacheKey.count() * sizeof( CacheKey ), 0 ) );
 
 			// Atlas Texture
 			if( numGlyphs >= 1 && texture.atlasTexture )
@@ -824,7 +818,7 @@ void Textures::build()
 
 				// If the atlas is unchanged, read from the previous binary
 				CacheTextureBinary cacheTextureBinary;
-				if( Assets::cache.fetch( cacheID, cacheTextureBinary ) )
+				if( Assets::cache.fetch( cacheKey, cacheTextureBinary ) )
 				{
 					// Read & Write Binary (Cached)
 					texture.levels = 1;
@@ -836,7 +830,7 @@ void Textures::build()
 
 					// Cache
 					cacheTextureBinary.offset = texture.offset;
-					Assets::cache.store( cacheID, cacheTextureBinary );
+					Assets::cache.store( cacheKey, cacheTextureBinary );
 				}
 				else
 				{
@@ -874,7 +868,7 @@ void Textures::build()
 					cacheTextureBinary.levels = texture.levels;
 					cacheTextureBinary.offset = texture.offset;
 					cacheTextureBinary.size = size;
-					Assets::cache.store( cacheID, cacheTextureBinary );
+					Assets::cache.store( cacheKey, cacheTextureBinary );
 				}
 			}
 			// Independent Texture
@@ -882,7 +876,7 @@ void Textures::build()
 			{
 				// If the atlas is unchanged, read from the previous binary
 				CacheTextureBinary cacheTextureBinary;
-				if( Assets::cache.fetch( cacheID, cacheTextureBinary ) )
+				if( Assets::cache.fetch( cacheKey, cacheTextureBinary ) )
 				{
 					// Read & Write Binary (Cached)
 					texture.width = cacheTextureBinary.width;
@@ -896,7 +890,7 @@ void Textures::build()
 
 					// Cache
 					cacheTextureBinary.offset = texture.offset;
-					Assets::cache.store( cacheID, cacheTextureBinary );
+					Assets::cache.store( cacheKey, cacheTextureBinary );
 				}
 				else
 				{
@@ -952,7 +946,7 @@ void Textures::build()
 					cacheTextureBinary.levels = texture.levels;
 					cacheTextureBinary.offset = texture.offset;
 					cacheTextureBinary.size = size;
-					Assets::cache.store( cacheID, cacheTextureBinary );
+					Assets::cache.store( cacheKey, cacheTextureBinary );
 				}
 			}
 			else
@@ -1021,7 +1015,7 @@ void Textures::build()
 
 	if( verbose_output() )
 	{
-		const usize count = textures.size();
+		const usize count = textures.count();
 		Print( PrintColor_White, TAB TAB "Wrote %d texture%s", count, count == 1 ? "" : "s", MB( sizeBytes ) );
 		PrintLn( PrintColor_White, " (%.3f ms)", timer.elapsed_ms() );
 	}

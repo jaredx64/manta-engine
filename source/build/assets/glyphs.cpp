@@ -8,40 +8,31 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-GlyphID Glyphs::allocate_new( const Glyph &glyph )
+GlyphID Glyphs::register_new( const Glyph &glyph )
 {
-	AssertMsg( glyphs.size() < GLYPHID_MAX, "Exceeded max number of Glyphs" );
+	AssertMsg( glyphs.count() < GLYPHID_MAX, "Exceeded max number of Glyphs" );
 	glyphs.add( glyph );
-	return static_cast<GlyphID>( glyphs.size() - 1 );
+	return static_cast<GlyphID>( glyphs.count() - 1 );
 }
 
 
-GlyphID Glyphs::allocate_new( Glyph &&glyph )
+GlyphID Glyphs::register_new( Glyph &&glyph )
 {
-	AssertMsg( glyphs.size() < GLYPHID_MAX, "Exceeded max number of Glyphs" );
+	AssertMsg( glyphs.count() < GLYPHID_MAX, "Exceeded max number of Glyphs" );
 	glyphs.add( static_cast<Glyph &&>( glyph ) );
-	return static_cast<GlyphID>( glyphs.size() - 1 );
+	return static_cast<GlyphID>( glyphs.count() - 1 );
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void Glyphs::build()
 {
 	Buffer &binary = Assets::binary;
 	String &header = Assets::header;
 	String &source = Assets::source;
-	const u32 count = static_cast<u32>( glyphs.size() );
+	const u32 count = static_cast<u32>( glyphs.count() );
 
 	Timer timer;
-
-	// Load
-	{
-		// ...
-	}
-
-	// Binary
-	{
-		// ...
-	}
 
 	// Header
 	{
@@ -90,7 +81,7 @@ void Glyphs::build()
 
 	if( verbose_output() )
 	{
-		const usize count = glyphs.size();
+		const usize count = glyphs.count();
 		Print( PrintColor_White, TAB TAB "Wrote %d glyph%s", count, count == 1 ? "" : "s" );
 		PrintLn( PrintColor_White, " (%.3f ms)", timer.elapsed_ms() );
 	}

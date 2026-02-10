@@ -147,7 +147,7 @@ static bool char_is_slash( const char c )
 				FileInfo info;
 				strjoin( info.path, path, SLASH, findData.cFileName );
 				strncpy( info.name, findData.cFileName, sizeof( info.name ) - 1 );
-				info.name[sizeof(info.name) - 1] = '\0';
+				info.name[sizeof( info.name ) - 1] = '\0';
 				info.time.time = findData.ftLastWriteTime;
 				list.add( info );
 			}
@@ -654,6 +654,25 @@ void path_remove_extension( char *path, usize size )
 }
 
 
+void path_remove_extension( char *buffer, usize size, const char *path )
+{
+	if( path == nullptr || buffer == nullptr || size == 0 ) { return; }
+
+	char *lastDot = nullptr;
+	usize i = 0;
+
+	for( ; i + 1 < size && path[i] != '\0'; i++ )
+	{
+		buffer[i] = path[i];
+		if( buffer[i] == '.' ) { lastDot = &buffer[i]; }
+	}
+
+	buffer[i] = '\0';
+	if( lastDot ) { *lastDot = '\0'; }
+}
+
+
+
 void path_remove_extensions( char *path, usize size )
 {
 	if( path == nullptr || size == 0 ) { return; }
@@ -664,6 +683,27 @@ void path_remove_extensions( char *path, usize size )
 	{
 		if( path[i] == '.' ) { path[i] = '\0'; return; };
 	}
+}
+
+
+void path_remove_extensions( char *buffer, usize size, const char *path )
+{
+	if( path == nullptr || buffer == nullptr || size == 0 ) { return; }
+
+	usize i = 0;
+
+	for( ; i + 1 < size && path[i] != '\0'; i++ )
+	{
+		if( path[i] == '.' )
+		{
+			buffer[i] = '\0';
+			return;
+		}
+
+		buffer[i] = path[i];
+	}
+
+	buffer[i] = '\0';
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

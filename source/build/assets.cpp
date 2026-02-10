@@ -27,6 +27,7 @@ namespace Assets
 	Glyphs glyphs;
 	Sprites sprites;
 	Materials materials;
+	Skins skins;
 	Meshes meshes;
 	Models models;
 	Fonts fonts;
@@ -133,6 +134,14 @@ void Assets::codegen()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+CacheKey AssetFile::cache_id() const
+{
+	CacheKey hash = static_cast<CacheKey>( time.as_u64() );
+	Hash::hash64_bytes( hash, path, sizeof( path ) );
+	return hash;
+};
+
 
 bool asset_file_register( AssetFile &asset, const char *path )
 {

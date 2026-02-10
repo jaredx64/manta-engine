@@ -35,11 +35,9 @@ struct CacheTTF
 
 usize Fonts::gather( const char *path, bool recurse )
 {
-	// Gather Fonts
 	List<FileInfo> files;
 	directory_iterate( files, path, ".font", recurse );
 
-	// Process Fonts
 	for( FileInfo &fileInfo : files )
 	{
 		Assets::cacheFileCount++;
@@ -74,18 +72,17 @@ void Fonts::process( const char *path )
 	JSON fileDefinitionJSON { fileDefinitionContents };
 
 	// Helper: Register TTF
-	auto register_ttf = [&]( const char type, const char *pathTTF, const CacheID cacheIDFont ) -> u16
+	auto register_ttf = [&]( const char type, const char *pathTTF, const CacheKey cacheKeyFont ) -> u16
 	{
 		const usize ttfIndex = ttfs.count();
 		ErrorIf( ttfIndex >= U16_MAX, "Exceeded maximum number of TTFs!" );
 
-		static char cacheIDBuffer[PATH_SIZE * 2];
-		memory_set( cacheIDBuffer, 0, sizeof( cacheIDBuffer ) );
-		snprintf( cacheIDBuffer, sizeof( cacheIDBuffer ), "ttf_%c %s|%u", type, pathTTF, cacheIDFont );
-		const CacheID cacheID = checksum_xcrc32( cacheIDBuffer, sizeof( cacheIDBuffer ), 0 );
+		u64 hash = Hash::hash64_from( cacheKeyFont, type );
+		Hash::hash64_bytes( hash, pathTTF, strlen( pathTTF ) );
+		const CacheKey cacheKey = static_cast<CacheKey>( hash );
 
 		TTF &ttf = ttfs.add( TTF { } );
-		ttf.cacheID = cacheID;
+		ttf.cacheKey = cacheKey;
 		ttf.path = pathTTF;
 
 		return static_cast<u16>( ttfIndex );
@@ -147,21 +144,17 @@ void Fonts::process( const char *path )
 	path_get_filename( pathLicenseFilename, sizeof( pathLicenseFilename ), pathLicenseRelative );
 
 	// Generate Cache ID
-	static char cacheIDBuffer[PATH_SIZE * 8];
-	memory_set( cacheIDBuffer, 0, sizeof( cacheIDBuffer ) );
-	snprintf( cacheIDBuffer, sizeof( cacheIDBuffer ),
-		"font %s|%llu %s|%llu %s|%llu %s|%llu %s|%llu %s|%llu",
-		fileDefinition.path, fileDefinition.time.as_u64(),
-		hasDefault ? fileDefault.path : "", fileDefault.time.as_u64(),
-		hasItalic ? fileItalic.path : "", fileItalic.time.as_u64(),
-		hasBold ? fileBold.path : "", fileBold.time.as_u64(),
-		hasBoldItalic ? fileBoldItalic.path : "", fileBoldItalic.time.as_u64(),
-		hasLicense ? fileLicense.path : "null", fileLicense.time.as_u64() );
-	const CacheID cacheID = checksum_xcrc32( cacheIDBuffer, sizeof( cacheIDBuffer ), 0 );
+	const CacheKey cacheKey = Hash::hash64_from(
+		fileDefinition.cache_id(),
+		fileDefault.cache_id(),
+		fileItalic.cache_id(),
+		fileBold.cache_id(),
+		fileBoldItalic.cache_id(),
+		fileLicense.cache_id() );
 
 	// Check Cache
 	CacheFont cacheFont;
-	if( !Assets::cache.fetch( cacheID, cacheFont ) )
+	if( !Assets::cache.fetch( cacheKey, cacheFont ) )
 	{
 		Assets::cache.dirty |= true; // Dirty Cache
 	}
@@ -169,10 +162,10 @@ void Fonts::process( const char *path )
 	// Register Font
 	Font &font = fonts.add( Font { } );
 	font.name = fileDefinition.name;
-	font.ttfDefault = register_ttf( 'd', pathDefault, cacheID );
-	font.ttfItalic = hasItalic ? register_ttf( 'i', pathItalic, cacheID ) : font.ttfDefault;
-	font.ttfBold = hasBold ? register_ttf( 'b', pathBold, cacheID ) : font.ttfDefault;
-	font.ttfBoldItalic = hasBoldItalic ? register_ttf( 't', pathBoldItalic, cacheID ) : font.ttfDefault;
+	font.ttfDefault = register_ttf( 'd', pathDefault, cacheKey );
+	font.ttfItalic = hasItalic ? register_ttf( 'i', pathItalic, cacheKey ) : font.ttfDefault;
+	font.ttfBold = hasBold ? register_ttf( 'b', pathBold, cacheKey ) : font.ttfDefault;
+	font.ttfBoldItalic = hasBoldItalic ? register_ttf( 't', pathBoldItalic, cacheKey ) : font.ttfDefault;
 	font.pathLicense = hasLicense ? pathLicense : "";
 
 	// Cache
@@ -180,7 +173,7 @@ void Fonts::process( const char *path )
 	cacheFont.hasItalic = hasItalic;
 	cacheFont.hasBold = hasBold;
 	cacheFont.hasBoldItalic = hasBoldItalic;
-	Assets::cache.store( cacheID, cacheFont );
+	Assets::cache.store( cacheKey, cacheFont );
 }
 
 
@@ -202,7 +195,7 @@ void Fonts::build()
 			path_get_filename( path, sizeof( path ), ttf.path.cstr() );
 
 			CacheTTF cacheTTF;
-			if( Assets::cache.fetch( ttf.cacheID, cacheTTF ) )
+			if( Assets::cache.fetch( ttf.cacheKey, cacheTTF ) )
 			{
 				// Load TTF from cached binary
 				ttf.data.write_from_file( Build::pathOutputRuntimeBinary,
@@ -238,7 +231,7 @@ void Fonts::build()
 			CacheTTF cacheTTF;
 			cacheTTF.offset = ttf.offset;
 			cacheTTF.size = ttf.size;
-			Assets::cache.store( ttf.cacheID, cacheTTF );
+			Assets::cache.store( ttf.cacheKey, cacheTTF );
 		}
 	}
 

@@ -8,6 +8,8 @@
 #include <build/cache.hpp>
 #include <build/gfx.hpp>
 
+#include <build/assets/materials.hpp>
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // NOTE: Must maintain parity with manta/assets.hpp
@@ -29,12 +31,9 @@ enum_type( MeshFormatTypeIndex, int )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct Mesh
+class Mesh
 {
-	CacheID cacheID;
-
-	String name;
-
+public:
 	MeshFormatTypeVertex formatVertex;
 	Buffer dataVertex;
 	usize offsetVertex;
@@ -47,6 +46,10 @@ struct Mesh
 
 	float x1, y1, z1;
 	float x2, y2, z2;
+
+	u32 skinSlotIndex;
+
+	CacheKey cacheKey;
 };
 
 using MeshID = u32;
@@ -55,20 +58,22 @@ using MeshID = u32;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct Meshes
+class Meshes
 {
-	MeshID allocate_new( const String &name, CacheID cacheID,
+public:
+	MeshID register_new( CacheKey cacheKey,
 		MeshFormatTypeVertex formatVertex, void *dataVertex, usize sizeVertex,
 		MeshFormatTypeIndex formatIndex, void *dataIndex, usize sizeIndex,
-		float x1, float y1, float z1, float x2, float y2, float z2 );
+		float x1, float y1, float z1, float x2, float y2, float z2,
+		u32 skinSlotIndex );
 
-	MeshID retrieve_from_cache( const String &name, CacheID cacheID );
+	MeshID register_new_from_cache( CacheKey cacheKey );
 
 	void build();
 
-	Mesh &operator[]( u32 meshID ) { return meshes[meshID]; }
-
+public:
 	List<Mesh> meshes;
+	Mesh &operator[]( u32 meshID ) { return meshes[meshID]; }
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

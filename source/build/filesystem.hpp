@@ -86,8 +86,12 @@ extern void path_get_filename( char *buffer, usize size, const char *path );
 extern void path_get_extension( char *buffer, usize size, const char *path );
 
 extern void path_change_extension( char *buffer, usize size, const char *path, const char *extension );
+
 extern void path_remove_extension( char *path, usize size );
+extern void path_remove_extension( char *buffer, usize size, const char *path );
+
 extern void path_remove_extensions( char *path, usize size );
+extern void path_remove_extensions( char *buffer, usize size, const char *path );
 
 extern void swrite( const char *string, FILE *file );
 extern usize fsize( FILE *file );

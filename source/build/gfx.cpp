@@ -82,28 +82,24 @@ void Gfx::end()
 
 u32 Gfx::gather( const char *path, bool recurse )
 {
-	// Gather Shaders
 	const usize start = shaderFiles.size();
 	directory_iterate( shaderFiles, path, ".shader", true );
 
-	// Check Cache
 	for( usize i = start; i < shaderFiles.size(); i++ )
 	{
 		FileInfo &file = shaderFiles[i];
 
-		static char cacheIDBuffer[PATH_SIZE * 2];
-		memory_set( cacheIDBuffer, 0, sizeof( cacheIDBuffer ) );
-		snprintf( cacheIDBuffer, sizeof( cacheIDBuffer ), "shader %s|%llu",
-			file.path, file.time.as_u64() );
-
-		const CacheID cacheID = checksum_xcrc32( cacheIDBuffer, sizeof( cacheIDBuffer ), 0 );
+		u64 hash = file.time.as_u64();
+		Hash::hash64_bytes( hash, file.path, strlen( file.path ) );
+		const CacheKey cacheKey = static_cast<CacheKey>( hash );
 
 		CacheShader cacheShader;
-		if( !Gfx::cache.dirty && !Gfx::cache.fetch( cacheID, cacheShader ) )
+		if( !Gfx::cache.dirty && !Gfx::cache.fetch( cacheKey, cacheShader ) )
 		{
 			Gfx::cache.dirty |= true;
 		}
-		Gfx::cache.store( cacheID, cacheShader );
+
+		Gfx::cache.store( cacheKey, cacheShader );
 		Gfx::cacheFileCount++;
 	}
 

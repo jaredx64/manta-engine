@@ -16,7 +16,7 @@
 
 struct CacheBinaryStage { usize offset; usize size; };
 
-enum_type( CACHE_BINARY_STAGE, CacheID )
+enum_type( CACHE_BINARY_STAGE, CacheKey )
 {
 	CACHE_BINARY_STAGE_OBJECTS = 0,
 	CACHE_BINARY_STAGE_GFX = 1,
@@ -989,8 +989,9 @@ void BuilderCore::assets_build()
 		Assets::glyphs.build();
 		Assets::sprites.build();
 		Assets::materials.build();
-		Assets::meshes.build();
 		Assets::models.build();
+		Assets::meshes.build();
+		Assets::skins.build();
 		Assets::fonts.build();
 		Assets::sounds.build();
 		Assets::skeleton2Ds.build();

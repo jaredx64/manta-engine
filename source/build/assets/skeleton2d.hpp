@@ -9,27 +9,35 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct Skeleton2D
+class Skeleton2D
 {
-	CacheID cacheID;
+public:
+	Buffer data;
+
+	CacheKey cacheKey;
 	String name;
 	String path;
-	Buffer data;
 };
+
+using SkeletonID = u32;
+#define SKELETONID_MAX ( U32_MAX )
+#define SKELETONID_NULL ( SKELETONID_MAX )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct Skeleton2Ds
+class Skeleton2Ds
 {
-	void allocate_new( const Skeleton2D &skeleton );
+public:
+	SkeletonID register_new( const Skeleton2D &skeleton = Skeleton2D { } );
+	SkeletonID register_new( Skeleton2D &&skeleton );
+	SkeletonID register_new_from_definition( String name, const char *path );
 
 	usize gather( const char *path, bool recurse = true );
-	void process( const char *path );
 	void build();
 
-	Skeleton2D &operator[]( u32 skeletonID ) { return skeletons[skeletonID]; }
-
+public:
 	List<Skeleton2D> skeletons;
+	Skeleton2D &operator[]( u32 skeletonID ) { return skeletons[skeletonID]; }
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

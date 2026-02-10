@@ -21,21 +21,23 @@ struct CacheMesh
 	usize sizeIndex;
 	float x1, y1, z1;
 	float x2, y2, z2;
+	u32 skinSlotIndex;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-MeshID Meshes::allocate_new( const String &name, CacheID cacheID,
+MeshID Meshes::register_new( CacheKey cacheKey,
 	MeshFormatTypeVertex formatVertex, void *dataVertex, usize sizeVertex,
 	MeshFormatTypeIndex formatIndex, void *dataIndex, usize sizeIndex,
-	float x1, float y1, float z1, float x2, float y2, float z2 )
+	float x1, float y1, float z1, float x2, float y2, float z2,
+	u32 skinSlotIndex )
 {
 	Assert( dataVertex != nullptr );
 	Assert( sizeVertex != 0LLU );
 	AssertMsg( meshes.size() < MESHID_MAX, "Exceeded max number of Meshes" );
 
 	Mesh &mesh = meshes.add( Mesh { } );
-	mesh.cacheID = cacheID;
+	mesh.cacheKey = cacheKey;
 
 	mesh.formatVertex = formatVertex;
 	mesh.dataVertex.clear();
@@ -52,55 +54,44 @@ MeshID Meshes::allocate_new( const String &name, CacheID cacheID,
 	mesh.y2 = y2;
 	mesh.z2 = z2;
 
-	if( name.is_empty() )
-	{
-		char buffer[64];
-		const u32 checksum = checksum_xcrc32( reinterpret_cast<char *>( dataVertex ), sizeVertex, 12345 );
-		snprintf( buffer, sizeof( buffer ), "mesh_%u", checksum );
-		mesh.name = buffer;
-	}
-	else
-	{
-		mesh.name = name;
-	}
+	mesh.skinSlotIndex = skinSlotIndex;
 
 	return static_cast<MeshID>( meshes.count() - 1 );
 }
 
 
-MeshID Meshes::retrieve_from_cache( const String &name, CacheID cacheID )
+MeshID Meshes::register_new_from_cache( CacheKey cacheKey )
 {
 	CacheMesh cache;
-	if( Assets::cache.fetch( cacheID, cache ) )
+	if( !Assets::cache.fetch( cacheKey, cache ) ) { return MESHID_NULL; }
+
+	// Vertex Data
+	static Buffer dataVertexCache;
+	Assert( cache.formatVertex < MESHFORMATTYPEVERTEX_COUNT );
+	dataVertexCache.clear();
+	Assert( cache.sizeVertex != 0LLU );
+	dataVertexCache.write_from_file( Build::pathOutputRuntimeBinary,
+		Assets::cacheReadOffset + cache.offsetVertex, cache.sizeVertex );
+
+	// Index Data
+	static Buffer dataIndexCache;
+	Assert( cache.formatIndex < MESHFORMATTYPEINDEX_COUNT );
+	dataIndexCache.clear();
+	if( cache.sizeIndex != 0LLU )
 	{
-		// Vertex Data
-		static Buffer dataVertexCache;
-		Assert( cache.formatVertex < MESHFORMATTYPEVERTEX_COUNT );
-		dataVertexCache.clear();
-		Assert( cache.sizeVertex != 0LLU );
-		dataVertexCache.write_from_file( Build::pathOutputRuntimeBinary,
-			Assets::cacheReadOffset + cache.offsetVertex, cache.sizeVertex );
-
-		// Index Data
-		static Buffer dataIndexCache;
-		Assert( cache.formatIndex < MESHFORMATTYPEINDEX_COUNT );
-		dataIndexCache.clear();
-		if( cache.sizeIndex != 0LLU )
-		{
-			dataIndexCache.write_from_file( Build::pathOutputRuntimeBinary,
-				Assets::cacheReadOffset + cache.offsetIndex, cache.sizeIndex );
-		}
-
-		return allocate_new( name, cacheID,
-			cache.formatVertex, dataVertexCache.data, dataVertexCache.size(),
-			cache.formatIndex, dataIndexCache.data, dataIndexCache.size(),
-			cache.x1, cache.y1, cache.z1,
-			cache.x2, cache.y2, cache.x2 );
+		dataIndexCache.write_from_file( Build::pathOutputRuntimeBinary,
+			Assets::cacheReadOffset + cache.offsetIndex, cache.sizeIndex );
 	}
 
-	return MESHID_NULL;
+	return register_new( cacheKey,
+		cache.formatVertex, dataVertexCache.data, dataVertexCache.size(),
+		cache.formatIndex, dataIndexCache.data, dataIndexCache.size(),
+		cache.x1, cache.y1, cache.z1,
+		cache.x2, cache.y2, cache.z2,
+		cache.skinSlotIndex );
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void Meshes::build()
 {
@@ -138,7 +129,8 @@ void Meshes::build()
 			cache.x2 = mesh.x2;
 			cache.y2 = mesh.y2;
 			cache.z2 = mesh.z2;
-			Assets::cache.store( mesh.cacheID, cache );
+			cache.skinSlotIndex = mesh.skinSlotIndex;
+			Assets::cache.store( mesh.cacheKey, cache );
 		}
 	}
 
@@ -146,12 +138,6 @@ void Meshes::build()
 	{
 		// Group
 		assets_group( header );
-
-		// Enums
-		header.append( "enum_class\n(\n\tMesh, u32,\n\n" );
-		for( Mesh &mesh : meshes ) { header.append( "\t" ).append( mesh.name ).append( ",\n" ); }
-		header.append( "\n\tNull = 0,\n" );
-		header.append( ");\n\n" );
 
 		// Struct
 		header.append( "namespace Assets { struct MeshEntry; }\n\n" );
@@ -190,16 +176,17 @@ void Meshes::build()
 					mesh.sizeIndex );
 				source.append( buffer );
 
-				snprintf( buffer, sizeof( buffer ), "%ff, %ff, %ff, %ff, %ff, %ff ",
+				snprintf( buffer, sizeof( buffer ), "%ff, %ff, %ff, %ff, %ff, %ff, %u ",
 					mesh.x1,
 					mesh.y1,
 					mesh.z1,
 					mesh.x2,
 					mesh.y2,
-					mesh.z2 );
+					mesh.z2,
+					mesh.skinSlotIndex );
 				source.append( buffer );
 
-				source.append( " }, // " ).append( mesh.name ).append( "\n" );
+				source.append( " },\n" );
 			}
 			source.append( "\t};\n" );
 		}

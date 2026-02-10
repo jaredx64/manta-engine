@@ -26,32 +26,24 @@ struct CacheSprite
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Sprites::allocate_new( const Sprite &sprite )
+SpriteID Sprites::register_new( const Sprite &sprite )
 {
+	AssertMsg( sprites.count() < SPRITEID_MAX, "Exceeded max number of Sprites" );
 	sprites.add( sprite );
+	return static_cast<SpriteID>( sprites.count() - 1 );
 }
 
 
-usize Sprites::gather( const char *path, bool recurse )
+SpriteID Sprites::register_new( Sprite &&sprite )
 {
-	// Gather Sprites
-	List<FileInfo> files;
-	directory_iterate( files, path, ".sprite", recurse );
-
-	// Process Sprites
-	for( FileInfo &fileInfo : files )
-	{
-		Assets::cacheFileCount++;
-		process( fileInfo.path );
-	}
-
-	return files.size();
+	AssertMsg( sprites.count() < SPRITEID_MAX, "Exceeded max number of Sprites" );
+	sprites.add( static_cast<Sprite &&>( sprite ) );
+	return static_cast<SpriteID>( sprites.count() - 1 );
 }
 
 
-void Sprites::process( const char *path )
+SpriteID Sprites::register_new_from_definition( String name, const char *path )
 {
-	// Local Directory
 	static char pathDirectory[PATH_SIZE];
 	path_get_directory( pathDirectory, sizeof( pathDirectory ), path );
 
@@ -60,7 +52,7 @@ void Sprites::process( const char *path )
 	if( !asset_file_register( fileDefinition, path ) )
 	{
 		Error( "Unable to locate sprite file: %s", path );
-		return;
+		return SPRITEID_NULL;
 	}
 
 	// Open Definition JSON
@@ -68,7 +60,7 @@ void Sprites::process( const char *path )
 	if( !fileDefinitionContents.load( path ) )
 	{
 		Error( "Unable to open sprite file: %s", path );
-		return;
+		return SPRITEID_NULL;
 	}
 	JSON fileDefinitionJSON { fileDefinitionContents };
 
@@ -99,20 +91,13 @@ void Sprites::process( const char *path )
 	if( !asset_file_register( fileImage, pathImage ) )
 	{
 		Error( "Sprite '%s' - Unable to locate image file: '%s'", fileDefinition.name, pathImage );
-		return;
+		return SPRITEID_NULL;
 	}
-
-	// Generate Cache ID
-	static char cacheIDBuffer[PATH_SIZE * 3];
-	memory_set( cacheIDBuffer, 0, sizeof( cacheIDBuffer ) );
-	snprintf( cacheIDBuffer, sizeof( cacheIDBuffer ), "sprite %s|%llu|%s|%llu",
-		fileDefinition.path, fileDefinition.time.as_u64(),
-		fileImage.path, fileImage.time.as_u64() );
-	const CacheID cacheID = checksum_xcrc32( cacheIDBuffer, sizeof( cacheIDBuffer ), 0 );
 
 	// Check Cache
 	CacheSprite cacheSprite;
-	if( Assets::cache.fetch( cacheID, cacheSprite ) )
+	const CacheKey cacheKey = Hash::hash64_from( fileDefinition.cache_id(), fileImage.cache_id() );
+	if( Assets::cache.fetch( cacheKey, cacheSprite ) )
 	{
 		imageWidth = cacheSprite.imageWidth;
 		imageHeight = cacheSprite.imageHeight;
@@ -133,14 +118,15 @@ void Sprites::process( const char *path )
 		imageWidth, imageHeight, imageChannels );
 
 	// Register Sprite
-	Sprite &sprite = sprites.add( Sprite { } );
-	sprite.name = fileDefinition.name;
+	const SpriteID spriteID = register_new();
+	Sprite &sprite = sprites[spriteID];
+	sprite.name = static_cast<String &&>( name );
 	sprite.count = static_cast<u16>( count );
 	sprite.width = static_cast<u16>( imageWidth / count );
 	sprite.height = static_cast<u16>( imageHeight );
 	sprite.xorigin = static_cast<i16>( xorigin );
 	sprite.yorigin = static_cast<i16>( yorigin );
-	sprite.textureID = Assets::textures.allocate_new( atlasName );
+	sprite.textureID = Assets::textures.register_new( atlasName );
 	sprite.glyphID = GLYPHID_MAX;
 
 	// Split sprite into individual glyphs
@@ -148,11 +134,9 @@ void Sprites::process( const char *path )
 	{
 		Glyph glyph;
 #if 0
-		memory_set( cacheIDBuffer, 0, sizeof( cacheIDBuffer ) );
-		snprintf( cacheIDBuffer, sizeof( cacheIDBuffer ), "subimg %u|%u", cacheID, i );
-		glyph.cacheID = checksum_xcrc32( cacheIDBuffer, sizeof( cacheIDBuffer ), 0 );
+		glyph.cacheKey = Hash::hash64_from( 0xAC661F46, cacheKey, i );
 #else
-		glyph.cacheID = cacheID + i;
+		glyph.cacheKey = cacheKey + i;
 #endif
 		glyph.imageX1 = sprite.width * i;
 		glyph.imageY1 = 0;
@@ -169,7 +153,27 @@ void Sprites::process( const char *path )
 	cacheSprite.imageWidth = imageWidth;
 	cacheSprite.imageHeight = imageHeight;
 	cacheSprite.imageChannels = imageChannels;
-	Assets::cache.store( cacheID, cacheSprite );
+	Assets::cache.store( cacheKey, cacheSprite );
+
+	return spriteID;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+usize Sprites::gather( const char *path, bool recurse )
+{
+	List<FileInfo> files;
+	directory_iterate( files, path, ".sprite", recurse );
+
+	static char name[PATH_SIZE];
+	for( FileInfo &fileInfo : files )
+	{
+		Assets::cacheFileCount++;
+		path_remove_extension( name, sizeof( name ), fileInfo.name );
+		register_new_from_definition( name, fileInfo.path );
+	}
+
+	return files.count();
 }
 
 
@@ -178,7 +182,7 @@ void Sprites::build()
 	Buffer &binary = Assets::binary;
 	String &header = Assets::header;
 	String &source = Assets::source;
-	const u32 count = static_cast<u32>( sprites.size() );
+	const u32 count = static_cast<u32>( sprites.count() );
 
 	Timer timer;
 
@@ -253,7 +257,7 @@ void Sprites::build()
 
 	if( verbose_output() )
 	{
-		const usize count = sprites.size();
+		const usize count = sprites.count();
 		Print( PrintColor_White, TAB TAB "Wrote %d sprite%s", count, count == 1 ? "" : "s" );
 		PrintLn( PrintColor_White, " (%.3f ms)", timer.elapsed_ms() );
 	}

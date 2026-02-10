@@ -20,32 +20,23 @@ struct CacheSound
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-SoundID Sounds::allocate_new( const Sound &sound )
+SoundID Sounds::register_new( const Sound &sound )
 {
+	AssertMsg( sounds.count() < SOUNDID_MAX, "Exceeded max number of Sounds" );
 	sounds.add( sound );
-	return sounds.size() - 1;
+	return static_cast<SoundID>( sounds.count() - 1 );
 }
 
 
-usize Sounds::gather( const char *path, bool recurse )
+SoundID Sounds::register_new( Sound &&sound )
 {
-	// Gather Sounds
-	List<FileInfo> files;
-	directory_iterate( files, path, ".wav", recurse );
-	directory_iterate( files, path, ".ogg", recurse );
-
-	// Process Sounds
-	for( FileInfo &fileInfo : files )
-	{
-		Assets::cacheFileCount++;
-		process( fileInfo.path );
-	}
-
-	return files.size();
+	AssertMsg( sounds.count() < SOUNDID_MAX, "Exceeded max number of Sounds" );
+	sounds.add( static_cast<Sound &&>( sound ) );
+	return static_cast<SoundID>( sounds.count() - 1 );
 }
 
 
-void Sounds::process( const char *path )
+SoundID Sounds::register_new_from_definition( String name, const char *path )
 {
 	// Local Directory
 	static char pathDirectory[PATH_SIZE];
@@ -56,34 +47,50 @@ void Sounds::process( const char *path )
 	if( !asset_file_register( fileDefinition, path ) )
 	{
 		Error( "Unable to locate sound file: %s", path );
-		return;
+		return SOUNDID_NULL;
 	}
 	String filepath = fileDefinition.path;
 
 	const bool streamed = filepath.contains( ".stream" );
 	const bool compressed = filepath.contains( ".ogg" );
 
-	// Generate Cache ID
-	static char cacheIDBuffer[PATH_SIZE * 2];
-	memory_set( cacheIDBuffer, 0, sizeof( cacheIDBuffer ) );
-	snprintf( cacheIDBuffer, sizeof( cacheIDBuffer ), "sound %s|%llu",
-		fileDefinition.path, fileDefinition.time.as_u64() );
-	const CacheID cacheID = checksum_xcrc32( cacheIDBuffer, sizeof( cacheIDBuffer ), 0 );
-
 	// Check Cache
 	CacheSound cacheSound;
-	if( !Assets::cache.fetch( cacheID, cacheSound ) )
+	const CacheKey cacheKey = fileDefinition.cache_id();
+	if( !Assets::cache.fetch( cacheKey, cacheSound ) )
 	{
 		Assets::cache.dirty |= true; // Dirty Cache
 	}
 
 	// Register Sound
-	Sound &sound = sounds.add( Sound { } );
-	sound.cacheID = cacheID;
+	const SoundID soundID = register_new();
+	Sound &sound = sounds[soundID];
+	sound.cacheKey = cacheKey;
+	sound.name = name;
 	sound.path = fileDefinition.path;
-	sound.name = fileDefinition.name;
 	sound.streamed = streamed;
 	sound.compressed = compressed;
+
+	return soundID;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+usize Sounds::gather( const char *path, bool recurse )
+{
+	List<FileInfo> files;
+	directory_iterate( files, path, ".wav", recurse );
+	directory_iterate( files, path, ".ogg", recurse );
+
+	static char name[PATH_SIZE];
+	for( FileInfo &fileInfo : files )
+	{
+		Assets::cacheFileCount++;
+		path_remove_extensions( name, sizeof( name ), fileInfo.name );
+		register_new_from_definition( name, fileInfo.path );
+	}
+
+	return files.count();
 }
 
 
@@ -92,7 +99,7 @@ void Sounds::build()
 	Buffer &binary = Assets::binary;
 	String &header = Assets::header;
 	String &source = Assets::source;
-	const u32 count = static_cast<u32>( sounds.size() );
+	const u32 count = static_cast<u32>( sounds.count() );
 
 	usize voiceSampleDataOffset;
 	usize voiceSampleDataSize;
@@ -105,7 +112,7 @@ void Sounds::build()
 		for( Sound &sound : sounds )
 		{
 			CacheSound cacheSound;
-			if( Assets::cache.fetch( sound.cacheID, cacheSound ) )
+			if( Assets::cache.fetch( sound.cacheKey, cacheSound ) )
 			{
 				// Load from cached binary
 				sound.sampleData.write_from_file( Build::pathOutputRuntimeBinary,
@@ -164,7 +171,7 @@ void Sounds::build()
 			cacheSound.offset = binaryOffset;
 			cacheSound.size = sound.sampleData.size();
 			cacheSound.channels = sound.numChannels;
-			Assets::cache.store( sound.cacheID, cacheSound );
+			Assets::cache.store( sound.cacheKey, cacheSound );
 		}
 		voiceSampleDataSize = binary.size() - voiceSampleDataOffset;
 		ErrorIf( voiceSampleDataSize & 1, "Sounds: Sample data size is not even!" );
@@ -184,7 +191,7 @@ void Sounds::build()
 			cacheSound.offset = binaryOffset;
 			cacheSound.size = sound.sampleData.size();
 			cacheSound.channels = sound.numChannels;
-			Assets::cache.store( sound.cacheID, cacheSound );
+			Assets::cache.store( sound.cacheKey, cacheSound );
 		}
 		streamSampleDataSize = binary.size() - streamSampleDataOffset;
 		ErrorIf( streamSampleDataSize & 1, "Streams: Sample data size is not even!" );
@@ -258,7 +265,7 @@ void Sounds::build()
 
 	if( verbose_output() )
 	{
-		const usize count = sounds.size();
+		const usize count = sounds.count();
 		Print( PrintColor_White, TAB TAB "Wrote %d sound%s", count, count == 1 ? "" : "s" );
 		PrintLn( PrintColor_White, " (%.3f ms)", timer.elapsed_ms() );
 	}

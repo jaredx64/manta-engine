@@ -38,7 +38,7 @@ const Assets::DataAssetEntry &Assets::data_asset( DataAsset asset )
 {
 	Assert( asset < CoreAssets::dataAssetCount );
 	return CoreAssets::dataAssets[asset];
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -46,7 +46,7 @@ const Assets::TextureEntry &Assets::texture( Texture texture )
 {
 	Assert( texture < CoreAssets::textureCount );
 	return CoreAssets::textures[texture];
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -54,7 +54,7 @@ const Assets::GlyphEntry &Assets::glyph( const u32 glyph )
 {
 	Assert( glyph < CoreAssets::glyphCount );
 	return CoreAssets::glyphs[glyph];
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -62,7 +62,7 @@ const Assets::SpriteEntry &Assets::sprite( Sprite sprite )
 {
 	Assert( sprite < CoreAssets::spriteCount );
 	return CoreAssets::sprites[sprite];
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -70,15 +70,23 @@ const Assets::MaterialEntry &Assets::material( Material material )
 {
 	Assert( material < CoreAssets::materialCount );
 	return CoreAssets::materials[material];
-};
+}
+
+
+const Texture Assets::material_get_texture( Material material, Assets::MaterialTextureSlot slot )
+{
+	const Assets::MaterialEntry &materialEntry = Assets::material( material );
+	Assert( slot < Assets::MATERIALTEXTURESLOT_COUNT );
+	return materialEntry.textures[slot];
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const Assets::MeshEntry &Assets::mesh( Mesh mesh )
+const Assets::MeshEntry &Assets::mesh( u32 mesh )
 {
 	Assert( mesh < CoreAssets::meshCount );
 	return CoreAssets::meshes[mesh];
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -86,7 +94,15 @@ const Assets::ModelEntry &Assets::model( Model model )
 {
 	Assert( model < CoreAssets::modelCount );
 	return CoreAssets::models[model];
-};
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const Assets::SkinEntry &Assets::skin( Skin skin )
+{
+	Assert( skin < CoreAssets::skinCount );
+	return CoreAssets::skins[skin];
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -94,7 +110,7 @@ const Assets::TTFEntry &Assets::ttf( const u32 ttf )
 {
 	Assert( ttf < CoreAssets::ttfCount );
 	return CoreAssets::ttfs[ttf];
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -102,7 +118,7 @@ const Assets::FontEntry &Assets::font( const u32 font )
 {
 	Assert( font < CoreAssets::fontCount );
 	return CoreAssets::fonts[font];
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -110,7 +126,7 @@ const Assets::SoundEntry &Assets::sound( Sound sound )
 {
 	Assert( sound < CoreAssets::soundCount );
 	return CoreAssets::sounds[sound];
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -118,7 +134,7 @@ const Assets::Skeleton2DEntry &Assets::skeleton_2d( Skeleton skeleton2D )
 {
 	Assert( skeleton2D < CoreAssets::skeleton2DCount );
 	return CoreAssets::skeleton2Ds[skeleton2D];
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -127,7 +143,7 @@ const Assets::Skeleton3DEntry &Assets::skeleton_3d( Skeleton3D skeleton3 )
 {
 	Assert( skeleton3D < CoreAssets::skeleton3DCount );
 	return CoreAssets::skeleton3Ds[skeleton3D];
-};
+}
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

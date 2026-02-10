@@ -58,7 +58,7 @@ private:
 	JSONElement find_element_key( const char *key );
 	JSONElement find_element_index( usize index );
 
-private:
+public:
 	String *string;
 	usize start;
 	usize end;

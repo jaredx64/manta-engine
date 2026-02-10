@@ -9,37 +9,40 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-using SoundID = u32;
-#define SOUNDID_MAX ( U32_MAX )
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-struct Sound
+class Sound
 {
-	CacheID cacheID;
-	String path;
-	String name;
+public:
 	bool streamed;
 	bool compressed;
 	u8 numChannels;
 	Buffer sampleData;
 	usize sampleOffsetBytes;
 	usize sampleCountBytes;
+
+	CacheKey cacheKey;
+	String name;
+	String path;
 };
+
+using SoundID = u32;
+#define SOUNDID_MAX ( U32_MAX )
+#define SOUNDID_NULL ( SOUNDID_MAX )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct Sounds
+class Sounds
 {
-	SoundID allocate_new( const Sound &voice );
+public:
+	SoundID register_new( const Sound &sound = Sound { } );
+	SoundID register_new( Sound &&sound );
+	SoundID register_new_from_definition( String name, const char *path );
 
 	usize gather( const char *path, bool recurse = true );
-	void process( const char *path );
 	void build();
 
-	Sound &operator[]( u32 soundID ) { return sounds[soundID]; }
-
+public:
 	List<Sound> sounds;
+	Sound &operator[]( u32 soundID ) { return sounds[soundID]; }
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

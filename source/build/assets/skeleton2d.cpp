@@ -21,30 +21,40 @@ struct CacheSkeleton2D
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Skeleton2Ds::allocate_new( const Skeleton2D &skeleton )
+SkeletonID Skeleton2Ds::register_new( const Skeleton2D &skeleton )
 {
+	AssertMsg( skeletons.count() < SKINID_MAX, "Exceeded max number of Skeletons" );
 	skeletons.add( skeleton );
+	return static_cast<SkeletonID>( skeletons.count() - 1 );
+}
+
+
+SkeletonID Skeleton2Ds::register_new( Skeleton2D &&skeleton )
+{
+	AssertMsg( skeletons.count() < SKINID_MAX, "Exceeded max number of Skeletons" );
+	skeletons.add( static_cast<Skeleton2D &&>( skeleton ) );
+	return static_cast<SkeletonID>( skeletons.count() - 1 );
 }
 
 
 usize Skeleton2Ds::gather( const char *path, bool recurse )
 {
-	// Gather Skeletons
 	List<FileInfo> files;
 	directory_iterate( files, path, ".skeleton2d", recurse );
 
-	// Process Skeletons
+	static char name[PATH_SIZE];
 	for( FileInfo &fileInfo : files )
 	{
 		Assets::cacheFileCount++;
-		process( fileInfo.path );
+		path_remove_extension( name, sizeof( name ), fileInfo.name );
+		register_new_from_definition( name, fileInfo.path );
 	}
 
-	return files.size();
+	return files.count();
 }
 
 
-void Skeleton2Ds::process( const char *path )
+SkeletonID Skeleton2Ds::register_new_from_definition( String name, const char *path )
 {
 	// Local Directory
 	static char pathDirectory[PATH_SIZE];
@@ -55,7 +65,7 @@ void Skeleton2Ds::process( const char *path )
 	if( !asset_file_register( fileDefinition, path ) )
 	{
 		Error( "Unable to locate skeleton2D file: %s", path );
-		return;
+		return SKELETONID_NULL;
 	}
 
 	// Open Definition JSON
@@ -63,7 +73,7 @@ void Skeleton2Ds::process( const char *path )
 	if( !fileDefinitionContents.load( path ) )
 	{
 		Error( "Unable to open skeleton2d file: %s", path );
-		return;
+		return SKELETONID_NULL;
 	}
 	JSON fileDefinitionJSON { fileDefinitionContents };
 
@@ -80,38 +90,35 @@ void Skeleton2Ds::process( const char *path )
 	if( !asset_file_register( fileAsset, pathSkeleton ) )
 	{
 		Error( "Skeleton2D '%s' - Unable to locate skeleton file: '%s'", fileDefinition.name, pathSkeleton );
-		return;
+		return SKELETONID_NULL;
 	}
-
-	// Generate Cache ID
-	static char cacheIDBuffer[PATH_SIZE * 3];
-	memory_set( cacheIDBuffer, 0, sizeof( cacheIDBuffer ) );
-	snprintf( cacheIDBuffer, sizeof( cacheIDBuffer ), "skeleton2D %s|%llu|%s|%llu",
-		fileDefinition.path, fileDefinition.time.as_u64(),
-		fileAsset.path, fileAsset.time.as_u64() );
-	const CacheID cacheID = checksum_xcrc32( cacheIDBuffer, sizeof( cacheIDBuffer ), 0 );
 
 	// Check Cache
 	CacheSkeleton2D cacheSkeleton;
-	if( !Assets::cache.fetch( cacheID, cacheSkeleton ) )
+	const CacheKey cacheKey = Hash::hash64_from( fileDefinition.cache_id(), fileAsset.cache_id() );
+	if( !Assets::cache.fetch( cacheKey, cacheSkeleton ) )
 	{
 		Assets::cache.dirty |= true; // Dirty Cache
 	}
 
 	// Register Asset
-	Skeleton2D &asset = skeletons.add( Skeleton2D { } );
-	asset.cacheID = cacheID;
-	asset.name = fileDefinition.name;
-	asset.path = fileAsset.path;
+	const SkeletonID skeletonID = register_new();
+	Skeleton2D &skeleton = skeletons[skeletonID];
+	skeleton.cacheKey = cacheKey;
+	skeleton.name = name;
+	skeleton.path = fileAsset.path;
+
+	return skeletonID;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void Skeleton2Ds::build()
 {
 	Buffer &binary = Assets::binary;
 	String &header = Assets::header;
 	String &source = Assets::source;
-	const u32 count = static_cast<u32>( skeletons.size() );
+	const u32 count = static_cast<u32>( skeletons.count() );
 
 	Timer timer;
 
@@ -120,7 +127,7 @@ void Skeleton2Ds::build()
 		for( Skeleton2D &skeleton : skeletons )
 		{
 			CacheSkeleton2D cacheSkeleton;
-			if( Assets::cache.fetch( skeleton.cacheID, cacheSkeleton ) )
+			if( Assets::cache.fetch( skeleton.cacheKey, cacheSkeleton ) )
 			{
 				// Load from cached binary
 				skeleton.data.write_from_file( Build::pathOutputRuntimeBinary,
@@ -196,7 +203,7 @@ void Skeleton2Ds::build()
 
 	if( verbose_output() )
 	{
-		const usize count = skeletons.size();
+		const usize count = skeletons.count();
 		Print( PrintColor_White, TAB TAB "Wrote %d skeleton2D%s", count, count == 1 ? "" : "s" );
 		PrintLn( PrintColor_White, " (%.3f ms)", timer.elapsed_ms() );
 	}

@@ -12,36 +12,49 @@
 
 struct TTF
 {
-	CacheID cacheID;
+	CacheKey cacheKey;
 	String path;
 	Buffer data;
 	usize offset;
 	usize size;
 };
 
+using TTFID = u32;
+#define TTFID_MAX ( U32_MAX )
+#define TTFID_NULL ( TTFID_MAX )
 
-struct Font
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class Font
 {
-	String name;
+public:
 	u16 ttfDefault;
 	u16 ttfItalic;
 	u16 ttfBold;
 	u16 ttfBoldItalic;
 	String pathLicense;
 	Buffer dataLicense;
+
+	String name;
 };
 
+using FontID = u32;
+#define FONTID_MAX ( U32_MAX )
+#define FONTID_NULL ( FONTID_MAX )
 
-struct Fonts
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class Fonts
 {
+public:
 	usize gather( const char *path, bool recurse = true );
 	void process( const char *path );
 	void build();
 
-	Font &operator[]( u32 fontID ) { return fonts[fontID]; }
-
+public:
 	List<TTF> ttfs;
 	List<Font> fonts;
+	Font &operator[]( u32 fontID ) { return fonts[fontID]; }
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -12,8 +12,9 @@
 #include <build/assets/glyphs.hpp>
 #include <build/assets/sprites.hpp>
 #include <build/assets/materials.hpp>
-#include <build/assets/meshes.hpp>
 #include <build/assets/models.hpp>
+#include <build/assets/meshes.hpp>
+#include <build/assets/skins.hpp>
 #include <build/assets/fonts.hpp>
 #include <build/assets/sounds.hpp>
 #include <build/assets/skeleton2d.hpp>
@@ -50,8 +51,9 @@ namespace Assets
 	extern Glyphs glyphs;
 	extern Sprites sprites;
 	extern Materials materials;
-	extern Meshes meshes;
 	extern Models models;
+	extern Meshes meshes;
+	extern Skins skins;
 	extern Fonts fonts;
 	extern Sounds sounds;
 	extern Skeleton2Ds skeleton2Ds;
@@ -77,11 +79,12 @@ class AssetFile
 {
 public:
 	explicit operator bool() const { return exists; }
+	CacheKey cache_id() const;
 
 public:
-	FileTime time;
-	char path[PATH_SIZE];
-	char name[PATH_SIZE];
+	FileTime time = FileTime { };
+	char path[PATH_SIZE] = { 0 };
+	char name[PATH_SIZE] = { 0 };
 	bool exists = false;
 };
 
@@ -89,8 +92,7 @@ extern bool asset_file_register( AssetFile &asset, const char *path );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template <typename... Args>
-void assets_struct( String &string, const char *name, Args... args )
+template <typename... Args> void assets_struct( String &string, const char *name, Args... args )
 {
 	string.append( "struct " );
 	string.append( name );

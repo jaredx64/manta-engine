@@ -48,7 +48,7 @@ constexpr u32 hash( u8 key ) { return static_cast<u32>( key );  }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-inline void hash_bytes( u32 &hash, const void *data, usize size )
+inline void hash32_bytes( u32 &hash, const void *data, usize size )
 {
 	static constexpr u32 FNV_PRIME = 16777619U;
 	const byte *bytes = reinterpret_cast<const byte *>( data );
@@ -60,7 +60,7 @@ inline void hash_bytes( u32 &hash, const void *data, usize size )
 }
 
 
-inline void hash_cstr( u32 &hash, const char *str )
+inline void hash32_cstr( u32 &hash, const char *str )
 {
 	static constexpr u32 FNV_PRIME = 16777619U;
 	while( *str )
@@ -71,44 +71,112 @@ inline void hash_cstr( u32 &hash, const char *str )
 }
 
 
-template <typename T> inline void hash_value( u32 &hash, const T &value )
+template <typename T> inline void hash32_value( u32 &hash, const T &value )
 {
-	hash_bytes( hash, &value, sizeof( T ) );
+	hash32_bytes( hash, &value, sizeof( T ) );
 }
 
 
-template <> inline void hash_value<const char *>( u32 &hash, const char *const &value )
+template <> inline void hash32_value<const char *>( u32 &hash, const char *const &value )
 {
 	if( value != nullptr )
 	{
-		hash_cstr( hash, value );
+		hash32_cstr( hash, value );
 	}
 	else
 	{
 		u32 zero = 0;
-		hash_bytes( hash, &zero, sizeof( zero ) );
+		hash32_bytes( hash, &zero, sizeof( zero ) );
 	}
 }
 
 
-inline void hash_combine( u32 & ) { }
+inline void hash32_combine( u32 & ) { }
 
 
-template <typename T, typename... Ts> inline void hash_combine( u32 &hash, const T &value, const Ts &...rest )
+template <typename T, typename... Ts> inline void hash32_combine( u32 &hash, const T &value, const Ts &...rest )
 {
 	static constexpr u32 FNV_PRIME = 16777619U;
-	hash_value( hash, value );
+	hash32_value( hash, value );
 	hash ^= 0x9e3779b9u;
 	hash *= FNV_PRIME;
-	hash_combine( hash, rest... );
+	hash32_combine( hash, rest... );
 }
 
 
-template <typename... Args> inline u32 hash_from( const Args &...args )
+template <typename... Args> inline u32 hash32_from( const Args &...args )
 {
 	static constexpr u32 FNV_OFFSET_BASIS = 2166136261U;
 	u32 hash = FNV_OFFSET_BASIS;
-	hash_combine( hash, args... );
+	hash32_combine( hash, args... );
+	return hash;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+inline void hash64_bytes( u64 &hash, const void *data, usize size )
+{
+	static constexpr u64 FNV_PRIME = 1099511628211ULL;
+	const byte *bytes = reinterpret_cast<const byte *>( data );
+
+	for( usize i = 0; i < size; i++ )
+	{
+		hash ^= bytes[i];
+		hash *= FNV_PRIME;
+	}
+}
+
+
+inline void hash64_cstr( u64 &hash, const char *str )
+{
+	static constexpr u64 FNV_PRIME = 1099511628211ULL;
+
+	while( *str )
+	{
+		hash ^= static_cast<u8>( *str++ );
+		hash *= FNV_PRIME;
+	}
+}
+
+
+template <typename T> inline void hash64_value( u64 &hash, const T &value )
+{
+	hash64_bytes( hash, &value, sizeof( T ) );
+}
+
+
+template <> inline void hash64_value<const char *>( u64 &hash, const char *const &value )
+{
+	if( value )
+	{
+		hash64_cstr( hash, value );
+	}
+	else
+	{
+		u64 zero = 0;
+		hash64_bytes( hash, &zero, sizeof( zero ) );
+	}
+}
+
+
+inline void hash64_combine( u64 & ) { }
+
+
+template <typename T, typename... Ts> inline void hash64_combine( u64 &hash, const T &value, const Ts &...rest )
+{
+	static constexpr u64 FNV_PRIME = 1099511628211ULL;
+	hash64_value( hash, value );
+	hash ^= 0x9e3779b97f4a7c15ULL;
+	hash *= FNV_PRIME;
+	hash64_combine( hash, rest... );
+}
+
+
+template <typename... Args> inline u64 hash64_from( const Args &...args )
+{
+	static constexpr u64 FNV_OFFSET_BASIS = 14695981039346656037ULL;
+	u64 hash = FNV_OFFSET_BASIS;
+	hash64_combine( hash, args... );
 	return hash;
 }
 

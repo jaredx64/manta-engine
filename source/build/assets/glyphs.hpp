@@ -10,10 +10,9 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct Glyph
+class Glyph
 {
-	CacheID cacheID;
-
+public:
 	String texturePath;
 	Texture2DBuffer textureBuffer;
 
@@ -25,6 +24,8 @@ struct Glyph
 
 	u16 u1, v1;
 	u16 u2, v2;
+
+	CacheKey cacheKey;
 };
 
 using GlyphID = u32;
@@ -33,16 +34,17 @@ using GlyphID = u32;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct Glyphs
+class Glyphs
 {
-	GlyphID allocate_new( const Glyph &glyph );
-	GlyphID allocate_new( Glyph &&glyph );
+public:
+	GlyphID register_new( const Glyph &glyph = Glyph { } );
+	GlyphID register_new( Glyph &&glyph );
 
 	void build();
 
-	Glyph &operator[]( GlyphID id ) { return glyphs[id]; }
-
+public:
 	List<Glyph> glyphs;
+	Glyph &operator[]( GlyphID id ) { return glyphs[id]; }
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
