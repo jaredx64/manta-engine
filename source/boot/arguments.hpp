@@ -102,7 +102,7 @@ struct Arguments
 		#elif PIPELINE_OS_LINUX
 			parse_argument( argc, argv, "-toolchain=", toolchain, ARG_OPTIONAL, "llvm", "gnu" );
 		#elif PIPELINE_OS_MACOS
-			parse_argument( argc, argv, "-toolchain=", toolchain, ARG_OPTIONAL, "llvm", );
+			parse_argument( argc, argv, "-toolchain=", toolchain, ARG_OPTIONAL, "llvm" );
 		#endif
 
 		// Graphics
