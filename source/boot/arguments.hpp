@@ -98,11 +98,11 @@ struct Arguments
 
 		// Toolchain
 		#if PIPELINE_OS_WINDOWS
-			parse_argument( argc, argv, "-toolchain=", toolchain, ARG_OPTIONAL, "msvc", "gnu", "llvm" );
+			parse_argument( argc, argv, "-toolchain=", toolchain, ARG_OPTIONAL, "msvc", "llvm", "gnu" );
 		#elif PIPELINE_OS_LINUX
-			parse_argument( argc, argv, "-toolchain=", toolchain, ARG_OPTIONAL, "gnu", "llvm" );
+			parse_argument( argc, argv, "-toolchain=", toolchain, ARG_OPTIONAL, "llvm", "gnu" );
 		#elif PIPELINE_OS_MACOS
-			parse_argument( argc, argv, "-toolchain=", toolchain, ARG_OPTIONAL, "gnu", "llvm" );
+			parse_argument( argc, argv, "-toolchain=", toolchain, ARG_OPTIONAL, "llvm", );
 		#endif
 
 		// Graphics
