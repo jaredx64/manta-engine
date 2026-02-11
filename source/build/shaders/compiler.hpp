@@ -4,7 +4,7 @@
 #include <core/list.hpp>
 #include <core/string.hpp>
 
-#include <build/filesystem.hpp>
+#include <build/system.hpp>
 
 #define GFX_OUTPUT_STRUCTURE_SIZES true
 

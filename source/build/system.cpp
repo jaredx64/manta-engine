@@ -1,4 +1,4 @@
-#include <build/filesystem.hpp>
+#include <build/system.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -9,7 +9,74 @@ static bool char_is_slash( const char c )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#if OS_WINDOWS
+bool File::open( const char *path )
+{
+	// Close current file if one is open
+	if( data != nullptr ) { close(); }
+	Assert( file == nullptr );
+
+	// Try to open file for reading
+	filepath = path;
+	file = fopen( filepath, "rb" );
+	if( file == nullptr ) { return false; }
+
+	// Get file size
+	size = fsize( file );
+	if( size == 0 ) { goto cleanup; }
+
+	// Allocate memory memory & read file contents into 'data'
+	data = reinterpret_cast<byte *>( memory_alloc( size + 1 ) );
+	data[size] = '\0';
+	if( fread( data, size, 1, file ) < 1 ) { goto cleanup; }
+
+	return true;
+cleanup:
+	fclose( file );
+	if( data != nullptr ) { memory_free( data ); }
+	file = nullptr;
+	data = nullptr;
+	size = 0;
+	return false;
+}
+
+
+bool File::save( const char *path )
+{
+	// Skip if there is no file open
+	if( data == nullptr ) { return false; }
+	if( file == nullptr ) { return false; }
+
+	// Open file for writing
+	FILE *wfile = fopen( path, "wb" );
+	if( wfile == nullptr ) { return false; }
+
+	// Write file
+	if( fwrite( data, size, 1, wfile ) < 1 ) { goto cleanup; }
+
+	return true;
+cleanup:
+	fclose( wfile );
+	return false;
+}
+
+
+bool File::close()
+{
+	// Free memory
+	if( data != nullptr ) { memory_free( data ); }
+	data = nullptr;
+	size = 0;
+
+	// Close file
+	if( file == nullptr ) { return true; }
+	if( fclose( file ) != 0 ) { return false; }
+	file = nullptr;
+	return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#if PIPELINE_OS_WINDOWS
 
 	bool file_time( const char *path, FileTime *result )
 	{
@@ -240,7 +307,7 @@ static bool char_is_slash( const char c )
 		return true;
 	}
 
-#else
+#else // PIPELINE_OS_MACOS || PIPELINE_OS_LINUX
 
 	bool file_time( const char *path, FileTime *result )
 	{
@@ -499,6 +566,22 @@ static bool char_is_slash( const char c )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void swrite( const char *string, FILE *file )
+{
+	fwrite( string, strlen( string ), 1, file );
+}
+
+
+usize fsize( FILE *file )
+{
+	fseek( file, 0, SEEK_END );
+	usize size = ftell( file );
+	fseek( file, 0, SEEK_SET );
+	return size;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 bool path_is_directory( const char *path )
 {
 	// Empty path
@@ -708,85 +791,138 @@ void path_remove_extensions( char *buffer, usize size, const char *path )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void swrite( const char *string, FILE *file )
-{
-	fwrite( string, strlen( string ), 1, file );
-}
+#if PIPELINE_OS_WINDOWS
+
+	#include <vendor/windows.hpp>
+
+	thread_local static LARGE_INTEGER offset;
+	thread_local static double frequency;
+
+	bool Time::init()
+	{
+		LARGE_INTEGER result;
+
+		if( timeBeginPeriod( 1 ) != TIMERR_NOERROR ) { ErrorReturnMsg( false, "WIN: Failed to set timer resolution" ); }
+		if( !QueryPerformanceCounter( &offset ) ) { ErrorReturnMsg( false, "WIN: Failed to get timer offset" ); }
+		if( !QueryPerformanceFrequency( &result ) ) { ErrorReturnMsg( false, "WIN: Failed to get timer frequency" ); }
+
+		frequency = static_cast<double>( result.QuadPart );
+
+		return true;
+	}
 
 
-usize fsize( FILE *file )
-{
-	fseek( file, 0, SEEK_END );
-	usize size = ftell( file );
-	fseek( file, 0, SEEK_SET );
-	return size;
-}
+	double Time::value()
+	{
+		LARGE_INTEGER current;
+		QueryPerformanceCounter( &current );
+		return ( current.QuadPart - offset.QuadPart ) / frequency;
+	}
+
+
+	u64 Time::seed()
+	{
+		LARGE_INTEGER current;
+		QueryPerformanceCounter( &current );
+		return static_cast<u64>( current.LowPart );
+	}
+
+#elif PIPELINE_OS_MACOS
+
+	#include <mach/mach_time.h>
+
+	static u64 offset;
+	static double frequency;
+
+	bool Time::init()
+	{
+		mach_timebase_info_data_t info;
+		if( mach_timebase_info( &info ) != KERN_SUCCESS ) { ErrorReturnMsg( false, "MACH: Failed get mach timer info" ); }
+
+		frequency = info.denom * 1e+9 / static_cast<double>( info.numer );
+		offset = mach_absolute_time();
+		return true;
+	}
+
+
+	double Time::value()
+	{
+		return ( mach_absolute_time() - offset ) / frequency;
+	}
+
+
+	u64 Time::seed()
+	{
+		return static_cast<u64>( mach_absolute_time() );
+	}
+
+#elif PIPELINE_OS_LINUX
+
+	#include <vendor/posix.hpp>
+
+	thread_local static timespec offset;
+
+	bool Time::init()
+	{
+		return clock_gettime( CLOCK_MONOTONIC, &offset ) == 0;
+	}
+
+
+	double Time::value()
+	{
+		timespec current;
+		clock_gettime( CLOCK_MONOTONIC, &current );
+		return ( current.tv_sec - offset.tv_sec ) + ( current.tv_nsec - offset.tv_nsec ) / 1e+9;
+	}
+
+
+	u64 Time::seed()
+	{
+		timespec current;
+		clock_gettime( CLOCK_MONOTONIC, &current );
+		return static_cast<u64>( current.tv_nsec ^ current.tv_sec );
+	}
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool File::open( const char *path )
+Timer::Timer()
 {
-	// Close current file if one is open
-	if( data != nullptr ) { close(); }
-	Assert( file == nullptr );
-
-	// Try to open file for reading
-	filepath = path;
-	file = fopen( filepath, "rb" );
-	if( file == nullptr ) { return false; }
-
-	// Get file size
-	size = fsize( file );
-	if( size == 0 ) { goto cleanup; }
-
-	// Allocate memory memory & read file contents into 'data'
-	data = reinterpret_cast<byte *>( memory_alloc( size + 1 ) );
-	data[size] = '\0';
-	if( fread( data, size, 1, file ) < 1 ) { goto cleanup; }
-
-	return true;
-cleanup:
-	fclose( file );
-	if( data != nullptr ) { memory_free( data ); }
-	file = nullptr;
-	data = nullptr;
-	size = 0;
-	return false;
+	start();
 }
 
 
-bool File::save( const char *path )
+void Timer::start()
 {
-	// Skip if there is no file open
-	if( data == nullptr ) { return false; }
-	if( file == nullptr ) { return false; }
-
-	// Open file for writing
-	FILE *wfile = fopen( path, "wb" );
-	if( wfile == nullptr ) { return false; }
-
-	// Write file
-	if( fwrite( data, size, 1, wfile ) < 1 ) { goto cleanup; }
-
-	return true;
-cleanup:
-	fclose( wfile );
-	return false;
+	timeStart = Time::value();
 }
 
 
-bool File::close()
+void Timer::stop()
 {
-	// Free memory
-	if( data != nullptr ) { memory_free( data ); }
-	data = nullptr;
-	size = 0;
+	timeEnd = Time::value();
+}
 
-	// Close file
-	if( file == nullptr ) { return true; }
-	if( fclose( file ) != 0 ) { return false; }
-	file = nullptr;
-	return true;
+
+double Timer::elapsed_s()
+{
+	stop();
+	return ( timeEnd - timeStart );
+}
+
+
+double Timer::elapsed_ms()
+{
+	stop();
+	return ( timeEnd - timeStart ) * 1000.0;
+}
+
+
+double Timer::elapsed_us()
+{
+	stop();
+	return ( timeEnd - timeStart ) * 1000.0 * 1000.0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

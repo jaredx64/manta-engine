@@ -5,9 +5,9 @@
 
 #include <core/hashmap.hpp>
 #include <core/string.hpp>
+#include <core/math.hpp>
 
-#include <build/time.hpp>
-#include <build/filesystem.hpp>
+#include <build/system.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -167,7 +167,7 @@ Node *condition_parse_equality( Scanner &scanner )
 	while( scanner.current().type == TokenType_Equals ||
 		scanner.current().type == TokenType_NotEquals )
 	{
-		TokenType type = scanner.current().type;
+		ShaderCompiler::TokenType type = scanner.current().type;
 		scanner.next();
 
 		node = conditionAST.add( NodeExpressionBinary(
@@ -188,7 +188,7 @@ Node *condition_parse_comparison( Scanner &scanner )
 		scanner.current().type == TokenType_LessThan ||
 		scanner.current().type == TokenType_LessThanEquals )
 	{
-		TokenType tokenType = scanner.current().type;
+		ShaderCompiler::TokenType tokenType = scanner.current().type;
 		scanner.next();
 
 		ExpressionBinaryType binaryExpressionType;
@@ -216,7 +216,7 @@ Node *condition_parse_bitwise_shift( Scanner &scanner )
 	while( scanner.current().type == TokenType_BitShiftLeft ||
 		scanner.current().type == TokenType_BitShiftRight )
 	{
-		TokenType type = scanner.current().type;
+		ShaderCompiler::TokenType type = scanner.current().type;
 		scanner.next();
 
 		node = conditionAST.add( NodeExpressionBinary(
@@ -235,7 +235,7 @@ Node *condition_parse_add_sub( Scanner &scanner )
 	while( scanner.current().type == TokenType_Plus ||
 		scanner.current().type == TokenType_Minus )
 	{
-		TokenType type = scanner.current().type;
+		ShaderCompiler::TokenType type = scanner.current().type;
 		scanner.next();
 
 		node = conditionAST.add( NodeExpressionBinary(
@@ -255,7 +255,7 @@ Node *condition_parse_mul_div_mod( Scanner &scanner )
 		scanner.current().type == TokenType_Slash ||
 		scanner.current().type == TokenType_Mod )
 	{
-		TokenType tokenType = scanner.current().type;
+		ShaderCompiler::TokenType tokenType = scanner.current().type;
 		scanner.next();
 
 		ExpressionBinaryType binaryExpressionType;
@@ -1037,7 +1037,7 @@ static void parse_directive_macro( String &input, String &output, Scanner &scann
 
 
 static void parse_directive_if_defined_undefined( String &input, String &output, Scanner &scanner,
-	TokenType type )
+	ShaderCompiler::TokenType type )
 {
 	const bool ifdef = ( type == TokenType_Directive_IfDefined );
 	const char *directive = ifdef ? "#ifdef" : "#ifndef";
@@ -1127,7 +1127,7 @@ static void parse_directive_if_defined_undefined( String &input, String &output,
 }
 
 
-static void parse_directive_if( String &input, String &output, Scanner &scanner, const TokenType type )
+static void parse_directive_if( String &input, String &output, Scanner &scanner, const ShaderCompiler::TokenType type )
 {
 	const bool elif = ( type == TokenType_Else );
 	const char *directive = elif ? "#elif" : "#if";

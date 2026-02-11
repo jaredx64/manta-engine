@@ -5,6 +5,62 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+Color::Color( const u8_v4 &rgba ) :
+	r { rgba.x },
+	g { rgba.y },
+	b { rgba.z },
+	a { rgba.w } { }
+
+
+Color::Color( const u8_v3 &rgb ) :
+	r { rgb.x },
+	g { rgb.y },
+	b { rgb.z },
+	a { 255U } { }
+
+
+Color::Color( const int_v4 &rgba ) :
+	r { static_cast<u8>( rgba.x ) },
+	g { static_cast<u8>( rgba.y ) },
+	b { static_cast<u8>( rgba.z ) },
+	a { static_cast<u8>( rgba.w ) } { }
+
+
+Color::Color( const int_v3 &rgb ) :
+	r { static_cast<u8>( rgb.x ) },
+	g { static_cast<u8>( rgb.y ) },
+	b { static_cast<u8>( rgb.z ) },
+	a { 255U } { }
+
+
+Color::Color( const float_v4 &rgba ) :
+	r { static_cast<u8>( clamp( rgba.x * 255.0f, 0.0f, 255.0f ) ) },
+	g { static_cast<u8>( clamp( rgba.y * 255.0f, 0.0f, 255.0f ) ) },
+	b { static_cast<u8>( clamp( rgba.z * 255.0f, 0.0f, 255.0f ) ) },
+	a { static_cast<u8>( clamp( rgba.w * 255.0f, 0.0f, 255.0f ) ) } { }
+
+
+Color::Color( const float_v3 &rgb ) :
+	r { static_cast<u8>( clamp( rgb.x * 255.0f, 0.0f, 255.0f ) ) },
+	g { static_cast<u8>( clamp( rgb.y * 255.0f, 0.0f, 255.0f ) ) },
+	b { static_cast<u8>( clamp( rgb.z * 255.0f, 0.0f, 255.0f ) ) },
+	a { 255U } { }
+
+
+Color::Color( const double_v4 &rgba ) :
+	r { static_cast<u8>( clamp( rgba.x * 255.0, 0.0, 255.0 ) ) },
+	g { static_cast<u8>( clamp( rgba.y * 255.0, 0.0, 255.0 ) ) },
+	b { static_cast<u8>( clamp( rgba.z * 255.0, 0.0, 255.0 ) ) },
+	a { static_cast<u8>( clamp( rgba.w * 255.0, 0.0, 255.0 ) ) } { }
+
+
+Color::Color( const double_v3 &rgb ) :
+	r { static_cast<u8>( clamp( rgb.x * 255.0, 0.0, 255.0 ) ) },
+	g { static_cast<u8>( clamp( rgb.y * 255.0, 0.0, 255.0 ) ) },
+	b { static_cast<u8>( clamp( rgb.z * 255.0, 0.0, 255.0 ) ) },
+	a { 255U } { }
+
+
 Color Color::operator*( const Color &c ) const
 {
 	Color outColor = *this;
@@ -235,6 +291,189 @@ Color &Color::operator-=( Color &c )
 	b = static_cast<u8>( clamp( b - c.b, 0, 255 ) );
 	a = static_cast<u8>( clamp( a - c.a, 0, 255 ) );
 	return *this;
+}
+
+
+bool Color::operator==( const Color &c ) const
+{
+	return ( r == c.r && g == c.g && b == c.b && a == c.a );
+}
+
+
+u8_v4 Color::as_u8_v4() const { return u8_v4 { r, g, b, a }; }
+Color::operator const u8_v4() const { return as_u8_v4(); }
+
+
+u8_v3 Color::as_u8_v3() const { return u8_v3 { r, g, b }; }
+Color::operator const u8_v3() const { return as_u8_v3(); }
+
+
+int_v4 Color::as_int_v4() const { return int_v4 { r, g, b, a }; }
+Color::operator const int_v4() const { return as_int_v4(); }
+
+
+int_v3 Color::as_int_v3() const { return int_v3 { r, g, b }; }
+Color::operator const int_v3() const { return as_int_v3(); }
+
+
+float_v4 Color::as_float_v4() const { return float_v4 { r * INV_255_F, g * INV_255_F, b * INV_255_F, a * INV_255_F }; }
+Color::operator const float_v4() const { return as_float_v4(); }
+
+
+float_v3 Color::as_float_v3() const { return float_v3 { r * INV_255_F, g * INV_255_F, b * INV_255_F }; }
+Color::operator const float_v3() const { return as_float_v3(); }
+
+
+double_v4 Color::as_double_v4() const { return double_v4 { r * INV_255_D, g * INV_255_D, b * INV_255_D, a * INV_255_D }; }
+Color::operator const double_v4() const { return as_double_v4(); }
+
+
+double_v3 Color::as_double_v3() const { return double_v3 { r * INV_255_D, g * INV_255_D, b * INV_255_D }; }
+Color::operator const double_v3() const { return as_double_v3(); }
+
+
+u32 Color::hash() const
+{
+	return ( static_cast<u32>( r ) << 24 ) |
+		( static_cast<u32>( g ) << 16 ) |
+		( static_cast<u32>( b ) << 8 ) |
+		( static_cast<u32>( a ) );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Color color_make_bw( u8 l )
+{
+	return Color { l, l, l, 255U };
+}
+
+
+Color color_make_bw( float brightness )
+{
+	const u8 intensity = static_cast<u8>( 255.0f * brightness );
+	return Color( intensity, intensity, intensity, 255 );
+}
+
+
+Color color_change_brightness( Color color, float brightness )
+{
+	const u8 intensityR = static_cast<u8>( clamp( static_cast<float>( color.r ) * brightness, 0.0f, 255.0f ) );
+	const u8 intensityG = static_cast<u8>( clamp( static_cast<float>( color.g ) * brightness, 0.0f, 255.0f ) );
+	const u8 intensityB = static_cast<u8>( clamp( static_cast<float>( color.b ) * brightness, 0.0f, 255.0f ) );
+	return Color( intensityR, intensityG, intensityB, color.a );
+}
+
+
+Color color_swap_alpha( Color rgba, u8 a )
+{
+	return Color { rgba.r, rgba.g, rgba.b, a };
+}
+
+
+float color_value_srgb_to_linear( float v )
+{
+	return ( v <= 0.04045f ) ? ( v / 12.92f ) : powf( ( v + 0.055f ) / 1.055f, 2.4f );
+}
+
+
+float color_value_linear_to_srgb( float v )
+{
+	return ( v <= 0.0031308f ) ? ( v * 12.92f ) : ( 1.055f * powf( v, 1.0f / 2.4f ) - 0.055f );
+}
+
+
+Color color_mix( Color sourceColor, Color targetColor, float amount )
+{
+	sourceColor.r = static_cast<u8>( sourceColor.r + ( targetColor.r - sourceColor.r ) * amount );
+	sourceColor.g = static_cast<u8>( sourceColor.g + ( targetColor.g - sourceColor.g ) * amount );
+	sourceColor.b = static_cast<u8>( sourceColor.b + ( targetColor.b - sourceColor.b ) * amount );
+	return sourceColor;
+}
+
+
+Color color_mix_srgb( Color sourceColor, Color targetColor, float amount )
+{
+	static constexpr float inv255F = 1.0f / 255.0f;
+
+	const float ar = color_value_srgb_to_linear( sourceColor.r * inv255F );
+	const float ag = color_value_srgb_to_linear( sourceColor.g * inv255F );
+	const float ab = color_value_srgb_to_linear( sourceColor.b * inv255F );
+	const float br = color_value_srgb_to_linear( targetColor.r * inv255F );
+	const float bg = color_value_srgb_to_linear( targetColor.g * inv255F );
+	const float bb = color_value_srgb_to_linear( targetColor.b * inv255F );
+
+	float r = ar + ( br - ar ) * amount;
+	float g = ag + ( bg - ag ) * amount;
+	float b = ab + ( bb - ab ) * amount;
+
+	Color out;
+	out.r = static_cast<u8>( color_value_linear_to_srgb( r ) * 255.0f );
+	out.g = static_cast<u8>( color_value_linear_to_srgb( g ) * 255.0f );
+	out.b = static_cast<u8>( color_value_linear_to_srgb( b ) * 255.0f );
+	return out;
+}
+
+
+Color color_mix_alpha( Color sourceColor, Color targetColor, float amount )
+{
+	sourceColor.r = static_cast<u8>( sourceColor.r + ( targetColor.r - sourceColor.r ) * amount );
+	sourceColor.g = static_cast<u8>( sourceColor.g + ( targetColor.g - sourceColor.g ) * amount );
+	sourceColor.b = static_cast<u8>( sourceColor.b + ( targetColor.b - sourceColor.b ) * amount );
+	sourceColor.a = static_cast<u8>( sourceColor.a + ( targetColor.a - sourceColor.a ) * amount );
+	return sourceColor;
+}
+
+
+void color_mix_alpha( const Color &sourceColor, Color targetColor, float amount, Color &outColor )
+{
+	outColor.r = static_cast<u8>( sourceColor.r + ( targetColor.r - sourceColor.r ) * amount );
+	outColor.g = static_cast<u8>( sourceColor.g + ( targetColor.g - sourceColor.g ) * amount );
+	outColor.b = static_cast<u8>( sourceColor.b + ( targetColor.b - sourceColor.b ) * amount );
+	outColor.a = static_cast<u8>( sourceColor.a + ( targetColor.a - sourceColor.a ) * amount );
+}
+
+
+u32 color_pack_u32( Color color )
+{
+	u32 packedColor = 0;
+	packedColor |= ( static_cast<u32>( color.r )       );
+	packedColor |= ( static_cast<u32>( color.g ) << 8  );
+	packedColor |= ( static_cast<u32>( color.b ) << 16 );
+	packedColor |= ( static_cast<u32>( color.a ) << 24 );
+	return packedColor;
+}
+
+
+Color color_unpack_u32( u32 packedColor )
+{
+	Color color;
+	color.r = static_cast<u8>( ( packedColor       ) & 0xFF );
+	color.g = static_cast<u8>( ( packedColor >> 8  ) & 0xFF );
+	color.b = static_cast<u8>( ( packedColor >> 16 ) & 0xFF );
+	color.a = static_cast<u8>( ( packedColor >> 24 ) & 0xFF );
+	return color;
+}
+
+
+int color_pack_int( Color color )
+{
+	int packedColor = 0;
+	packedColor |= ( static_cast<int>( color.r )       );
+	packedColor |= ( static_cast<int>( color.g ) << 8  );
+	packedColor |= ( static_cast<int>( color.b ) << 16 );
+	packedColor |= ( static_cast<int>( color.a ) << 24 );
+	return packedColor;
+}
+
+
+Color color_unpack_int( int packedColor )
+{
+	Color color;
+	color.r = static_cast<u8>( ( packedColor       ) & 0xFF );
+	color.g = static_cast<u8>( ( packedColor >> 8  ) & 0xFF );
+	color.b = static_cast<u8>( ( packedColor >> 16 ) & 0xFF );
+	color.a = static_cast<u8>( ( packedColor >> 24 ) & 0xFF );
+	return color;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

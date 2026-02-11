@@ -5,8 +5,7 @@
 #include <build/shaders/compiler.preprocessor.hpp>
 
 #include <build/build.hpp>
-#include <build/filesystem.hpp>
-#include <build/time.hpp>
+#include <build/system.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

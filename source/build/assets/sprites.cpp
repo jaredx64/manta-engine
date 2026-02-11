@@ -10,7 +10,7 @@
 #include <build/build.hpp>
 #include <build/assets.hpp>
 #include <build/assets/textures.hpp>
-#include <build/filesystem.hpp>
+#include <build/system.hpp>
 
 // TODO: temporary
 #include <core/checksum.hpp>

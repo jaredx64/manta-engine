@@ -8,6 +8,7 @@
 #include <core/checksum.hpp>
 #include <core/memory.hpp>
 #include <core/debug.hpp>
+#include <core/math.hpp>
 
 #include <manta/random.hpp>
 

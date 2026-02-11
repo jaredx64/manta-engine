@@ -822,6 +822,27 @@
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// winnt.h
+
+#if defined( _MSC_VER )
+	#define _MM_HINT_T0 1
+	#define _MM_HINT_T1 2
+	#define _MM_HINT_T2 3
+	#define _MM_HINT_NTA 0
+
+	extern "C" void __cdecl _mm_lfence( void );
+	#pragma intrinsic( _mm_lfence )
+	extern "C" void __cdecl _mm_mfence( void );
+	#pragma intrinsic( _mm_mfence )
+	extern "C" void __cdecl _mm_sfence( void );
+	#pragma intrinsic( _mm_sfence )
+	extern "C" void __cdecl _mm_pause( void );
+	#pragma intrinsic( _mm_pause )
+	extern "C" void __cdecl _mm_prefetch( char const *, int );
+	#pragma intrinsic( _mm_prefetch )
+#endif
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // com.h
 
 	#include <vendor/com.hpp>

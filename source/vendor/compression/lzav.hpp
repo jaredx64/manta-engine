@@ -259,7 +259,7 @@
 
 #elif defined( _MSC_VER )
 
-	#include <vendor/winnt.hpp> // For _BitScanForward.
+	#include <vendor/windows.hpp> // For _BitScanForward.
 
 #endif // defined( _MSC_VER )
 
@@ -356,7 +356,7 @@
 #elif defined( _MSC_VER ) && !defined( __INTEL_COMPILER ) && \
 	defined( LZAV_X86 )
 
-	#include <vendor/winnt.hpp>
+	#include <vendor/windows.hpp>
 
 	#define LZAV_PREFETCH( a ) _mm_prefetch( (const char*) ( a ), _MM_HINT_T0 )
 

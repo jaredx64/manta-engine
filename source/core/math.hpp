@@ -5,7 +5,10 @@
 #include <vendor/math.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Helpful Constants & Conversion Utils
+
+#define MATH_PRE_EXPANDED_VECTOR_TYPES ( 1 )
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define PI ( 3.14159265358979 )
 #define DEG2RAD ( PI / 180.0 )
@@ -15,68 +18,19 @@
 #define DEG2RAD_F ( PI_F / 180.0f )
 #define RAD2DEG_F ( 180.0f / PI_F )
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 #define ALIGN_16( value ) ( ( static_cast<int>( value ) >> 4 ) << 4 )
 #define ALIGN_16_CEIL( value ) ( ( ( static_cast<int>( value ) >> 4 ) + 1 ) << 4 )
 #define ALIGN_POWER( value, power ) ( ( static_cast<int>( value ) >> power ) << power )
 #define ALIGN_POWER_CEIL( value, power ) ( ( ( static_cast<int>( value ) >> power ) + 1 ) << power )
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Forward Declarations
-
-template <typename T> struct Vector2D;
-#define VECTOR_TYPE_2D_FORWARD_DECL( Vec, T ) using Vec = Vector2D<T>;
-VECTOR_TYPE_2D_FORWARD_DECL( u8_v2, u8 )
-VECTOR_TYPE_2D_FORWARD_DECL( i16_v2, i16 )
-VECTOR_TYPE_2D_FORWARD_DECL( u16_v2, u16 )
-VECTOR_TYPE_2D_FORWARD_DECL( int_v2, i32 )
-VECTOR_TYPE_2D_FORWARD_DECL( u32_v2, u32 )
-VECTOR_TYPE_2D_FORWARD_DECL( i64_v2, i64 )
-VECTOR_TYPE_2D_FORWARD_DECL( u64_v2, u64 )
-VECTOR_TYPE_2D_FORWARD_DECL( float_v2, float )
-VECTOR_TYPE_2D_FORWARD_DECL( double_v2, double )
-
-template <typename T> struct Vector3D;
-#define VECTOR_TYPE_3D_FORWARD_DECL( Vec, T ) using Vec = Vector3D<T>;
-VECTOR_TYPE_3D_FORWARD_DECL( u8_v3, u8 )
-VECTOR_TYPE_3D_FORWARD_DECL( i16_v3, i16 )
-VECTOR_TYPE_3D_FORWARD_DECL( u16_v3, u16 )
-VECTOR_TYPE_3D_FORWARD_DECL( int_v3, i32 )
-VECTOR_TYPE_3D_FORWARD_DECL( u32_v3, u32 )
-VECTOR_TYPE_3D_FORWARD_DECL( i64_v3, i64 )
-VECTOR_TYPE_3D_FORWARD_DECL( u64_v3, u64 )
-VECTOR_TYPE_3D_FORWARD_DECL( float_v3, float )
-VECTOR_TYPE_3D_FORWARD_DECL( double_v3, double )
-
-template <typename T> struct Vector4D;
-#define VECTOR_TYPE_4D_FORWARD_DECL( Vec, T ) using Vec = Vector4D<T>;
-VECTOR_TYPE_4D_FORWARD_DECL( u8_v4, u8 )
-VECTOR_TYPE_4D_FORWARD_DECL( i16_v4, i16 )
-VECTOR_TYPE_4D_FORWARD_DECL( u16_v4, u16 )
-VECTOR_TYPE_4D_FORWARD_DECL( int_v4, i32 )
-VECTOR_TYPE_4D_FORWARD_DECL( u32_v4, u32 )
-VECTOR_TYPE_4D_FORWARD_DECL( i64_v4, i64 )
-VECTOR_TYPE_4D_FORWARD_DECL( u64_v4, u64 )
-VECTOR_TYPE_4D_FORWARD_DECL( float_v4, float )
-VECTOR_TYPE_4D_FORWARD_DECL( double_v4, double )
-
-struct float_r2;
-struct double_r2;
-struct float_r3;
-struct double_r3;
-struct float_r4;
-struct double_r4;
-
-struct float_m44;
-struct double_m44;
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 extern u32 ceilpow2( u32 v );
 extern u64 ceilpow2( u64 v );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#if !!USE_CUSTOM_C_HEADERS
+#if USE_CUSTOM_C_HEADERS
 inline float fabsf( float value ) { return static_cast<float>( fabs( value ) ); }
 #endif
 
@@ -393,8 +347,7 @@ struct double_m44
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // 2D Vector
 
-template <typename T>
-struct Vector2D
+template <typename T> struct Vector2D
 {
 	using VectorType = Vector2D<T>;
 	T x, y;
@@ -587,49 +540,238 @@ struct Vector2D
 };
 
 
-#define VECTOR_TYPE_2D( Vec, T )                                                                                  \
-	inline bool Vec##_equal( const Vec &a, const Vec &b ) { return a == b; }                                      \
-	inline    T Vec##_dot( const Vec &a, const Vec &b ) { return a.dot( b ); }                                    \
-	inline    T Vec##_length( const Vec &v ) { return v.length(); }                                               \
-	inline    T Vec##_length_sqr( const Vec &v ) { return v.length_sqr(); }                                       \
-	inline  Vec Vec##_add( const Vec &a, const Vec &b ) { Vec r { a }; r.add( b ); return r; }                    \
-	inline  Vec Vec##_sub( const Vec &a, const Vec &b ) { Vec r { a }; r.sub( b ); return r; }                    \
-	inline  Vec Vec##_divide( const Vec &a, const Vec &b ) { Vec r { a }; r.divide( b ); return r; }              \
-	inline  Vec Vec##_divide( const Vec &v, double s ) { Vec r { v }; r.divide( s ); return r; }                  \
-	inline  Vec Vec##_multiply( const Vec &v, double s ) { Vec r { v }; r.multiply( s ); return r; }              \
-	inline  Vec Vec##_multiply( const Vec &a, const Vec &b ) { Vec r { a }; r.multiply( b ); return r; }          \
-	inline  Vec Vec##_multiply( const Vec &v, const double_m44 &m ) { Vec r { v }; r.multiply( m ); return r; }   \
-	inline  Vec Vec##_multiply( const Vec &v, const float_m44 &m ) { Vec r { v }; r.multiply( m ); return r; }    \
-	inline    T Vec##_cross( const Vec &a, const Vec &b ) { return a.cross( b ); }                                \
-	inline  Vec Vec##_normalize( const Vec &v ) { Vec r { v }; r.normalize(); return r; }                         \
-	inline  Vec Vec##_project( const Vec &v, const Vec &onto ) { Vec r { v }; r.project( onto ); return r; }      \
-	inline  Vec Vec##_rotate( const Vec &v, float angle, const Vec &origin = { } )                                \
-		{ Vec r { v }; r.rotate( angle, origin ); return r; }                                                     \
-	inline  Vec Vec##_reflect( const Vec &v, const Vec &normal )                                                  \
-		{ Vec r { v }; r.reflect( normal ); return r; }                                                           \
-	inline Vec Vec##_lerp( const Vec &a, const Vec &b, float amount )                                             \
-		{ Vec r { a }; r.lerp( b, amount ); return r; }                                                           \
-	inline   T Vec##_distance( const Vec &a, const Vec &b )                                                       \
-		{ Vec r { b.x - a.x, b.y - a.y }; return r.length(); }                                                    \
-	inline   T Vec##_distance_sqr( const Vec &a, const Vec &b )                                                   \
-		{ Vec r { b.x - a.x, b.y - a.y }; return r.length_sqr(); }
+#if !MATH_PRE_EXPANDED_VECTOR_TYPES
 
+#define VECTOR_TYPE_2D_HEADER( Vec, T )                                                                  \
+	extern template struct Vector2D<T>;                                                                  \
+	extern bool Vec##_equal( const Vec &a, const Vec &b );                                               \
+	extern    T Vec##_dot( const Vec &a, const Vec &b );                                                 \
+	extern    T Vec##_length( const Vec &v );                                                            \
+	extern    T Vec##_length_sqr( const Vec &v );                                                        \
+	extern  Vec Vec##_add( const Vec &a, const Vec &b );                                                 \
+	extern  Vec Vec##_sub( const Vec &a, const Vec &b );                                                 \
+	extern  Vec Vec##_divide( const Vec &a, const Vec &b );                                              \
+	extern  Vec Vec##_divide( const Vec &v, double s );                                                  \
+	extern  Vec Vec##_multiply( const Vec &v, double s );                                                \
+	extern  Vec Vec##_multiply( const Vec &a, const Vec &b );                                            \
+	extern  Vec Vec##_multiply( const Vec &v, const double_m44 &m );                                     \
+	extern  Vec Vec##_multiply( const Vec &v, const float_m44 &m );                                      \
+	extern    T Vec##_cross( const Vec &a, const Vec &b );                                               \
+	extern  Vec Vec##_normalize( const Vec &v );                                                         \
+	extern  Vec Vec##_project( const Vec &v, const Vec &onto );                                          \
+	extern  Vec Vec##_rotate( const Vec &v, float angle, const Vec &origin = { } );                      \
+	extern  Vec Vec##_reflect( const Vec &v, const Vec &normal );                                        \
+	extern Vec Vec##_lerp( const Vec &a, const Vec &b, float amount );                                   \
+	extern   T Vec##_distance( const Vec &a, const Vec &b );                                             \
+	extern   T Vec##_distance_sqr( const Vec &a, const Vec &b );                                         \
 
-VECTOR_TYPE_2D( u8_v2, u8 )
-VECTOR_TYPE_2D( i16_v2, i16 )
-VECTOR_TYPE_2D( u16_v2, u16 )
-VECTOR_TYPE_2D( int_v2, i32 )
-VECTOR_TYPE_2D( u32_v2, u32 )
-VECTOR_TYPE_2D( i64_v2, i64 )
-VECTOR_TYPE_2D( u64_v2, u64 )
-VECTOR_TYPE_2D( float_v2, float )
-VECTOR_TYPE_2D( double_v2, double )
+VECTOR_TYPE_2D_HEADER( u8_v2, u8 )
+VECTOR_TYPE_2D_HEADER( i16_v2, i16 )
+VECTOR_TYPE_2D_HEADER( u16_v2, u16 )
+VECTOR_TYPE_2D_HEADER( int_v2, i32 )
+VECTOR_TYPE_2D_HEADER( u32_v2, u32 )
+VECTOR_TYPE_2D_HEADER( i64_v2, i64 )
+VECTOR_TYPE_2D_HEADER( u64_v2, u64 )
+VECTOR_TYPE_2D_HEADER( float_v2, float )
+VECTOR_TYPE_2D_HEADER( double_v2, double )
+
+#else
+
+extern bool u8_v2_equal( const u8_v2 &a, const u8_v2 &b );
+extern u8 u8_v2_dot( const u8_v2 &a, const u8_v2 &b );
+extern u8 u8_v2_length( const u8_v2 &v );
+extern u8 u8_v2_length_sqr( const u8_v2 &v );
+extern u8_v2 u8_v2_add( const u8_v2 &a, const u8_v2 &b );
+extern u8_v2 u8_v2_sub( const u8_v2 &a, const u8_v2 &b );
+extern u8_v2 u8_v2_divide( const u8_v2 &a, const u8_v2 &b );
+extern u8_v2 u8_v2_divide( const u8_v2 &v, double s );
+extern u8_v2 u8_v2_multiply( const u8_v2 &v, double s );
+extern u8_v2 u8_v2_multiply( const u8_v2 &a, const u8_v2 &b );
+extern u8_v2 u8_v2_multiply( const u8_v2 &v, const double_m44 &m );
+extern u8_v2 u8_v2_multiply( const u8_v2 &v, const float_m44 &m );
+extern u8 u8_v2_cross( const u8_v2 &a, const u8_v2 &b );
+extern u8_v2 u8_v2_normalize( const u8_v2 &v );
+extern u8_v2 u8_v2_project( const u8_v2 &v, const u8_v2 &onto );
+extern u8_v2 u8_v2_rotate( const u8_v2 &v, float angle, const u8_v2 &origin = { } );
+extern u8_v2 u8_v2_reflect( const u8_v2 &v, const u8_v2 &normal );
+extern u8_v2 u8_v2_lerp( const u8_v2 &a, const u8_v2 &b, float amount );
+extern u8 u8_v2_distance( const u8_v2 &a, const u8_v2 &b );
+extern u8 u8_v2_distance_sqr( const u8_v2 &a, const u8_v2 &b );
+
+extern bool i16_v2_equal( const i16_v2 &a, const i16_v2 &b );
+extern i16 i16_v2_dot( const i16_v2 &a, const i16_v2 &b );
+extern i16 i16_v2_length( const i16_v2 &v );
+extern i16 i16_v2_length_sqr( const i16_v2 &v );
+extern i16_v2 i16_v2_add( const i16_v2 &a, const i16_v2 &b );
+extern i16_v2 i16_v2_sub( const i16_v2 &a, const i16_v2 &b );
+extern i16_v2 i16_v2_divide( const i16_v2 &a, const i16_v2 &b );
+extern i16_v2 i16_v2_divide( const i16_v2 &v, double s );
+extern i16_v2 i16_v2_multiply( const i16_v2 &v, double s );
+extern i16_v2 i16_v2_multiply( const i16_v2 &a, const i16_v2 &b );
+extern i16_v2 i16_v2_multiply( const i16_v2 &v, const double_m44 &m );
+extern i16_v2 i16_v2_multiply( const i16_v2 &v, const float_m44 &m );
+extern i16 i16_v2_cross( const i16_v2 &a, const i16_v2 &b );
+extern i16_v2 i16_v2_normalize( const i16_v2 &v );
+extern i16_v2 i16_v2_project( const i16_v2 &v, const i16_v2 &onto );
+extern i16_v2 i16_v2_rotate( const i16_v2 &v, float angle, const i16_v2 &origin = { } );
+extern i16_v2 i16_v2_reflect( const i16_v2 &v, const i16_v2 &normal );
+extern i16_v2 i16_v2_lerp( const i16_v2 &a, const i16_v2 &b, float amount );
+extern i16 i16_v2_distance( const i16_v2 &a, const i16_v2 &b );
+extern i16 i16_v2_distance_sqr( const i16_v2 &a, const i16_v2 &b );
+
+extern bool u16_v2_equal( const u16_v2 &a, const u16_v2 &b );
+extern u16 u16_v2_dot( const u16_v2 &a, const u16_v2 &b );
+extern u16 u16_v2_length( const u16_v2 &v );
+extern u16 u16_v2_length_sqr( const u16_v2 &v );
+extern u16_v2 u16_v2_add( const u16_v2 &a, const u16_v2 &b );
+extern u16_v2 u16_v2_sub( const u16_v2 &a, const u16_v2 &b );
+extern u16_v2 u16_v2_divide( const u16_v2 &a, const u16_v2 &b );
+extern u16_v2 u16_v2_divide( const u16_v2 &v, double s );
+extern u16_v2 u16_v2_multiply( const u16_v2 &v, double s );
+extern u16_v2 u16_v2_multiply( const u16_v2 &a, const u16_v2 &b );
+extern u16_v2 u16_v2_multiply( const u16_v2 &v, const double_m44 &m );
+extern u16_v2 u16_v2_multiply( const u16_v2 &v, const float_m44 &m );
+extern u16 u16_v2_cross( const u16_v2 &a, const u16_v2 &b );
+extern u16_v2 u16_v2_normalize( const u16_v2 &v );
+extern u16_v2 u16_v2_project( const u16_v2 &v, const u16_v2 &onto );
+extern u16_v2 u16_v2_rotate( const u16_v2 &v, float angle, const u16_v2 &origin = { } );
+extern u16_v2 u16_v2_reflect( const u16_v2 &v, const u16_v2 &normal );
+extern u16_v2 u16_v2_lerp( const u16_v2 &a, const u16_v2 &b, float amount );
+extern u16 u16_v2_distance( const u16_v2 &a, const u16_v2 &b );
+extern u16 u16_v2_distance_sqr( const u16_v2 &a, const u16_v2 &b );
+
+extern bool int_v2_equal( const int_v2 &a, const int_v2 &b );
+extern i32 int_v2_dot( const int_v2 &a, const int_v2 &b );
+extern i32 int_v2_length( const int_v2 &v );
+extern i32 int_v2_length_sqr( const int_v2 &v );
+extern int_v2 int_v2_add( const int_v2 &a, const int_v2 &b );
+extern int_v2 int_v2_sub( const int_v2 &a, const int_v2 &b );
+extern int_v2 int_v2_divide( const int_v2 &a, const int_v2 &b );
+extern int_v2 int_v2_divide( const int_v2 &v, double s );
+extern int_v2 int_v2_multiply( const int_v2 &v, double s );
+extern int_v2 int_v2_multiply( const int_v2 &a, const int_v2 &b );
+extern int_v2 int_v2_multiply( const int_v2 &v, const double_m44 &m );
+extern int_v2 int_v2_multiply( const int_v2 &v, const float_m44 &m );
+extern i32 int_v2_cross( const int_v2 &a, const int_v2 &b );
+extern int_v2 int_v2_normalize( const int_v2 &v );
+extern int_v2 int_v2_project( const int_v2 &v, const int_v2 &onto );
+extern int_v2 int_v2_rotate( const int_v2 &v, float angle, const int_v2 &origin = { } );
+extern int_v2 int_v2_reflect( const int_v2 &v, const int_v2 &normal );
+extern int_v2 int_v2_lerp( const int_v2 &a, const int_v2 &b, float amount );
+extern i32 int_v2_distance( const int_v2 &a, const int_v2 &b );
+extern i32 int_v2_distance_sqr( const int_v2 &a, const int_v2 &b );
+
+extern bool u32_v2_equal( const u32_v2 &a, const u32_v2 &b );
+extern u32 u32_v2_dot( const u32_v2 &a, const u32_v2 &b );
+extern u32 u32_v2_length( const u32_v2 &v );
+extern u32 u32_v2_length_sqr( const u32_v2 &v );
+extern u32_v2 u32_v2_add( const u32_v2 &a, const u32_v2 &b );
+extern u32_v2 u32_v2_sub( const u32_v2 &a, const u32_v2 &b );
+extern u32_v2 u32_v2_divide( const u32_v2 &a, const u32_v2 &b );
+extern u32_v2 u32_v2_divide( const u32_v2 &v, double s );
+extern u32_v2 u32_v2_multiply( const u32_v2 &v, double s );
+extern u32_v2 u32_v2_multiply( const u32_v2 &a, const u32_v2 &b );
+extern u32_v2 u32_v2_multiply( const u32_v2 &v, const double_m44 &m );
+extern u32_v2 u32_v2_multiply( const u32_v2 &v, const float_m44 &m );
+extern u32 u32_v2_cross( const u32_v2 &a, const u32_v2 &b );
+extern u32_v2 u32_v2_normalize( const u32_v2 &v );
+extern u32_v2 u32_v2_project( const u32_v2 &v, const u32_v2 &onto );
+extern u32_v2 u32_v2_rotate( const u32_v2 &v, float angle, const u32_v2 &origin = { } );
+extern u32_v2 u32_v2_reflect( const u32_v2 &v, const u32_v2 &normal );
+extern u32_v2 u32_v2_lerp( const u32_v2 &a, const u32_v2 &b, float amount );
+extern u32 u32_v2_distance( const u32_v2 &a, const u32_v2 &b );
+extern u32 u32_v2_distance_sqr( const u32_v2 &a, const u32_v2 &b );
+
+extern bool i64_v2_equal( const i64_v2 &a, const i64_v2 &b );
+extern i64 i64_v2_dot( const i64_v2 &a, const i64_v2 &b );
+extern i64 i64_v2_length( const i64_v2 &v );
+extern i64 i64_v2_length_sqr( const i64_v2 &v );
+extern i64_v2 i64_v2_add( const i64_v2 &a, const i64_v2 &b );
+extern i64_v2 i64_v2_sub( const i64_v2 &a, const i64_v2 &b );
+extern i64_v2 i64_v2_divide( const i64_v2 &a, const i64_v2 &b );
+extern i64_v2 i64_v2_divide( const i64_v2 &v, double s );
+extern i64_v2 i64_v2_multiply( const i64_v2 &v, double s );
+extern i64_v2 i64_v2_multiply( const i64_v2 &a, const i64_v2 &b );
+extern i64_v2 i64_v2_multiply( const i64_v2 &v, const double_m44 &m );
+extern i64_v2 i64_v2_multiply( const i64_v2 &v, const float_m44 &m );
+extern i64 i64_v2_cross( const i64_v2 &a, const i64_v2 &b );
+extern i64_v2 i64_v2_normalize( const i64_v2 &v );
+extern i64_v2 i64_v2_project( const i64_v2 &v, const i64_v2 &onto );
+extern i64_v2 i64_v2_rotate( const i64_v2 &v, float angle, const i64_v2 &origin = { } );
+extern i64_v2 i64_v2_reflect( const i64_v2 &v, const i64_v2 &normal );
+extern i64_v2 i64_v2_lerp( const i64_v2 &a, const i64_v2 &b, float amount );
+extern i64 i64_v2_distance( const i64_v2 &a, const i64_v2 &b );
+extern i64 i64_v2_distance_sqr( const i64_v2 &a, const i64_v2 &b );
+
+extern bool u64_v2_equal( const u64_v2 &a, const u64_v2 &b );
+extern u64 u64_v2_dot( const u64_v2 &a, const u64_v2 &b );
+extern u64 u64_v2_length( const u64_v2 &v );
+extern u64 u64_v2_length_sqr( const u64_v2 &v );
+extern u64_v2 u64_v2_add( const u64_v2 &a, const u64_v2 &b );
+extern u64_v2 u64_v2_sub( const u64_v2 &a, const u64_v2 &b );
+extern u64_v2 u64_v2_divide( const u64_v2 &a, const u64_v2 &b );
+extern u64_v2 u64_v2_divide( const u64_v2 &v, double s );
+extern u64_v2 u64_v2_multiply( const u64_v2 &v, double s );
+extern u64_v2 u64_v2_multiply( const u64_v2 &a, const u64_v2 &b );
+extern u64_v2 u64_v2_multiply( const u64_v2 &v, const double_m44 &m );
+extern u64_v2 u64_v2_multiply( const u64_v2 &v, const float_m44 &m );
+extern u64 u64_v2_cross( const u64_v2 &a, const u64_v2 &b );
+extern u64_v2 u64_v2_normalize( const u64_v2 &v );
+extern u64_v2 u64_v2_project( const u64_v2 &v, const u64_v2 &onto );
+extern u64_v2 u64_v2_rotate( const u64_v2 &v, float angle, const u64_v2 &origin = { } );
+extern u64_v2 u64_v2_reflect( const u64_v2 &v, const u64_v2 &normal );
+extern u64_v2 u64_v2_lerp( const u64_v2 &a, const u64_v2 &b, float amount );
+extern u64 u64_v2_distance( const u64_v2 &a, const u64_v2 &b );
+extern u64 u64_v2_distance_sqr( const u64_v2 &a, const u64_v2 &b );
+
+extern bool float_v2_equal( const float_v2 &a, const float_v2 &b );
+extern float float_v2_dot( const float_v2 &a, const float_v2 &b );
+extern float float_v2_length( const float_v2 &v );
+extern float float_v2_length_sqr( const float_v2 &v );
+extern float_v2 float_v2_add( const float_v2 &a, const float_v2 &b );
+extern float_v2 float_v2_sub( const float_v2 &a, const float_v2 &b );
+extern float_v2 float_v2_divide( const float_v2 &a, const float_v2 &b );
+extern float_v2 float_v2_divide( const float_v2 &v, double s );
+extern float_v2 float_v2_multiply( const float_v2 &v, double s );
+extern float_v2 float_v2_multiply( const float_v2 &a, const float_v2 &b );
+extern float_v2 float_v2_multiply( const float_v2 &v, const double_m44 &m );
+extern float_v2 float_v2_multiply( const float_v2 &v, const float_m44 &m );
+extern float float_v2_cross( const float_v2 &a, const float_v2 &b );
+extern float_v2 float_v2_normalize( const float_v2 &v );
+extern float_v2 float_v2_project( const float_v2 &v, const float_v2 &onto );
+extern float_v2 float_v2_rotate( const float_v2 &v, float angle, const float_v2 &origin = { } );
+extern float_v2 float_v2_reflect( const float_v2 &v, const float_v2 &normal );
+extern float_v2 float_v2_lerp( const float_v2 &a, const float_v2 &b, float amount );
+extern float float_v2_distance( const float_v2 &a, const float_v2 &b );
+extern float float_v2_distance_sqr( const float_v2 &a, const float_v2 &b );
+
+extern bool double_v2_equal( const double_v2 &a, const double_v2 &b );
+extern double double_v2_dot( const double_v2 &a, const double_v2 &b );
+extern double double_v2_length( const double_v2 &v );
+extern double double_v2_length_sqr( const double_v2 &v );
+extern double_v2 double_v2_add( const double_v2 &a, const double_v2 &b );
+extern double_v2 double_v2_sub( const double_v2 &a, const double_v2 &b );
+extern double_v2 double_v2_divide( const double_v2 &a, const double_v2 &b );
+extern double_v2 double_v2_divide( const double_v2 &v, double s );
+extern double_v2 double_v2_multiply( const double_v2 &v, double s );
+extern double_v2 double_v2_multiply( const double_v2 &a, const double_v2 &b );
+extern double_v2 double_v2_multiply( const double_v2 &v, const double_m44 &m );
+extern double_v2 double_v2_multiply( const double_v2 &v, const float_m44 &m );
+extern double double_v2_cross( const double_v2 &a, const double_v2 &b );
+extern double_v2 double_v2_normalize( const double_v2 &v );
+extern double_v2 double_v2_project( const double_v2 &v, const double_v2 &onto );
+extern double_v2 double_v2_rotate( const double_v2 &v, float angle, const double_v2 &origin = { } );
+extern double_v2 double_v2_reflect( const double_v2 &v, const double_v2 &normal );
+extern double_v2 double_v2_lerp( const double_v2 &a, const double_v2 &b, float amount );
+extern double double_v2_distance( const double_v2 &a, const double_v2 &b );
+extern double double_v2_distance_sqr( const double_v2 &a, const double_v2 &b );
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // 3D Vector
 
-template <typename T>
-struct Vector3D
+template <typename T> struct Vector3D
 {
 	using VectorType = Vector3D<T>;
 	T x, y, z;
@@ -853,53 +995,258 @@ struct Vector3D
 };
 
 
-#define VECTOR_TYPE_3D( Vec, T )                                                                                \
-	inline bool Vec##_equal( const Vec &a, const Vec &b ) { return a == b; }                                    \
-	inline    T Vec##_dot( const Vec &a, const Vec &b ) { return a.dot( b ); }                                  \
-	inline    T Vec##_length( const Vec &v ) { return v.length(); }                                             \
-	inline    T Vec##_length_sqr( const Vec &v ) { return v.length_sqr(); }                                     \
-	inline  Vec Vec##_add( const Vec &a, const Vec &b ) { Vec r { a }; r.add( b ); return r; }                  \
-	inline  Vec Vec##_sub( const Vec &a, const Vec &b ) { Vec r { a }; r.sub( b ); return r; }                  \
-	inline  Vec Vec##_divide( const Vec &a, const Vec &b ) { Vec r { a }; r.divide( b ); return r; }            \
-	inline  Vec Vec##_divide( const Vec &v, double s ) { Vec r { v }; r.divide( s ); return r; }                \
-	inline  Vec Vec##_multiply( const Vec &v, double s ) { Vec r { v }; r.multiply( s ); return r; }            \
-	inline  Vec Vec##_multiply( const Vec &a, const Vec &b ) { Vec r { a }; r.multiply( b ); return r; }        \
-	inline  Vec Vec##_multiply( const Vec &v, const double_m44 &m ) { Vec r { v }; r.multiply( m ); return r; } \
-	inline  Vec Vec##_multiply( const Vec &v, const float_m44 &m ) { Vec r { v }; r.multiply( m ); return r; }  \
-	inline  Vec Vec##_cross( const Vec &a, const Vec &b ) { Vec r { a }; r.cross( b ); return r; }              \
-	inline  Vec Vec##_normalize( const Vec &v ) { Vec r { v }; r.normalize(); return r; }                       \
-	inline  Vec Vec##_project( const Vec &v, const Vec &onto ) { Vec r { v }; r.project( onto ); return r; }    \
-	inline  Vec Vec##_rotate_x( const Vec &v, float angle, const Vec &origin = { } )                            \
-		{ Vec r { v }; r.rotate_x( angle, origin ); return r; }                                                 \
-	inline  Vec Vec##_rotate_y( const Vec &v, float angle, const Vec &origin = { } )                            \
-		{ Vec r { v }; r.rotate_y( angle, origin ); return r; }                                                 \
-	inline  Vec Vec##_rotate_z( const Vec &v, float angle, const Vec &origin = { } )                            \
-		{ Vec r { v }; r.rotate_z( angle, origin ); return r; }                                                 \
-	inline  Vec Vec##_reflect( const Vec &v, const Vec &normal )                                                \
-		{ Vec r { v }; r.reflect( normal ); return r; }                                                         \
-	inline Vec Vec##_lerp( const Vec &a, const Vec &b, float amount )                                           \
-		{ Vec r { a }; r.lerp( b, amount ); return r; }                                                         \
-	inline   T Vec##_distance( const Vec &a, const Vec &b )                                                     \
-		{ Vec r { b.x - a.x, b.y - a.y, b.z - a.z }; return r.length(); }                                       \
-	inline   T Vec##_distance_sqr( const Vec &a, const Vec &b )                                                 \
-		{ Vec r { b.x - a.x, b.y - a.y, b.z - a.z }; return r.length_sqr(); }
+#if !MATH_PRE_EXPANDED_VECTOR_TYPES
 
+#define VECTOR_TYPE_3D_HEADER( Vec, T )                                               \
+	extern template struct Vector3D<T>;                                               \
+	extern bool Vec##_equal( const Vec &a, const Vec &b );                            \
+	extern    T Vec##_dot( const Vec &a, const Vec &b );                              \
+	extern    T Vec##_length( const Vec &v );                                         \
+	extern    T Vec##_length_sqr( const Vec &v );                                     \
+	extern  Vec Vec##_add( const Vec &a, const Vec &b );                              \
+	extern  Vec Vec##_sub( const Vec &a, const Vec &b );                              \
+	extern  Vec Vec##_divide( const Vec &a, const Vec &b );                           \
+	extern  Vec Vec##_divide( const Vec &v, double s );                               \
+	extern  Vec Vec##_multiply( const Vec &v, double s );                             \
+	extern  Vec Vec##_multiply( const Vec &a, const Vec &b );                         \
+	extern  Vec Vec##_multiply( const Vec &v, const double_m44 &m );                  \
+	extern  Vec Vec##_multiply( const Vec &v, const float_m44 &m );                   \
+	extern  Vec Vec##_cross( const Vec &a, const Vec &b );                            \
+	extern  Vec Vec##_normalize( const Vec &v );                                      \
+	extern  Vec Vec##_project( const Vec &v, const Vec &onto );                       \
+	extern  Vec Vec##_rotate_x( const Vec &v, float angle, const Vec &origin = { } ); \
+	extern  Vec Vec##_rotate_y( const Vec &v, float angle, const Vec &origin = { } ); \
+	extern  Vec Vec##_rotate_z( const Vec &v, float angle, const Vec &origin = { } ); \
+	extern  Vec Vec##_reflect( const Vec &v, const Vec &normal );                     \
+	extern  Vec Vec##_lerp( const Vec &a, const Vec &b, float amount );               \
+	extern    T Vec##_distance( const Vec &a, const Vec &b );                         \
+	extern    T Vec##_distance_sqr( const Vec &a, const Vec &b );
 
-VECTOR_TYPE_3D( u8_v3, u8 )
-VECTOR_TYPE_3D( i16_v3, i16 )
-VECTOR_TYPE_3D( u16_v3, u16 )
-VECTOR_TYPE_3D( int_v3, i32 )
-VECTOR_TYPE_3D( u32_v3, u32 )
-VECTOR_TYPE_3D( i64_v3, i64 )
-VECTOR_TYPE_3D( u64_v3, u64 )
-VECTOR_TYPE_3D( float_v3, float )
-VECTOR_TYPE_3D( double_v3, double )
+VECTOR_TYPE_3D_HEADER( u8_v3, u8 )
+VECTOR_TYPE_3D_HEADER( i16_v3, i16 )
+VECTOR_TYPE_3D_HEADER( u16_v3, u16 )
+VECTOR_TYPE_3D_HEADER( int_v3, i32 )
+VECTOR_TYPE_3D_HEADER( u32_v3, u32 )
+VECTOR_TYPE_3D_HEADER( i64_v3, i64 )
+VECTOR_TYPE_3D_HEADER( u64_v3, u64 )
+VECTOR_TYPE_3D_HEADER( float_v3, float )
+VECTOR_TYPE_3D_HEADER( double_v3, double )
+
+#else
+
+extern bool u8_v3_equal( const u8_v3 &a, const u8_v3 &b );
+extern u8 u8_v3_dot( const u8_v3 &a, const u8_v3 &b );
+extern u8 u8_v3_length( const u8_v3 &v );
+extern u8 u8_v3_length_sqr( const u8_v3 &v );
+extern u8_v3 u8_v3_add( const u8_v3 &a, const u8_v3 &b );
+extern u8_v3 u8_v3_sub( const u8_v3 &a, const u8_v3 &b );
+extern u8_v3 u8_v3_divide( const u8_v3 &a, const u8_v3 &b );
+extern u8_v3 u8_v3_divide( const u8_v3 &v, double s );
+extern u8_v3 u8_v3_multiply( const u8_v3 &v, double s );
+extern u8_v3 u8_v3_multiply( const u8_v3 &a, const u8_v3 &b );
+extern u8_v3 u8_v3_multiply( const u8_v3 &v, const double_m44 &m );
+extern u8_v3 u8_v3_multiply( const u8_v3 &v, const float_m44 &m );
+extern u8_v3 u8_v3_cross( const u8_v3 &a, const u8_v3 &b );
+extern u8_v3 u8_v3_normalize( const u8_v3 &v );
+extern u8_v3 u8_v3_project( const u8_v3 &v, const u8_v3 &onto );
+extern u8_v3 u8_v3_rotate_x( const u8_v3 &v, float angle, const u8_v3 &origin = { } );
+extern u8_v3 u8_v3_rotate_y( const u8_v3 &v, float angle, const u8_v3 &origin = { } );
+extern u8_v3 u8_v3_rotate_z( const u8_v3 &v, float angle, const u8_v3 &origin = { } );
+extern u8_v3 u8_v3_reflect( const u8_v3 &v, const u8_v3 &normal );
+extern u8_v3 u8_v3_lerp( const u8_v3 &a, const u8_v3 &b, float amount );
+extern u8 u8_v3_distance( const u8_v3 &a, const u8_v3 &b );
+extern u8 u8_v3_distance_sqr( const u8_v3 &a, const u8_v3 &b );
+
+extern bool i16_v3_equal( const i16_v3 &a, const i16_v3 &b );
+extern i16 i16_v3_dot( const i16_v3 &a, const i16_v3 &b );
+extern i16 i16_v3_length( const i16_v3 &v );
+extern i16 i16_v3_length_sqr( const i16_v3 &v );
+extern i16_v3 i16_v3_add( const i16_v3 &a, const i16_v3 &b );
+extern i16_v3 i16_v3_sub( const i16_v3 &a, const i16_v3 &b );
+extern i16_v3 i16_v3_divide( const i16_v3 &a, const i16_v3 &b );
+extern i16_v3 i16_v3_divide( const i16_v3 &v, double s );
+extern i16_v3 i16_v3_multiply( const i16_v3 &v, double s );
+extern i16_v3 i16_v3_multiply( const i16_v3 &a, const i16_v3 &b );
+extern i16_v3 i16_v3_multiply( const i16_v3 &v, const double_m44 &m );
+extern i16_v3 i16_v3_multiply( const i16_v3 &v, const float_m44 &m );
+extern i16_v3 i16_v3_cross( const i16_v3 &a, const i16_v3 &b );
+extern i16_v3 i16_v3_normalize( const i16_v3 &v );
+extern i16_v3 i16_v3_project( const i16_v3 &v, const i16_v3 &onto );
+extern i16_v3 i16_v3_rotate_x( const i16_v3 &v, float angle, const i16_v3 &origin = { } );
+extern i16_v3 i16_v3_rotate_y( const i16_v3 &v, float angle, const i16_v3 &origin = { } );
+extern i16_v3 i16_v3_rotate_z( const i16_v3 &v, float angle, const i16_v3 &origin = { } );
+extern i16_v3 i16_v3_reflect( const i16_v3 &v, const i16_v3 &normal );
+extern i16_v3 i16_v3_lerp( const i16_v3 &a, const i16_v3 &b, float amount );
+extern i16 i16_v3_distance( const i16_v3 &a, const i16_v3 &b );
+extern i16 i16_v3_distance_sqr( const i16_v3 &a, const i16_v3 &b );
+
+extern bool u16_v3_equal( const u16_v3 &a, const u16_v3 &b );
+extern u16 u16_v3_dot( const u16_v3 &a, const u16_v3 &b );
+extern u16 u16_v3_length( const u16_v3 &v );
+extern u16 u16_v3_length_sqr( const u16_v3 &v );
+extern u16_v3 u16_v3_add( const u16_v3 &a, const u16_v3 &b );
+extern u16_v3 u16_v3_sub( const u16_v3 &a, const u16_v3 &b );
+extern u16_v3 u16_v3_divide( const u16_v3 &a, const u16_v3 &b );
+extern u16_v3 u16_v3_divide( const u16_v3 &v, double s );
+extern u16_v3 u16_v3_multiply( const u16_v3 &v, double s );
+extern u16_v3 u16_v3_multiply( const u16_v3 &a, const u16_v3 &b );
+extern u16_v3 u16_v3_multiply( const u16_v3 &v, const double_m44 &m );
+extern u16_v3 u16_v3_multiply( const u16_v3 &v, const float_m44 &m );
+extern u16_v3 u16_v3_cross( const u16_v3 &a, const u16_v3 &b );
+extern u16_v3 u16_v3_normalize( const u16_v3 &v );
+extern u16_v3 u16_v3_project( const u16_v3 &v, const u16_v3 &onto );
+extern u16_v3 u16_v3_rotate_x( const u16_v3 &v, float angle, const u16_v3 &origin = { } );
+extern u16_v3 u16_v3_rotate_y( const u16_v3 &v, float angle, const u16_v3 &origin = { } );
+extern u16_v3 u16_v3_rotate_z( const u16_v3 &v, float angle, const u16_v3 &origin = { } );
+extern u16_v3 u16_v3_reflect( const u16_v3 &v, const u16_v3 &normal );
+extern u16_v3 u16_v3_lerp( const u16_v3 &a, const u16_v3 &b, float amount );
+extern u16 u16_v3_distance( const u16_v3 &a, const u16_v3 &b );
+extern u16 u16_v3_distance_sqr( const u16_v3 &a, const u16_v3 &b );
+
+extern bool int_v3_equal( const int_v3 &a, const int_v3 &b );
+extern i32 int_v3_dot( const int_v3 &a, const int_v3 &b );
+extern i32 int_v3_length( const int_v3 &v );
+extern i32 int_v3_length_sqr( const int_v3 &v );
+extern int_v3 int_v3_add( const int_v3 &a, const int_v3 &b );
+extern int_v3 int_v3_sub( const int_v3 &a, const int_v3 &b );
+extern int_v3 int_v3_divide( const int_v3 &a, const int_v3 &b );
+extern int_v3 int_v3_divide( const int_v3 &v, double s );
+extern int_v3 int_v3_multiply( const int_v3 &v, double s );
+extern int_v3 int_v3_multiply( const int_v3 &a, const int_v3 &b );
+extern int_v3 int_v3_multiply( const int_v3 &v, const double_m44 &m );
+extern int_v3 int_v3_multiply( const int_v3 &v, const float_m44 &m );
+extern int_v3 int_v3_cross( const int_v3 &a, const int_v3 &b );
+extern int_v3 int_v3_normalize( const int_v3 &v );
+extern int_v3 int_v3_project( const int_v3 &v, const int_v3 &onto );
+extern int_v3 int_v3_rotate_x( const int_v3 &v, float angle, const int_v3 &origin = { } );
+extern int_v3 int_v3_rotate_y( const int_v3 &v, float angle, const int_v3 &origin = { } );
+extern int_v3 int_v3_rotate_z( const int_v3 &v, float angle, const int_v3 &origin = { } );
+extern int_v3 int_v3_reflect( const int_v3 &v, const int_v3 &normal );
+extern int_v3 int_v3_lerp( const int_v3 &a, const int_v3 &b, float amount );
+extern i32 int_v3_distance( const int_v3 &a, const int_v3 &b );
+extern i32 int_v3_distance_sqr( const int_v3 &a, const int_v3 &b );
+
+extern bool u32_v3_equal( const u32_v3 &a, const u32_v3 &b );
+extern u32 u32_v3_dot( const u32_v3 &a, const u32_v3 &b );
+extern u32 u32_v3_length( const u32_v3 &v );
+extern u32 u32_v3_length_sqr( const u32_v3 &v );
+extern u32_v3 u32_v3_add( const u32_v3 &a, const u32_v3 &b );
+extern u32_v3 u32_v3_sub( const u32_v3 &a, const u32_v3 &b );
+extern u32_v3 u32_v3_divide( const u32_v3 &a, const u32_v3 &b );
+extern u32_v3 u32_v3_divide( const u32_v3 &v, double s );
+extern u32_v3 u32_v3_multiply( const u32_v3 &v, double s );
+extern u32_v3 u32_v3_multiply( const u32_v3 &a, const u32_v3 &b );
+extern u32_v3 u32_v3_multiply( const u32_v3 &v, const double_m44 &m );
+extern u32_v3 u32_v3_multiply( const u32_v3 &v, const float_m44 &m );
+extern u32_v3 u32_v3_cross( const u32_v3 &a, const u32_v3 &b );
+extern u32_v3 u32_v3_normalize( const u32_v3 &v );
+extern u32_v3 u32_v3_project( const u32_v3 &v, const u32_v3 &onto );
+extern u32_v3 u32_v3_rotate_x( const u32_v3 &v, float angle, const u32_v3 &origin = { } );
+extern u32_v3 u32_v3_rotate_y( const u32_v3 &v, float angle, const u32_v3 &origin = { } );
+extern u32_v3 u32_v3_rotate_z( const u32_v3 &v, float angle, const u32_v3 &origin = { } );
+extern u32_v3 u32_v3_reflect( const u32_v3 &v, const u32_v3 &normal );
+extern u32_v3 u32_v3_lerp( const u32_v3 &a, const u32_v3 &b, float amount );
+extern u32 u32_v3_distance( const u32_v3 &a, const u32_v3 &b );
+extern u32 u32_v3_distance_sqr( const u32_v3 &a, const u32_v3 &b );
+
+extern bool i64_v3_equal( const i64_v3 &a, const i64_v3 &b );
+extern i64 i64_v3_dot( const i64_v3 &a, const i64_v3 &b );
+extern i64 i64_v3_length( const i64_v3 &v );
+extern i64 i64_v3_length_sqr( const i64_v3 &v );
+extern i64_v3 i64_v3_add( const i64_v3 &a, const i64_v3 &b );
+extern i64_v3 i64_v3_sub( const i64_v3 &a, const i64_v3 &b );
+extern i64_v3 i64_v3_divide( const i64_v3 &a, const i64_v3 &b );
+extern i64_v3 i64_v3_divide( const i64_v3 &v, double s );
+extern i64_v3 i64_v3_multiply( const i64_v3 &v, double s );
+extern i64_v3 i64_v3_multiply( const i64_v3 &a, const i64_v3 &b );
+extern i64_v3 i64_v3_multiply( const i64_v3 &v, const double_m44 &m );
+extern i64_v3 i64_v3_multiply( const i64_v3 &v, const float_m44 &m );
+extern i64_v3 i64_v3_cross( const i64_v3 &a, const i64_v3 &b );
+extern i64_v3 i64_v3_normalize( const i64_v3 &v );
+extern i64_v3 i64_v3_project( const i64_v3 &v, const i64_v3 &onto );
+extern i64_v3 i64_v3_rotate_x( const i64_v3 &v, float angle, const i64_v3 &origin = { } );
+extern i64_v3 i64_v3_rotate_y( const i64_v3 &v, float angle, const i64_v3 &origin = { } );
+extern i64_v3 i64_v3_rotate_z( const i64_v3 &v, float angle, const i64_v3 &origin = { } );
+extern i64_v3 i64_v3_reflect( const i64_v3 &v, const i64_v3 &normal );
+extern i64_v3 i64_v3_lerp( const i64_v3 &a, const i64_v3 &b, float amount );
+extern i64 i64_v3_distance( const i64_v3 &a, const i64_v3 &b );
+extern i64 i64_v3_distance_sqr( const i64_v3 &a, const i64_v3 &b );
+
+extern bool u64_v3_equal( const u64_v3 &a, const u64_v3 &b );
+extern u64 u64_v3_dot( const u64_v3 &a, const u64_v3 &b );
+extern u64 u64_v3_length( const u64_v3 &v );
+extern u64 u64_v3_length_sqr( const u64_v3 &v );
+extern u64_v3 u64_v3_add( const u64_v3 &a, const u64_v3 &b );
+extern u64_v3 u64_v3_sub( const u64_v3 &a, const u64_v3 &b );
+extern u64_v3 u64_v3_divide( const u64_v3 &a, const u64_v3 &b );
+extern u64_v3 u64_v3_divide( const u64_v3 &v, double s );
+extern u64_v3 u64_v3_multiply( const u64_v3 &v, double s );
+extern u64_v3 u64_v3_multiply( const u64_v3 &a, const u64_v3 &b );
+extern u64_v3 u64_v3_multiply( const u64_v3 &v, const double_m44 &m );
+extern u64_v3 u64_v3_multiply( const u64_v3 &v, const float_m44 &m );
+extern u64_v3 u64_v3_cross( const u64_v3 &a, const u64_v3 &b );
+extern u64_v3 u64_v3_normalize( const u64_v3 &v );
+extern u64_v3 u64_v3_project( const u64_v3 &v, const u64_v3 &onto );
+extern u64_v3 u64_v3_rotate_x( const u64_v3 &v, float angle, const u64_v3 &origin = { } );
+extern u64_v3 u64_v3_rotate_y( const u64_v3 &v, float angle, const u64_v3 &origin = { } );
+extern u64_v3 u64_v3_rotate_z( const u64_v3 &v, float angle, const u64_v3 &origin = { } );
+extern u64_v3 u64_v3_reflect( const u64_v3 &v, const u64_v3 &normal );
+extern u64_v3 u64_v3_lerp( const u64_v3 &a, const u64_v3 &b, float amount );
+extern u64 u64_v3_distance( const u64_v3 &a, const u64_v3 &b );
+extern u64 u64_v3_distance_sqr( const u64_v3 &a, const u64_v3 &b );
+
+extern bool float_v3_equal( const float_v3 &a, const float_v3 &b );
+extern float float_v3_dot( const float_v3 &a, const float_v3 &b );
+extern float float_v3_length( const float_v3 &v );
+extern float float_v3_length_sqr( const float_v3 &v );
+extern float_v3 float_v3_add( const float_v3 &a, const float_v3 &b );
+extern float_v3 float_v3_sub( const float_v3 &a, const float_v3 &b );
+extern float_v3 float_v3_divide( const float_v3 &a, const float_v3 &b );
+extern float_v3 float_v3_divide( const float_v3 &v, double s );
+extern float_v3 float_v3_multiply( const float_v3 &v, double s );
+extern float_v3 float_v3_multiply( const float_v3 &a, const float_v3 &b );
+extern float_v3 float_v3_multiply( const float_v3 &v, const double_m44 &m );
+extern float_v3 float_v3_multiply( const float_v3 &v, const float_m44 &m );
+extern float_v3 float_v3_cross( const float_v3 &a, const float_v3 &b );
+extern float_v3 float_v3_normalize( const float_v3 &v );
+extern float_v3 float_v3_project( const float_v3 &v, const float_v3 &onto );
+extern float_v3 float_v3_rotate_x( const float_v3 &v, float angle, const float_v3 &origin = { } );
+extern float_v3 float_v3_rotate_y( const float_v3 &v, float angle, const float_v3 &origin = { } );
+extern float_v3 float_v3_rotate_z( const float_v3 &v, float angle, const float_v3 &origin = { } );
+extern float_v3 float_v3_reflect( const float_v3 &v, const float_v3 &normal );
+extern float_v3 float_v3_lerp( const float_v3 &a, const float_v3 &b, float amount );
+extern float float_v3_distance( const float_v3 &a, const float_v3 &b );
+extern float float_v3_distance_sqr( const float_v3 &a, const float_v3 &b );
+
+extern bool double_v3_equal( const double_v3 &a, const double_v3 &b );
+extern double double_v3_dot( const double_v3 &a, const double_v3 &b );
+extern double double_v3_length( const double_v3 &v );
+extern double double_v3_length_sqr( const double_v3 &v );
+extern double_v3 double_v3_add( const double_v3 &a, const double_v3 &b );
+extern double_v3 double_v3_sub( const double_v3 &a, const double_v3 &b );
+extern double_v3 double_v3_divide( const double_v3 &a, const double_v3 &b );
+extern double_v3 double_v3_divide( const double_v3 &v, double s );
+extern double_v3 double_v3_multiply( const double_v3 &v, double s );
+extern double_v3 double_v3_multiply( const double_v3 &a, const double_v3 &b );
+extern double_v3 double_v3_multiply( const double_v3 &v, const double_m44 &m );
+extern double_v3 double_v3_multiply( const double_v3 &v, const float_m44 &m );
+extern double_v3 double_v3_cross( const double_v3 &a, const double_v3 &b );
+extern double_v3 double_v3_normalize( const double_v3 &v );
+extern double_v3 double_v3_project( const double_v3 &v, const double_v3 &onto );
+extern double_v3 double_v3_rotate_x( const double_v3 &v, float angle, const double_v3 &origin = { } );
+extern double_v3 double_v3_rotate_y( const double_v3 &v, float angle, const double_v3 &origin = { } );
+extern double_v3 double_v3_rotate_z( const double_v3 &v, float angle, const double_v3 &origin = { } );
+extern double_v3 double_v3_reflect( const double_v3 &v, const double_v3 &normal );
+extern double_v3 double_v3_lerp( const double_v3 &a, const double_v3 &b, float amount );
+extern double double_v3_distance( const double_v3 &a, const double_v3 &b );
+extern double double_v3_distance_sqr( const double_v3 &a, const double_v3 &b );
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // 4D Vector
 
-template <typename T>
-struct Vector4D
+template <typename T> struct Vector4D
 {
 	using VectorType = Vector4D<T>;
 	T x, y, z, w;
@@ -1138,47 +1485,253 @@ struct Vector4D
 };
 
 
-#define VECTOR_TYPE_4D( Vec, T )                                                                                \
-	inline bool Vec##_equal( const Vec &a, const Vec &b ) { return a == b; }                                    \
-	inline    T Vec##_dot( const Vec &a, const Vec &b ) { return a.dot( b ); }                                  \
-	inline    T Vec##_length( const Vec &v ) { return v.length(); }                                             \
-	inline    T Vec##_length_sqr( const Vec &v ) { return v.length_sqr(); }                                     \
-	inline  Vec Vec##_add( const Vec &a, const Vec &b ) { Vec r { a }; r.add( b ); return r; }                  \
-	inline  Vec Vec##_sub( const Vec &a, const Vec &b ) { Vec r { a }; r.sub( b ); return r; }                  \
-	inline  Vec Vec##_divide( const Vec &a, const Vec &b ) { Vec r { a }; r.divide( b ); return r; }            \
-	inline  Vec Vec##_divide( const Vec &v, double s ) { Vec r { v }; r.divide( s ); return r; }                \
-	inline  Vec Vec##_multiply( const Vec &v, double s ) { Vec r { v }; r.multiply( s ); return r; }            \
-	inline  Vec Vec##_multiply( const Vec &a, const Vec &b ) { Vec r { a }; r.multiply( b ); return r; }        \
-	inline  Vec Vec##_multiply( const Vec &v, const double_m44 &m ) { Vec r { v }; r.multiply( m ); return r; } \
-	inline  Vec Vec##_multiply( const Vec &v, const float_m44 &m ) { Vec r { v }; r.multiply( m ); return r; }  \
-	inline  Vec Vec##_cross( const Vec &a, const Vec &b ) { Vec r { a }; r.cross( b ); return r; }              \
-	inline  Vec Vec##_normalize( const Vec &v ) { Vec r { v }; r.normalize(); return r; }                       \
-	inline  Vec Vec##_project( const Vec &v, const Vec &onto ) { Vec r { v }; r.project( onto ); return r; }    \
-	inline  Vec Vec##_rotate_x( const Vec &v, float angle, const Vec &origin = { } )                            \
-		{ Vec r { v }; r.rotate_x( angle, origin ); return r; }                                                 \
-	inline  Vec Vec##_rotate_y( const Vec &v, float angle, const Vec &origin = { } )                            \
-		{ Vec r { v }; r.rotate_y( angle, origin ); return r; }                                                 \
-	inline  Vec Vec##_rotate_z( const Vec &v, float angle, const Vec &origin = { } )                            \
-		{ Vec r { v }; r.rotate_z( angle, origin ); return r; }                                                 \
-	inline  Vec Vec##_reflect( const Vec &v, const Vec &normal )                                                \
-		{ Vec r { v }; r.reflect( normal ); return r; }                                                         \
-	inline Vec Vec##_lerp( const Vec &a, const Vec &b, float amount )                                           \
-		{ Vec r { a }; r.lerp( b, amount ); return r; }                                                         \
-	inline   T Vec##_distance( const Vec &a, const Vec &b )                                                     \
-		{ Vec r { b.x - a.x, b.y - a.y, b.z - a.z, b.w - a.w }; return r.length(); }                            \
-	inline   T Vec##_distance_sqr( const Vec &a, const Vec &b )                                                 \
-		{ Vec r { b.x - a.x, b.y - a.y, b.z - a.z, b.w - a.w }; return r.length_sqr(); }
+#if !MATH_PRE_EXPANDED_VECTOR_TYPES
 
+#define VECTOR_TYPE_4D_HEADER( Vec, T )                                               \
+	extern template struct Vector4D<T>;                                               \
+	extern bool Vec##_equal( const Vec &a, const Vec &b );                            \
+	extern    T Vec##_dot( const Vec &a, const Vec &b );                              \
+	extern    T Vec##_length( const Vec &v );                                         \
+	extern    T Vec##_length_sqr( const Vec &v );                                     \
+	extern  Vec Vec##_add( const Vec &a, const Vec &b );                              \
+	extern  Vec Vec##_sub( const Vec &a, const Vec &b );                              \
+	extern  Vec Vec##_divide( const Vec &a, const Vec &b );                           \
+	extern  Vec Vec##_divide( const Vec &v, double s );                               \
+	extern  Vec Vec##_multiply( const Vec &v, double s );                             \
+	extern  Vec Vec##_multiply( const Vec &a, const Vec &b );                         \
+	extern  Vec Vec##_multiply( const Vec &v, const double_m44 &m );                  \
+	extern  Vec Vec##_multiply( const Vec &v, const float_m44 &m );                   \
+	extern  Vec Vec##_cross( const Vec &a, const Vec &b );                            \
+	extern  Vec Vec##_normalize( const Vec &v );                                      \
+	extern  Vec Vec##_project( const Vec &v, const Vec &onto );                       \
+	extern  Vec Vec##_rotate_x( const Vec &v, float angle, const Vec &origin = { } ); \
+	extern  Vec Vec##_rotate_y( const Vec &v, float angle, const Vec &origin = { } ); \
+	extern  Vec Vec##_rotate_z( const Vec &v, float angle, const Vec &origin = { } ); \
+	extern  Vec Vec##_reflect( const Vec &v, const Vec &normal );                     \
+	extern  Vec Vec##_lerp( const Vec &a, const Vec &b, float amount );               \
+	extern    T Vec##_distance( const Vec &a, const Vec &b );                         \
+	extern    T Vec##_distance_sqr( const Vec &a, const Vec &b );
 
-VECTOR_TYPE_4D( u8_v4, u8 )
-VECTOR_TYPE_4D( i16_v4, i16 )
-VECTOR_TYPE_4D( u16_v4, u16 )
-VECTOR_TYPE_4D( int_v4, i32 )
-VECTOR_TYPE_4D( u32_v4, u32 )
-VECTOR_TYPE_4D( i64_v4, i64 )
-VECTOR_TYPE_4D( u64_v4, u64 )
-VECTOR_TYPE_4D( float_v4, float )
-VECTOR_TYPE_4D( double_v4, double )
+VECTOR_TYPE_4D_HEADER( u8_v4, u8 )
+VECTOR_TYPE_4D_HEADER( i16_v4, i16 )
+VECTOR_TYPE_4D_HEADER( u16_v4, u16 )
+VECTOR_TYPE_4D_HEADER( int_v4, i32 )
+VECTOR_TYPE_4D_HEADER( u32_v4, u32 )
+VECTOR_TYPE_4D_HEADER( i64_v4, i64 )
+VECTOR_TYPE_4D_HEADER( u64_v4, u64 )
+VECTOR_TYPE_4D_HEADER( float_v4, float )
+VECTOR_TYPE_4D_HEADER( double_v4, double )
+
+#else
+
+extern bool u8_v4_equal( const u8_v4 &a, const u8_v4 &b );
+extern u8 u8_v4_dot( const u8_v4 &a, const u8_v4 &b );
+extern u8 u8_v4_length( const u8_v4 &v );
+extern u8 u8_v4_length_sqr( const u8_v4 &v );
+extern u8_v4 u8_v4_add( const u8_v4 &a, const u8_v4 &b );
+extern u8_v4 u8_v4_sub( const u8_v4 &a, const u8_v4 &b );
+extern u8_v4 u8_v4_divide( const u8_v4 &a, const u8_v4 &b );
+extern u8_v4 u8_v4_divide( const u8_v4 &v, double s );
+extern u8_v4 u8_v4_multiply( const u8_v4 &v, double s );
+extern u8_v4 u8_v4_multiply( const u8_v4 &a, const u8_v4 &b );
+extern u8_v4 u8_v4_multiply( const u8_v4 &v, const double_m44 &m );
+extern u8_v4 u8_v4_multiply( const u8_v4 &v, const float_m44 &m );
+extern u8_v4 u8_v4_cross( const u8_v4 &a, const u8_v4 &b );
+extern u8_v4 u8_v4_normalize( const u8_v4 &v );
+extern u8_v4 u8_v4_project( const u8_v4 &v, const u8_v4 &onto );
+extern u8_v4 u8_v4_rotate_x( const u8_v4 &v, float angle, const u8_v4 &origin = { } );
+extern u8_v4 u8_v4_rotate_y( const u8_v4 &v, float angle, const u8_v4 &origin = { } );
+extern u8_v4 u8_v4_rotate_z( const u8_v4 &v, float angle, const u8_v4 &origin = { } );
+extern u8_v4 u8_v4_reflect( const u8_v4 &v, const u8_v4 &normal );
+extern u8_v4 u8_v4_lerp( const u8_v4 &a, const u8_v4 &b, float amount );
+extern u8 u8_v4_distance( const u8_v4 &a, const u8_v4 &b );
+extern u8 u8_v4_distance_sqr( const u8_v4 &a, const u8_v4 &b );
+
+extern bool i16_v4_equal( const i16_v4 &a, const i16_v4 &b );
+extern i16 i16_v4_dot( const i16_v4 &a, const i16_v4 &b );
+extern i16 i16_v4_length( const i16_v4 &v );
+extern i16 i16_v4_length_sqr( const i16_v4 &v );
+extern i16_v4 i16_v4_add( const i16_v4 &a, const i16_v4 &b );
+extern i16_v4 i16_v4_sub( const i16_v4 &a, const i16_v4 &b );
+extern i16_v4 i16_v4_divide( const i16_v4 &a, const i16_v4 &b );
+extern i16_v4 i16_v4_divide( const i16_v4 &v, double s );
+extern i16_v4 i16_v4_multiply( const i16_v4 &v, double s );
+extern i16_v4 i16_v4_multiply( const i16_v4 &a, const i16_v4 &b );
+extern i16_v4 i16_v4_multiply( const i16_v4 &v, const double_m44 &m );
+extern i16_v4 i16_v4_multiply( const i16_v4 &v, const float_m44 &m );
+extern i16_v4 i16_v4_cross( const i16_v4 &a, const i16_v4 &b );
+extern i16_v4 i16_v4_normalize( const i16_v4 &v );
+extern i16_v4 i16_v4_project( const i16_v4 &v, const i16_v4 &onto );
+extern i16_v4 i16_v4_rotate_x( const i16_v4 &v, float angle, const i16_v4 &origin = { } );
+extern i16_v4 i16_v4_rotate_y( const i16_v4 &v, float angle, const i16_v4 &origin = { } );
+extern i16_v4 i16_v4_rotate_z( const i16_v4 &v, float angle, const i16_v4 &origin = { } );
+extern i16_v4 i16_v4_reflect( const i16_v4 &v, const i16_v4 &normal );
+extern i16_v4 i16_v4_lerp( const i16_v4 &a, const i16_v4 &b, float amount );
+extern i16 i16_v4_distance( const i16_v4 &a, const i16_v4 &b );
+extern i16 i16_v4_distance_sqr( const i16_v4 &a, const i16_v4 &b );
+
+extern bool u16_v4_equal( const u16_v4 &a, const u16_v4 &b );
+extern u16 u16_v4_dot( const u16_v4 &a, const u16_v4 &b );
+extern u16 u16_v4_length( const u16_v4 &v );
+extern u16 u16_v4_length_sqr( const u16_v4 &v );
+extern u16_v4 u16_v4_add( const u16_v4 &a, const u16_v4 &b );
+extern u16_v4 u16_v4_sub( const u16_v4 &a, const u16_v4 &b );
+extern u16_v4 u16_v4_divide( const u16_v4 &a, const u16_v4 &b );
+extern u16_v4 u16_v4_divide( const u16_v4 &v, double s );
+extern u16_v4 u16_v4_multiply( const u16_v4 &v, double s );
+extern u16_v4 u16_v4_multiply( const u16_v4 &a, const u16_v4 &b );
+extern u16_v4 u16_v4_multiply( const u16_v4 &v, const double_m44 &m );
+extern u16_v4 u16_v4_multiply( const u16_v4 &v, const float_m44 &m );
+extern u16_v4 u16_v4_cross( const u16_v4 &a, const u16_v4 &b );
+extern u16_v4 u16_v4_normalize( const u16_v4 &v );
+extern u16_v4 u16_v4_project( const u16_v4 &v, const u16_v4 &onto );
+extern u16_v4 u16_v4_rotate_x( const u16_v4 &v, float angle, const u16_v4 &origin = { } );
+extern u16_v4 u16_v4_rotate_y( const u16_v4 &v, float angle, const u16_v4 &origin = { } );
+extern u16_v4 u16_v4_rotate_z( const u16_v4 &v, float angle, const u16_v4 &origin = { } );
+extern u16_v4 u16_v4_reflect( const u16_v4 &v, const u16_v4 &normal );
+extern u16_v4 u16_v4_lerp( const u16_v4 &a, const u16_v4 &b, float amount );
+extern u16 u16_v4_distance( const u16_v4 &a, const u16_v4 &b );
+extern u16 u16_v4_distance_sqr( const u16_v4 &a, const u16_v4 &b );
+
+extern bool int_v4_equal( const int_v4 &a, const int_v4 &b );
+extern i32 int_v4_dot( const int_v4 &a, const int_v4 &b );
+extern i32 int_v4_length( const int_v4 &v );
+extern i32 int_v4_length_sqr( const int_v4 &v );
+extern int_v4 int_v4_add( const int_v4 &a, const int_v4 &b );
+extern int_v4 int_v4_sub( const int_v4 &a, const int_v4 &b );
+extern int_v4 int_v4_divide( const int_v4 &a, const int_v4 &b );
+extern int_v4 int_v4_divide( const int_v4 &v, double s );
+extern int_v4 int_v4_multiply( const int_v4 &v, double s );
+extern int_v4 int_v4_multiply( const int_v4 &a, const int_v4 &b );
+extern int_v4 int_v4_multiply( const int_v4 &v, const double_m44 &m );
+extern int_v4 int_v4_multiply( const int_v4 &v, const float_m44 &m );
+extern int_v4 int_v4_cross( const int_v4 &a, const int_v4 &b );
+extern int_v4 int_v4_normalize( const int_v4 &v );
+extern int_v4 int_v4_project( const int_v4 &v, const int_v4 &onto );
+extern int_v4 int_v4_rotate_x( const int_v4 &v, float angle, const int_v4 &origin = { } );
+extern int_v4 int_v4_rotate_y( const int_v4 &v, float angle, const int_v4 &origin = { } );
+extern int_v4 int_v4_rotate_z( const int_v4 &v, float angle, const int_v4 &origin = { } );
+extern int_v4 int_v4_reflect( const int_v4 &v, const int_v4 &normal );
+extern int_v4 int_v4_lerp( const int_v4 &a, const int_v4 &b, float amount );
+extern i32 int_v4_distance( const int_v4 &a, const int_v4 &b );
+extern i32 int_v4_distance_sqr( const int_v4 &a, const int_v4 &b );
+
+extern bool u32_v4_equal( const u32_v4 &a, const u32_v4 &b );
+extern u32 u32_v4_dot( const u32_v4 &a, const u32_v4 &b );
+extern u32 u32_v4_length( const u32_v4 &v );
+extern u32 u32_v4_length_sqr( const u32_v4 &v );
+extern u32_v4 u32_v4_add( const u32_v4 &a, const u32_v4 &b );
+extern u32_v4 u32_v4_sub( const u32_v4 &a, const u32_v4 &b );
+extern u32_v4 u32_v4_divide( const u32_v4 &a, const u32_v4 &b );
+extern u32_v4 u32_v4_divide( const u32_v4 &v, double s );
+extern u32_v4 u32_v4_multiply( const u32_v4 &v, double s );
+extern u32_v4 u32_v4_multiply( const u32_v4 &a, const u32_v4 &b );
+extern u32_v4 u32_v4_multiply( const u32_v4 &v, const double_m44 &m );
+extern u32_v4 u32_v4_multiply( const u32_v4 &v, const float_m44 &m );
+extern u32_v4 u32_v4_cross( const u32_v4 &a, const u32_v4 &b );
+extern u32_v4 u32_v4_normalize( const u32_v4 &v );
+extern u32_v4 u32_v4_project( const u32_v4 &v, const u32_v4 &onto );
+extern u32_v4 u32_v4_rotate_x( const u32_v4 &v, float angle, const u32_v4 &origin = { } );
+extern u32_v4 u32_v4_rotate_y( const u32_v4 &v, float angle, const u32_v4 &origin = { } );
+extern u32_v4 u32_v4_rotate_z( const u32_v4 &v, float angle, const u32_v4 &origin = { } );
+extern u32_v4 u32_v4_reflect( const u32_v4 &v, const u32_v4 &normal );
+extern u32_v4 u32_v4_lerp( const u32_v4 &a, const u32_v4 &b, float amount );
+extern u32 u32_v4_distance( const u32_v4 &a, const u32_v4 &b );
+extern u32 u32_v4_distance_sqr( const u32_v4 &a, const u32_v4 &b );
+
+extern bool i64_v4_equal( const i64_v4 &a, const i64_v4 &b );
+extern i64 i64_v4_dot( const i64_v4 &a, const i64_v4 &b );
+extern i64 i64_v4_length( const i64_v4 &v );
+extern i64 i64_v4_length_sqr( const i64_v4 &v );
+extern i64_v4 i64_v4_add( const i64_v4 &a, const i64_v4 &b );
+extern i64_v4 i64_v4_sub( const i64_v4 &a, const i64_v4 &b );
+extern i64_v4 i64_v4_divide( const i64_v4 &a, const i64_v4 &b );
+extern i64_v4 i64_v4_divide( const i64_v4 &v, double s );
+extern i64_v4 i64_v4_multiply( const i64_v4 &v, double s );
+extern i64_v4 i64_v4_multiply( const i64_v4 &a, const i64_v4 &b );
+extern i64_v4 i64_v4_multiply( const i64_v4 &v, const double_m44 &m );
+extern i64_v4 i64_v4_multiply( const i64_v4 &v, const float_m44 &m );
+extern i64_v4 i64_v4_cross( const i64_v4 &a, const i64_v4 &b );
+extern i64_v4 i64_v4_normalize( const i64_v4 &v );
+extern i64_v4 i64_v4_project( const i64_v4 &v, const i64_v4 &onto );
+extern i64_v4 i64_v4_rotate_x( const i64_v4 &v, float angle, const i64_v4 &origin = { } );
+extern i64_v4 i64_v4_rotate_y( const i64_v4 &v, float angle, const i64_v4 &origin = { } );
+extern i64_v4 i64_v4_rotate_z( const i64_v4 &v, float angle, const i64_v4 &origin = { } );
+extern i64_v4 i64_v4_reflect( const i64_v4 &v, const i64_v4 &normal );
+extern i64_v4 i64_v4_lerp( const i64_v4 &a, const i64_v4 &b, float amount );
+extern i64 i64_v4_distance( const i64_v4 &a, const i64_v4 &b );
+extern i64 i64_v4_distance_sqr( const i64_v4 &a, const i64_v4 &b );
+
+extern bool u64_v4_equal( const u64_v4 &a, const u64_v4 &b );
+extern u64 u64_v4_dot( const u64_v4 &a, const u64_v4 &b );
+extern u64 u64_v4_length( const u64_v4 &v );
+extern u64 u64_v4_length_sqr( const u64_v4 &v );
+extern u64_v4 u64_v4_add( const u64_v4 &a, const u64_v4 &b );
+extern u64_v4 u64_v4_sub( const u64_v4 &a, const u64_v4 &b );
+extern u64_v4 u64_v4_divide( const u64_v4 &a, const u64_v4 &b );
+extern u64_v4 u64_v4_divide( const u64_v4 &v, double s );
+extern u64_v4 u64_v4_multiply( const u64_v4 &v, double s );
+extern u64_v4 u64_v4_multiply( const u64_v4 &a, const u64_v4 &b );
+extern u64_v4 u64_v4_multiply( const u64_v4 &v, const double_m44 &m );
+extern u64_v4 u64_v4_multiply( const u64_v4 &v, const float_m44 &m );
+extern u64_v4 u64_v4_cross( const u64_v4 &a, const u64_v4 &b );
+extern u64_v4 u64_v4_normalize( const u64_v4 &v );
+extern u64_v4 u64_v4_project( const u64_v4 &v, const u64_v4 &onto );
+extern u64_v4 u64_v4_rotate_x( const u64_v4 &v, float angle, const u64_v4 &origin = { } );
+extern u64_v4 u64_v4_rotate_y( const u64_v4 &v, float angle, const u64_v4 &origin = { } );
+extern u64_v4 u64_v4_rotate_z( const u64_v4 &v, float angle, const u64_v4 &origin = { } );
+extern u64_v4 u64_v4_reflect( const u64_v4 &v, const u64_v4 &normal );
+extern u64_v4 u64_v4_lerp( const u64_v4 &a, const u64_v4 &b, float amount );
+extern u64 u64_v4_distance( const u64_v4 &a, const u64_v4 &b );
+extern u64 u64_v4_distance_sqr( const u64_v4 &a, const u64_v4 &b );
+
+extern bool float_v4_equal( const float_v4 &a, const float_v4 &b );
+extern float float_v4_dot( const float_v4 &a, const float_v4 &b );
+extern float float_v4_length( const float_v4 &v );
+extern float float_v4_length_sqr( const float_v4 &v );
+extern float_v4 float_v4_add( const float_v4 &a, const float_v4 &b );
+extern float_v4 float_v4_sub( const float_v4 &a, const float_v4 &b );
+extern float_v4 float_v4_divide( const float_v4 &a, const float_v4 &b );
+extern float_v4 float_v4_divide( const float_v4 &v, double s );
+extern float_v4 float_v4_multiply( const float_v4 &v, double s );
+extern float_v4 float_v4_multiply( const float_v4 &a, const float_v4 &b );
+extern float_v4 float_v4_multiply( const float_v4 &v, const double_m44 &m );
+extern float_v4 float_v4_multiply( const float_v4 &v, const float_m44 &m );
+extern float_v4 float_v4_cross( const float_v4 &a, const float_v4 &b );
+extern float_v4 float_v4_normalize( const float_v4 &v );
+extern float_v4 float_v4_project( const float_v4 &v, const float_v4 &onto );
+extern float_v4 float_v4_rotate_x( const float_v4 &v, float angle, const float_v4 &origin = { } );
+extern float_v4 float_v4_rotate_y( const float_v4 &v, float angle, const float_v4 &origin = { } );
+extern float_v4 float_v4_rotate_z( const float_v4 &v, float angle, const float_v4 &origin = { } );
+extern float_v4 float_v4_reflect( const float_v4 &v, const float_v4 &normal );
+extern float_v4 float_v4_lerp( const float_v4 &a, const float_v4 &b, float amount );
+extern float float_v4_distance( const float_v4 &a, const float_v4 &b );
+extern float float_v4_distance_sqr( const float_v4 &a, const float_v4 &b );
+
+extern bool double_v4_equal( const double_v4 &a, const double_v4 &b );
+extern double double_v4_dot( const double_v4 &a, const double_v4 &b );
+extern double double_v4_length( const double_v4 &v );
+extern double double_v4_length_sqr( const double_v4 &v );
+extern double_v4 double_v4_add( const double_v4 &a, const double_v4 &b );
+extern double_v4 double_v4_sub( const double_v4 &a, const double_v4 &b );
+extern double_v4 double_v4_divide( const double_v4 &a, const double_v4 &b );
+extern double_v4 double_v4_divide( const double_v4 &v, double s );
+extern double_v4 double_v4_multiply( const double_v4 &v, double s );
+extern double_v4 double_v4_multiply( const double_v4 &a, const double_v4 &b );
+extern double_v4 double_v4_multiply( const double_v4 &v, const double_m44 &m );
+extern double_v4 double_v4_multiply( const double_v4 &v, const float_m44 &m );
+extern double_v4 double_v4_cross( const double_v4 &a, const double_v4 &b );
+extern double_v4 double_v4_normalize( const double_v4 &v );
+extern double_v4 double_v4_project( const double_v4 &v, const double_v4 &onto );
+extern double_v4 double_v4_rotate_x( const double_v4 &v, float angle, const double_v4 &origin = { } );
+extern double_v4 double_v4_rotate_y( const double_v4 &v, float angle, const double_v4 &origin = { } );
+extern double_v4 double_v4_rotate_z( const double_v4 &v, float angle, const double_v4 &origin = { } );
+extern double_v4 double_v4_reflect( const double_v4 &v, const double_v4 &normal );
+extern double_v4 double_v4_lerp( const double_v4 &a, const double_v4 &b, float amount );
+extern double double_v4_distance( const double_v4 &a, const double_v4 &b );
+extern double double_v4_distance_sqr( const double_v4 &a, const double_v4 &b );
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // 2D Rays
@@ -1266,100 +1819,11 @@ struct double_r3
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-inline double_v4 quaternion_from_axis_radians( const double_v3 &axis, double radians )
-{
-	const double s = sin( radians * 0.5 );
-	return double_v4 { axis.x * s, axis.y * s, axis.z * s, cos( radians * 0.5 ) };
-}
-
-
-inline double_v4 quaternion_normalize( const double_v4 &quat )
-{
-	double nInv = 1.0 / quat.length();
-	return double_v4 { quat.x * nInv, quat.y * nInv, quat.z * nInv, quat.w * nInv };
-}
-
-
-inline double_v4 quaternion_multiply( const double_v4 &a, const double_v4 &b )
-{
-	return double_v4
-		{
-			a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
-			a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
-			a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w,
-			a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z,
-		};
-}
-
-
-inline double_v3 quaternion_rotate( const double_v4 &quat, const double_v3 &v )
-{
-	// rotate v by q: v' = q * (0,v) * q^-1
-	const double_v3 qv = double_v3 { quat.x, quat.y, quat.z };
-	const double_v3 t = double_v3_cross( qv, v ) * 2.0;
-	const double_v3 result = v + t * quat.w + double_v3_cross( qv, t );
-	return result;
-}
-
-
-inline double_v4 quaternion_from_forward_up( const double_v3 &forward, const double_v3 &up )
-{
-	const double_v3 f = double_v3_normalize( forward );
-	const double_v3 r = double_v3_normalize( double_v3_cross( up, f ) );
-	const double_v3 u = double_v3_cross( f, r );
-
-	// +X = forward, +Y = right, +Z = up
-	double_m44 m = double_m44_build_zeros();
-	m[0] = f.x;
-	m[1] = r.x;
-	m[2] = u.x;
-	m[4] = f.y;
-	m[5] = r.y;
-	m[6] = u.y;
-	m[8] = f.z;
-	m[9] = r.z;
-	m[10]= u.z;
-	m[15] = 1.0;
-
-	// Convert Euler 3x3 rotation matrix to double_v4 Quaternion orientation
-	double_v4 q;
-	double trace = m[0] + m[5] + m[10];
-
-	if( trace > 0.0 )
-	{
-		const double s = 0.5 / sqrt( trace + 1.0 );
-		q.x = ( m[9] - m[6] ) * s;
-		q.y = ( m[2] - m[8] ) * s;
-		q.z = ( m[4] - m[1] ) * s;
-		q.w = 0.25 / s;
-	}
-	else if( ( m[0] > m[5] ) && ( m[0] > m[10] ) )
-	{
-		const double s = 2.0 * sqrt( 1.0 + m[0] - m[5] - m[10] );
-		q.x = 0.25 * s;
-		q.y = ( m[1] + m[4] ) / s;
-		q.z = ( m[2] + m[8] ) / s;
-		q.w = ( m[9] - m[6] ) / s;
-	}
-	else if( m[5] > m[10] )
-	{
-		const double s = 2.0 * sqrt( 1.0 + m[5] - m[0] - m[10] );
-		q.x = ( m[1] + m[4] ) / s;
-		q.y = 0.25 * s;
-		q.z = ( m[6] + m[9] ) / s;
-		q.w = ( m[2] - m[8] ) / s;
-	}
-	else
-	{
-		const double s = 2.0 * sqrt( 1.0 + m[10] - m[0] - m[5] );
-		q.x = ( m[2] + m[8] ) / s;
-		q.y = ( m[6] + m[9] ) / s;
-		q.z = 0.25 * s;
-		q.w = ( m[4] - m[1] ) / s;
-	}
-
-	return quaternion_normalize( q );
-}
+extern double_v4 quaternion_from_axis_radians( const double_v3 &axis, double radians );
+extern double_v4 quaternion_normalize( const double_v4 &quat );
+extern double_v4 quaternion_multiply( const double_v4 &a, const double_v4 &b );
+extern double_v3 quaternion_rotate( const double_v4 &quat, const double_v3 &v );
+extern double_v4 quaternion_from_forward_up( const double_v3 &forward, const double_v3 &up );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

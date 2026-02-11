@@ -2,6 +2,7 @@
 
 #include <core/string.hpp>
 #include <core/checksum.hpp>
+#include <core/math.hpp>
 
 #include <vendor/stdio.hpp>
 

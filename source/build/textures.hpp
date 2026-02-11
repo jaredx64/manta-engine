@@ -3,8 +3,7 @@
 #include <core/types.hpp>
 #include <core/debug.hpp>
 #include <core/memory.hpp>
-
-#include <build/color.hpp>
+#include <core/color.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -32,7 +31,7 @@ public:
 	bool save( const char *path );
 	bool load( const char *path );
 
-	void clear( rgba color );
+	void clear( Color color );
 
 	void splice( Texture2DBuffer &source, u16 srcX1, u16 srcY1, u16 srcX2, u16 srcY2, u16 dstX, u16 dstY );
 
@@ -41,35 +40,35 @@ public:
 		splice( source, 0, 0, source.width, source.height, dstX, dstY );
 	}
 
-	rgba &at( u32 index )
+	Color &at( u32 index )
 	{
 		Assert( index < static_cast<u32>( width ) * static_cast<u32>( height ) );
 		return data[index];
 	}
 
-	rgba &at( u16 x, u16 y )
+	Color &at( u16 x, u16 y )
 	{
 		Assert( x < width && y < height );
 		return data[ y * width + x ];
 	}
 
-	void set( u32 index, rgba value )
+	void set( u32 index, Color value )
 	{
 		Assert( index < static_cast<u32>( width ) * static_cast<u32>( height ) );
 		data[index] = value;
 	}
 
-	void set( u16 x, u16 y, rgba value )
+	void set( u16 x, u16 y, Color value )
 	{
 		Assert( x < width && y < height );
 		data[ y * width + x ] = value;
 	}
 
-	rgba &operator[]( u32 index ) { return at( index ); }
+	Color &operator[]( u32 index ) { return at( index ); }
 	explicit operator bool() const { return data != nullptr; }
 
 public:
-	rgba *data = nullptr;
+	Color *data = nullptr;
 	u16 width;
 	u16 height;
 };

@@ -6,11 +6,12 @@
 #include <core/string.hpp>
 #include <core/json.hpp>
 #include <core/process.hpp>
+#include <core/math.hpp>
 
 #include <build/toolchains.hpp>
 #include <build/assets.hpp>
 #include <build/gfx.hpp>
-#include <build/filesystem.hpp>
+#include <build/system.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -21,6 +22,7 @@ enum_type( CACHE_BINARY_STAGE, CacheKey )
 	CACHE_BINARY_STAGE_OBJECTS = 0,
 	CACHE_BINARY_STAGE_GFX = 1,
 	CACHE_BINARY_STAGE_ASSETS = 2,
+	CACHE_BINARY_STAGE_PACKAGE = 3,
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -238,10 +240,18 @@ void Build::environment_save()
 
 void Build::package_load()
 {
-	// Load <project>/package.json
-	String jsonFile;
 	char pathPackage[PATH_SIZE];
 	strjoin_path( pathPackage, "projects", Build::args.project, "package.json" );
+
+	// Check Cache
+	FileTime packageJSONFileTime;
+	ErrorIf( !file_time( pathPackage, &packageJSONFileTime ), "Missing package.json file: %s\n", pathPackage );
+	const CacheKey cacheKey = Hash::hash64_from( CACHE_BINARY_STAGE_GFX, packageJSONFileTime.as_u64() );
+	const bool cacheClean = Build::cache.contains( cacheKey );
+	Build::cache.store( cacheKey, cacheKey );
+
+	// Load <project>/package.json
+	String jsonFile;
 	ErrorIf( !jsonFile.load( pathPackage ), "Failed to load package.json file: %s\n", pathPackage );
 
 	// Read package.json
@@ -267,72 +277,74 @@ void Build::package_load()
 
 	// package.rc
 #if PIPELINE_OS_WINDOWS
-	package_generate_rc();
+	package_generate_rc( cacheClean );
 #endif
 }
 
 
-void Build::package_generate_rc()
+void Build::package_generate_rc( bool cacheClean )
 {
-	// package.rc
-	String rc = "";
-	rc.append( "1 ICON \"" ).append( Build::args.project ).append( ".ico\"\n" );
-	rc.append( "1 VERSIONINFO\n" );
-	rc.append( "\tFILEVERSION " );
-	rc.append( Build::packageVersionA ).append( "," );
-	rc.append( Build::packageVersionB ).append( "," );
-	rc.append( Build::packageVersionC ).append( "," );
-	rc.append( Build::packageVersionD ).append( "\n" );
-	rc.append( "\tPRODUCTVERSION " );
-	rc.append( Build::packageVersionA ).append( "," );
-	rc.append( Build::packageVersionB ).append( "," );
-	rc.append( Build::packageVersionC ).append( "," );
-	rc.append( Build::packageVersionD ).append( "\n" );
-	rc.append( "\tFILEFLAGSMASK 0x3F\n" );
-	rc.append( "\tFILEOS 0x04\n" );
-	rc.append( "\tFILETYPE 0x01\n" );
-	rc.append( "BEGIN\n" );
-	rc.append( "\tBLOCK \"StringFileInfo\"\n" );
-	rc.append( "\tBEGIN\n" );
-	rc.append( "\t\tBLOCK \"040904b0\"\n" );
-	rc.append( "\t\tBEGIN\n" );
-	rc.append( "\t\t\tVALUE \"CompanyName\", \"" ).append( Build::packageCompany ).append( "\"\n" );
-	rc.append( "\t\t\tVALUE \"FileDescription\", \"" ).append( Build::packageName ).append( "\"\n" );
-	rc.append( "\t\t\tVALUE \"FileVersion\", \"" );
-	rc.append( Build::packageVersionA ).append( "." );
-	rc.append( Build::packageVersionB ).append( "." );
-	rc.append( Build::packageVersionC ).append( "." );
-	rc.append( Build::packageVersionD ).append( "\"\n" );
-	rc.append( "\t\t\tVALUE \"LegalCopyright\", \"\"\n" );
-	rc.append( "\t\t\tVALUE \"ProductName\", \"" ).append( Build::packageName ).append( "\"\n" );
-	rc.append( "\t\t\tVALUE \"ProductVersion\", \"" );
-	rc.append( Build::packageVersionA ).append( "." );
-	rc.append( Build::packageVersionB ).append( "." );
-	rc.append( Build::packageVersionC ).append( "." );
-	rc.append( Build::packageVersionD ).append( "\"\n" );
-	rc.append( "\t\tEND\n" );
-	rc.append( "\tEND\n\n" );
-	rc.append( "\tBLOCK \"VarFileInfo\"\n" );
-	rc.append( "\tBEGIN\n" );
-	rc.append( "\t\tVALUE \"Translation\", 0x409, 0x4B0\n" );
-	rc.append( "\tEND\n" );
-	rc.append( "END\n" );
-
 	char pathSrc[PATH_SIZE];
 	char pathObj[PATH_SIZE];
 	strjoin( pathSrc, Build::pathOutputRuntime, SLASH, Build::args.project, ".rc" );
 	strjoin( pathObj, "objects" SLASH, Build::args.project, ".res" );
 
-	ErrorIf( !rc.save( pathSrc ), "Failed to save %s", pathSrc );
-
 	Build::packageRC.srcPath = pathSrc;
 	Build::packageRC.objPath = pathObj;
 
-	// <project>.ico
-	char pathIco[PATH_SIZE];
-	strjoin( pathIco, Build::pathOutputRuntime, SLASH, Build::args.project, ".ico" );
-	ErrorIf( !png_to_ico( Build::packageIcon, pathIco ), "Failed to save %s.ico",
-		Build::args.project );
+	if( !cacheClean )
+	{
+		// package.rc
+		String rc = "";
+		rc.append( "1 ICON \"" ).append( Build::args.project ).append( ".ico\"\n" );
+		rc.append( "1 VERSIONINFO\n" );
+		rc.append( "\tFILEVERSION " );
+		rc.append( Build::packageVersionA ).append( "," );
+		rc.append( Build::packageVersionB ).append( "," );
+		rc.append( Build::packageVersionC ).append( "," );
+		rc.append( Build::packageVersionD ).append( "\n" );
+		rc.append( "\tPRODUCTVERSION " );
+		rc.append( Build::packageVersionA ).append( "," );
+		rc.append( Build::packageVersionB ).append( "," );
+		rc.append( Build::packageVersionC ).append( "," );
+		rc.append( Build::packageVersionD ).append( "\n" );
+		rc.append( "\tFILEFLAGSMASK 0x3F\n" );
+		rc.append( "\tFILEOS 0x04\n" );
+		rc.append( "\tFILETYPE 0x01\n" );
+		rc.append( "BEGIN\n" );
+		rc.append( "\tBLOCK \"StringFileInfo\"\n" );
+		rc.append( "\tBEGIN\n" );
+		rc.append( "\t\tBLOCK \"040904b0\"\n" );
+		rc.append( "\t\tBEGIN\n" );
+		rc.append( "\t\t\tVALUE \"CompanyName\", \"" ).append( Build::packageCompany ).append( "\"\n" );
+		rc.append( "\t\t\tVALUE \"FileDescription\", \"" ).append( Build::packageName ).append( "\"\n" );
+		rc.append( "\t\t\tVALUE \"FileVersion\", \"" );
+		rc.append( Build::packageVersionA ).append( "." );
+		rc.append( Build::packageVersionB ).append( "." );
+		rc.append( Build::packageVersionC ).append( "." );
+		rc.append( Build::packageVersionD ).append( "\"\n" );
+		rc.append( "\t\t\tVALUE \"LegalCopyright\", \"\"\n" );
+		rc.append( "\t\t\tVALUE \"ProductName\", \"" ).append( Build::packageName ).append( "\"\n" );
+		rc.append( "\t\t\tVALUE \"ProductVersion\", \"" );
+		rc.append( Build::packageVersionA ).append( "." );
+		rc.append( Build::packageVersionB ).append( "." );
+		rc.append( Build::packageVersionC ).append( "." );
+		rc.append( Build::packageVersionD ).append( "\"\n" );
+		rc.append( "\t\tEND\n" );
+		rc.append( "\tEND\n\n" );
+		rc.append( "\tBLOCK \"VarFileInfo\"\n" );
+		rc.append( "\tBEGIN\n" );
+		rc.append( "\t\tVALUE \"Translation\", 0x409, 0x4B0\n" );
+		rc.append( "\tEND\n" );
+		rc.append( "END\n" );
+		ErrorIf( !rc.save( pathSrc ), "Failed to save %s", pathSrc );
+
+		// <project>.ico
+		char pathIco[PATH_SIZE];
+		strjoin( pathIco, Build::pathOutputRuntime, SLASH, Build::args.project, ".ico" );
+		ErrorIf( !png_to_ico( Build::packageIcon, pathIco ), "Failed to save %s.ico",
+			Build::args.project );
+	}
 }
 
 

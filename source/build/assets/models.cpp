@@ -5,6 +5,7 @@
 #include <core/list.hpp>
 #include <core/json.hpp>
 #include <core/checksum.hpp>
+#include <core/math.hpp>
 
 #include <build/build.hpp>
 #include <build/assets.hpp>
@@ -486,30 +487,9 @@ bool Model::load_from_obj()
 		u16 u, v;
 	};
 
-	auto try_find_texture_path = []( const String &buffer, const char *key, usize start, usize end, String &path ) -> bool
-	{
-		const usize pathStart = try_find_next_key( buffer, start, end, key );
-		if( pathStart == USIZE_MAX ) { return false; }
-		const usize pathEnd = buffer.find( "\n", pathStart );
-		if( pathEnd <= pathStart ) { return false; }
-
-		String pathImage;
-		if( !next_line( buffer, pathStart, pathImage ) ) { return false; }
-
-		path = String( pathDirectory ).append( SLASH ).append( pathImage );
-		return true;
-	};
-
 	// Load Model File
 	String obj;
 	if( !obj.load( path ) ) { return false; }
-
-	x1 = FLOAT_MAX;
-	y1 = FLOAT_MAX;
-	z1 = FLOAT_MAX;
-	x2 = FLOAT_MIN;
-	y2 = FLOAT_MIN;
-	z2 = FLOAT_MIN;
 
 	// Parse Data
 	static List<VertexPosition> positions;
@@ -531,6 +511,13 @@ bool Model::load_from_obj()
 	usize offsetFirstUseMTL = obj.find( "usemtl ", 0LLU, USIZE_MAX );
 	usize offsetCurrent = min( offsetFirstFace, offsetFirstUseMTL );
 	u32 meshIndex = 0;
+
+	this->x1 = FLOAT_MAX;
+	this->y1 = FLOAT_MAX;
+	this->z1 = FLOAT_MAX;
+	this->x2 = FLOAT_MIN;
+	this->y2 = FLOAT_MIN;
+	this->z2 = FLOAT_MIN;
 
 	for( ;; )
 	{

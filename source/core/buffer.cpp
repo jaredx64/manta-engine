@@ -3,7 +3,7 @@
 #include <vendor/compression/lzav.hpp>
 
 #if COMPILE_BUILD
-#include <build/filesystem.hpp>
+#include <build/system.hpp>
 #elif COMPILE_ENGINE
 #include <manta/filesystem.hpp>
 #endif

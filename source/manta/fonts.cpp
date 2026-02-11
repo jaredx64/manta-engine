@@ -121,7 +121,7 @@ bool CoreFonts::init()
 
 	// Init Texture2DBuffer
 	glyphAtlasTextureBuffer.init( CoreFonts::FONTS_TEXTURE_SIZE, CoreFonts::FONTS_TEXTURE_SIZE );
-	glyphAtlasTextureBuffer.clear( rgba{ 0, 0, 0, 0 } );
+	glyphAtlasTextureBuffer.clear( Color { 0, 0, 0, 0 } );
 
 	// Init Texture2D
 	glyphAtlasTexture.init_2d( glyphAtlasTextureBuffer.data, glyphAtlasTextureBuffer.width,
@@ -249,7 +249,7 @@ void CoreFonts::flush()
 	memory_set( data, 0, size );
 
 	// Clear Texture2DBuffer
-	glyphAtlasTextureBuffer.clear( rgba { 0, 0, 0, 0 } );
+	glyphAtlasTextureBuffer.clear( Color { 0, 0, 0, 0 } );
 
 	// Clear newGlyph list
 	dirtyGlyphs.clear();
@@ -293,7 +293,7 @@ void CoreFonts::update()
 			{
 				const u32 srcIndex = y * glyph.width + x;
 				const u32 dstIndex = ( glyph.v + y ) * glyphAtlasTextureBuffer.width + ( glyph.u + x );
-				glyphAtlasTextureBuffer.data[dstIndex] = rgba{ 255, 255, 255, static_cast<u8>( bitmap[srcIndex] ) };
+				glyphAtlasTextureBuffer.data[dstIndex] = Color { 255, 255, 255, static_cast<u8>( bitmap[srcIndex] ) };
 			}
 		}
 	}

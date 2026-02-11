@@ -9,7 +9,7 @@
 
 #include <build/build.hpp>
 #include <build/assets.hpp>
-#include <build/filesystem.hpp>
+#include <build/system.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -857,7 +857,7 @@ void Textures::build()
 
 					// Write Binary
 					texture.levels = 1;
-					const usize size = texture.width * texture.height * sizeof( rgba );
+					const usize size = texture.width * texture.height * sizeof( Color );
 					texture.offset = binary.write( textureBinary.data, size );
 					Assets::log_asset_build( "Texture", texture.name.cstr() );
 					sizeBytes += size;
@@ -928,7 +928,7 @@ void Textures::build()
 					// No mipmaps -- write file directly as is
 					{
 						texture.levels = 1;
-						size = texture.width * texture.height * sizeof( rgba );
+						size = texture.width * texture.height * sizeof( Color );
 						texture.offset = binary.write( textureBinary.data, size );
 						sizeBytes += size;
 					}

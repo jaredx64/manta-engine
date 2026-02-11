@@ -62,7 +62,7 @@ void Semaphore::post_all()
 #if defined( _MSC_VER )
 	static_assert( PIPELINE_OS_WINDOWS, "MSVC detected but not on Windows!" );
 	#define ATOMIC_MSVC
-	#include <vendor/winnt.hpp>
+	#include <vendor/intrin.hpp>
 #elif defined( __GNUC__ ) || defined( __clang__ )
 	#define ATOMIC_GCC_CLANG
 #else

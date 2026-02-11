@@ -14,8 +14,8 @@ void Texture2DBuffer::init( u16 width, u16 height )
 {
 	if( data != nullptr ) { free(); }
 
-	data = reinterpret_cast<rgba *>( memory_alloc( width * height * sizeof( rgba ) ) );
-	memory_set( data, 0, width * height * sizeof( rgba ) );
+	data = reinterpret_cast<Color *>( memory_alloc( width * height * sizeof( Color ) ) );
+	memory_set( data, 0, width * height * sizeof( Color ) );
 	this->width = width;
 	this->height = height;
 }
@@ -37,7 +37,7 @@ void Texture2DBuffer::copy( const Texture2DBuffer &other )
 	if( data != nullptr ) { free(); }
 	init( other.width, other.height );
 	ErrorIf( data == nullptr, "Failed to allocate memory for copy() Texture2DBuffer (%p)", data );
-	memory_copy( data, other.data, width * height * sizeof( rgba ) );
+	memory_copy( data, other.data, width * height * sizeof( Color ) );
 }
 
 
@@ -56,7 +56,7 @@ void Texture2DBuffer::move( Texture2DBuffer &&other )
 bool Texture2DBuffer::save( const char *path )
 {
 	Assert( data != nullptr );
-	return stbi_write_png( path, width, height, sizeof( rgba ), data, width * sizeof( rgba ) ) == 0;
+	return stbi_write_png( path, width, height, sizeof( Color ), data, width * sizeof( Color ) ) == 0;
 }
 
 
@@ -65,7 +65,7 @@ bool Texture2DBuffer::load( const char *path )
 	if( data != nullptr ) { free(); }
 
 	int w, h, channels;
-	data = reinterpret_cast<rgba *>( stbi_load( path, &w, &h, &channels, sizeof( rgba ) ) );
+	data = reinterpret_cast<Color *>( stbi_load( path, &w, &h, &channels, sizeof( Color ) ) );
 	if( data == nullptr ) { width = 0; height = 0; return false; }
 	AssertMsg( static_cast<u16>( w ) <= U16_MAX && static_cast<u16>( w ) <= U16_MAX,
 		"Attempting to load texture larger than max supported (try: %dx%d max:%ux%u)", w, h, U16_MAX, U16_MAX );
@@ -75,7 +75,7 @@ bool Texture2DBuffer::load( const char *path )
 }
 
 
-void Texture2DBuffer::clear( const rgba color )
+void Texture2DBuffer::clear( const Color color )
 {
 	const int length = width * height;
 	for( int i = 0; i < length; i++ ) { data[i] = color; }
@@ -101,9 +101,9 @@ void Texture2DBuffer::splice( Texture2DBuffer &source, u16 srcX1, u16 srcY1, u16
 
 	for( int y = 0; y < h; y++ )
 	{
-		rgba *dst = &data[( dstY + y ) * width + dstX];
-		rgba *src = &source.data[( srcY1 + y ) * source.width + srcX1];
-		memory_copy( dst, src, w * sizeof( rgba ) );
+		Color *dst = &data[( dstY + y ) * width + dstX];
+		Color *src = &source.data[( srcY1 + y ) * source.width + srcX1];
+		memory_copy( dst, src, w * sizeof( Color ) );
 	}
 }
 

@@ -2,7 +2,6 @@
 
 #include <core/types.hpp>
 #include <core/debug.hpp>
-#include <core/math.hpp>
 
 #include <manta/audio.tuning.hpp>
 

@@ -41,6 +41,10 @@ namespace CoreConsole
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+class GfxRenderTarget;
+class RadialColorGraph;
+class RadialFloatGraph;
+
 namespace CoreConsole
 {
 	struct DVarDeferred
@@ -84,9 +88,9 @@ namespace CoreConsole
 		DVar( bool scoped, float *variable, const char *definition, const char *description );
 		DVar( bool scoped, double *variable, const char *definition, const char *description );
 		DVar( bool scoped, Color *variable, const char *definition, const char *description );
-		DVar( bool scoped, class GfxRenderTarget *variable, const char *definition, const char *description );
-		DVar( bool scoped, class RadialColorGraph *variable, const char *definition, const char *description );
-		DVar( bool scoped, class RadialFloatGraph *variable, const char *definition, const char *description );
+		DVar( bool scoped, GfxRenderTarget *variable, const char *definition, const char *description );
+		DVar( bool scoped, RadialColorGraph *variable, const char *definition, const char *description );
+		DVar( bool scoped, RadialFloatGraph *variable, const char *definition, const char *description );
 	public:
 		void *payload = nullptr;
 	};

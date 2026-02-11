@@ -15,8 +15,7 @@
 #include <build/configuration.hpp>
 #include <build/objects.hpp>
 #include <build/toolchains.hpp>
-#include <build/filesystem.hpp>
-#include <build/time.hpp>
+#include <build/system.hpp>
 #include <build/cache.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -97,7 +96,7 @@ namespace Build
 	extern Texture2DBuffer packageIconBuffer;
 	extern Source packageRC;
 	extern void package_load();
-	extern void package_generate_rc();
+	extern void package_generate_rc( bool cacheClean );
 	extern bool package_copy_steamworks( const char *pathPackage );
 	extern bool package_windows();
 	extern bool package_linux();

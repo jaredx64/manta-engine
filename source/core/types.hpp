@@ -280,6 +280,54 @@ template<typename T> struct pad16
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+template <typename T> struct Vector2D;
+#define VECTOR_TYPE_2D_FORWARD_DECL( Vec, T ) using Vec = Vector2D<T>;
+VECTOR_TYPE_2D_FORWARD_DECL( u8_v2, u8 )
+VECTOR_TYPE_2D_FORWARD_DECL( i16_v2, i16 )
+VECTOR_TYPE_2D_FORWARD_DECL( u16_v2, u16 )
+VECTOR_TYPE_2D_FORWARD_DECL( int_v2, i32 )
+VECTOR_TYPE_2D_FORWARD_DECL( u32_v2, u32 )
+VECTOR_TYPE_2D_FORWARD_DECL( i64_v2, i64 )
+VECTOR_TYPE_2D_FORWARD_DECL( u64_v2, u64 )
+VECTOR_TYPE_2D_FORWARD_DECL( float_v2, float )
+VECTOR_TYPE_2D_FORWARD_DECL( double_v2, double )
+
+template <typename T> struct Vector3D;
+#define VECTOR_TYPE_3D_FORWARD_DECL( Vec, T ) using Vec = Vector3D<T>;
+VECTOR_TYPE_3D_FORWARD_DECL( u8_v3, u8 )
+VECTOR_TYPE_3D_FORWARD_DECL( i16_v3, i16 )
+VECTOR_TYPE_3D_FORWARD_DECL( u16_v3, u16 )
+VECTOR_TYPE_3D_FORWARD_DECL( int_v3, i32 )
+VECTOR_TYPE_3D_FORWARD_DECL( u32_v3, u32 )
+VECTOR_TYPE_3D_FORWARD_DECL( i64_v3, i64 )
+VECTOR_TYPE_3D_FORWARD_DECL( u64_v3, u64 )
+VECTOR_TYPE_3D_FORWARD_DECL( float_v3, float )
+VECTOR_TYPE_3D_FORWARD_DECL( double_v3, double )
+
+template <typename T> struct Vector4D;
+#define VECTOR_TYPE_4D_FORWARD_DECL( Vec, T ) using Vec = Vector4D<T>;
+VECTOR_TYPE_4D_FORWARD_DECL( u8_v4, u8 )
+VECTOR_TYPE_4D_FORWARD_DECL( i16_v4, i16 )
+VECTOR_TYPE_4D_FORWARD_DECL( u16_v4, u16 )
+VECTOR_TYPE_4D_FORWARD_DECL( int_v4, i32 )
+VECTOR_TYPE_4D_FORWARD_DECL( u32_v4, u32 )
+VECTOR_TYPE_4D_FORWARD_DECL( i64_v4, i64 )
+VECTOR_TYPE_4D_FORWARD_DECL( u64_v4, u64 )
+VECTOR_TYPE_4D_FORWARD_DECL( float_v4, float )
+VECTOR_TYPE_4D_FORWARD_DECL( double_v4, double )
+
+struct float_r2;
+struct double_r2;
+struct float_r3;
+struct double_r3;
+struct float_r4;
+struct double_r4;
+
+struct float_m44;
+struct double_m44;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 template<typename T, int P> struct type_padded
 {
     T value;

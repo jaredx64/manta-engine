@@ -1,7 +1,6 @@
 #pragma once
 
 #include <core/types.hpp>
-#include <core/math.hpp>
 #include <core/color.hpp>
 
 #include <manta/assets.hpp>

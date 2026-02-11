@@ -3,7 +3,6 @@
 #include <core/types.hpp>
 #include <core/list.hpp>
 #include <core/factory.hpp>
-#include <core/math.hpp>
 
 #include <manta/input.hpp>
 #include <manta/objects.system.hpp>

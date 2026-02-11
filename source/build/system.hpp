@@ -62,41 +62,6 @@ struct FileInfo
 	FileTime time;
 };
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-extern bool file_time( const char *path, FileTime *result );
-extern bool file_time_newer( const FileTime &a, const FileTime &b );
-extern bool file_delete( const char *path );
-extern bool file_rename( const char *path, const char *name );
-extern bool file_copy( const char *source, const char *destination );
-
-extern bool directory_create( const char *path );
-extern bool directory_iterate( List<FileInfo> &list, const char *path, const char *extension, bool recurse );
-extern bool directory_delete( const char *path );
-extern bool directory_rename( const char *path, const char *name );
-extern bool directory_copy( const char *source, const char *destination );
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-extern bool path_is_directory( const char *path );
-extern bool path_is_file( const char *path );
-
-extern void path_get_directory( char *buffer, usize size, const char *path );
-extern void path_get_filename( char *buffer, usize size, const char *path );
-extern void path_get_extension( char *buffer, usize size, const char *path );
-
-extern void path_change_extension( char *buffer, usize size, const char *path, const char *extension );
-
-extern void path_remove_extension( char *path, usize size );
-extern void path_remove_extension( char *buffer, usize size, const char *path );
-
-extern void path_remove_extensions( char *path, usize size );
-extern void path_remove_extensions( char *buffer, usize size, const char *path );
-
-extern void swrite( const char *string, FILE *file );
-extern usize fsize( FILE *file );
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class File
 {
@@ -132,8 +97,64 @@ public:
 	FileTime time;
 };
 
+
+extern bool file_time( const char *path, FileTime *result );
+extern bool file_time_newer( const FileTime &a, const FileTime &b );
+extern bool file_delete( const char *path );
+extern bool file_rename( const char *path, const char *name );
+extern bool file_copy( const char *source, const char *destination );
+
+extern bool directory_create( const char *path );
+extern bool directory_iterate( List<FileInfo> &list, const char *path, const char *extension, bool recurse );
+extern bool directory_delete( const char *path );
+extern bool directory_rename( const char *path, const char *name );
+extern bool directory_copy( const char *source, const char *destination );
+
+
+extern void swrite( const char *string, FILE *file );
+extern usize fsize( FILE *file );
+
+
+extern bool path_is_directory( const char *path );
+extern bool path_is_file( const char *path );
+
+extern void path_get_directory( char *buffer, usize size, const char *path );
+extern void path_get_filename( char *buffer, usize size, const char *path );
+extern void path_get_extension( char *buffer, usize size, const char *path );
+
+extern void path_change_extension( char *buffer, usize size, const char *path, const char *extension );
+
+extern void path_remove_extension( char *path, usize size );
+extern void path_remove_extension( char *buffer, usize size, const char *path );
+
+extern void path_remove_extensions( char *path, usize size );
+extern void path_remove_extensions( char *buffer, usize size, const char *path );
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-extern bool file_copy( const char *srcPath, const char *dstPath );
+namespace Time
+{
+	extern bool init();
+	extern double value();
+	extern u64 seed();
+}
+
+
+class Timer
+{
+public:
+	Timer();
+
+	void start();
+	void stop();
+
+	double elapsed_s();
+	double elapsed_ms();
+	double elapsed_us();
+
+public:
+	double timeStart = 0.0;
+	double timeEnd = 0.0;
+};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

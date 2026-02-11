@@ -1403,6 +1403,850 @@ double_m44 double_m44_extract_rotation_forward_x( const double_m44 &matrix )
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 2D Vector
+
+#if !MATH_PRE_EXPANDED_VECTOR_TYPES
+
+#define VECTOR_TYPE_2D_SOURCE( Vec, T )                                                                  \
+	template struct Vector2D<T>;                                                                         \
+	bool Vec##_equal( const Vec &a, const Vec &b ) { return a == b; }                                    \
+	   T Vec##_dot( const Vec &a, const Vec &b ) { return a.dot( b ); }                                  \
+	   T Vec##_length( const Vec &v ) { return v.length(); }                                             \
+	   T Vec##_length_sqr( const Vec &v ) { return v.length_sqr(); }                                     \
+	 Vec Vec##_add( const Vec &a, const Vec &b ) { Vec r { a }; r.add( b ); return r; }                  \
+	 Vec Vec##_sub( const Vec &a, const Vec &b ) { Vec r { a }; r.sub( b ); return r; }                  \
+	 Vec Vec##_divide( const Vec &a, const Vec &b ) { Vec r { a }; r.divide( b ); return r; }            \
+	 Vec Vec##_divide( const Vec &v, double s ) { Vec r { v }; r.divide( s ); return r; }                \
+	 Vec Vec##_multiply( const Vec &v, double s ) { Vec r { v }; r.multiply( s ); return r; }            \
+	 Vec Vec##_multiply( const Vec &a, const Vec &b ) { Vec r { a }; r.multiply( b ); return r; }        \
+	 Vec Vec##_multiply( const Vec &v, const double_m44 &m ) { Vec r { v }; r.multiply( m ); return r; } \
+	 Vec Vec##_multiply( const Vec &v, const float_m44 &m ) { Vec r { v }; r.multiply( m ); return r; }  \
+	   T Vec##_cross( const Vec &a, const Vec &b ) { return a.cross( b ); }                              \
+	 Vec Vec##_normalize( const Vec &v ) { Vec r { v }; r.normalize(); return r; }                       \
+	 Vec Vec##_project( const Vec &v, const Vec &onto ) { Vec r { v }; r.project( onto ); return r; }    \
+	 Vec Vec##_rotate( const Vec &v, float angle, const Vec &origin )                                    \
+		{ Vec r { v }; r.rotate( angle, origin ); return r; }                                            \
+	 Vec Vec##_reflect( const Vec &v, const Vec &normal )                                                \
+		{ Vec r { v }; r.reflect( normal ); return r; }                                                  \
+	 Vec Vec##_lerp( const Vec &a, const Vec &b, float amount )                                          \
+		{ Vec r { a }; r.lerp( b, amount ); return r; }                                                  \
+	   T Vec##_distance( const Vec &a, const Vec &b )                                                    \
+		{ Vec r { b.x - a.x, b.y - a.y }; return r.length(); }                                           \
+	   T Vec##_distance_sqr( const Vec &a, const Vec &b )                                                \
+		{ Vec r { b.x - a.x, b.y - a.y }; return r.length_sqr(); }
+
+VECTOR_TYPE_2D_SOURCE( u8_v2, u8 )
+VECTOR_TYPE_2D_SOURCE( i16_v2, i16 )
+VECTOR_TYPE_2D_SOURCE( u16_v2, u16 )
+VECTOR_TYPE_2D_SOURCE( int_v2, i32 )
+VECTOR_TYPE_2D_SOURCE( u32_v2, u32 )
+VECTOR_TYPE_2D_SOURCE( i64_v2, i64 )
+VECTOR_TYPE_2D_SOURCE( u64_v2, u64 )
+VECTOR_TYPE_2D_SOURCE( float_v2, float )
+VECTOR_TYPE_2D_SOURCE( double_v2, double )
+
+#else
+
+bool u8_v2_equal( const u8_v2 &a, const u8_v2 &b ) { return a == b; }
+u8 u8_v2_dot( const u8_v2 &a, const u8_v2 &b ) { return a.dot( b ); }
+u8 u8_v2_length( const u8_v2 &v ) { return v.length(); }
+u8 u8_v2_length_sqr( const u8_v2 &v ) { return v.length_sqr(); }
+u8_v2 u8_v2_add( const u8_v2 &a, const u8_v2 &b ) { u8_v2 r { a }; r.add( b ); return r; }
+u8_v2 u8_v2_sub( const u8_v2 &a, const u8_v2 &b ) { u8_v2 r { a }; r.sub( b ); return r; }
+u8_v2 u8_v2_divide( const u8_v2 &a, const u8_v2 &b ) { u8_v2 r { a }; r.divide( b ); return r; }
+u8_v2 u8_v2_divide( const u8_v2 &v, double s ) { u8_v2 r { v }; r.divide( s ); return r; }
+u8_v2 u8_v2_multiply( const u8_v2 &v, double s ) { u8_v2 r { v }; r.multiply( s ); return r; }
+u8_v2 u8_v2_multiply( const u8_v2 &a, const u8_v2 &b ) { u8_v2 r { a }; r.multiply( b ); return r; }
+u8_v2 u8_v2_multiply( const u8_v2 &v, const double_m44 &m ) { u8_v2 r { v }; r.multiply( m ); return r; }
+u8_v2 u8_v2_multiply( const u8_v2 &v, const float_m44 &m ) { u8_v2 r { v }; r.multiply( m ); return r; }
+u8 u8_v2_cross( const u8_v2 &a, const u8_v2 &b ) { return a.cross( b ); }
+u8_v2 u8_v2_normalize( const u8_v2 &v ) { u8_v2 r { v }; r.normalize(); return r; }
+u8_v2 u8_v2_project( const u8_v2 &v, const u8_v2 &onto ) { u8_v2 r { v }; r.project( onto ); return r; }
+u8_v2 u8_v2_rotate( const u8_v2 &v, float angle, const u8_v2 &origin ) { u8_v2 r { v }; r.rotate( angle, origin ); return r; }
+u8_v2 u8_v2_reflect( const u8_v2 &v, const u8_v2 &normal ) { u8_v2 r { v }; r.reflect( normal ); return r; }
+u8_v2 u8_v2_lerp( const u8_v2 &a, const u8_v2 &b, float amount ) { u8_v2 r { a }; r.lerp( b, amount ); return r; }
+u8 u8_v2_distance( const u8_v2 &a, const u8_v2 &b ) { u8_v2 r { b.x - a.x, b.y - a.y }; return r.length(); }
+u8 u8_v2_distance_sqr( const u8_v2 &a, const u8_v2 &b ) { u8_v2 r { b.x - a.x, b.y - a.y }; return r.length_sqr(); }
+
+bool i16_v2_equal( const i16_v2 &a, const i16_v2 &b ) { return a == b; }
+i16 i16_v2_dot( const i16_v2 &a, const i16_v2 &b ) { return a.dot( b ); }
+i16 i16_v2_length( const i16_v2 &v ) { return v.length(); }
+i16 i16_v2_length_sqr( const i16_v2 &v ) { return v.length_sqr(); }
+i16_v2 i16_v2_add( const i16_v2 &a, const i16_v2 &b ) { i16_v2 r { a }; r.add( b ); return r; }
+i16_v2 i16_v2_sub( const i16_v2 &a, const i16_v2 &b ) { i16_v2 r { a }; r.sub( b ); return r; }
+i16_v2 i16_v2_divide( const i16_v2 &a, const i16_v2 &b ) { i16_v2 r { a }; r.divide( b ); return r; }
+i16_v2 i16_v2_divide( const i16_v2 &v, double s ) { i16_v2 r { v }; r.divide( s ); return r; }
+i16_v2 i16_v2_multiply( const i16_v2 &v, double s ) { i16_v2 r { v }; r.multiply( s ); return r; }
+i16_v2 i16_v2_multiply( const i16_v2 &a, const i16_v2 &b ) { i16_v2 r { a }; r.multiply( b ); return r; }
+i16_v2 i16_v2_multiply( const i16_v2 &v, const double_m44 &m ) { i16_v2 r { v }; r.multiply( m ); return r; }
+i16_v2 i16_v2_multiply( const i16_v2 &v, const float_m44 &m ) { i16_v2 r { v }; r.multiply( m ); return r; }
+i16 i16_v2_cross( const i16_v2 &a, const i16_v2 &b ) { return a.cross( b ); }
+i16_v2 i16_v2_normalize( const i16_v2 &v ) { i16_v2 r { v }; r.normalize(); return r; }
+i16_v2 i16_v2_project( const i16_v2 &v, const i16_v2 &onto ) { i16_v2 r { v }; r.project( onto ); return r; }
+i16_v2 i16_v2_rotate( const i16_v2 &v, float angle, const i16_v2 &origin ) { i16_v2 r { v }; r.rotate( angle, origin ); return r; }
+i16_v2 i16_v2_reflect( const i16_v2 &v, const i16_v2 &normal ) { i16_v2 r { v }; r.reflect( normal ); return r; }
+i16_v2 i16_v2_lerp( const i16_v2 &a, const i16_v2 &b, float amount ) { i16_v2 r { a }; r.lerp( b, amount ); return r; }
+i16 i16_v2_distance( const i16_v2 &a, const i16_v2 &b ) { i16_v2 r { b.x - a.x, b.y - a.y }; return r.length(); }
+i16 i16_v2_distance_sqr( const i16_v2 &a, const i16_v2 &b ) { i16_v2 r { b.x - a.x, b.y - a.y }; return r.length_sqr(); }
+
+bool u16_v2_equal( const u16_v2 &a, const u16_v2 &b ) { return a == b; }
+u16 u16_v2_dot( const u16_v2 &a, const u16_v2 &b ) { return a.dot( b ); }
+u16 u16_v2_length( const u16_v2 &v ) { return v.length(); }
+u16 u16_v2_length_sqr( const u16_v2 &v ) { return v.length_sqr(); }
+u16_v2 u16_v2_add( const u16_v2 &a, const u16_v2 &b ) { u16_v2 r { a }; r.add( b ); return r; }
+u16_v2 u16_v2_sub( const u16_v2 &a, const u16_v2 &b ) { u16_v2 r { a }; r.sub( b ); return r; }
+u16_v2 u16_v2_divide( const u16_v2 &a, const u16_v2 &b ) { u16_v2 r { a }; r.divide( b ); return r; }
+u16_v2 u16_v2_divide( const u16_v2 &v, double s ) { u16_v2 r { v }; r.divide( s ); return r; }
+u16_v2 u16_v2_multiply( const u16_v2 &v, double s ) { u16_v2 r { v }; r.multiply( s ); return r; }
+u16_v2 u16_v2_multiply( const u16_v2 &a, const u16_v2 &b ) { u16_v2 r { a }; r.multiply( b ); return r; }
+u16_v2 u16_v2_multiply( const u16_v2 &v, const double_m44 &m ) { u16_v2 r { v }; r.multiply( m ); return r; }
+u16_v2 u16_v2_multiply( const u16_v2 &v, const float_m44 &m ) { u16_v2 r { v }; r.multiply( m ); return r; }
+u16 u16_v2_cross( const u16_v2 &a, const u16_v2 &b ) { return a.cross( b ); }
+u16_v2 u16_v2_normalize( const u16_v2 &v ) { u16_v2 r { v }; r.normalize(); return r; }
+u16_v2 u16_v2_project( const u16_v2 &v, const u16_v2 &onto ) { u16_v2 r { v }; r.project( onto ); return r; }
+u16_v2 u16_v2_rotate( const u16_v2 &v, float angle, const u16_v2 &origin ) { u16_v2 r { v }; r.rotate( angle, origin ); return r; }
+u16_v2 u16_v2_reflect( const u16_v2 &v, const u16_v2 &normal ) { u16_v2 r { v }; r.reflect( normal ); return r; }
+u16_v2 u16_v2_lerp( const u16_v2 &a, const u16_v2 &b, float amount ) { u16_v2 r { a }; r.lerp( b, amount ); return r; }
+u16 u16_v2_distance( const u16_v2 &a, const u16_v2 &b ) { u16_v2 r { b.x - a.x, b.y - a.y }; return r.length(); }
+u16 u16_v2_distance_sqr( const u16_v2 &a, const u16_v2 &b ) { u16_v2 r { b.x - a.x, b.y - a.y }; return r.length_sqr(); }
+
+bool int_v2_equal( const int_v2 &a, const int_v2 &b ) { return a == b; }
+i32 int_v2_dot( const int_v2 &a, const int_v2 &b ) { return a.dot( b ); }
+i32 int_v2_length( const int_v2 &v ) { return v.length(); }
+i32 int_v2_length_sqr( const int_v2 &v ) { return v.length_sqr(); }
+int_v2 int_v2_add( const int_v2 &a, const int_v2 &b ) { int_v2 r { a }; r.add( b ); return r; }
+int_v2 int_v2_sub( const int_v2 &a, const int_v2 &b ) { int_v2 r { a }; r.sub( b ); return r; }
+int_v2 int_v2_divide( const int_v2 &a, const int_v2 &b ) { int_v2 r { a }; r.divide( b ); return r; }
+int_v2 int_v2_divide( const int_v2 &v, double s ) { int_v2 r { v }; r.divide( s ); return r; }
+int_v2 int_v2_multiply( const int_v2 &v, double s ) { int_v2 r { v }; r.multiply( s ); return r; }
+int_v2 int_v2_multiply( const int_v2 &a, const int_v2 &b ) { int_v2 r { a }; r.multiply( b ); return r; }
+int_v2 int_v2_multiply( const int_v2 &v, const double_m44 &m ) { int_v2 r { v }; r.multiply( m ); return r; }
+int_v2 int_v2_multiply( const int_v2 &v, const float_m44 &m ) { int_v2 r { v }; r.multiply( m ); return r; }
+i32 int_v2_cross( const int_v2 &a, const int_v2 &b ) { return a.cross( b ); }
+int_v2 int_v2_normalize( const int_v2 &v ) { int_v2 r { v }; r.normalize(); return r; }
+int_v2 int_v2_project( const int_v2 &v, const int_v2 &onto ) { int_v2 r { v }; r.project( onto ); return r; }
+int_v2 int_v2_rotate( const int_v2 &v, float angle, const int_v2 &origin ) { int_v2 r { v }; r.rotate( angle, origin ); return r; }
+int_v2 int_v2_reflect( const int_v2 &v, const int_v2 &normal ) { int_v2 r { v }; r.reflect( normal ); return r; }
+int_v2 int_v2_lerp( const int_v2 &a, const int_v2 &b, float amount ) { int_v2 r { a }; r.lerp( b, amount ); return r; }
+i32 int_v2_distance( const int_v2 &a, const int_v2 &b ) { int_v2 r { b.x - a.x, b.y - a.y }; return r.length(); }
+i32 int_v2_distance_sqr( const int_v2 &a, const int_v2 &b ) { int_v2 r { b.x - a.x, b.y - a.y }; return r.length_sqr(); }
+
+bool u32_v2_equal( const u32_v2 &a, const u32_v2 &b ) { return a == b; }
+u32 u32_v2_dot( const u32_v2 &a, const u32_v2 &b ) { return a.dot( b ); }
+u32 u32_v2_length( const u32_v2 &v ) { return v.length(); }
+u32 u32_v2_length_sqr( const u32_v2 &v ) { return v.length_sqr(); }
+u32_v2 u32_v2_add( const u32_v2 &a, const u32_v2 &b ) { u32_v2 r { a }; r.add( b ); return r; }
+u32_v2 u32_v2_sub( const u32_v2 &a, const u32_v2 &b ) { u32_v2 r { a }; r.sub( b ); return r; }
+u32_v2 u32_v2_divide( const u32_v2 &a, const u32_v2 &b ) { u32_v2 r { a }; r.divide( b ); return r; }
+u32_v2 u32_v2_divide( const u32_v2 &v, double s ) { u32_v2 r { v }; r.divide( s ); return r; }
+u32_v2 u32_v2_multiply( const u32_v2 &v, double s ) { u32_v2 r { v }; r.multiply( s ); return r; }
+u32_v2 u32_v2_multiply( const u32_v2 &a, const u32_v2 &b ) { u32_v2 r { a }; r.multiply( b ); return r; }
+u32_v2 u32_v2_multiply( const u32_v2 &v, const double_m44 &m ) { u32_v2 r { v }; r.multiply( m ); return r; }
+u32_v2 u32_v2_multiply( const u32_v2 &v, const float_m44 &m ) { u32_v2 r { v }; r.multiply( m ); return r; }
+u32 u32_v2_cross( const u32_v2 &a, const u32_v2 &b ) { return a.cross( b ); }
+u32_v2 u32_v2_normalize( const u32_v2 &v ) { u32_v2 r { v }; r.normalize(); return r; }
+u32_v2 u32_v2_project( const u32_v2 &v, const u32_v2 &onto ) { u32_v2 r { v }; r.project( onto ); return r; }
+u32_v2 u32_v2_rotate( const u32_v2 &v, float angle, const u32_v2 &origin ) { u32_v2 r { v }; r.rotate( angle, origin ); return r; }
+u32_v2 u32_v2_reflect( const u32_v2 &v, const u32_v2 &normal ) { u32_v2 r { v }; r.reflect( normal ); return r; }
+u32_v2 u32_v2_lerp( const u32_v2 &a, const u32_v2 &b, float amount ) { u32_v2 r { a }; r.lerp( b, amount ); return r; }
+u32 u32_v2_distance( const u32_v2 &a, const u32_v2 &b ) { u32_v2 r { b.x - a.x, b.y - a.y }; return r.length(); }
+u32 u32_v2_distance_sqr( const u32_v2 &a, const u32_v2 &b ) { u32_v2 r { b.x - a.x, b.y - a.y }; return r.length_sqr(); }
+
+bool i64_v2_equal( const i64_v2 &a, const i64_v2 &b ) { return a == b; }
+i64 i64_v2_dot( const i64_v2 &a, const i64_v2 &b ) { return a.dot( b ); }
+i64 i64_v2_length( const i64_v2 &v ) { return v.length(); }
+i64 i64_v2_length_sqr( const i64_v2 &v ) { return v.length_sqr(); }
+i64_v2 i64_v2_add( const i64_v2 &a, const i64_v2 &b ) { i64_v2 r { a }; r.add( b ); return r; }
+i64_v2 i64_v2_sub( const i64_v2 &a, const i64_v2 &b ) { i64_v2 r { a }; r.sub( b ); return r; }
+i64_v2 i64_v2_divide( const i64_v2 &a, const i64_v2 &b ) { i64_v2 r { a }; r.divide( b ); return r; }
+i64_v2 i64_v2_divide( const i64_v2 &v, double s ) { i64_v2 r { v }; r.divide( s ); return r; }
+i64_v2 i64_v2_multiply( const i64_v2 &v, double s ) { i64_v2 r { v }; r.multiply( s ); return r; }
+i64_v2 i64_v2_multiply( const i64_v2 &a, const i64_v2 &b ) { i64_v2 r { a }; r.multiply( b ); return r; }
+i64_v2 i64_v2_multiply( const i64_v2 &v, const double_m44 &m ) { i64_v2 r { v }; r.multiply( m ); return r; }
+i64_v2 i64_v2_multiply( const i64_v2 &v, const float_m44 &m ) { i64_v2 r { v }; r.multiply( m ); return r; }
+i64 i64_v2_cross( const i64_v2 &a, const i64_v2 &b ) { return a.cross( b ); }
+i64_v2 i64_v2_normalize( const i64_v2 &v ) { i64_v2 r { v }; r.normalize(); return r; }
+i64_v2 i64_v2_project( const i64_v2 &v, const i64_v2 &onto ) { i64_v2 r { v }; r.project( onto ); return r; }
+i64_v2 i64_v2_rotate( const i64_v2 &v, float angle, const i64_v2 &origin ) { i64_v2 r { v }; r.rotate( angle, origin ); return r; }
+i64_v2 i64_v2_reflect( const i64_v2 &v, const i64_v2 &normal ) { i64_v2 r { v }; r.reflect( normal ); return r; }
+i64_v2 i64_v2_lerp( const i64_v2 &a, const i64_v2 &b, float amount ) { i64_v2 r { a }; r.lerp( b, amount ); return r; }
+i64 i64_v2_distance( const i64_v2 &a, const i64_v2 &b ) { i64_v2 r { b.x - a.x, b.y - a.y }; return r.length(); }
+i64 i64_v2_distance_sqr( const i64_v2 &a, const i64_v2 &b ) { i64_v2 r { b.x - a.x, b.y - a.y }; return r.length_sqr(); }
+
+bool u64_v2_equal( const u64_v2 &a, const u64_v2 &b ) { return a == b; }
+u64 u64_v2_dot( const u64_v2 &a, const u64_v2 &b ) { return a.dot( b ); }
+u64 u64_v2_length( const u64_v2 &v ) { return v.length(); }
+u64 u64_v2_length_sqr( const u64_v2 &v ) { return v.length_sqr(); }
+u64_v2 u64_v2_add( const u64_v2 &a, const u64_v2 &b ) { u64_v2 r { a }; r.add( b ); return r; }
+u64_v2 u64_v2_sub( const u64_v2 &a, const u64_v2 &b ) { u64_v2 r { a }; r.sub( b ); return r; }
+u64_v2 u64_v2_divide( const u64_v2 &a, const u64_v2 &b ) { u64_v2 r { a }; r.divide( b ); return r; }
+u64_v2 u64_v2_divide( const u64_v2 &v, double s ) { u64_v2 r { v }; r.divide( s ); return r; }
+u64_v2 u64_v2_multiply( const u64_v2 &v, double s ) { u64_v2 r { v }; r.multiply( s ); return r; }
+u64_v2 u64_v2_multiply( const u64_v2 &a, const u64_v2 &b ) { u64_v2 r { a }; r.multiply( b ); return r; }
+u64_v2 u64_v2_multiply( const u64_v2 &v, const double_m44 &m ) { u64_v2 r { v }; r.multiply( m ); return r; }
+u64_v2 u64_v2_multiply( const u64_v2 &v, const float_m44 &m ) { u64_v2 r { v }; r.multiply( m ); return r; }
+u64 u64_v2_cross( const u64_v2 &a, const u64_v2 &b ) { return a.cross( b ); }
+u64_v2 u64_v2_normalize( const u64_v2 &v ) { u64_v2 r { v }; r.normalize(); return r; }
+u64_v2 u64_v2_project( const u64_v2 &v, const u64_v2 &onto ) { u64_v2 r { v }; r.project( onto ); return r; }
+u64_v2 u64_v2_rotate( const u64_v2 &v, float angle, const u64_v2 &origin ) { u64_v2 r { v }; r.rotate( angle, origin ); return r; }
+u64_v2 u64_v2_reflect( const u64_v2 &v, const u64_v2 &normal ) { u64_v2 r { v }; r.reflect( normal ); return r; }
+u64_v2 u64_v2_lerp( const u64_v2 &a, const u64_v2 &b, float amount ) { u64_v2 r { a }; r.lerp( b, amount ); return r; }
+u64 u64_v2_distance( const u64_v2 &a, const u64_v2 &b ) { u64_v2 r { b.x - a.x, b.y - a.y }; return r.length(); }
+u64 u64_v2_distance_sqr( const u64_v2 &a, const u64_v2 &b ) { u64_v2 r { b.x - a.x, b.y - a.y }; return r.length_sqr(); }
+
+bool float_v2_equal( const float_v2 &a, const float_v2 &b ) { return a == b; }
+float float_v2_dot( const float_v2 &a, const float_v2 &b ) { return a.dot( b ); }
+float float_v2_length( const float_v2 &v ) { return v.length(); }
+float float_v2_length_sqr( const float_v2 &v ) { return v.length_sqr(); }
+float_v2 float_v2_add( const float_v2 &a, const float_v2 &b ) { float_v2 r { a }; r.add( b ); return r; }
+float_v2 float_v2_sub( const float_v2 &a, const float_v2 &b ) { float_v2 r { a }; r.sub( b ); return r; }
+float_v2 float_v2_divide( const float_v2 &a, const float_v2 &b ) { float_v2 r { a }; r.divide( b ); return r; }
+float_v2 float_v2_divide( const float_v2 &v, double s ) { float_v2 r { v }; r.divide( s ); return r; }
+float_v2 float_v2_multiply( const float_v2 &v, double s ) { float_v2 r { v }; r.multiply( s ); return r; }
+float_v2 float_v2_multiply( const float_v2 &a, const float_v2 &b ) { float_v2 r { a }; r.multiply( b ); return r; }
+float_v2 float_v2_multiply( const float_v2 &v, const double_m44 &m ) { float_v2 r { v }; r.multiply( m ); return r; }
+float_v2 float_v2_multiply( const float_v2 &v, const float_m44 &m ) { float_v2 r { v }; r.multiply( m ); return r; }
+float float_v2_cross( const float_v2 &a, const float_v2 &b ) { return a.cross( b ); }
+float_v2 float_v2_normalize( const float_v2 &v ) { float_v2 r { v }; r.normalize(); return r; }
+float_v2 float_v2_project( const float_v2 &v, const float_v2 &onto ) { float_v2 r { v }; r.project( onto ); return r; }
+float_v2 float_v2_rotate( const float_v2 &v, float angle, const float_v2 &origin ) { float_v2 r { v }; r.rotate( angle, origin ); return r; }
+float_v2 float_v2_reflect( const float_v2 &v, const float_v2 &normal ) { float_v2 r { v }; r.reflect( normal ); return r; }
+float_v2 float_v2_lerp( const float_v2 &a, const float_v2 &b, float amount ) { float_v2 r { a }; r.lerp( b, amount ); return r; }
+float float_v2_distance( const float_v2 &a, const float_v2 &b ) { float_v2 r { b.x - a.x, b.y - a.y }; return r.length(); }
+float float_v2_distance_sqr( const float_v2 &a, const float_v2 &b ) { float_v2 r { b.x - a.x, b.y - a.y }; return r.length_sqr(); }
+
+bool double_v2_equal( const double_v2 &a, const double_v2 &b ) { return a == b; }
+double double_v2_dot( const double_v2 &a, const double_v2 &b ) { return a.dot( b ); }
+double double_v2_length( const double_v2 &v ) { return v.length(); }
+double double_v2_length_sqr( const double_v2 &v ) { return v.length_sqr(); }
+double_v2 double_v2_add( const double_v2 &a, const double_v2 &b ) { double_v2 r { a }; r.add( b ); return r; }
+double_v2 double_v2_sub( const double_v2 &a, const double_v2 &b ) { double_v2 r { a }; r.sub( b ); return r; }
+double_v2 double_v2_divide( const double_v2 &a, const double_v2 &b ) { double_v2 r { a }; r.divide( b ); return r; }
+double_v2 double_v2_divide( const double_v2 &v, double s ) { double_v2 r { v }; r.divide( s ); return r; }
+double_v2 double_v2_multiply( const double_v2 &v, double s ) { double_v2 r { v }; r.multiply( s ); return r; }
+double_v2 double_v2_multiply( const double_v2 &a, const double_v2 &b ) { double_v2 r { a }; r.multiply( b ); return r; }
+double_v2 double_v2_multiply( const double_v2 &v, const double_m44 &m ) { double_v2 r { v }; r.multiply( m ); return r; }
+double_v2 double_v2_multiply( const double_v2 &v, const float_m44 &m ) { double_v2 r { v }; r.multiply( m ); return r; }
+double double_v2_cross( const double_v2 &a, const double_v2 &b ) { return a.cross( b ); }
+double_v2 double_v2_normalize( const double_v2 &v ) { double_v2 r { v }; r.normalize(); return r; }
+double_v2 double_v2_project( const double_v2 &v, const double_v2 &onto ) { double_v2 r { v }; r.project( onto ); return r; }
+double_v2 double_v2_rotate( const double_v2 &v, float angle, const double_v2 &origin ) { double_v2 r { v }; r.rotate( angle, origin ); return r; }
+double_v2 double_v2_reflect( const double_v2 &v, const double_v2 &normal ) { double_v2 r { v }; r.reflect( normal ); return r; }
+double_v2 double_v2_lerp( const double_v2 &a, const double_v2 &b, float amount ) { double_v2 r { a }; r.lerp( b, amount ); return r; }
+double double_v2_distance( const double_v2 &a, const double_v2 &b ) { double_v2 r { b.x - a.x, b.y - a.y }; return r.length(); }
+double double_v2_distance_sqr( const double_v2 &a, const double_v2 &b ) { double_v2 r { b.x - a.x, b.y - a.y }; return r.length_sqr(); }
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 3D Vector
+
+#if !MATH_PRE_EXPANDED_VECTOR_TYPES
+
+#define VECTOR_TYPE_3D_SOURCE( Vec, T )                                                                  \
+	template struct Vector3D<T>;                                                                         \
+	bool Vec##_equal( const Vec &a, const Vec &b ) { return a == b; }                                    \
+	   T Vec##_dot( const Vec &a, const Vec &b ) { return a.dot( b ); }                                  \
+	   T Vec##_length( const Vec &v ) { return v.length(); }                                             \
+	   T Vec##_length_sqr( const Vec &v ) { return v.length_sqr(); }                                     \
+	 Vec Vec##_add( const Vec &a, const Vec &b ) { Vec r { a }; r.add( b ); return r; }                  \
+	 Vec Vec##_sub( const Vec &a, const Vec &b ) { Vec r { a }; r.sub( b ); return r; }                  \
+	 Vec Vec##_divide( const Vec &a, const Vec &b ) { Vec r { a }; r.divide( b ); return r; }            \
+	 Vec Vec##_divide( const Vec &v, double s ) { Vec r { v }; r.divide( s ); return r; }                \
+	 Vec Vec##_multiply( const Vec &v, double s ) { Vec r { v }; r.multiply( s ); return r; }            \
+	 Vec Vec##_multiply( const Vec &a, const Vec &b ) { Vec r { a }; r.multiply( b ); return r; }        \
+	 Vec Vec##_multiply( const Vec &v, const double_m44 &m ) { Vec r { v }; r.multiply( m ); return r; } \
+	 Vec Vec##_multiply( const Vec &v, const float_m44 &m ) { Vec r { v }; r.multiply( m ); return r; }  \
+	 Vec Vec##_cross( const Vec &a, const Vec &b ) { Vec r { a }; r.cross( b ); return r; }              \
+	 Vec Vec##_normalize( const Vec &v ) { Vec r { v }; r.normalize(); return r; }                       \
+	 Vec Vec##_project( const Vec &v, const Vec &onto ) { Vec r { v }; r.project( onto ); return r; }    \
+	 Vec Vec##_rotate_x( const Vec &v, float angle, const Vec &origin )                                  \
+		{ Vec r { v }; r.rotate_x( angle, origin ); return r; }                                          \
+	 Vec Vec##_rotate_y( const Vec &v, float angle, const Vec &origin )                                  \
+		{ Vec r { v }; r.rotate_y( angle, origin ); return r; }                                          \
+	 Vec Vec##_rotate_z( const Vec &v, float angle, const Vec &origin )                                  \
+		{ Vec r { v }; r.rotate_z( angle, origin ); return r; }                                          \
+	 Vec Vec##_reflect( const Vec &v, const Vec &normal )                                                \
+		{ Vec r { v }; r.reflect( normal ); return r; }                                                  \
+	 Vec Vec##_lerp( const Vec &a, const Vec &b, float amount )                                          \
+		{ Vec r { a }; r.lerp( b, amount ); return r; }                                                  \
+	   T Vec##_distance( const Vec &a, const Vec &b )                                                    \
+	 	{ Vec r { b.x - a.x, b.y - a.y, b.z - a.z }; return r.length(); }                                \
+	   T Vec##_distance_sqr( const Vec &a, const Vec &b )                                                \
+		{ Vec r { b.x - a.x, b.y - a.y, b.z - a.z }; return r.length_sqr(); }
+
+VECTOR_TYPE_3D_SOURCE( u8_v3, u8 )
+VECTOR_TYPE_3D_SOURCE( i16_v3, i16 )
+VECTOR_TYPE_3D_SOURCE( u16_v3, u16 )
+VECTOR_TYPE_3D_SOURCE( int_v3, i32 )
+VECTOR_TYPE_3D_SOURCE( u32_v3, u32 )
+VECTOR_TYPE_3D_SOURCE( i64_v3, i64 )
+VECTOR_TYPE_3D_SOURCE( u64_v3, u64 )
+VECTOR_TYPE_3D_SOURCE( float_v3, float )
+VECTOR_TYPE_3D_SOURCE( double_v3, double )
+
+#else
+
+bool u8_v3_equal( const u8_v3 &a, const u8_v3 &b ) { return a == b; }
+u8 u8_v3_dot( const u8_v3 &a, const u8_v3 &b ) { return a.dot( b ); }
+u8 u8_v3_length( const u8_v3 &v ) { return v.length(); }
+u8 u8_v3_length_sqr( const u8_v3 &v ) { return v.length_sqr(); }
+u8_v3 u8_v3_add( const u8_v3 &a, const u8_v3 &b ) { u8_v3 r { a }; r.add( b ); return r; }
+u8_v3 u8_v3_sub( const u8_v3 &a, const u8_v3 &b ) { u8_v3 r { a }; r.sub( b ); return r; }
+u8_v3 u8_v3_divide( const u8_v3 &a, const u8_v3 &b ) { u8_v3 r { a }; r.divide( b ); return r; }
+u8_v3 u8_v3_divide( const u8_v3 &v, double s ) { u8_v3 r { v }; r.divide( s ); return r; }
+u8_v3 u8_v3_multiply( const u8_v3 &v, double s ) { u8_v3 r { v }; r.multiply( s ); return r; }
+u8_v3 u8_v3_multiply( const u8_v3 &a, const u8_v3 &b ) { u8_v3 r { a }; r.multiply( b ); return r; }
+u8_v3 u8_v3_multiply( const u8_v3 &v, const double_m44 &m ) { u8_v3 r { v }; r.multiply( m ); return r; }
+u8_v3 u8_v3_multiply( const u8_v3 &v, const float_m44 &m ) { u8_v3 r { v }; r.multiply( m ); return r; }
+u8_v3 u8_v3_cross( const u8_v3 &a, const u8_v3 &b ) { u8_v3 r { a }; r.cross( b ); return r; }
+u8_v3 u8_v3_normalize( const u8_v3 &v ) { u8_v3 r { v }; r.normalize(); return r; }
+u8_v3 u8_v3_project( const u8_v3 &v, const u8_v3 &onto ) { u8_v3 r { v }; r.project( onto ); return r; }
+u8_v3 u8_v3_rotate_x( const u8_v3 &v, float angle, const u8_v3 &origin ) { u8_v3 r { v }; r.rotate_x( angle, origin ); return r; }
+u8_v3 u8_v3_rotate_y( const u8_v3 &v, float angle, const u8_v3 &origin ) { u8_v3 r { v }; r.rotate_y( angle, origin ); return r; }
+u8_v3 u8_v3_rotate_z( const u8_v3 &v, float angle, const u8_v3 &origin ) { u8_v3 r { v }; r.rotate_z( angle, origin ); return r; }
+u8_v3 u8_v3_reflect( const u8_v3 &v, const u8_v3 &normal ) { u8_v3 r { v }; r.reflect( normal ); return r; }
+u8_v3 u8_v3_lerp( const u8_v3 &a, const u8_v3 &b, float amount ) { u8_v3 r { a }; r.lerp( b, amount ); return r; }
+u8 u8_v3_distance( const u8_v3 &a, const u8_v3 &b ) { u8_v3 r { b.x - a.x, b.y - a.y, b.z - a.z }; return r.length(); }
+u8 u8_v3_distance_sqr( const u8_v3 &a, const u8_v3 &b ) { u8_v3 r { b.x - a.x, b.y - a.y, b.z - a.z }; return r.length_sqr(); }
+
+bool i16_v3_equal( const i16_v3 &a, const i16_v3 &b ) { return a == b; }
+i16 i16_v3_dot( const i16_v3 &a, const i16_v3 &b ) { return a.dot( b ); }
+i16 i16_v3_length( const i16_v3 &v ) { return v.length(); }
+i16 i16_v3_length_sqr( const i16_v3 &v ) { return v.length_sqr(); }
+i16_v3 i16_v3_add( const i16_v3 &a, const i16_v3 &b ) { i16_v3 r { a }; r.add( b ); return r; }
+i16_v3 i16_v3_sub( const i16_v3 &a, const i16_v3 &b ) { i16_v3 r { a }; r.sub( b ); return r; }
+i16_v3 i16_v3_divide( const i16_v3 &a, const i16_v3 &b ) { i16_v3 r { a }; r.divide( b ); return r; }
+i16_v3 i16_v3_divide( const i16_v3 &v, double s ) { i16_v3 r { v }; r.divide( s ); return r; }
+i16_v3 i16_v3_multiply( const i16_v3 &v, double s ) { i16_v3 r { v }; r.multiply( s ); return r; }
+i16_v3 i16_v3_multiply( const i16_v3 &a, const i16_v3 &b ) { i16_v3 r { a }; r.multiply( b ); return r; }
+i16_v3 i16_v3_multiply( const i16_v3 &v, const double_m44 &m ) { i16_v3 r { v }; r.multiply( m ); return r; }
+i16_v3 i16_v3_multiply( const i16_v3 &v, const float_m44 &m ) { i16_v3 r { v }; r.multiply( m ); return r; }
+i16_v3 i16_v3_cross( const i16_v3 &a, const i16_v3 &b ) { i16_v3 r { a }; r.cross( b ); return r; }
+i16_v3 i16_v3_normalize( const i16_v3 &v ) { i16_v3 r { v }; r.normalize(); return r; }
+i16_v3 i16_v3_project( const i16_v3 &v, const i16_v3 &onto ) { i16_v3 r { v }; r.project( onto ); return r; }
+i16_v3 i16_v3_rotate_x( const i16_v3 &v, float angle, const i16_v3 &origin ) { i16_v3 r { v }; r.rotate_x( angle, origin ); return r; }
+i16_v3 i16_v3_rotate_y( const i16_v3 &v, float angle, const i16_v3 &origin ) { i16_v3 r { v }; r.rotate_y( angle, origin ); return r; }
+i16_v3 i16_v3_rotate_z( const i16_v3 &v, float angle, const i16_v3 &origin ) { i16_v3 r { v }; r.rotate_z( angle, origin ); return r; }
+i16_v3 i16_v3_reflect( const i16_v3 &v, const i16_v3 &normal ) { i16_v3 r { v }; r.reflect( normal ); return r; }
+i16_v3 i16_v3_lerp( const i16_v3 &a, const i16_v3 &b, float amount ) { i16_v3 r { a }; r.lerp( b, amount ); return r; }
+i16 i16_v3_distance( const i16_v3 &a, const i16_v3 &b ) { i16_v3 r { b.x - a.x, b.y - a.y, b.z - a.z }; return r.length(); }
+i16 i16_v3_distance_sqr( const i16_v3 &a, const i16_v3 &b ) { i16_v3 r { b.x - a.x, b.y - a.y, b.z - a.z }; return r.length_sqr(); }
+
+bool u16_v3_equal( const u16_v3 &a, const u16_v3 &b ) { return a == b; }
+u16 u16_v3_dot( const u16_v3 &a, const u16_v3 &b ) { return a.dot( b ); }
+u16 u16_v3_length( const u16_v3 &v ) { return v.length(); }
+u16 u16_v3_length_sqr( const u16_v3 &v ) { return v.length_sqr(); }
+u16_v3 u16_v3_add( const u16_v3 &a, const u16_v3 &b ) { u16_v3 r { a }; r.add( b ); return r; }
+u16_v3 u16_v3_sub( const u16_v3 &a, const u16_v3 &b ) { u16_v3 r { a }; r.sub( b ); return r; }
+u16_v3 u16_v3_divide( const u16_v3 &a, const u16_v3 &b ) { u16_v3 r { a }; r.divide( b ); return r; }
+u16_v3 u16_v3_divide( const u16_v3 &v, double s ) { u16_v3 r { v }; r.divide( s ); return r; }
+u16_v3 u16_v3_multiply( const u16_v3 &v, double s ) { u16_v3 r { v }; r.multiply( s ); return r; }
+u16_v3 u16_v3_multiply( const u16_v3 &a, const u16_v3 &b ) { u16_v3 r { a }; r.multiply( b ); return r; }
+u16_v3 u16_v3_multiply( const u16_v3 &v, const double_m44 &m ) { u16_v3 r { v }; r.multiply( m ); return r; }
+u16_v3 u16_v3_multiply( const u16_v3 &v, const float_m44 &m ) { u16_v3 r { v }; r.multiply( m ); return r; }
+u16_v3 u16_v3_cross( const u16_v3 &a, const u16_v3 &b ) { u16_v3 r { a }; r.cross( b ); return r; }
+u16_v3 u16_v3_normalize( const u16_v3 &v ) { u16_v3 r { v }; r.normalize(); return r; }
+u16_v3 u16_v3_project( const u16_v3 &v, const u16_v3 &onto ) { u16_v3 r { v }; r.project( onto ); return r; }
+u16_v3 u16_v3_rotate_x( const u16_v3 &v, float angle, const u16_v3 &origin ) { u16_v3 r { v }; r.rotate_x( angle, origin ); return r; }
+u16_v3 u16_v3_rotate_y( const u16_v3 &v, float angle, const u16_v3 &origin ) { u16_v3 r { v }; r.rotate_y( angle, origin ); return r; }
+u16_v3 u16_v3_rotate_z( const u16_v3 &v, float angle, const u16_v3 &origin ) { u16_v3 r { v }; r.rotate_z( angle, origin ); return r; }
+u16_v3 u16_v3_reflect( const u16_v3 &v, const u16_v3 &normal ) { u16_v3 r { v }; r.reflect( normal ); return r; }
+u16_v3 u16_v3_lerp( const u16_v3 &a, const u16_v3 &b, float amount ) { u16_v3 r { a }; r.lerp( b, amount ); return r; }
+u16 u16_v3_distance( const u16_v3 &a, const u16_v3 &b ) { u16_v3 r { b.x - a.x, b.y - a.y, b.z - a.z }; return r.length(); }
+u16 u16_v3_distance_sqr( const u16_v3 &a, const u16_v3 &b ) { u16_v3 r { b.x - a.x, b.y - a.y, b.z - a.z }; return r.length_sqr(); }
+
+bool int_v3_equal( const int_v3 &a, const int_v3 &b ) { return a == b; }
+i32 int_v3_dot( const int_v3 &a, const int_v3 &b ) { return a.dot( b ); }
+i32 int_v3_length( const int_v3 &v ) { return v.length(); }
+i32 int_v3_length_sqr( const int_v3 &v ) { return v.length_sqr(); }
+int_v3 int_v3_add( const int_v3 &a, const int_v3 &b ) { int_v3 r { a }; r.add( b ); return r; }
+int_v3 int_v3_sub( const int_v3 &a, const int_v3 &b ) { int_v3 r { a }; r.sub( b ); return r; }
+int_v3 int_v3_divide( const int_v3 &a, const int_v3 &b ) { int_v3 r { a }; r.divide( b ); return r; }
+int_v3 int_v3_divide( const int_v3 &v, double s ) { int_v3 r { v }; r.divide( s ); return r; }
+int_v3 int_v3_multiply( const int_v3 &v, double s ) { int_v3 r { v }; r.multiply( s ); return r; }
+int_v3 int_v3_multiply( const int_v3 &a, const int_v3 &b ) { int_v3 r { a }; r.multiply( b ); return r; }
+int_v3 int_v3_multiply( const int_v3 &v, const double_m44 &m ) { int_v3 r { v }; r.multiply( m ); return r; }
+int_v3 int_v3_multiply( const int_v3 &v, const float_m44 &m ) { int_v3 r { v }; r.multiply( m ); return r; }
+int_v3 int_v3_cross( const int_v3 &a, const int_v3 &b ) { int_v3 r { a }; r.cross( b ); return r; }
+int_v3 int_v3_normalize( const int_v3 &v ) { int_v3 r { v }; r.normalize(); return r; }
+int_v3 int_v3_project( const int_v3 &v, const int_v3 &onto ) { int_v3 r { v }; r.project( onto ); return r; }
+int_v3 int_v3_rotate_x( const int_v3 &v, float angle, const int_v3 &origin ) { int_v3 r { v }; r.rotate_x( angle, origin ); return r; }
+int_v3 int_v3_rotate_y( const int_v3 &v, float angle, const int_v3 &origin ) { int_v3 r { v }; r.rotate_y( angle, origin ); return r; }
+int_v3 int_v3_rotate_z( const int_v3 &v, float angle, const int_v3 &origin ) { int_v3 r { v }; r.rotate_z( angle, origin ); return r; }
+int_v3 int_v3_reflect( const int_v3 &v, const int_v3 &normal ) { int_v3 r { v }; r.reflect( normal ); return r; }
+int_v3 int_v3_lerp( const int_v3 &a, const int_v3 &b, float amount ) { int_v3 r { a }; r.lerp( b, amount ); return r; }
+i32 int_v3_distance( const int_v3 &a, const int_v3 &b ) { int_v3 r { b.x - a.x, b.y - a.y, b.z - a.z }; return r.length(); }
+i32 int_v3_distance_sqr( const int_v3 &a, const int_v3 &b ) { int_v3 r { b.x - a.x, b.y - a.y, b.z - a.z }; return r.length_sqr(); }
+
+bool u32_v3_equal( const u32_v3 &a, const u32_v3 &b ) { return a == b; }
+u32 u32_v3_dot( const u32_v3 &a, const u32_v3 &b ) { return a.dot( b ); }
+u32 u32_v3_length( const u32_v3 &v ) { return v.length(); }
+u32 u32_v3_length_sqr( const u32_v3 &v ) { return v.length_sqr(); }
+u32_v3 u32_v3_add( const u32_v3 &a, const u32_v3 &b ) { u32_v3 r { a }; r.add( b ); return r; }
+u32_v3 u32_v3_sub( const u32_v3 &a, const u32_v3 &b ) { u32_v3 r { a }; r.sub( b ); return r; }
+u32_v3 u32_v3_divide( const u32_v3 &a, const u32_v3 &b ) { u32_v3 r { a }; r.divide( b ); return r; }
+u32_v3 u32_v3_divide( const u32_v3 &v, double s ) { u32_v3 r { v }; r.divide( s ); return r; }
+u32_v3 u32_v3_multiply( const u32_v3 &v, double s ) { u32_v3 r { v }; r.multiply( s ); return r; }
+u32_v3 u32_v3_multiply( const u32_v3 &a, const u32_v3 &b ) { u32_v3 r { a }; r.multiply( b ); return r; }
+u32_v3 u32_v3_multiply( const u32_v3 &v, const double_m44 &m ) { u32_v3 r { v }; r.multiply( m ); return r; }
+u32_v3 u32_v3_multiply( const u32_v3 &v, const float_m44 &m ) { u32_v3 r { v }; r.multiply( m ); return r; }
+u32_v3 u32_v3_cross( const u32_v3 &a, const u32_v3 &b ) { u32_v3 r { a }; r.cross( b ); return r; }
+u32_v3 u32_v3_normalize( const u32_v3 &v ) { u32_v3 r { v }; r.normalize(); return r; }
+u32_v3 u32_v3_project( const u32_v3 &v, const u32_v3 &onto ) { u32_v3 r { v }; r.project( onto ); return r; }
+u32_v3 u32_v3_rotate_x( const u32_v3 &v, float angle, const u32_v3 &origin ) { u32_v3 r { v }; r.rotate_x( angle, origin ); return r; }
+u32_v3 u32_v3_rotate_y( const u32_v3 &v, float angle, const u32_v3 &origin ) { u32_v3 r { v }; r.rotate_y( angle, origin ); return r; }
+u32_v3 u32_v3_rotate_z( const u32_v3 &v, float angle, const u32_v3 &origin ) { u32_v3 r { v }; r.rotate_z( angle, origin ); return r; }
+u32_v3 u32_v3_reflect( const u32_v3 &v, const u32_v3 &normal ) { u32_v3 r { v }; r.reflect( normal ); return r; }
+u32_v3 u32_v3_lerp( const u32_v3 &a, const u32_v3 &b, float amount ) { u32_v3 r { a }; r.lerp( b, amount ); return r; }
+u32 u32_v3_distance( const u32_v3 &a, const u32_v3 &b ) { u32_v3 r { b.x - a.x, b.y - a.y, b.z - a.z }; return r.length(); }
+u32 u32_v3_distance_sqr( const u32_v3 &a, const u32_v3 &b ) { u32_v3 r { b.x - a.x, b.y - a.y, b.z - a.z }; return r.length_sqr(); }
+
+bool i64_v3_equal( const i64_v3 &a, const i64_v3 &b ) { return a == b; }
+i64 i64_v3_dot( const i64_v3 &a, const i64_v3 &b ) { return a.dot( b ); }
+i64 i64_v3_length( const i64_v3 &v ) { return v.length(); }
+i64 i64_v3_length_sqr( const i64_v3 &v ) { return v.length_sqr(); }
+i64_v3 i64_v3_add( const i64_v3 &a, const i64_v3 &b ) { i64_v3 r { a }; r.add( b ); return r; }
+i64_v3 i64_v3_sub( const i64_v3 &a, const i64_v3 &b ) { i64_v3 r { a }; r.sub( b ); return r; }
+i64_v3 i64_v3_divide( const i64_v3 &a, const i64_v3 &b ) { i64_v3 r { a }; r.divide( b ); return r; }
+i64_v3 i64_v3_divide( const i64_v3 &v, double s ) { i64_v3 r { v }; r.divide( s ); return r; }
+i64_v3 i64_v3_multiply( const i64_v3 &v, double s ) { i64_v3 r { v }; r.multiply( s ); return r; }
+i64_v3 i64_v3_multiply( const i64_v3 &a, const i64_v3 &b ) { i64_v3 r { a }; r.multiply( b ); return r; }
+i64_v3 i64_v3_multiply( const i64_v3 &v, const double_m44 &m ) { i64_v3 r { v }; r.multiply( m ); return r; }
+i64_v3 i64_v3_multiply( const i64_v3 &v, const float_m44 &m ) { i64_v3 r { v }; r.multiply( m ); return r; }
+i64_v3 i64_v3_cross( const i64_v3 &a, const i64_v3 &b ) { i64_v3 r { a }; r.cross( b ); return r; }
+i64_v3 i64_v3_normalize( const i64_v3 &v ) { i64_v3 r { v }; r.normalize(); return r; }
+i64_v3 i64_v3_project( const i64_v3 &v, const i64_v3 &onto ) { i64_v3 r { v }; r.project( onto ); return r; }
+i64_v3 i64_v3_rotate_x( const i64_v3 &v, float angle, const i64_v3 &origin ) { i64_v3 r { v }; r.rotate_x( angle, origin ); return r; }
+i64_v3 i64_v3_rotate_y( const i64_v3 &v, float angle, const i64_v3 &origin ) { i64_v3 r { v }; r.rotate_y( angle, origin ); return r; }
+i64_v3 i64_v3_rotate_z( const i64_v3 &v, float angle, const i64_v3 &origin ) { i64_v3 r { v }; r.rotate_z( angle, origin ); return r; }
+i64_v3 i64_v3_reflect( const i64_v3 &v, const i64_v3 &normal ) { i64_v3 r { v }; r.reflect( normal ); return r; }
+i64_v3 i64_v3_lerp( const i64_v3 &a, const i64_v3 &b, float amount ) { i64_v3 r { a }; r.lerp( b, amount ); return r; }
+i64 i64_v3_distance( const i64_v3 &a, const i64_v3 &b ) { i64_v3 r { b.x - a.x, b.y - a.y, b.z - a.z }; return r.length(); }
+i64 i64_v3_distance_sqr( const i64_v3 &a, const i64_v3 &b ) { i64_v3 r { b.x - a.x, b.y - a.y, b.z - a.z }; return r.length_sqr(); }
+
+bool u64_v3_equal( const u64_v3 &a, const u64_v3 &b ) { return a == b; }
+u64 u64_v3_dot( const u64_v3 &a, const u64_v3 &b ) { return a.dot( b ); }
+u64 u64_v3_length( const u64_v3 &v ) { return v.length(); }
+u64 u64_v3_length_sqr( const u64_v3 &v ) { return v.length_sqr(); }
+u64_v3 u64_v3_add( const u64_v3 &a, const u64_v3 &b ) { u64_v3 r { a }; r.add( b ); return r; }
+u64_v3 u64_v3_sub( const u64_v3 &a, const u64_v3 &b ) { u64_v3 r { a }; r.sub( b ); return r; }
+u64_v3 u64_v3_divide( const u64_v3 &a, const u64_v3 &b ) { u64_v3 r { a }; r.divide( b ); return r; }
+u64_v3 u64_v3_divide( const u64_v3 &v, double s ) { u64_v3 r { v }; r.divide( s ); return r; }
+u64_v3 u64_v3_multiply( const u64_v3 &v, double s ) { u64_v3 r { v }; r.multiply( s ); return r; }
+u64_v3 u64_v3_multiply( const u64_v3 &a, const u64_v3 &b ) { u64_v3 r { a }; r.multiply( b ); return r; }
+u64_v3 u64_v3_multiply( const u64_v3 &v, const double_m44 &m ) { u64_v3 r { v }; r.multiply( m ); return r; }
+u64_v3 u64_v3_multiply( const u64_v3 &v, const float_m44 &m ) { u64_v3 r { v }; r.multiply( m ); return r; }
+u64_v3 u64_v3_cross( const u64_v3 &a, const u64_v3 &b ) { u64_v3 r { a }; r.cross( b ); return r; }
+u64_v3 u64_v3_normalize( const u64_v3 &v ) { u64_v3 r { v }; r.normalize(); return r; }
+u64_v3 u64_v3_project( const u64_v3 &v, const u64_v3 &onto ) { u64_v3 r { v }; r.project( onto ); return r; }
+u64_v3 u64_v3_rotate_x( const u64_v3 &v, float angle, const u64_v3 &origin ) { u64_v3 r { v }; r.rotate_x( angle, origin ); return r; }
+u64_v3 u64_v3_rotate_y( const u64_v3 &v, float angle, const u64_v3 &origin ) { u64_v3 r { v }; r.rotate_y( angle, origin ); return r; }
+u64_v3 u64_v3_rotate_z( const u64_v3 &v, float angle, const u64_v3 &origin ) { u64_v3 r { v }; r.rotate_z( angle, origin ); return r; }
+u64_v3 u64_v3_reflect( const u64_v3 &v, const u64_v3 &normal ) { u64_v3 r { v }; r.reflect( normal ); return r; }
+u64_v3 u64_v3_lerp( const u64_v3 &a, const u64_v3 &b, float amount ) { u64_v3 r { a }; r.lerp( b, amount ); return r; }
+u64 u64_v3_distance( const u64_v3 &a, const u64_v3 &b ) { u64_v3 r { b.x - a.x, b.y - a.y, b.z - a.z }; return r.length(); }
+u64 u64_v3_distance_sqr( const u64_v3 &a, const u64_v3 &b ) { u64_v3 r { b.x - a.x, b.y - a.y, b.z - a.z }; return r.length_sqr(); }
+
+bool float_v3_equal( const float_v3 &a, const float_v3 &b ) { return a == b; }
+float float_v3_dot( const float_v3 &a, const float_v3 &b ) { return a.dot( b ); }
+float float_v3_length( const float_v3 &v ) { return v.length(); }
+float float_v3_length_sqr( const float_v3 &v ) { return v.length_sqr(); }
+float_v3 float_v3_add( const float_v3 &a, const float_v3 &b ) { float_v3 r { a }; r.add( b ); return r; }
+float_v3 float_v3_sub( const float_v3 &a, const float_v3 &b ) { float_v3 r { a }; r.sub( b ); return r; }
+float_v3 float_v3_divide( const float_v3 &a, const float_v3 &b ) { float_v3 r { a }; r.divide( b ); return r; }
+float_v3 float_v3_divide( const float_v3 &v, double s ) { float_v3 r { v }; r.divide( s ); return r; }
+float_v3 float_v3_multiply( const float_v3 &v, double s ) { float_v3 r { v }; r.multiply( s ); return r; }
+float_v3 float_v3_multiply( const float_v3 &a, const float_v3 &b ) { float_v3 r { a }; r.multiply( b ); return r; }
+float_v3 float_v3_multiply( const float_v3 &v, const double_m44 &m ) { float_v3 r { v }; r.multiply( m ); return r; }
+float_v3 float_v3_multiply( const float_v3 &v, const float_m44 &m ) { float_v3 r { v }; r.multiply( m ); return r; }
+float_v3 float_v3_cross( const float_v3 &a, const float_v3 &b ) { float_v3 r { a }; r.cross( b ); return r; }
+float_v3 float_v3_normalize( const float_v3 &v ) { float_v3 r { v }; r.normalize(); return r; }
+float_v3 float_v3_project( const float_v3 &v, const float_v3 &onto ) { float_v3 r { v }; r.project( onto ); return r; }
+float_v3 float_v3_rotate_x( const float_v3 &v, float angle, const float_v3 &origin ) { float_v3 r { v }; r.rotate_x( angle, origin ); return r; }
+float_v3 float_v3_rotate_y( const float_v3 &v, float angle, const float_v3 &origin ) { float_v3 r { v }; r.rotate_y( angle, origin ); return r; }
+float_v3 float_v3_rotate_z( const float_v3 &v, float angle, const float_v3 &origin ) { float_v3 r { v }; r.rotate_z( angle, origin ); return r; }
+float_v3 float_v3_reflect( const float_v3 &v, const float_v3 &normal ) { float_v3 r { v }; r.reflect( normal ); return r; }
+float_v3 float_v3_lerp( const float_v3 &a, const float_v3 &b, float amount ) { float_v3 r { a }; r.lerp( b, amount ); return r; }
+float float_v3_distance( const float_v3 &a, const float_v3 &b ) { float_v3 r { b.x - a.x, b.y - a.y, b.z - a.z }; return r.length(); }
+float float_v3_distance_sqr( const float_v3 &a, const float_v3 &b ) { float_v3 r { b.x - a.x, b.y - a.y, b.z - a.z }; return r.length_sqr(); }
+
+bool double_v3_equal( const double_v3 &a, const double_v3 &b ) { return a == b; }
+double double_v3_dot( const double_v3 &a, const double_v3 &b ) { return a.dot( b ); }
+double double_v3_length( const double_v3 &v ) { return v.length(); }
+double double_v3_length_sqr( const double_v3 &v ) { return v.length_sqr(); }
+double_v3 double_v3_add( const double_v3 &a, const double_v3 &b ) { double_v3 r { a }; r.add( b ); return r; }
+double_v3 double_v3_sub( const double_v3 &a, const double_v3 &b ) { double_v3 r { a }; r.sub( b ); return r; }
+double_v3 double_v3_divide( const double_v3 &a, const double_v3 &b ) { double_v3 r { a }; r.divide( b ); return r; }
+double_v3 double_v3_divide( const double_v3 &v, double s ) { double_v3 r { v }; r.divide( s ); return r; }
+double_v3 double_v3_multiply( const double_v3 &v, double s ) { double_v3 r { v }; r.multiply( s ); return r; }
+double_v3 double_v3_multiply( const double_v3 &a, const double_v3 &b ) { double_v3 r { a }; r.multiply( b ); return r; }
+double_v3 double_v3_multiply( const double_v3 &v, const double_m44 &m ) { double_v3 r { v }; r.multiply( m ); return r; }
+double_v3 double_v3_multiply( const double_v3 &v, const float_m44 &m ) { double_v3 r { v }; r.multiply( m ); return r; }
+double_v3 double_v3_cross( const double_v3 &a, const double_v3 &b ) { double_v3 r { a }; r.cross( b ); return r; }
+double_v3 double_v3_normalize( const double_v3 &v ) { double_v3 r { v }; r.normalize(); return r; }
+double_v3 double_v3_project( const double_v3 &v, const double_v3 &onto ) { double_v3 r { v }; r.project( onto ); return r; }
+double_v3 double_v3_rotate_x( const double_v3 &v, float angle, const double_v3 &origin ) { double_v3 r { v }; r.rotate_x( angle, origin ); return r; }
+double_v3 double_v3_rotate_y( const double_v3 &v, float angle, const double_v3 &origin ) { double_v3 r { v }; r.rotate_y( angle, origin ); return r; }
+double_v3 double_v3_rotate_z( const double_v3 &v, float angle, const double_v3 &origin ) { double_v3 r { v }; r.rotate_z( angle, origin ); return r; }
+double_v3 double_v3_reflect( const double_v3 &v, const double_v3 &normal ) { double_v3 r { v }; r.reflect( normal ); return r; }
+double_v3 double_v3_lerp( const double_v3 &a, const double_v3 &b, float amount ) { double_v3 r { a }; r.lerp( b, amount ); return r; }
+double double_v3_distance( const double_v3 &a, const double_v3 &b ) { double_v3 r { b.x - a.x, b.y - a.y, b.z - a.z }; return r.length(); }
+double double_v3_distance_sqr( const double_v3 &a, const double_v3 &b ) { double_v3 r { b.x - a.x, b.y - a.y, b.z - a.z }; return r.length_sqr(); }
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 4D Vector
+
+#if !MATH_PRE_EXPANDED_VECTOR_TYPES
+
+#define VECTOR_TYPE_4D_SOURCE( Vec, T )                                                                  \
+	template struct Vector4D<T>;                                                                         \
+	bool Vec##_equal( const Vec &a, const Vec &b ) { return a == b; }                                    \
+	   T Vec##_dot( const Vec &a, const Vec &b ) { return a.dot( b ); }                                  \
+	   T Vec##_length( const Vec &v ) { return v.length(); }                                             \
+	   T Vec##_length_sqr( const Vec &v ) { return v.length_sqr(); }                                     \
+	 Vec Vec##_add( const Vec &a, const Vec &b ) { Vec r { a }; r.add( b ); return r; }                  \
+	 Vec Vec##_sub( const Vec &a, const Vec &b ) { Vec r { a }; r.sub( b ); return r; }                  \
+	 Vec Vec##_divide( const Vec &a, const Vec &b ) { Vec r { a }; r.divide( b ); return r; }            \
+	 Vec Vec##_divide( const Vec &v, double s ) { Vec r { v }; r.divide( s ); return r; }                \
+	 Vec Vec##_multiply( const Vec &v, double s ) { Vec r { v }; r.multiply( s ); return r; }            \
+	 Vec Vec##_multiply( const Vec &a, const Vec &b ) { Vec r { a }; r.multiply( b ); return r; }        \
+	 Vec Vec##_multiply( const Vec &v, const double_m44 &m ) { Vec r { v }; r.multiply( m ); return r; } \
+	 Vec Vec##_multiply( const Vec &v, const float_m44 &m ) { Vec r { v }; r.multiply( m ); return r; }  \
+	 Vec Vec##_cross( const Vec &a, const Vec &b ) { Vec r { a }; r.cross( b ); return r; }              \
+	 Vec Vec##_normalize( const Vec &v ) { Vec r { v }; r.normalize(); return r; }                       \
+	 Vec Vec##_project( const Vec &v, const Vec &onto ) { Vec r { v }; r.project( onto ); return r; }    \
+	 Vec Vec##_rotate_x( const Vec &v, float angle, const Vec &origin )                                  \
+		{ Vec r { v }; r.rotate_x( angle, origin ); return r; }                                          \
+	 Vec Vec##_rotate_y( const Vec &v, float angle, const Vec &origin )                                  \
+		{ Vec r { v }; r.rotate_y( angle, origin ); return r; }                                          \
+	 Vec Vec##_rotate_z( const Vec &v, float angle, const Vec &origin )                                  \
+		{ Vec r { v }; r.rotate_z( angle, origin ); return r; }                                          \
+	 Vec Vec##_reflect( const Vec &v, const Vec &normal )                                                \
+		{ Vec r { v }; r.reflect( normal ); return r; }                                                  \
+	 Vec Vec##_lerp( const Vec &a, const Vec &b, float amount )                                          \
+		{ Vec r { a }; r.lerp( b, amount ); return r; }                                                  \
+	   T Vec##_distance( const Vec &a, const Vec &b )                                                    \
+		{ Vec r { b.x - a.x, b.y - a.y, b.z - a.z, b.w - a.w }; return r.length(); }                     \
+	   T Vec##_distance_sqr( const Vec &a, const Vec &b )                                                \
+		{ Vec r { b.x - a.x, b.y - a.y, b.z - a.z, b.w - a.w }; return r.length_sqr(); }
+
+VECTOR_TYPE_4D_SOURCE( u8_v4, u8 )
+VECTOR_TYPE_4D_SOURCE( i16_v4, i16 )
+VECTOR_TYPE_4D_SOURCE( u16_v4, u16 )
+VECTOR_TYPE_4D_SOURCE( int_v4, i32 )
+VECTOR_TYPE_4D_SOURCE( u32_v4, u32 )
+VECTOR_TYPE_4D_SOURCE( i64_v4, i64 )
+VECTOR_TYPE_4D_SOURCE( u64_v4, u64 )
+VECTOR_TYPE_4D_SOURCE( float_v4, float )
+VECTOR_TYPE_4D_SOURCE( double_v4, double )
+
+#else
+
+bool u8_v4_equal( const u8_v4 &a, const u8_v4 &b ) { return a == b; }
+u8 u8_v4_dot( const u8_v4 &a, const u8_v4 &b ) { return a.dot( b ); }
+u8 u8_v4_length( const u8_v4 &v ) { return v.length(); }
+u8 u8_v4_length_sqr( const u8_v4 &v ) { return v.length_sqr(); }
+u8_v4 u8_v4_add( const u8_v4 &a, const u8_v4 &b ) { u8_v4 r { a }; r.add( b ); return r; }
+u8_v4 u8_v4_sub( const u8_v4 &a, const u8_v4 &b ) { u8_v4 r { a }; r.sub( b ); return r; }
+u8_v4 u8_v4_divide( const u8_v4 &a, const u8_v4 &b ) { u8_v4 r { a }; r.divide( b ); return r; }
+u8_v4 u8_v4_divide( const u8_v4 &v, double s ) { u8_v4 r { v }; r.divide( s ); return r; }
+u8_v4 u8_v4_multiply( const u8_v4 &v, double s ) { u8_v4 r { v }; r.multiply( s ); return r; }
+u8_v4 u8_v4_multiply( const u8_v4 &a, const u8_v4 &b ) { u8_v4 r { a }; r.multiply( b ); return r; }
+u8_v4 u8_v4_multiply( const u8_v4 &v, const double_m44 &m ) { u8_v4 r { v }; r.multiply( m ); return r; }
+u8_v4 u8_v4_multiply( const u8_v4 &v, const float_m44 &m ) { u8_v4 r { v }; r.multiply( m ); return r; }
+u8_v4 u8_v4_cross( const u8_v4 &a, const u8_v4 &b ) { u8_v4 r { a }; r.cross( b ); return r; }
+u8_v4 u8_v4_normalize( const u8_v4 &v ) { u8_v4 r { v }; r.normalize(); return r; }
+u8_v4 u8_v4_project( const u8_v4 &v, const u8_v4 &onto ) { u8_v4 r { v }; r.project( onto ); return r; }
+u8_v4 u8_v4_rotate_x( const u8_v4 &v, float angle, const u8_v4 &origin ) { u8_v4 r { v }; r.rotate_x( angle, origin ); return r; }
+u8_v4 u8_v4_rotate_y( const u8_v4 &v, float angle, const u8_v4 &origin ) { u8_v4 r { v }; r.rotate_y( angle, origin ); return r; }
+u8_v4 u8_v4_rotate_z( const u8_v4 &v, float angle, const u8_v4 &origin ) { u8_v4 r { v }; r.rotate_z( angle, origin ); return r; }
+u8_v4 u8_v4_reflect( const u8_v4 &v, const u8_v4 &normal ) { u8_v4 r { v }; r.reflect( normal ); return r; }
+u8_v4 u8_v4_lerp( const u8_v4 &a, const u8_v4 &b, float amount ) { u8_v4 r { a }; r.lerp( b, amount ); return r; }
+u8 u8_v4_distance( const u8_v4 &a, const u8_v4 &b ) { u8_v4 r { b.x - a.x, b.y - a.y, b.z - a.z, b.w - a.w }; return r.length(); }
+u8 u8_v4_distance_sqr( const u8_v4 &a, const u8_v4 &b ) { u8_v4 r { b.x - a.x, b.y - a.y, b.z - a.z, b.w - a.w }; return r.length_sqr(); }
+
+bool i16_v4_equal( const i16_v4 &a, const i16_v4 &b ) { return a == b; }
+i16 i16_v4_dot( const i16_v4 &a, const i16_v4 &b ) { return a.dot( b ); }
+i16 i16_v4_length( const i16_v4 &v ) { return v.length(); }
+i16 i16_v4_length_sqr( const i16_v4 &v ) { return v.length_sqr(); }
+i16_v4 i16_v4_add( const i16_v4 &a, const i16_v4 &b ) { i16_v4 r { a }; r.add( b ); return r; }
+i16_v4 i16_v4_sub( const i16_v4 &a, const i16_v4 &b ) { i16_v4 r { a }; r.sub( b ); return r; }
+i16_v4 i16_v4_divide( const i16_v4 &a, const i16_v4 &b ) { i16_v4 r { a }; r.divide( b ); return r; }
+i16_v4 i16_v4_divide( const i16_v4 &v, double s ) { i16_v4 r { v }; r.divide( s ); return r; }
+i16_v4 i16_v4_multiply( const i16_v4 &v, double s ) { i16_v4 r { v }; r.multiply( s ); return r; }
+i16_v4 i16_v4_multiply( const i16_v4 &a, const i16_v4 &b ) { i16_v4 r { a }; r.multiply( b ); return r; }
+i16_v4 i16_v4_multiply( const i16_v4 &v, const double_m44 &m ) { i16_v4 r { v }; r.multiply( m ); return r; }
+i16_v4 i16_v4_multiply( const i16_v4 &v, const float_m44 &m ) { i16_v4 r { v }; r.multiply( m ); return r; }
+i16_v4 i16_v4_cross( const i16_v4 &a, const i16_v4 &b ) { i16_v4 r { a }; r.cross( b ); return r; }
+i16_v4 i16_v4_normalize( const i16_v4 &v ) { i16_v4 r { v }; r.normalize(); return r; }
+i16_v4 i16_v4_project( const i16_v4 &v, const i16_v4 &onto ) { i16_v4 r { v }; r.project( onto ); return r; }
+i16_v4 i16_v4_rotate_x( const i16_v4 &v, float angle, const i16_v4 &origin ) { i16_v4 r { v }; r.rotate_x( angle, origin ); return r; }
+i16_v4 i16_v4_rotate_y( const i16_v4 &v, float angle, const i16_v4 &origin ) { i16_v4 r { v }; r.rotate_y( angle, origin ); return r; }
+i16_v4 i16_v4_rotate_z( const i16_v4 &v, float angle, const i16_v4 &origin ) { i16_v4 r { v }; r.rotate_z( angle, origin ); return r; }
+i16_v4 i16_v4_reflect( const i16_v4 &v, const i16_v4 &normal ) { i16_v4 r { v }; r.reflect( normal ); return r; }
+i16_v4 i16_v4_lerp( const i16_v4 &a, const i16_v4 &b, float amount ) { i16_v4 r { a }; r.lerp( b, amount ); return r; }
+i16 i16_v4_distance( const i16_v4 &a, const i16_v4 &b ) { i16_v4 r { b.x - a.x, b.y - a.y, b.z - a.z, b.w - a.w }; return r.length(); }
+i16 i16_v4_distance_sqr( const i16_v4 &a, const i16_v4 &b ) { i16_v4 r { b.x - a.x, b.y - a.y, b.z - a.z, b.w - a.w }; return r.length_sqr(); }
+
+bool u16_v4_equal( const u16_v4 &a, const u16_v4 &b ) { return a == b; }
+u16 u16_v4_dot( const u16_v4 &a, const u16_v4 &b ) { return a.dot( b ); }
+u16 u16_v4_length( const u16_v4 &v ) { return v.length(); }
+u16 u16_v4_length_sqr( const u16_v4 &v ) { return v.length_sqr(); }
+u16_v4 u16_v4_add( const u16_v4 &a, const u16_v4 &b ) { u16_v4 r { a }; r.add( b ); return r; }
+u16_v4 u16_v4_sub( const u16_v4 &a, const u16_v4 &b ) { u16_v4 r { a }; r.sub( b ); return r; }
+u16_v4 u16_v4_divide( const u16_v4 &a, const u16_v4 &b ) { u16_v4 r { a }; r.divide( b ); return r; }
+u16_v4 u16_v4_divide( const u16_v4 &v, double s ) { u16_v4 r { v }; r.divide( s ); return r; }
+u16_v4 u16_v4_multiply( const u16_v4 &v, double s ) { u16_v4 r { v }; r.multiply( s ); return r; }
+u16_v4 u16_v4_multiply( const u16_v4 &a, const u16_v4 &b ) { u16_v4 r { a }; r.multiply( b ); return r; }
+u16_v4 u16_v4_multiply( const u16_v4 &v, const double_m44 &m ) { u16_v4 r { v }; r.multiply( m ); return r; }
+u16_v4 u16_v4_multiply( const u16_v4 &v, const float_m44 &m ) { u16_v4 r { v }; r.multiply( m ); return r; }
+u16_v4 u16_v4_cross( const u16_v4 &a, const u16_v4 &b ) { u16_v4 r { a }; r.cross( b ); return r; }
+u16_v4 u16_v4_normalize( const u16_v4 &v ) { u16_v4 r { v }; r.normalize(); return r; }
+u16_v4 u16_v4_project( const u16_v4 &v, const u16_v4 &onto ) { u16_v4 r { v }; r.project( onto ); return r; }
+u16_v4 u16_v4_rotate_x( const u16_v4 &v, float angle, const u16_v4 &origin ) { u16_v4 r { v }; r.rotate_x( angle, origin ); return r; }
+u16_v4 u16_v4_rotate_y( const u16_v4 &v, float angle, const u16_v4 &origin ) { u16_v4 r { v }; r.rotate_y( angle, origin ); return r; }
+u16_v4 u16_v4_rotate_z( const u16_v4 &v, float angle, const u16_v4 &origin ) { u16_v4 r { v }; r.rotate_z( angle, origin ); return r; }
+u16_v4 u16_v4_reflect( const u16_v4 &v, const u16_v4 &normal ) { u16_v4 r { v }; r.reflect( normal ); return r; }
+u16_v4 u16_v4_lerp( const u16_v4 &a, const u16_v4 &b, float amount ) { u16_v4 r { a }; r.lerp( b, amount ); return r; }
+u16 u16_v4_distance( const u16_v4 &a, const u16_v4 &b ) { u16_v4 r { b.x - a.x, b.y - a.y, b.z - a.z, b.w - a.w }; return r.length(); }
+u16 u16_v4_distance_sqr( const u16_v4 &a, const u16_v4 &b ) { u16_v4 r { b.x - a.x, b.y - a.y, b.z - a.z, b.w - a.w }; return r.length_sqr(); }
+
+bool int_v4_equal( const int_v4 &a, const int_v4 &b ) { return a == b; }
+i32 int_v4_dot( const int_v4 &a, const int_v4 &b ) { return a.dot( b ); }
+i32 int_v4_length( const int_v4 &v ) { return v.length(); }
+i32 int_v4_length_sqr( const int_v4 &v ) { return v.length_sqr(); }
+int_v4 int_v4_add( const int_v4 &a, const int_v4 &b ) { int_v4 r { a }; r.add( b ); return r; }
+int_v4 int_v4_sub( const int_v4 &a, const int_v4 &b ) { int_v4 r { a }; r.sub( b ); return r; }
+int_v4 int_v4_divide( const int_v4 &a, const int_v4 &b ) { int_v4 r { a }; r.divide( b ); return r; }
+int_v4 int_v4_divide( const int_v4 &v, double s ) { int_v4 r { v }; r.divide( s ); return r; }
+int_v4 int_v4_multiply( const int_v4 &v, double s ) { int_v4 r { v }; r.multiply( s ); return r; }
+int_v4 int_v4_multiply( const int_v4 &a, const int_v4 &b ) { int_v4 r { a }; r.multiply( b ); return r; }
+int_v4 int_v4_multiply( const int_v4 &v, const double_m44 &m ) { int_v4 r { v }; r.multiply( m ); return r; }
+int_v4 int_v4_multiply( const int_v4 &v, const float_m44 &m ) { int_v4 r { v }; r.multiply( m ); return r; }
+int_v4 int_v4_cross( const int_v4 &a, const int_v4 &b ) { int_v4 r { a }; r.cross( b ); return r; }
+int_v4 int_v4_normalize( const int_v4 &v ) { int_v4 r { v }; r.normalize(); return r; }
+int_v4 int_v4_project( const int_v4 &v, const int_v4 &onto ) { int_v4 r { v }; r.project( onto ); return r; }
+int_v4 int_v4_rotate_x( const int_v4 &v, float angle, const int_v4 &origin ) { int_v4 r { v }; r.rotate_x( angle, origin ); return r; }
+int_v4 int_v4_rotate_y( const int_v4 &v, float angle, const int_v4 &origin ) { int_v4 r { v }; r.rotate_y( angle, origin ); return r; }
+int_v4 int_v4_rotate_z( const int_v4 &v, float angle, const int_v4 &origin ) { int_v4 r { v }; r.rotate_z( angle, origin ); return r; }
+int_v4 int_v4_reflect( const int_v4 &v, const int_v4 &normal ) { int_v4 r { v }; r.reflect( normal ); return r; }
+int_v4 int_v4_lerp( const int_v4 &a, const int_v4 &b, float amount ) { int_v4 r { a }; r.lerp( b, amount ); return r; }
+i32 int_v4_distance( const int_v4 &a, const int_v4 &b ) { int_v4 r { b.x - a.x, b.y - a.y, b.z - a.z, b.w - a.w }; return r.length(); }
+i32 int_v4_distance_sqr( const int_v4 &a, const int_v4 &b ) { int_v4 r { b.x - a.x, b.y - a.y, b.z - a.z, b.w - a.w }; return r.length_sqr(); }
+bool u32_v4_equal( const u32_v4 &a, const u32_v4 &b ) { return a == b; }
+u32 u32_v4_dot( const u32_v4 &a, const u32_v4 &b ) { return a.dot( b ); }
+u32 u32_v4_length( const u32_v4 &v ) { return v.length(); }
+u32 u32_v4_length_sqr( const u32_v4 &v ) { return v.length_sqr(); }
+u32_v4 u32_v4_add( const u32_v4 &a, const u32_v4 &b ) { u32_v4 r { a }; r.add( b ); return r; }
+u32_v4 u32_v4_sub( const u32_v4 &a, const u32_v4 &b ) { u32_v4 r { a }; r.sub( b ); return r; }
+u32_v4 u32_v4_divide( const u32_v4 &a, const u32_v4 &b ) { u32_v4 r { a }; r.divide( b ); return r; }
+u32_v4 u32_v4_divide( const u32_v4 &v, double s ) { u32_v4 r { v }; r.divide( s ); return r; }
+u32_v4 u32_v4_multiply( const u32_v4 &v, double s ) { u32_v4 r { v }; r.multiply( s ); return r; }
+u32_v4 u32_v4_multiply( const u32_v4 &a, const u32_v4 &b ) { u32_v4 r { a }; r.multiply( b ); return r; }
+u32_v4 u32_v4_multiply( const u32_v4 &v, const double_m44 &m ) { u32_v4 r { v }; r.multiply( m ); return r; }
+u32_v4 u32_v4_multiply( const u32_v4 &v, const float_m44 &m ) { u32_v4 r { v }; r.multiply( m ); return r; }
+u32_v4 u32_v4_cross( const u32_v4 &a, const u32_v4 &b ) { u32_v4 r { a }; r.cross( b ); return r; }
+u32_v4 u32_v4_normalize( const u32_v4 &v ) { u32_v4 r { v }; r.normalize(); return r; }
+u32_v4 u32_v4_project( const u32_v4 &v, const u32_v4 &onto ) { u32_v4 r { v }; r.project( onto ); return r; }
+u32_v4 u32_v4_rotate_x( const u32_v4 &v, float angle, const u32_v4 &origin ) { u32_v4 r { v }; r.rotate_x( angle, origin ); return r; }
+u32_v4 u32_v4_rotate_y( const u32_v4 &v, float angle, const u32_v4 &origin ) { u32_v4 r { v }; r.rotate_y( angle, origin ); return r; }
+u32_v4 u32_v4_rotate_z( const u32_v4 &v, float angle, const u32_v4 &origin ) { u32_v4 r { v }; r.rotate_z( angle, origin ); return r; }
+u32_v4 u32_v4_reflect( const u32_v4 &v, const u32_v4 &normal ) { u32_v4 r { v }; r.reflect( normal ); return r; }
+u32_v4 u32_v4_lerp( const u32_v4 &a, const u32_v4 &b, float amount ) { u32_v4 r { a }; r.lerp( b, amount ); return r; }
+u32 u32_v4_distance( const u32_v4 &a, const u32_v4 &b ) { u32_v4 r { b.x - a.x, b.y - a.y, b.z - a.z, b.w - a.w }; return r.length(); }
+u32 u32_v4_distance_sqr( const u32_v4 &a, const u32_v4 &b ) { u32_v4 r { b.x - a.x, b.y - a.y, b.z - a.z, b.w - a.w }; return r.length_sqr(); }
+bool i64_v4_equal( const i64_v4 &a, const i64_v4 &b ) { return a == b; }
+i64 i64_v4_dot( const i64_v4 &a, const i64_v4 &b ) { return a.dot( b ); }
+i64 i64_v4_length( const i64_v4 &v ) { return v.length(); }
+i64 i64_v4_length_sqr( const i64_v4 &v ) { return v.length_sqr(); }
+i64_v4 i64_v4_add( const i64_v4 &a, const i64_v4 &b ) { i64_v4 r { a }; r.add( b ); return r; }
+i64_v4 i64_v4_sub( const i64_v4 &a, const i64_v4 &b ) { i64_v4 r { a }; r.sub( b ); return r; }
+i64_v4 i64_v4_divide( const i64_v4 &a, const i64_v4 &b ) { i64_v4 r { a }; r.divide( b ); return r; }
+i64_v4 i64_v4_divide( const i64_v4 &v, double s ) { i64_v4 r { v }; r.divide( s ); return r; }
+i64_v4 i64_v4_multiply( const i64_v4 &v, double s ) { i64_v4 r { v }; r.multiply( s ); return r; }
+i64_v4 i64_v4_multiply( const i64_v4 &a, const i64_v4 &b ) { i64_v4 r { a }; r.multiply( b ); return r; }
+i64_v4 i64_v4_multiply( const i64_v4 &v, const double_m44 &m ) { i64_v4 r { v }; r.multiply( m ); return r; }
+i64_v4 i64_v4_multiply( const i64_v4 &v, const float_m44 &m ) { i64_v4 r { v }; r.multiply( m ); return r; }
+i64_v4 i64_v4_cross( const i64_v4 &a, const i64_v4 &b ) { i64_v4 r { a }; r.cross( b ); return r; }
+i64_v4 i64_v4_normalize( const i64_v4 &v ) { i64_v4 r { v }; r.normalize(); return r; }
+i64_v4 i64_v4_project( const i64_v4 &v, const i64_v4 &onto ) { i64_v4 r { v }; r.project( onto ); return r; }
+i64_v4 i64_v4_rotate_x( const i64_v4 &v, float angle, const i64_v4 &origin ) { i64_v4 r { v }; r.rotate_x( angle, origin ); return r; }
+i64_v4 i64_v4_rotate_y( const i64_v4 &v, float angle, const i64_v4 &origin ) { i64_v4 r { v }; r.rotate_y( angle, origin ); return r; }
+i64_v4 i64_v4_rotate_z( const i64_v4 &v, float angle, const i64_v4 &origin ) { i64_v4 r { v }; r.rotate_z( angle, origin ); return r; }
+i64_v4 i64_v4_reflect( const i64_v4 &v, const i64_v4 &normal ) { i64_v4 r { v }; r.reflect( normal ); return r; }
+i64_v4 i64_v4_lerp( const i64_v4 &a, const i64_v4 &b, float amount ) { i64_v4 r { a }; r.lerp( b, amount ); return r; }
+i64 i64_v4_distance( const i64_v4 &a, const i64_v4 &b ) { i64_v4 r { b.x - a.x, b.y - a.y, b.z - a.z, b.w - a.w }; return r.length(); }
+i64 i64_v4_distance_sqr( const i64_v4 &a, const i64_v4 &b ) { i64_v4 r { b.x - a.x, b.y - a.y, b.z - a.z, b.w - a.w }; return r.length_sqr(); }
+bool u64_v4_equal( const u64_v4 &a, const u64_v4 &b ) { return a == b; }
+u64 u64_v4_dot( const u64_v4 &a, const u64_v4 &b ) { return a.dot( b ); }
+u64 u64_v4_length( const u64_v4 &v ) { return v.length(); }
+u64 u64_v4_length_sqr( const u64_v4 &v ) { return v.length_sqr(); }
+u64_v4 u64_v4_add( const u64_v4 &a, const u64_v4 &b ) { u64_v4 r { a }; r.add( b ); return r; }
+u64_v4 u64_v4_sub( const u64_v4 &a, const u64_v4 &b ) { u64_v4 r { a }; r.sub( b ); return r; }
+u64_v4 u64_v4_divide( const u64_v4 &a, const u64_v4 &b ) { u64_v4 r { a }; r.divide( b ); return r; }
+u64_v4 u64_v4_divide( const u64_v4 &v, double s ) { u64_v4 r { v }; r.divide( s ); return r; }
+u64_v4 u64_v4_multiply( const u64_v4 &v, double s ) { u64_v4 r { v }; r.multiply( s ); return r; }
+u64_v4 u64_v4_multiply( const u64_v4 &a, const u64_v4 &b ) { u64_v4 r { a }; r.multiply( b ); return r; }
+u64_v4 u64_v4_multiply( const u64_v4 &v, const double_m44 &m ) { u64_v4 r { v }; r.multiply( m ); return r; }
+u64_v4 u64_v4_multiply( const u64_v4 &v, const float_m44 &m ) { u64_v4 r { v }; r.multiply( m ); return r; }
+u64_v4 u64_v4_cross( const u64_v4 &a, const u64_v4 &b ) { u64_v4 r { a }; r.cross( b ); return r; }
+u64_v4 u64_v4_normalize( const u64_v4 &v ) { u64_v4 r { v }; r.normalize(); return r; }
+u64_v4 u64_v4_project( const u64_v4 &v, const u64_v4 &onto ) { u64_v4 r { v }; r.project( onto ); return r; }
+u64_v4 u64_v4_rotate_x( const u64_v4 &v, float angle, const u64_v4 &origin ) { u64_v4 r { v }; r.rotate_x( angle, origin ); return r; }
+u64_v4 u64_v4_rotate_y( const u64_v4 &v, float angle, const u64_v4 &origin ) { u64_v4 r { v }; r.rotate_y( angle, origin ); return r; }
+u64_v4 u64_v4_rotate_z( const u64_v4 &v, float angle, const u64_v4 &origin ) { u64_v4 r { v }; r.rotate_z( angle, origin ); return r; }
+u64_v4 u64_v4_reflect( const u64_v4 &v, const u64_v4 &normal ) { u64_v4 r { v }; r.reflect( normal ); return r; }
+u64_v4 u64_v4_lerp( const u64_v4 &a, const u64_v4 &b, float amount ) { u64_v4 r { a }; r.lerp( b, amount ); return r; }
+u64 u64_v4_distance( const u64_v4 &a, const u64_v4 &b ) { u64_v4 r { b.x - a.x, b.y - a.y, b.z - a.z, b.w - a.w }; return r.length(); }
+u64 u64_v4_distance_sqr( const u64_v4 &a, const u64_v4 &b ) { u64_v4 r { b.x - a.x, b.y - a.y, b.z - a.z, b.w - a.w }; return r.length_sqr(); }
+bool float_v4_equal( const float_v4 &a, const float_v4 &b ) { return a == b; }
+float float_v4_dot( const float_v4 &a, const float_v4 &b ) { return a.dot( b ); }
+float float_v4_length( const float_v4 &v ) { return v.length(); }
+float float_v4_length_sqr( const float_v4 &v ) { return v.length_sqr(); }
+float_v4 float_v4_add( const float_v4 &a, const float_v4 &b ) { float_v4 r { a }; r.add( b ); return r; }
+float_v4 float_v4_sub( const float_v4 &a, const float_v4 &b ) { float_v4 r { a }; r.sub( b ); return r; }
+float_v4 float_v4_divide( const float_v4 &a, const float_v4 &b ) { float_v4 r { a }; r.divide( b ); return r; }
+float_v4 float_v4_divide( const float_v4 &v, double s ) { float_v4 r { v }; r.divide( s ); return r; }
+float_v4 float_v4_multiply( const float_v4 &v, double s ) { float_v4 r { v }; r.multiply( s ); return r; }
+float_v4 float_v4_multiply( const float_v4 &a, const float_v4 &b ) { float_v4 r { a }; r.multiply( b ); return r; }
+float_v4 float_v4_multiply( const float_v4 &v, const double_m44 &m ) { float_v4 r { v }; r.multiply( m ); return r; }
+float_v4 float_v4_multiply( const float_v4 &v, const float_m44 &m ) { float_v4 r { v }; r.multiply( m ); return r; }
+float_v4 float_v4_cross( const float_v4 &a, const float_v4 &b ) { float_v4 r { a }; r.cross( b ); return r; }
+float_v4 float_v4_normalize( const float_v4 &v ) { float_v4 r { v }; r.normalize(); return r; }
+float_v4 float_v4_project( const float_v4 &v, const float_v4 &onto ) { float_v4 r { v }; r.project( onto ); return r; }
+float_v4 float_v4_rotate_x( const float_v4 &v, float angle, const float_v4 &origin ) { float_v4 r { v }; r.rotate_x( angle, origin ); return r; }
+float_v4 float_v4_rotate_y( const float_v4 &v, float angle, const float_v4 &origin ) { float_v4 r { v }; r.rotate_y( angle, origin ); return r; }
+float_v4 float_v4_rotate_z( const float_v4 &v, float angle, const float_v4 &origin ) { float_v4 r { v }; r.rotate_z( angle, origin ); return r; }
+float_v4 float_v4_reflect( const float_v4 &v, const float_v4 &normal ) { float_v4 r { v }; r.reflect( normal ); return r; }
+float_v4 float_v4_lerp( const float_v4 &a, const float_v4 &b, float amount ) { float_v4 r { a }; r.lerp( b, amount ); return r; }
+float float_v4_distance( const float_v4 &a, const float_v4 &b ) { float_v4 r { b.x - a.x, b.y - a.y, b.z - a.z, b.w - a.w }; return r.length(); }
+float float_v4_distance_sqr( const float_v4 &a, const float_v4 &b ) { float_v4 r { b.x - a.x, b.y - a.y, b.z - a.z, b.w - a.w }; return r.length_sqr(); }
+bool double_v4_equal( const double_v4 &a, const double_v4 &b ) { return a == b; }
+double double_v4_dot( const double_v4 &a, const double_v4 &b ) { return a.dot( b ); }
+double double_v4_length( const double_v4 &v ) { return v.length(); }
+double double_v4_length_sqr( const double_v4 &v ) { return v.length_sqr(); }
+double_v4 double_v4_add( const double_v4 &a, const double_v4 &b ) { double_v4 r { a }; r.add( b ); return r; }
+double_v4 double_v4_sub( const double_v4 &a, const double_v4 &b ) { double_v4 r { a }; r.sub( b ); return r; }
+double_v4 double_v4_divide( const double_v4 &a, const double_v4 &b ) { double_v4 r { a }; r.divide( b ); return r; }
+double_v4 double_v4_divide( const double_v4 &v, double s ) { double_v4 r { v }; r.divide( s ); return r; }
+double_v4 double_v4_multiply( const double_v4 &v, double s ) { double_v4 r { v }; r.multiply( s ); return r; }
+double_v4 double_v4_multiply( const double_v4 &a, const double_v4 &b ) { double_v4 r { a }; r.multiply( b ); return r; }
+double_v4 double_v4_multiply( const double_v4 &v, const double_m44 &m ) { double_v4 r { v }; r.multiply( m ); return r; }
+double_v4 double_v4_multiply( const double_v4 &v, const float_m44 &m ) { double_v4 r { v }; r.multiply( m ); return r; }
+double_v4 double_v4_cross( const double_v4 &a, const double_v4 &b ) { double_v4 r { a }; r.cross( b ); return r; }
+double_v4 double_v4_normalize( const double_v4 &v ) { double_v4 r { v }; r.normalize(); return r; }
+double_v4 double_v4_project( const double_v4 &v, const double_v4 &onto ) { double_v4 r { v }; r.project( onto ); return r; }
+double_v4 double_v4_rotate_x( const double_v4 &v, float angle, const double_v4 &origin ) { double_v4 r { v }; r.rotate_x( angle, origin ); return r; }
+double_v4 double_v4_rotate_y( const double_v4 &v, float angle, const double_v4 &origin ) { double_v4 r { v }; r.rotate_y( angle, origin ); return r; }
+double_v4 double_v4_rotate_z( const double_v4 &v, float angle, const double_v4 &origin ) { double_v4 r { v }; r.rotate_z( angle, origin ); return r; }
+double_v4 double_v4_reflect( const double_v4 &v, const double_v4 &normal ) { double_v4 r { v }; r.reflect( normal ); return r; }
+double_v4 double_v4_lerp( const double_v4 &a, const double_v4 &b, float amount ) { double_v4 r { a }; r.lerp( b, amount ); return r; }
+double double_v4_distance( const double_v4 &a, const double_v4 &b ) { double_v4 r { b.x - a.x, b.y - a.y, b.z - a.z, b.w - a.w }; return r.length(); }
+double double_v4_distance_sqr( const double_v4 &a, const double_v4 &b ) { double_v4 r { b.x - a.x, b.y - a.y, b.z - a.z, b.w - a.w }; return r.length_sqr(); }
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+double_v4 quaternion_from_axis_radians( const double_v3 &axis, double radians )
+{
+	const double s = sin( radians * 0.5 );
+	return double_v4 { axis.x * s, axis.y * s, axis.z * s, cos( radians * 0.5 ) };
+}
+
+
+double_v4 quaternion_normalize( const double_v4 &quat )
+{
+	double nInv = 1.0 / quat.length();
+	return double_v4 { quat.x * nInv, quat.y * nInv, quat.z * nInv, quat.w * nInv };
+}
+
+
+double_v4 quaternion_multiply( const double_v4 &a, const double_v4 &b )
+{
+	return double_v4
+		{
+			a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
+			a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
+			a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w,
+			a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z,
+		};
+}
+
+
+double_v3 quaternion_rotate( const double_v4 &quat, const double_v3 &v )
+{
+	// rotate v by q: v' = q * (0,v) * q^-1
+	const double_v3 qv = double_v3 { quat.x, quat.y, quat.z };
+	const double_v3 t = double_v3_cross( qv, v ) * 2.0;
+	const double_v3 result = v + t * quat.w + double_v3_cross( qv, t );
+	return result;
+}
+
+
+double_v4 quaternion_from_forward_up( const double_v3 &forward, const double_v3 &up )
+{
+	const double_v3 f = double_v3_normalize( forward );
+	const double_v3 r = double_v3_normalize( double_v3_cross( up, f ) );
+	const double_v3 u = double_v3_cross( f, r );
+
+	// +X = forward, +Y = right, +Z = up
+	double_m44 m = double_m44_build_zeros();
+	m[0] = f.x;
+	m[1] = r.x;
+	m[2] = u.x;
+	m[4] = f.y;
+	m[5] = r.y;
+	m[6] = u.y;
+	m[8] = f.z;
+	m[9] = r.z;
+	m[10]= u.z;
+	m[15] = 1.0;
+
+	// Convert Euler 3x3 rotation matrix to double_v4 Quaternion orientation
+	double_v4 q;
+	double trace = m[0] + m[5] + m[10];
+
+	if( trace > 0.0 )
+	{
+		const double s = 0.5 / sqrt( trace + 1.0 );
+		q.x = ( m[9] - m[6] ) * s;
+		q.y = ( m[2] - m[8] ) * s;
+		q.z = ( m[4] - m[1] ) * s;
+		q.w = 0.25 / s;
+	}
+	else if( ( m[0] > m[5] ) && ( m[0] > m[10] ) )
+	{
+		const double s = 2.0 * sqrt( 1.0 + m[0] - m[5] - m[10] );
+		q.x = 0.25 * s;
+		q.y = ( m[1] + m[4] ) / s;
+		q.z = ( m[2] + m[8] ) / s;
+		q.w = ( m[9] - m[6] ) / s;
+	}
+	else if( m[5] > m[10] )
+	{
+		const double s = 2.0 * sqrt( 1.0 + m[5] - m[0] - m[10] );
+		q.x = ( m[1] + m[4] ) / s;
+		q.y = 0.25 * s;
+		q.z = ( m[6] + m[9] ) / s;
+		q.w = ( m[2] - m[8] ) / s;
+	}
+	else
+	{
+		const double s = 2.0 * sqrt( 1.0 + m[10] - m[0] - m[5] );
+		q.x = ( m[2] + m[8] ) / s;
+		q.y = ( m[6] + m[9] ) / s;
+		q.z = 0.25 * s;
+		q.w = ( m[4] - m[1] ) / s;
+	}
+
+	return quaternion_normalize( q );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 int RadialFloatGraph::add_node( RadialFloatNode node )
 {
