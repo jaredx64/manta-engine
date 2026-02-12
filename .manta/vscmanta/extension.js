@@ -68,7 +68,8 @@ var WIDGET_BUILD_RUN = vscode.window.createStatusBarItem();
 var WIDGET_BEBUG = vscode.window.createStatusBarItem();
 var WIDGET_RENDERDOC = vscode.window.createStatusBarItem();
 
-var WIDGET_CLEAN = vscode.window.createStatusBarItem();
+var WIDGET_CLEAN_FULL = vscode.window.createStatusBarItem();
+var WIDGET_CLEAN_PARTIAL = vscode.window.createStatusBarItem();
 var WIDGET_NEW_PROJECT = vscode.window.createStatusBarItem();
 var WIDGET_WORKSPACE = vscode.window.createStatusBarItem();
 
@@ -95,7 +96,8 @@ async function activate( context )
 	// Register Commands
 	context.subscriptions.push( vscode.commands.registerCommand( "vscmanta.about", CommandAbout ) );
 	context.subscriptions.push( vscode.commands.registerCommand( "vscmanta.newProject", CommandNewProject ) );
-	context.subscriptions.push( vscode.commands.registerCommand( "vscmanta.cleanProject", CommandClean ) );
+	context.subscriptions.push( vscode.commands.registerCommand( "vscmanta.cleanFull", CommandCleanFull ) );
+	context.subscriptions.push( vscode.commands.registerCommand( "vscmanta.cleanPartial", CommandCleanPartial ) );
 	context.subscriptions.push( vscode.commands.registerCommand( "vscmanta.selectProject", CommandSelectProject ) );
 	context.subscriptions.push( vscode.commands.registerCommand( "vscmanta.setWorkspace", CommandSetWorkspace ) );
 	context.subscriptions.push( vscode.commands.registerCommand( "vscmanta.selectPlatform", CommandSelectOS ) );
@@ -152,8 +154,11 @@ async function activate( context )
 	WidgetCreate( context, WIDGET_RENDERDOC, "🖼️ RenderDoc", "vscmanta.renderdoc", "#60f7be" );
 	WIDGET_RENDERDOC.tooltip = "Build, compile, & run with RenderDoc";
 
-	WidgetCreate( context, WIDGET_CLEAN, "🔅 Clean", "vscmanta.cleanProject", "Orange" );
-	WIDGET_CLEAN.tooltip = "Delete cache for build, engine, and project";
+	WidgetCreate( context, WIDGET_CLEAN_FULL, "🪶 Clean", "vscmanta.cleanFull", "Orange" );
+	WIDGET_CLEAN_FULL.tooltip = "Delete project cache for boot, build, and runtime";
+
+	WidgetCreate( context, WIDGET_CLEAN_PARTIAL, "[Runtime]", "vscmanta.cleanPartial", "Orange" );
+	WIDGET_CLEAN_PARTIAL.tooltip = "Delete project cache for runtime only";
 
 	WidgetCreate( context, WIDGET_NEW_PROJECT, "➕ New Project", "vscmanta.newProject", "Violet" );
 	WIDGET_NEW_PROJECT.tooltip = "Create a new project";
@@ -1176,9 +1181,35 @@ function CommandRenderDoc()
 }
 
 
-function CommandClean()
+function CommandCleanFull()
 {
 	var outputPath = path.join( PATH_ENGINE, "projects", WIDGET_PROJECT.name, "output" );
+	var cleanCommand;
+
+	if( PlatformIsWindows() )
+	{
+		cleanCommand = [
+			"cls",
+			`if exist ${outputPath} rmdir ${outputPath} /s /q`,
+		];
+		cleanCommand = "cmd /c \"" + cleanCommand.join( " & " ) + "\"";
+	}
+	else
+	{
+		cleanCommand = [
+			"clear",
+			`rm -rf ${outputPath}`,
+		];
+		cleanCommand = cleanCommand.join( " ; " );
+	}
+
+	TerminalRunCommand( { saveAll: true, command: cleanCommand } );
+}
+
+
+function CommandCleanPartial()
+{
+	var outputPath = path.join( PATH_ENGINE, "projects", WIDGET_PROJECT.name, "output", "runtime" );
 	var cleanCommand;
 
 	if( PlatformIsWindows() )

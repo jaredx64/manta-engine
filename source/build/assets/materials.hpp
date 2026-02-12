@@ -12,9 +12,13 @@
 // NOTE: Must maintain parity with manta/assets.hpp
 enum_type( MaterialTextureSlot, int )
 {
-	MaterialTextureSlot_Diffuse = 0,
+	MaterialTextureSlot_Color = 0,
 	MaterialTextureSlot_Normal,
+	MaterialTextureSlot_Roughness,
+	MaterialTextureSlot_Metallic,
+	MaterialTextureSlot_Emissive,
 	MaterialTextureSlot_Specular,
+	MaterialTextureSlot_Shading,
 	// ...
 	MATERIALTEXTURESLOT_COUNT
 };
@@ -22,9 +26,13 @@ enum_type( MaterialTextureSlot, int )
 
 constexpr const char *MaterialTextureSlotNames[MATERIALTEXTURESLOT_COUNT] =
 {
-	"Diffuse", // MaterialTextureSlot_Diffuse
+	"Color", // MaterialTextureSlot_Color
 	"Normal", // MaterialTextureSlot_Normal
+	"Roughness", // MaterialTextureSlot_Roughness
+	"Metallic", // MaterialTextureSlot_Metallic
+	"Emissive", // MaterialTextureSlot_Emissive
 	"Specular", // MaterialTextureSlot_Specular
+	"Shading", // MaterialTextureSlot_Shading
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

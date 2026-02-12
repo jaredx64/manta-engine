@@ -139,10 +139,13 @@ MaterialID Materials::register_new_from_definition( String name, const char *pat
 	const MaterialID materialID = register_new();
 	Material &material = materials[materialID];
 	material.name = name;
-	try_parse_texture( material, definitionJSON, MaterialTextureSlot_Diffuse, "diffuse" );
+	try_parse_texture( material, definitionJSON, MaterialTextureSlot_Color, "color" );
 	try_parse_texture( material, definitionJSON, MaterialTextureSlot_Normal, "normal" );
+	try_parse_texture( material, definitionJSON, MaterialTextureSlot_Roughness, "roughness" );
+	try_parse_texture( material, definitionJSON, MaterialTextureSlot_Metallic, "metallic" );
+	try_parse_texture( material, definitionJSON, MaterialTextureSlot_Emissive, "emissive" );
 	try_parse_texture( material, definitionJSON, MaterialTextureSlot_Specular, "specular" );
-
+	try_parse_texture( material, definitionJSON, MaterialTextureSlot_Shading, "shading" );
 	return materialID;
 }
 
@@ -210,10 +213,14 @@ void Materials::build()
 			for( Material &material : materials )
 			{
 				snprintf( buffer, PATH_SIZE,
-					"\t\t{ %u, %u, %u }, // %s\n",
-					material.textures[MaterialTextureSlot_Diffuse],
+					"\t\t{ %u, %u, %u, %u, %u, %u, %u }, // %s\n",
+					material.textures[MaterialTextureSlot_Color],
 					material.textures[MaterialTextureSlot_Normal],
+					material.textures[MaterialTextureSlot_Roughness],
+					material.textures[MaterialTextureSlot_Metallic],
+					material.textures[MaterialTextureSlot_Emissive],
 					material.textures[MaterialTextureSlot_Specular],
+					material.textures[MaterialTextureSlot_Shading],
 
 					material.name.cstr() );
 

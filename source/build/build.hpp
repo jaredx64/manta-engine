@@ -69,11 +69,11 @@ namespace Build
 	extern char pathOutputRuntimeDistributables[PATH_SIZE];
 	extern char pathOutputRuntimeExecutable[PATH_SIZE];
 	extern char pathOutputRuntimeBinary[PATH_SIZE];
-	extern char pathOutputBuildCache[PATH_SIZE];
-	extern char pathOutputBuildCacheBuild[PATH_SIZE];
-	extern char pathOutputBuildCacheObjects[PATH_SIZE];
-	extern char pathOutputBuildCacheGraphics[PATH_SIZE];
-	extern char pathOutputBuildCacheAssets[PATH_SIZE];
+	extern char pathOutputCache[PATH_SIZE];
+	extern char pathOutputCacheBuild[PATH_SIZE];
+	extern char pathOutputCacheObjects[PATH_SIZE];
+	extern char pathOutputCacheGraphics[PATH_SIZE];
+	extern char pathOutputCacheAssets[PATH_SIZE];
 
 	// Configuration
 	extern Configuration config;

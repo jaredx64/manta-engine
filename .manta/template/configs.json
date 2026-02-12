@@ -5,9 +5,9 @@
 		{
 			"msvc":
 			{
-				"compilerFlags": "-DCOMPILE_DEBUG=1 -DMEMORY_ASSERTS=1 -Od -Z7",
-				"compilerFlagsWarnings": "-W4",
-				"linkerFlags": "-DEBUG"
+				"compilerFlags": "/DCOMPILE_DEBUG=1 /DMEMORY_ASSERTS=1 /Od /Z7",
+				"compilerFlagsWarnings": "/W4",
+				"linkerFlags": "/DEBUG"
 			},
 			"llvm":
 			{
@@ -40,9 +40,9 @@
 		{
 			"msvc":
 			{
-				"compilerFlags": "-DCOMPILE_DEBUG=1 -DMEMORY_ASSERTS=1 -fsanitize=address -Od -Z7",
-				"compilerFlagsWarnings": "-W4",
-				"linkerFlags": "-DEBUG"
+				"compilerFlags": "/DCOMPILE_DEBUG=1 /DMEMORY_ASSERTS=1 /fsanitize=address /Od /Z7",
+				"compilerFlagsWarnings": "/W4",
+				"linkerFlags": "/DEBUG"
 			},
 			"llvm":
 			{
@@ -75,21 +75,21 @@
 		{
 			"msvc":
 			{
-				"compilerFlags": "-Ox",
+				"compilerFlags": "/Ox /GL",
 				"compilerFlagsWarnings": "",
-				"linkerFlags": ""
+				"linkerFlags": "/LTCG"
 			},
 			"llvm":
 			{
-				"compilerFlags": "-O3",
+				"compilerFlags": "-O3 -flto",
 				"compilerFlagsWarnings": "",
-				"linkerFlags": ""
+				"linkerFlags": "-flto"
 			},
 			"gnu":
 			{
-				"compilerFlags": "-O3",
+				"compilerFlags": "-O3 -flto",
 				"compilerFlagsWarnings": "",
-				"linkerFlags": ""
+				"linkerFlags": "-flto"
 			}
 		},
 		"application":

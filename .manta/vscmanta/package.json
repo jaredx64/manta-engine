@@ -29,7 +29,8 @@
 
 			{ "command": "vscmanta.setWorkspace",       "title": "Manta: Select VSCode Workspace" },
 
-			{ "command": "vscmanta.cleanProject",       "title": "Manta: Clean Project" },
+			{ "command": "vscmanta.cleanFull",          "title": "Manta: Clean Project Cache (Boot, Build, Runtime)" },
+			{ "command": "vscmanta.cleanPartial",       "title": "Manta: Clean Project Cache (Runtime only)" },
 			{ "command": "vscmanta.buildAndRun",        "title": "Manta: Build & Run" },
 			{ "command": "vscmanta.build",              "title": "Manta: Build" },
 			{ "command": "vscmanta.run",                "title": "Manta: Run" },

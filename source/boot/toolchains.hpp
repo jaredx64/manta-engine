@@ -15,24 +15,35 @@ struct Toolchain
 		{
 #if 1
 			compilerName = "cl";
-			compilerFlags = "-c -O2 -showIncludes -nologo -std:c++20 -EHsc -DUNICODE -DCOMPILE_BUILD -DCOMPILE_ASSERTS";
-			compilerFlagsIncludes = "-I\"%s\" -I\"%s\" -I\"%s\"";
-			compilerFlagsWarnings = "-W4 -wd4100 -wd4101 -wd4189 -wd4201 -wd4244 -wd4456 -wd4458 -wd4459 -wd4505 -wd4702 -wd4996";
-			compilerOutput = "-Fo:";
-
+			compilerFlags = "/c /O2 /showIncludes /nologo /std:c++20 /EHsc /DUNICODE /DCOMPILE_BUILD /DCOMPILE_ASSERTS";
+			compilerFlagsIncludes = "/I\"%s\" /I\"%s\" /I\"%s\"";
+			// NOTE: Disabled Warnings
+			// wd4100 - Unreferenced formal parameter
+			// wd4101 - Unreferenced local variable
+			// wd4189 - Local variable initialized but not referenced
+			// wd4201 - Nonstandard extension used: nameless struct/union
+			// wd4244 - Conversion from larger type to smaller type, possible loss of data
+			// wd4456 - Declaration of 'X' hides previous local declaration
+			// wd4458 - Declaration of 'X' hides class member
+			// wd4459 - Declaration of 'X' hides global declaration
+			// wd4505 - Unreferenced local function has been removed
+			// wd4702 - Unreachable code
+			// wd4996 - Function or variable may be unsafe / deprecated (e.g. strcpy, fopen)
+			compilerFlagsWarnings = "/W4 /wd4100 /wd4101 /wd4189 /wd4201 /wd4244 /wd4456 /wd4458 /wd4459 /wd4505 /wd4702 /wd4996";
+			compilerOutput = "/Fo:";
 			linkerName = "link";
-			linkerFlags = "-nologo -DEBUG ";
-			linkerOutput = "-out:";
+			linkerFlags = "/nologo /DEBUG ";
+			linkerOutput = "/out:";
 #else
 			// ASAN
 			compilerName = "cl";
-			compilerFlags = "-c -fsanitize=address -Od -Z7 -showIncludes -nologo -std:c++20 -EHsc -DUNICODE -DCOMPILE_BUILD -DCOMPILE_ASSERTS";
-			compilerFlagsIncludes = "-I\"%s\" -I\"%s\" -I\"%s\"";
-			compilerFlagsWarnings = "-W4 -wd4100 -wd4101 -wd4189 -wd4201 -wd4244 -wd4456 -wd4458 -wd4459 -wd4505 -wd4702 -wd4996";
-			compilerOutput = "-Fo:";
+			compilerFlags = "/c /fsanitize=address /Od /Z7 /showIncludes /nologo /std:c++20 /EHsc /DUNICODE /DCOMPILE_BUILD /DCOMPILE_ASSERTS";
+			compilerFlagsIncludes = "/I\"%s\" /I\"%s\" /I\"%s\"";
+			compilerFlagsWarnings = "/W4 /wd4100 /wd4101 /wd4189 /wd4201 /wd4244 /wd4456 /wd4458 /wd4459 /wd4505 /wd4702 /wd4996";
+			compilerOutput = "/Fo:";
 			linkerName = "link";
-			linkerFlags = "-nologo -DEBUG ";
-			linkerOutput = "-out:";
+			linkerFlags = "/nologo /DEBUG ";
+			linkerOutput = "/out:";
 #endif
 			linkerExtensionExe = PIPELINE_OS_WINDOWS ? ".exe" : "";
 			linkerExtensionObj = ".obj";

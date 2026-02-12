@@ -53,11 +53,11 @@ namespace Build
 	char pathOutputRuntimeDistributables[PATH_SIZE];
 	char pathOutputRuntimeExecutable[PATH_SIZE];
 	char pathOutputRuntimeBinary[PATH_SIZE];
-	char pathOutputBuildCache[PATH_SIZE];
-	char pathOutputBuildCacheBuild[PATH_SIZE];
-	char pathOutputBuildCacheObjects[PATH_SIZE];
-	char pathOutputBuildCacheGraphics[PATH_SIZE];
-	char pathOutputBuildCacheAssets[PATH_SIZE];
+	char pathOutputCache[PATH_SIZE];
+	char pathOutputCacheBuild[PATH_SIZE];
+	char pathOutputCacheObjects[PATH_SIZE];
+	char pathOutputCacheGraphics[PATH_SIZE];
+	char pathOutputCacheAssets[PATH_SIZE];
 
 	// Configuration
 	Configuration config;
@@ -621,11 +621,11 @@ void BuilderCore::build( int argc, char **argv )
 			Build::args.project, Build::tc.linkerExtensionExe );
 		strjoin( Build::pathOutputRuntimeBinary, Build::pathOutputRuntime, SLASH,
 			Build::args.project, ".bin" );
-		strjoin( Build::pathOutputBuildCache, Build::pathOutputBuild, SLASH "build.cache" );
-		strjoin( Build::pathOutputBuildCacheBuild, Build::pathOutputBuild, SLASH "core.cache" );
-		strjoin( Build::pathOutputBuildCacheObjects, Build::pathOutputBuild, SLASH "objects.cache" );
-		strjoin( Build::pathOutputBuildCacheGraphics, Build::pathOutputBuild, SLASH "graphics.cache" );
-		strjoin( Build::pathOutputBuildCacheAssets, Build::pathOutputBuild, SLASH "assets.cache" );
+		strjoin( Build::pathOutputCache, Build::pathOutputRuntime, SLASH "build.cache" );
+		strjoin( Build::pathOutputCacheBuild, Build::pathOutputRuntime, SLASH "core.cache" );
+		strjoin( Build::pathOutputCacheObjects, Build::pathOutputRuntime, SLASH "objects.cache" );
+		strjoin( Build::pathOutputCacheGraphics, Build::pathOutputRuntime, SLASH "graphics.cache" );
+		strjoin( Build::pathOutputCacheAssets, Build::pathOutputRuntime, SLASH "assets.cache" );
 
 		// Output Directories
 		directory_create( Build::pathPackages );
@@ -645,16 +645,16 @@ void BuilderCore::build( int argc, char **argv )
 	// Begin
 	{
 		Build::begin();
-		Build::cache_read( Build::pathOutputBuildCacheBuild );
+		Build::cache_read( Build::pathOutputCacheBuild );
 
 		Objects::begin();
-		Objects::cache_read( Build::pathOutputBuildCacheObjects );
+		Objects::cache_read( Build::pathOutputCacheObjects );
 
 		Gfx::begin();
-		Gfx::cache_read( Build::pathOutputBuildCacheGraphics );
+		Gfx::cache_read( Build::pathOutputCacheGraphics );
 
 		Assets::begin();
-		Assets::cache_read( Build::pathOutputBuildCacheAssets );
+		Assets::cache_read( Build::pathOutputCacheAssets );
 	}
 
 	// Application
@@ -737,16 +737,16 @@ void BuilderCore::build( int argc, char **argv )
 	// End
 	{
 		Assets::end();
-		Assets::cache_write( Build::pathOutputBuildCacheAssets );
+		Assets::cache_write( Build::pathOutputCacheAssets );
 
 		Gfx::end();
-		Gfx::cache_write( Build::pathOutputBuildCacheGraphics );
+		Gfx::cache_write( Build::pathOutputCacheGraphics );
 
 		Objects::end();
-		Objects::cache_write( Build::pathOutputBuildCacheObjects );
+		Objects::cache_write( Build::pathOutputCacheObjects );
 
 		Build::end();
-		Build::cache_write( Build::pathOutputBuildCacheBuild );
+		Build::cache_write( Build::pathOutputCacheBuild );
 	}
 
 	// Compile Executable

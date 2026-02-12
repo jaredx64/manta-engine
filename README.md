@@ -74,7 +74,7 @@ VS Code -> Extensions -> Install from VSIX -> manta-engine\.manta\vscmanta\vscma
 "vscmanta.debugRuntime" - Builds & runs the current project with VS Code C++ debugger attached
 "vscmanta.renderdoc" - Builds & runs with RenderDoc (Windows/Linux only -- RenderDoc must be in the system PATH)
 "vscmanta.build" - Build only
-"vscmanta.cleanProject" - Clears project build cache (deletes output folders)
+"vscmanta.cleanFull" - Clears project build cache (deletes output folders)
 ```
 
 </details><br>

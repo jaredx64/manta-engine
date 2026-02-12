@@ -102,9 +102,13 @@ namespace Assets
 	// NOTE: Must maintain parity with build/assets/material.hpp
 	enum_type( MaterialTextureSlot, int )
 	{
-		MaterialTextureSlot_Diffuse = 0,
+		MaterialTextureSlot_Color = 0,
 		MaterialTextureSlot_Normal,
+		MaterialTextureSlot_Roughness,
+		MaterialTextureSlot_Metallic,
+		MaterialTextureSlot_Emissive,
 		MaterialTextureSlot_Specular,
+		MaterialTextureSlot_Shading,
 		// ...
 		MATERIALTEXTURESLOT_COUNT
 	};

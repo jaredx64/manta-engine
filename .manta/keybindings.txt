@@ -6,4 +6,4 @@ Place these in VS Code keybindings.json (must install & enable the vscmanta plug
 { "key": "f7", "when": "resourceExists('.manta')", "command": "vscmanta.renderdoc" },
 { "key": "f8", "when": "resourceExists('.manta')", "command": "vscmanta.build" },
 { "key": "f9", "when": "resourceExists('.manta')", "command": "vscmanta.insertCommentBreak" },
-{ "key": "ctrl+shift+c", "when": "resourceExists('.manta')", "command": "vscmanta.cleanProject" },
+{ "key": "ctrl+shift+c", "when": "resourceExists('.manta')", "command": "vscmanta.cleanFull" },

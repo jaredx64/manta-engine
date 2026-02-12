@@ -19,7 +19,7 @@ static char pathOutputBootCache[PATH_SIZE];
 static char pathOutputBuild[PATH_SIZE];
 static char pathOutputBuildNinja[PATH_SIZE];
 static char pathOutputBuildExe[PATH_SIZE];
-static char pathOutputBuildCache[PATH_SIZE];
+static char pathOutputCache[PATH_SIZE];
 
 static char pathOutputGenerated[PATH_SIZE];
 static char pathOutputGeneratedConfig[PATH_SIZE];
@@ -80,7 +80,7 @@ int main( int argc, char **argv )
 		strappend( pathOutputBuildExe, tc.linkerExtensionExe );
 
 		// projects/<project>/output/build/build.cache
-		strjoin_path( pathOutputBuildCache, pathOutputBuild, "build.cache" );
+		strjoin_path( pathOutputCache, pathOutputBuild, "build.cache" );
 
 		// projects/<project>/output/generated
 		strjoin_path( pathOutputGenerated, pathOutput, "generated" );
@@ -496,7 +496,7 @@ int main( int argc, char **argv )
 	if( file_time_newer( buildExeTime, bootCacheTime ) )
 	{
 		// If build.exe is new, we need to force clear the build cache
-		file_delete( pathOutputBuildCache );
+		file_delete( pathOutputCache );
 	}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

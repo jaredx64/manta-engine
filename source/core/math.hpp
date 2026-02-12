@@ -358,9 +358,12 @@ template <typename T> struct Vector2D
 
 	/* Automatically cast vector types (if valid component cast exists) */
 	template <typename S> Vector2D( Vector2D<S> &v ) :
-		x{ static_cast<T>( v.x ) }, y{ static_cast<T>( v.y ) } { }
+		x { static_cast<T>( v.x ) },
+		y { static_cast<T>( v.y ) } { }
+
 	template <typename S> Vector2D( S x, S y ) :
-		x{ static_cast<T>( x ) }, y{ static_cast<T>( y ) } { }
+		x { static_cast<T>( x ) },
+		y { static_cast<T>( y ) } { }
 
 	template <typename S> VectorType &operator=( const Vector2D<S> &v )
 	{
@@ -782,9 +785,14 @@ template <typename T> struct Vector3D
 
 	/* Automatically cast vector types (if valid component cast exists) */
 	template <typename S> Vector3D( Vector3D<S> &v ) :
-		x{ static_cast<T>( v.x ) }, y{ static_cast<T>( v.y ) }, z{ static_cast<T>( v.z ) } { }
+		x { static_cast<T>( v.x ) },
+		y { static_cast<T>( v.y ) },
+		z { static_cast<T>( v.z ) } { }
+
 	template <typename S> Vector3D( S x, S y, S z ) :
-		x{ static_cast<T>( x ) }, y{ static_cast<T>( y ) }, z{ static_cast<T>( z ) } { }
+		x { static_cast<T>( x ) },
+		y { static_cast<T>( y ) },
+		z { static_cast<T>( z ) } { }
 
 	template <typename S> VectorType &operator=( const Vector3D<S> &v )
 	{
@@ -1257,11 +1265,18 @@ template <typename T> struct Vector4D
 
 	/* Automatically cast vector types (if valid component cast exists) */
 	template <typename S> Vector4D( Vector4D<S> &v ) :
-		x{ static_cast<T>( v.x ) }, y{ static_cast<T>( v.y ) }, z{ static_cast<T>( v.z ) }, w{ static_cast<T>( v.w ) } { }
-	template <typename S> Vector4D( S x, S y, S z, S w ) :
-		x{ static_cast<T>( x ) }, y{ static_cast<T>( y ) }, z{ static_cast<T>( z ) }, w{ static_cast<T>( w ) } { }
+		x { static_cast<T>( v.x ) },
+		y { static_cast<T>( v.y ) },
+		z { static_cast<T>( v.z ) },
+		w { static_cast<T>( v.w ) } { }
 
-	template <typename S> VectorType &operator=( const Vector3D<S> &v )
+	template <typename S> Vector4D( S x, S y, S z, S w ) :
+		x { static_cast<T>( x ) },
+		y { static_cast<T>( y ) },
+		z { static_cast<T>( z ) },
+		w { static_cast<T>( w ) } { }
+
+	template <typename S> VectorType &operator=( const Vector4D<S> &v )
 	{
 		x = static_cast<T>( v.x );
 		y = static_cast<T>( v.y );
@@ -1395,7 +1410,7 @@ template <typename T> struct Vector4D
 		r.x = y * v.z - z * v.y;
 		r.y = z * v.x - x * v.z;
 		r.z = x * v.y - y * v.x;
-		// TODO: cross Vector4D
+		r.w = 0; // TODO: 4D cross returns 3D vector
 		*this = r;
 		return *this;
 	}

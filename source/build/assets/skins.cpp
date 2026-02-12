@@ -105,10 +105,24 @@ bool Skin::load_from_mtl( const char *path )
 			// TODO: Material name (make it safe -- chars/underscore only)
 			material.name = String( "Skin_" ).append( this->name ).append( "_" ).append( materialKey );
 
-			// Diffuse Texture (map_Kd)
+			// Color (map_Kd) -- Note: Technically map_Kd is diffuse, but the engine will treat it as color
 			if( extract_texture_path( fileContents, "map_Kd ", start, end, pathTexture, nameTexture ) )
 			{
-				material.allocate_texture_from_file( MaterialTextureSlot_Diffuse,
+				material.allocate_texture_from_file( MaterialTextureSlot_Color,
+					nameTexture.cstr(), pathTexture.cstr(), true );
+			}
+
+			// Normal (map_Kd)
+			if( extract_texture_path( fileContents, "norm ", start, end, pathTexture, nameTexture ) )
+			{
+				material.allocate_texture_from_file( MaterialTextureSlot_Normal,
+					nameTexture.cstr(), pathTexture.cstr(), true );
+			}
+
+			// Specular (map_Ks)
+			if( extract_texture_path( fileContents, "map_Ks ", start, end, pathTexture, nameTexture ) )
+			{
+				material.allocate_texture_from_file( MaterialTextureSlot_Specular,
 					nameTexture.cstr(), pathTexture.cstr(), true );
 			}
 		}

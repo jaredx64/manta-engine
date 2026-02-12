@@ -104,7 +104,7 @@ set project=
 	:: Call the compiler to make boot.exe
 	echo Boot: %project%, %toolchain% [%*]
 	if %toolchain% == msvc (
-		cl source\boot\boot.cpp -std:c++20 -EHsc -Isource -Isource\boot -nologo -MD -Fe:projects\%project%\output\boot\boot.exe -Fo:projects\%project%\output\boot\objects -DCOMPILE_DEBUG=1 -DEBUG
+		cl source\boot\boot.cpp /std:c++20 /EHsc /Isource /Isource\boot /nologo /MD /Fe:projects\%project%\output\boot\boot.exe /Fo:projects\%project%\output\boot\objects /DCOMPILE_DEBUG=1 /DEBUG
 	)
 	if %toolchain% == llvm (
 		clang source\boot\boot.cpp -std=c++20 -fno-exceptions -Isource -Isource\boot -o projects\%project%\output\boot\boot.exe -DCOMPILE_DEBUG=1 -g -ldbghelp

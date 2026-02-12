@@ -495,7 +495,7 @@ float_m44 float_m44_inverse( const float_m44 &matrix )
 	float det = matrix[0x0] * inv[0x0] + matrix[0x1] * inv[0x4] +
 		matrix[0x2] * inv[0x8] + matrix[0x3] * inv[0xC];
 
-	if( det == 0.0f )
+	if( fabsf( det ) < 1e-8f )
 	{
 		m = float_m44_build_zeros();
 		return m;
@@ -638,9 +638,9 @@ float_m44 float_m44_build_rotation_z( float rad )
 
 float_m44 float_m44_build_rotation_axis( float x, float y, float z, float rad )
 {
-	const double c = cosf( rad );
-	const double s = sinf( rad );
-	const double t = 1.0f - c;
+	const float c = cosf( rad );
+	const float s = sinf( rad );
+	const float t = 1.0f - c;
 
 	float_m44 m = float_m44_build_identity();
 	m[0x0] = t * x * x + c;
@@ -1057,7 +1057,7 @@ double_m44 double_m44_inverse( const double_m44 &matrix )
 	double det = matrix[0x0] * inv[0x0] + matrix[0x1] * inv[0x4] +
 		matrix[0x2] * inv[0x8] + matrix[0x3] * inv[0xC];
 
-	if( det == 0.0 )
+	if( fabs( det ) < 1e-12 )
 	{
 		m = double_m44_build_zeros();
 		return m;

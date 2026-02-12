@@ -14,18 +14,38 @@ struct Toolchain
 		if( strcmp( args.toolchain, "msvc" ) == 0 )
 		{
 			compilerName = "cl";
-			compilerFlags = "-c -showIncludes -nologo -std:c++20 -EHsc -MD -DUNICODE -DCOMPILE_ENGINE";
-			compilerFlagsIncludes = "-I\"%s\"";
-			compilerFlagsWarnings = "-wd4100 -wd4101 -wd4189 -wd4201 -wd4244 -wd4324 -wd4456 -wd4458 -wd4459 -wd4505 -wd4702 -wd4804 -wd4996";
-			if( strcmp( args.architecture,   "x64" ) == 0 ) { compilerFlagsArchitecture = ""; } else
-			if( strcmp( args.architecture, "arm64" ) == 0 ) { compilerFlagsArchitecture = "-arch:ARM64"; } else
-															{ Error( "Unsupported target architecture '%s' for compiler '%s'", args.architecture, args.toolchain ); }
-			compilerOutput = "-Fo:";
-
+			compilerFlags = "/c /showIncludes /nologo /std:c++20 /EHsc /MD /DUNICODE /DCOMPILE_ENGINE";
+			compilerFlagsIncludes = "/I\"%s\"";
+			// NOTE: Disabled Warnings
+			// wd4100 - Unreferenced formal parameter
+			// wd4101 - Unreferenced local variable
+			// wd4189 - Local variable initialized but not referenced
+			// wd4201 - Nonstandard extension used: nameless struct/union
+			// wd4244 - Conversion from larger type to smaller type, possible loss of data
+			// wd4324 - Structure was padded due to alignment specifier (__declspec(align))
+			// wd4456 - Declaration of 'X' hides previous local declaration (shadowing)
+			// wd4458 - Declaration of 'X' hides class member (shadowing)
+			// wd4459 - Declaration of 'X' hides global declaration (shadowing)
+			// wd4505 - Unreferenced local function has been removed
+			// wd4702 - Unreachable code
+			// wd4804 - Unsafe use of type 'bool' in operation (e.g. arithmetic or bitwise ops on bool)
+			// wd4996 - Function or variable may be unsafe / deprecated (e.g. strcpy, fopen)
+			compilerFlagsWarnings = "/wd4100 /wd4101 /wd4189 /wd4201 /wd4244 /wd4324 /wd4456 /wd4458 /wd4459 /wd4505 /wd4702 /wd4804 /wd4996";
+			if( strcmp( args.architecture, "x64" ) == 0 )
+			{
+				compilerFlagsArchitecture = "";
+			} else if( strcmp( args.architecture, "arm64" ) == 0 )
+			{
+				compilerFlagsArchitecture = "/arch:ARM64";
+			}
+			else
+			{
+				Error( "Unsupported target architecture '%s' for compiler '%s'", args.architecture, args.toolchain );
+			}
+			compilerOutput = "/Fo:";
 			linkerName = "link";
-			linkerFlags = "-nologo";
-			linkerOutput = "-out:";
-
+			linkerFlags = "/nologo";
+			linkerOutput = "/out:";
 			linkerExtensionExe = PIPELINE_OS_WINDOWS ? ".exe" : "";
 			linkerExtensionObj = ".obj";
 			linkerExtensionLibrary = ".lib";
@@ -39,11 +59,19 @@ struct Toolchain
 			compilerFlags = "-c -MD -MF $out.d -std=c++20 -fno-exceptions -DUNICODE -DCOMPILE_ENGINE";
 			compilerFlagsIncludes = "-I%s";
 			compilerFlagsWarnings = "-Wno-unused-variable -Wno-unused-function -Wno-unused-private-field -Wno-delete-non-abstract-non-virtual-dtor -Wno-unused-but-set-variable";
-			if( strcmp( args.architecture,   "x64" ) == 0 ) { compilerFlagsArchitecture = "-m64"; } else
-			if( strcmp( args.architecture, "arm64" ) == 0 ) { /*compilerFlagsArchitecture = "-target aarch64-linux-gnu";*/ } else
-															{ Error( "Unsupported target architecture '%s' for compiler '%s'", args.architecture, args.toolchain ); }
+			if( strcmp( args.architecture, "x64" ) == 0 )
+			{
+				compilerFlagsArchitecture = "-m64";
+			}
+			else if( strcmp( args.architecture, "arm64" ) == 0 )
+			{
+				/*compilerFlagsArchitecture = "-target aarch64-linux-gnu";*/
+			}
+			else
+			{
+				Error( "Unsupported target architecture '%s' for compiler '%s'", args.architecture, args.toolchain );
+			}
 			compilerOutput = "-o ";
-
 			linkerName = "clang++";
 			#if PIPELINE_OS_MACOS
 				// ...
@@ -51,7 +79,6 @@ struct Toolchain
 				linkerFlags = "-fuse-ld=lld";
 			#endif
 			linkerOutput = "-o ";
-
 			linkerExtensionExe = PIPELINE_OS_WINDOWS ? ".exe" : "";
 			linkerExtensionObj = ".o";
 			linkerExtensionLibrary = "";
@@ -65,15 +92,22 @@ struct Toolchain
 			compilerFlags = "-c -MD -MF $out.d -std=c++20 -fno-exceptions -DUNICODE -DCOMPILE_ENGINE";
 			compilerFlagsIncludes = "-I%s";
 			compilerFlagsWarnings = "-Wno-unused-variable -Wno-unused-function -Wno-unused-private-field -Wno-int-in-bool-context -Wno-unused-but-set-variable -Wno-delete-non-abstract-non-virtual-dtor -Wno-format-truncation";
-			if( strcmp( args.architecture,   "x64" ) == 0 ) { compilerFlagsArchitecture = "-m64"; } else
-			if( strcmp( args.architecture, "arm64" ) == 0 ) { compilerFlagsArchitecture = "-march=armv8-a"; } else
-															{ Error( "Unsupported target architecture '%s' for compiler '%s'", args.architecture, args.toolchain ); }
+			if( strcmp( args.architecture, "x64" ) == 0 )
+			{
+				compilerFlagsArchitecture = "-m64";
+			}
+			else if( strcmp( args.architecture, "arm64" ) == 0 )
+			{
+				compilerFlagsArchitecture = "-march=armv8-a";
+			}
+			else
+			{
+				Error( "Unsupported target architecture '%s' for compiler '%s'", args.architecture, args.toolchain );
+			}
 			compilerOutput = "-o ";
-
 			linkerName = "g++";
 			linkerFlags = "";
 			linkerOutput = "-o ";
-
 			linkerExtensionExe = PIPELINE_OS_WINDOWS ? ".exe" : "";
 			linkerExtensionObj = ".o";
 			linkerExtensionLibrary = "";
