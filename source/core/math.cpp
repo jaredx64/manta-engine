@@ -914,7 +914,7 @@ bool double_m44_equal( const double_m44 &a, const double_m44 &b )
 }
 
 
-double_m44 float_m44_transpose( const double_m44 &matrix )
+double_m44 double_m44_transpose( const double_m44 &matrix )
 {
 	double_m44 m;
 	m[0x0] = matrix[0x0];

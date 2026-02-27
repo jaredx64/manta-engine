@@ -34,6 +34,7 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define GFX_TEXTURE_SLOT_COUNT ( 8 )
+#define GFX_TEXTURE_ARRAY_LENGTH_MAX ( 256 )
 #define GFX_RENDER_TARGET_SLOT_COUNT ( 8 )
 #define GFX_MIP_DEPTH_MAX ( 16 )
 
@@ -418,11 +419,9 @@ enum_type( GfxDepthWrite, u8 )
 
 enum_type( GfxTextureType, u8 )
 {
-	GfxTextureType_1D,
 	GfxTextureType_2D,
 	GfxTexturetype_2D_ARRAY,
 	GfxTextureType_3D,
-	GfxTextureType_3D_ARRAY,
 	GfxTextureType_CUBE,
 	GfxTextureType_CUBE_ARRAY,
 	GFXTEXTURETYPE_COUNT,
@@ -433,8 +432,8 @@ enum_type( GfxTextureType, u8 )
 
 namespace CoreGfx
 {
-	extern bool api_init();
-	extern bool api_free();
+	extern bool init_api();
+	extern bool free_api();
 
 	extern bool init();
 	extern bool free();
@@ -445,8 +444,8 @@ namespace CoreGfx
 	extern bool init_shaders();
 	extern bool free_shaders();
 
-	extern bool init_uniform_buffers();
-	extern bool free_uniform_buffers();
+	extern bool init_buffers();
+	extern bool free_buffers();
 
 	extern bool init_commands();
 	extern bool free_commands();
@@ -786,10 +785,20 @@ namespace Gfx
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Shader
 
+enum_type( GfxShaderStage, u8 )
+{
+	GfxShaderStage_Vertex = ( 1 << 0 ),
+	GfxShaderStage_Fragment = ( 1 << 1 ),
+	GfxShaderStage_Compute = ( 1 << 2 ),
+};
+
+
 namespace CoreGfx
 {
 	extern bool api_shader_init( GfxShaderResource *&resource, u32 shaderID, const struct ShaderEntry &shaderEntry );
 	extern bool api_shader_free( GfxShaderResource *&resource );
+
+	extern bool shader_has_stage( u32 shaderID, GfxShaderStage stage );
 
 	extern bool shader_bind_uniform_buffers_vertex( u32 shaderID );
 	extern bool shader_bind_uniform_buffers_fragment( u32 shaderID );
@@ -960,14 +969,18 @@ public:
 
 	template <typename T> void write( const T &element )
 	{
+	#if GRAPHICS_ENABLED
 		static_assert( sizeof( T ) % sizeof( InstanceType ) == 0, "Element size must match InstanceBuffer type" );
 		CoreGfx::api_instance_buffer_write( resource, &element, sizeof( element ) );
+	#endif
 	}
 
 	void write( void *data, usize size )
 	{
+	#if GRAPHICS_ENABLED
 		Assert( size % sizeof( InstanceType ) == 0 );
 		CoreGfx::api_instance_buffer_write( resource, data, size );
+	#endif
 	}
 
 	bool is_initialized() const
@@ -1108,7 +1121,7 @@ namespace CoreGfx
 	extern bool api_render_target_init( GfxRenderTargetResource *&resource,
 		GfxTextureResource *&resourceColor,
 		GfxTextureResource *&resourceDepth,
-		u16 width, u16 height,
+		u16 width, u16 height, u16 layers,
 		const GfxRenderTargetDescription &desc = { } );
 
 	extern bool api_render_target_free( GfxRenderTargetResource *&resource,
@@ -1174,6 +1187,7 @@ class GfxRenderTarget
 {
 public:
 	void init( u16 width, u16 height, const GfxRenderTargetDescription &desc );
+	void init( u16 width, u16 height, u16 layers, const GfxRenderTargetDescription &desc );
 	void free();
 	void copy( GfxRenderTarget &source );
 	void copy_color( GfxRenderTarget &source );
@@ -1193,7 +1207,7 @@ public:
 	GfxRenderTargetDescription desc;
 	GfxTexture textureColor;
 	GfxTexture textureDepth;
-	u16 width, height;
+	u16 width, height, layers;
 	int slot = -1;
 
 private:
@@ -1218,22 +1232,26 @@ namespace Gfx
 	inline void draw_vertices( u32 vertexCount,
 		GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
 	{
+	#if GRAPHICS_ENABLED
 		AssertMsg( CoreGfx::state.renderCommandActive, "Draw calls must be part of a GfxRenderCommand!" );
 		CoreGfx::api_draw(
 			nullptr, vertexCount,
 			nullptr, 0,
 			nullptr, type );
+	#endif
 	}
 
 
 	inline void draw_vertices_instanced( u32 vertexCount, u32 instanceCount,
 		GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
 	{
+	#if GRAPHICS_ENABLED
 		AssertMsg( CoreGfx::state.renderCommandActive, "Draw calls must be part of a GfxRenderCommand!" );
 		CoreGfx::api_draw(
 			nullptr, vertexCount,
 			nullptr, instanceCount,
 			nullptr, type );
+	#endif
 	}
 
 
@@ -1242,6 +1260,7 @@ namespace Gfx
 		const GfxInstanceBuffer<InstanceFormat> &instanceBuffer,
 		GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
 	{
+	#if GRAPHICS_ENABLED
 		AssertMsg( CoreGfx::state.renderCommandActive, "Draw calls must be part of a GfxRenderCommand!" );
 		const u32 instanceCount = instanceBuffer.current() / sizeof( InstanceFormat );
 		if( instanceCount == 0 ) { return; }
@@ -1249,6 +1268,7 @@ namespace Gfx
 			nullptr, vertexCount,
 			instanceBuffer.resource, instanceCount,
 			nullptr, type );
+	#endif
 	}
 
 
@@ -1256,11 +1276,13 @@ namespace Gfx
 		const GfxIndexBuffer &indexBuffer,
 		GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
 	{
+	#if GRAPHICS_ENABLED
 		AssertMsg( CoreGfx::state.renderCommandActive, "Draw calls must be part of a GfxRenderCommand!" );
 		CoreGfx::api_draw(
 			nullptr, vertexCount,
 			nullptr, 0,
 			indexBuffer.resource, type );
+	#endif
 	}
 
 
@@ -1268,11 +1290,13 @@ namespace Gfx
 		const GfxIndexBuffer &indexBuffer,
 		GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
 	{
+	#if GRAPHICS_ENABLED
 		AssertMsg( CoreGfx::state.renderCommandActive, "Draw calls must be part of a GfxRenderCommand!" );
 		CoreGfx::api_draw(
 			nullptr, vertexCount,
 			nullptr, instanceCount,
 			indexBuffer.resource, type );
+	#endif
 	}
 
 
@@ -1282,6 +1306,7 @@ namespace Gfx
 		const GfxIndexBuffer &indexBuffer,
 		GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
 	{
+	#if GRAPHICS_ENABLED
 		AssertMsg( CoreGfx::state.renderCommandActive, "Draw calls must be part of a GfxRenderCommand!" );
 		const u32 instanceCount = instanceBuffer.current() / sizeof( InstanceFormat );
 		if( instanceCount == 0 ) { return; }
@@ -1289,6 +1314,7 @@ namespace Gfx
 			nullptr, vertexCount,
 			instanceBuffer.resource, instanceCount,
 			indexBuffer.resource, type );
+	#endif
 	}
 
 
@@ -1297,12 +1323,14 @@ namespace Gfx
 		const GfxVertexBuffer<VertexFormat> &vertexBuffer,
 		GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
 	{
+	#if GRAPHICS_ENABLED
 		AssertMsg( CoreGfx::state.renderCommandActive, "Draw calls must be part of a GfxRenderCommand!" );
 		const u32 vertexCount = vertexBuffer.current() / sizeof( VertexFormat );
 		if( vertexCount == 0 ) { return; }
 		CoreGfx::api_draw( vertexBuffer.resource, vertexCount,
 			nullptr, 0,
 			nullptr, type );
+	#endif
 	}
 
 
@@ -1312,6 +1340,7 @@ namespace Gfx
 		const GfxInstanceBuffer<InstanceFormat> &instanceBuffer,
 		GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
 	{
+	#if GRAPHICS_ENABLED
 		AssertMsg( CoreGfx::state.renderCommandActive, "Draw calls must be part of a GfxRenderCommand!" );
 		const u32 vertexCount = vertexBuffer.current() / sizeof( VertexFormat );
 		const u32 instanceCount = instanceBuffer.current() / sizeof( InstanceFormat );
@@ -1319,6 +1348,7 @@ namespace Gfx
 		CoreGfx::api_draw( vertexBuffer.resource, vertexCount,
 			instanceBuffer.resource, instanceCount,
 			nullptr, type );
+	#endif
 	}
 
 
@@ -1328,12 +1358,14 @@ namespace Gfx
 		const u32 instanceCount,
 		GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
 	{
+	#if GRAPHICS_ENABLED
 		AssertMsg( CoreGfx::state.renderCommandActive, "Draw calls must be part of a GfxRenderCommand!" );
 		const u32 vertexCount = vertexBuffer.current() / sizeof( VertexFormat );
 		if( vertexCount == 0 ) { return; }
 		CoreGfx::api_draw( vertexBuffer.resource, vertexCount,
 			nullptr, instanceCount,
 			nullptr, type );
+	#endif
 	}
 
 
@@ -1343,12 +1375,14 @@ namespace Gfx
 		const GfxIndexBuffer &indexBuffer,
 		GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
 	{
+	#if GRAPHICS_ENABLED
 		AssertMsg( CoreGfx::state.renderCommandActive, "Draw calls must be part of a GfxRenderCommand!" );
 		const u32 vertexCount = vertexBuffer.current() / sizeof( VertexFormat );
 		if( vertexCount == 0 ) { return; }
 		CoreGfx::api_draw( vertexBuffer.resource, vertexCount,
 			nullptr, 0,
 			indexBuffer.resource, type );
+	#endif
 	}
 
 
@@ -1359,6 +1393,7 @@ namespace Gfx
 		const GfxIndexBuffer &indexBuffer,
 		GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
 	{
+	#if GRAPHICS_ENABLED
 		AssertMsg( CoreGfx::state.renderCommandActive, "Draw calls must be part of a GfxRenderCommand!" );
 		const u32 vertexCount = vertexBuffer.current() / sizeof( VertexFormat );
 		const u32 instanceCount = instanceBuffer.current() / sizeof( InstanceFormat );
@@ -1366,6 +1401,7 @@ namespace Gfx
 		CoreGfx::api_draw( vertexBuffer.resource, vertexCount,
 			instanceBuffer.resource, instanceCount,
 			indexBuffer.resource, type );
+	#endif
 	}
 
 
@@ -1376,12 +1412,14 @@ namespace Gfx
 		const GfxIndexBuffer &indexBuffer,
 		GfxPrimitiveType type = GfxPrimitiveType_TriangleList )
 	{
+	#if GRAPHICS_ENABLED
 		AssertMsg( CoreGfx::state.renderCommandActive, "Draw calls must be part of a GfxRenderCommand!" );
 		const u32 vertexCount = vertexBuffer.current() / sizeof( VertexFormat );
 		if( vertexCount == 0 ) { return; }
 		CoreGfx::api_draw( vertexBuffer.resource, vertexCount,
 			nullptr, instanceCount,
 			indexBuffer.resource, type );
+	#endif
 	}
 }
 
@@ -1398,8 +1436,10 @@ namespace Gfx
 {
 	inline void dispatch( u32 x, u32 y, u32 z )
 	{
+	#if GRAPHICS_ENABLED
 		AssertMsg( CoreGfx::state.renderCommandActive, "Dispatch calls must be part of a GfxRenderCommand!" );
 		CoreGfx::api_dispatch( x, y, z );
+	#endif
 	}
 };
 
@@ -1426,18 +1466,25 @@ public:
 	void depth_function( const GfxDepthFunction &mode );
 	void depth_write_mask( const GfxDepthWrite &mask );
 
+	void clear_color( Color color );
+	void clear_depth( float depth );
+
 public:
 	template <typename T> void set_tags( const T &tags )
 	{
+	#if GRAPHICS_ENABLED
 		static_assert( sizeof( T ) <= U16_MAX, "Tag payload size must not exceed 65535 bytes!" );
 		tagsPayloadOffset = GfxRenderCommand::renderCommandTagsStack.add( &tags, sizeof( T ), alignof( T ) );
 		tagsPayloadSize = static_cast<u16>( sizeof( T ) );
+	#endif
 	}
 
 	template <typename T> T *get_tags()
 	{
+	#if GRAPHICS_ENABLED
 		void *tags = GfxRenderCommand::renderCommandTagsStack.get( tagsPayloadOffset, tagsPayloadSize );
 		return reinterpret_cast<T *>( tags );
+	#endif
 	}
 
 	// Usage:
@@ -1445,11 +1492,13 @@ public:
 	// pass.work( GfxWork { ... } );
 	void work( void ( *function )() )
 	{
+	#if GRAPHICS_ENABLED
 		workPayloadOffset = 0LLU;
 		workPayloadSize = 0U;
 
 		workFunction = reinterpret_cast<void *>( function );
 		workFunctionInvoker = +[]( void *func, void *args ) { reinterpret_cast<void (*)()>( func )(); };
+	#endif
 	}
 
 	// Usage:
@@ -1458,6 +1507,7 @@ public:
 	// pass.work( GfxWorkStructure( Type( ... ), args ) { ... } );
 	template <typename T> void work( T &&payload, void ( *function )( T &args ) )
 	{
+	#if GRAPHICS_ENABLED
 		static_assert( sizeof( T ) <= U16_MAX, "Payload size must not exceed 65535 bytes!" );
 		workPayloadOffset = GfxRenderCommand::renderCommandArgsStack.add( &payload, sizeof( T ), alignof( T ) );
 		workPayloadSize = static_cast<u16>( sizeof( T ) );
@@ -1467,6 +1517,7 @@ public:
 		{
 			reinterpret_cast<void (*)(T &)>( func )( *reinterpret_cast<T *>( args ) );
 		};
+	#endif
 	}
 
 	// Usage:
@@ -1475,6 +1526,7 @@ public:
 	// pass.work( GfxWorkStructure( Type( ... ), name ) { ... } );
 	template <typename T> void work( const T &payload, void ( *function )( T &args ) )
 	{
+	#if GRAPHICS_ENABLED
 		static_assert( sizeof( T ) <= U16_MAX, "Payload size must not exceed 65535 bytes!" );
 		workPayloadOffset = GfxRenderCommand::renderCommandArgsStack.add( &payload, sizeof( T ), alignof( T ) );
 		workPayloadSize = static_cast<u16>( sizeof( T ) );
@@ -1484,6 +1536,7 @@ public:
 		{
 			reinterpret_cast<void (*)(T &)>( func )( *reinterpret_cast<T *>( args ) );
 		};
+	#endif
 	}
 
 public:
@@ -1492,6 +1545,11 @@ public:
 
 public:
 	GfxStatePipeline pipeline = GfxStatePipeline { };
+	bool clearColor = false;
+	bool clearDepth = false;
+	Color clearColorValue = c_white;
+	float clearDepthValue = 1.0f;
+
 	void ( *workFunctionInvoker )( void *, void * ) = nullptr;
 	void *workFunction = nullptr;
 	usize workPayloadOffset = 0LLU;
@@ -1527,12 +1585,14 @@ namespace Gfx
 	template <typename FunctionOrLambda>
 	void render_command_execute( const GfxRenderCommand &command, FunctionOrLambda work )
 	{
+	#if GRAPHICS_ENABLED
 		AssertMsg( CoreGfx::state.renderCommandActive == nullptr, "GfxCommands cannot be nested!" );
 
 		CoreGfx::render_command_execute_begin( command );
 		CoreGfx::api_render_command_execute( command ); work();
 		CoreGfx::render_command_execute_end( command );
 		CoreGfx::api_render_command_execute_post( command );
+	#endif
 	}
 }
 
@@ -1553,7 +1613,6 @@ public:
 	static usize renderGraphCommandListCurrent;
 
 public:
-	GfxRenderTargetResource *targets[GFX_RENDER_TARGET_SLOT_COUNT] = { nullptr };
 	usize commandList = USIZE_MAX;
 };
 
@@ -1571,12 +1630,13 @@ namespace Gfx
 class GfxRenderPass
 {
 public:
-	void target( int slot, const GfxRenderTarget &target );
+	void target( int slot, const GfxRenderTarget &target, int layer = 0 );
 	void set_name( const char *name );
 	void set_name_f( const char *name, ... );
 
 public:
 	GfxRenderTargetResource *targets[GFX_RENDER_TARGET_SLOT_COUNT] = { nullptr };
+	int layers[GFX_RENDER_TARGET_SLOT_COUNT] = { 0 };
 #if COMPILE_DEBUG
 	char name[128] = { '\0' };
 #endif
@@ -1636,7 +1696,7 @@ public:
 	struct Quad { VertexFormat v0, v1, v2, v3; };
 
 public:
-	bool init( u32 capacity )
+	bool init( u32 capacity = GFX_QUAD_BATCH_SIZE )
 	{
 		Assert( capacity * 6 < U32_MAX );
 		this->capacity = capacity;

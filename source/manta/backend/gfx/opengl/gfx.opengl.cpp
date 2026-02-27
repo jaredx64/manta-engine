@@ -85,8 +85,10 @@ struct ErrorChecker
 static GLuint stateBoundFBO = 0U;
 static GLuint stateBoundColorTextures[GFX_RENDER_TARGET_SLOT_COUNT] = { 0U };
 static GLuint stateBoundColorTypes[GFX_RENDER_TARGET_SLOT_COUNT] = { 0U };
+static GLint stateBoundColorLayer[GFX_RENDER_TARGET_SLOT_COUNT] = { 0 };
 static GLuint stateBoundDepthTexture = 0U;
 static GLuint stateBoundDepthType = GL_TEXTURE_2D;
+static GLint stateBoundDepthLayer = 0U;
 static GfxRenderTargetResource *stateBoundTargetResources[GFX_RENDER_TARGET_SLOT_COUNT] = { nullptr };
 
 static GLuint drawCallVAOEmpty = 0U;
@@ -260,6 +262,18 @@ static const GLenum OpenGLIndexBufferFormats[] =
 static_assert( ARRAY_LENGTH( OpenGLIndexBufferFormats ) == GFXINDEXBUFFERFORMAT_COUNT,
 	"Missing GfxIndexBufferFormat!" );
 
+
+static const GLenum OpenGLTextureTypes[] =
+{
+	GL_TEXTURE_2D, // GfxTextureType_2D
+	GL_TEXTURE_2D_ARRAY, // GfxTexturetype_2D_ARRAY
+	GL_TEXTURE_3D, // GfxTextureType_3D
+	GL_TEXTURE_CUBE_MAP, // GfxTextureType_CUBE
+	GL_TEXTURE_CUBE_MAP_ARRAY, // GfxTextureType_CUBE_ARRAY
+};
+static_assert( ARRAY_LENGTH( OpenGLTextureTypes ) == GFXTEXTURETYPE_COUNT,
+	"Missing GfxTextureType!" );
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Resources
 
@@ -360,6 +374,7 @@ struct GfxTextureResource : public GfxResource
 	u16 height = 0;
 	u16 depth = 0;
 	u16 levels = 0;
+	u16 layers = 0;
 	usize size = 0;
 };
 
@@ -378,6 +393,7 @@ struct GfxRenderTargetResource : public GfxResource
 	GfxRenderTargetDescription desc = { };
 	u16 width = 0;
 	u16 height = 0;
+	u16 layers = 0;
 	usize size = 0;
 };
 
@@ -666,7 +682,7 @@ static bool apply_state_scissor( const GfxStateScissor &state )
 }
 
 
-static void render_target_2d_resolve_msaa( GfxRenderTargetResource *const resource )
+static void render_target_resolve_msaa( GfxRenderTargetResource *const resource )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	if( resource == nullptr ) { return; }
@@ -689,7 +705,38 @@ static void render_target_2d_resolve_msaa( GfxRenderTargetResource *const resour
 }
 
 
-static bool bind_targets( GfxRenderTargetResource *const *resources )
+static bool opengl_texture_type_is_2d( GLuint type )
+{
+	switch( type )
+	{
+		case GL_TEXTURE_2D:
+		case GL_TEXTURE_2D_MULTISAMPLE:
+		case GL_TEXTURE_CUBE_MAP:
+			return true;
+
+		default:
+			return false;
+	}
+}
+
+
+static bool opengl_texture_type_is_layered( GLuint type )
+{
+	switch( type )
+	{
+		case GL_TEXTURE_2D_ARRAY:
+		case GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
+		case GL_TEXTURE_3D:
+		case GL_TEXTURE_CUBE_MAP_ARRAY:
+			return true;
+
+		default:
+			return false;
+	}
+}
+
+
+static bool bind_targets( GfxRenderTargetResource *const *resources, const int *layers )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	static double_m44 cacheMatrixModel;
@@ -704,10 +751,11 @@ static bool bind_targets( GfxRenderTargetResource *const *resources )
 	for( int slot = 0; slot < GFX_RENDER_TARGET_SLOT_COUNT; slot++ )
 	{
 		GfxRenderTargetResource *const resource = resources[slot];
+		const int layer = layers[slot];
 
 		if( stateBoundTargetResources[slot] != nullptr && stateBoundTargetResources[slot] != resource )
 		{
-			render_target_2d_resolve_msaa( stateBoundTargetResources[slot] );
+			render_target_resolve_msaa( stateBoundTargetResources[slot] );
 		}
 
 		hasCustomRenderTargets |= ( resource != nullptr );
@@ -741,14 +789,35 @@ static bool bind_targets( GfxRenderTargetResource *const *resources )
 				dirtySlot[slot] |= ( stateBoundColorTextures[slot] != colorTexture );
 				stateBoundColorTextures[slot] = colorTexture;
 
-				const GLuint colorType = hasMultiSample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
-				dirtySlot[slot] |= ( stateBoundColorTypes[slot] != colorType );
-				stateBoundColorTypes[slot] = colorType;
+				if( resource->resourceColor->type == GfxTextureType_2D )
+				{
+					Assert( layer == 0 );
+					const GLuint colorType = hasMultiSample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
+					dirtySlot[slot] |= ( stateBoundColorTypes[slot] != colorType );
+					stateBoundColorTypes[slot] = colorType;
+					dirtySlot[slot] |= ( stateBoundColorLayer[slot] != 0 );
+					stateBoundColorLayer[slot] = 0;
+				}
+				else if( resource->resourceColor->type == GfxTexturetype_2D_ARRAY )
+				{
+					Assert( layer < resource->resourceColor->layers );
+					const GLuint colorType = hasMultiSample ? GL_TEXTURE_2D_MULTISAMPLE_ARRAY : GL_TEXTURE_2D_ARRAY;
+					dirtySlot[slot] |= ( stateBoundColorTypes[slot] != colorType );
+					stateBoundColorTypes[slot] = colorType;
+					dirtySlot[slot] |= ( stateBoundColorLayer[slot] != layer );
+					stateBoundColorLayer[slot] = layer;
+				}
+				else
+				{
+					AssertMsg( false, "Unexpected GfxTextureType!", resource->resourceColor->type );
+				}
 			}
 			else
 			{
 				dirtySlot[slot] |= ( stateBoundColorTextures[slot] != 0 );
 				stateBoundColorTextures[slot] = 0;
+				dirtySlot[slot] |= ( stateBoundColorLayer[slot] != 0 );
+				stateBoundColorLayer[slot] = 0;
 			}
 
 			// Depth
@@ -761,15 +830,31 @@ static bool bind_targets( GfxRenderTargetResource *const *resources )
 					dirtySlot[slot] |= ( stateBoundDepthTexture != depthTexture );
 					stateBoundDepthTexture = depthTexture;
 
-					const GLuint depthType = hasMultiSample ?
-						GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
-					dirtySlot[slot] |= ( stateBoundDepthType != depthType );
-					stateBoundDepthType = depthType;
+					if( resource->resourceDepth->type == GfxTextureType_2D )
+					{
+						Assert( layer == 0 );
+						const GLuint depthType = hasMultiSample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
+						dirtySlot[slot] |= ( stateBoundDepthType != depthType );
+						stateBoundDepthType = depthType;
+						dirtySlot[slot] |= ( stateBoundDepthLayer != 0 );
+						stateBoundDepthLayer = 0;
+					}
+					else if( resource->resourceDepth->type == GfxTexturetype_2D_ARRAY )
+					{
+						Assert( layer < resource->resourceDepth->layers );
+						const GLuint depthType = hasMultiSample ? GL_TEXTURE_2D_MULTISAMPLE_ARRAY : GL_TEXTURE_2D_ARRAY;
+						dirtySlot[slot] |= ( stateBoundDepthType != depthType );
+						stateBoundDepthType = depthType;
+						dirtySlot[slot] |= ( stateBoundDepthLayer != layer );
+						stateBoundDepthLayer = layer;
+					}
 				}
 				else
 				{
 					dirtySlot[slot] |= ( stateBoundDepthTexture != 0 );
 					stateBoundDepthTexture = 0;
+					dirtySlot[slot] |= ( stateBoundDepthLayer != 0 );
+					stateBoundDepthLayer = 0;
 				}
 			}
 		}
@@ -801,15 +886,41 @@ static bool bind_targets( GfxRenderTargetResource *const *resources )
 			if( !dirtySlot[slot] ) { continue; }
 
 			const GLenum attachment = GL_COLOR_ATTACHMENT0 + slot;
-			nglFramebufferTexture2D( GL_FRAMEBUFFER, attachment,
-				stateBoundColorTypes[slot], stateBoundColorTextures[slot], 0 );
+
+			if( opengl_texture_type_is_2d( stateBoundColorTypes[slot] ) )
+			{
+				nglFramebufferTexture2D( GL_FRAMEBUFFER, attachment,
+					stateBoundColorTypes[slot], stateBoundColorTextures[slot], 0 );
+			}
+			else if( opengl_texture_type_is_layered( stateBoundColorTypes[slot] ) )
+			{
+				nglFramebufferTextureLayer( GL_FRAMEBUFFER, attachment,
+					stateBoundColorTextures[slot], 0, stateBoundColorLayer[slot] );
+			}
+			else
+			{
+				AssertMsg( false, "Unexpected texture type! %u", stateBoundColorTypes[slot] );
+			}
 		}
 
 		// Depth Texture
 		if( dirtySlot[0] )
 		{
-			nglFramebufferTexture2D( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
-				stateBoundDepthType, stateBoundDepthTexture, 0 );
+			if( opengl_texture_type_is_2d( stateBoundDepthType ) )
+			{
+				nglFramebufferTexture2D( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+					stateBoundDepthType, stateBoundDepthTexture, 0 );
+			}
+			else if( opengl_texture_type_is_layered( stateBoundDepthType ) )
+			{
+				nglFramebufferTextureLayer( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+					stateBoundDepthTexture, 0, stateBoundDepthLayer );
+			}
+			else
+			{
+				AssertMsg( false, "Unexpected texture type! %u", stateBoundDepthType );
+			}
+
 		}
 
 		GLenum buffers[GFX_RENDER_TARGET_SLOT_COUNT];
@@ -862,7 +973,8 @@ static void render_targets_reset()
 	OPENGL_CHECK_ERRORS_SCOPE
 
 	GfxRenderTargetResource *targets[GFX_RENDER_TARGET_SLOT_COUNT] = { nullptr };
-	bind_targets( targets );
+	int layers[GFX_RENDER_TARGET_SLOT_COUNT] = { 0 };
+	bind_targets( targets, layers );
 }
 
 
@@ -878,7 +990,7 @@ static void render_pass_validate()
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // GFX System
 
-bool CoreGfx::api_init()
+bool CoreGfx::init_api()
 {
 #if SWAPCHAIN_DPI_SCALED
 	const u16 w = Window::width;
@@ -905,7 +1017,7 @@ bool CoreGfx::api_init()
 }
 
 
-bool CoreGfx::api_free()
+bool CoreGfx::free_api()
 {
 	nglDeleteFramebuffers( 1, &stateBoundFBO );
 	stateBoundFBO = 0;
@@ -1165,85 +1277,102 @@ bool CoreGfx::api_shader_init( GfxShaderResource *&resource, u32 shaderID,
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource == nullptr );
+	if( shaderEntry.stages == 0 ) { return true; }
 
 	char info[1024];
 	int status;
 
 	resource = shaderResources.make_new();
 	resource->shaderID = shaderID;
-
-	GLuint shaderVertex = nglCreateShader( GL_VERTEX_SHADER );
-	GLuint shaderFragment = nglCreateShader( GL_FRAGMENT_SHADER );
-	GLuint shaderCompute; // TODO
-
-	const byte *codeVertex = Assets::binary.data + shaderEntry.offsetVertex + BINARY_OFFSET_GFX;
-	nglShaderSource( shaderVertex, 1, reinterpret_cast<const GLchar **>( &codeVertex ),
-		reinterpret_cast<const GLint *>( &shaderEntry.sizeVertex ) );
-
-	const byte *codeFragment = Assets::binary.data + shaderEntry.offsetFragment + BINARY_OFFSET_GFX;
-	nglShaderSource( shaderFragment, 1, reinterpret_cast<const GLchar **>( &codeFragment ),
-		reinterpret_cast<const GLint *>( &shaderEntry.sizeFragment ) );
-
-	nglCompileShader( shaderVertex );
-
-	if( nglGetShaderiv( shaderVertex, GL_COMPILE_STATUS, &status ), !status )
-	{
-	#if COMPILE_DEBUG
-		// TODO: Shader names in error messages
-		nglGetShaderInfoLog( shaderVertex, sizeof( info ), nullptr, info );
-		GfxShaderResource::release( resource );
-		ErrorReturnMsg( false, "%s: failed to compile vertex shader! (%s)\n\n%s",
-			__FUNCTION__, shaderEntry.name, info );
-	#endif
-	}
-
-	// Compile Fragment Shader
-	nglCompileShader( shaderFragment );
-
-	if( nglGetShaderiv( shaderFragment, GL_COMPILE_STATUS, &status ), !status )
-	{
-	#if COMPILE_DEBUG
-		// TODO: Shader names in error messages
-		nglGetShaderInfoLog( shaderFragment, sizeof( info ), nullptr, info );
-		GfxShaderResource::release( resource );
-		ErrorReturnMsg( false, "%s: Failed to compile fragment shader! (%s)\n\n%s",
-			__FUNCTION__, shaderEntry.name, info );
-	#endif
-	}
-
 	resource->program = nglCreateProgram();
-	nglAttachShader( resource->program, shaderVertex );
-	nglAttachShader( resource->program, shaderFragment );
-	// TODO: compute shaders (must upgrade to Opengl 4.5 & deprecate it on macOS)
 
-	GLuint inputLayoutElementsCount = 0U;
-
-	if( shaderEntry.vertexFormat != U32_MAX )
+	// Vertex Shader
+	if( CoreGfx::shader_has_stage( shaderID, GfxShaderStage_Vertex ) )
 	{
-		Assert( shaderEntry.vertexFormat < inputLayoutFormatsVertexCount );
-		const OpenGLInputLayoutFormats &table = inputLayoutFormatsVertex[shaderEntry.vertexFormat];
-		for( GLuint i = 0; i < table.attributesCount; i++ )
+		GLuint shaderVertex = nglCreateShader( GL_VERTEX_SHADER );
+
+		const byte *codeVertex = Assets::binary.data + shaderEntry.offsetVertex + BINARY_OFFSET_GFX;
+		nglShaderSource( shaderVertex, 1, reinterpret_cast<const GLchar **>( &codeVertex ),
+			reinterpret_cast<const GLint *>( &shaderEntry.sizeVertex ) );
+
+		nglCompileShader( shaderVertex );
+
+		if( nglGetShaderiv( shaderVertex, GL_COMPILE_STATUS, &status ), !status )
 		{
-			const OpenGLInputLayoutAttributes &attributes = table.attributes[i];
-			nglBindAttribLocation( resource->program, inputLayoutElementsCount, attributes.name );
-			inputLayoutElementsCount++;
+		#if COMPILE_DEBUG
+			// TODO: Shader names in error messages
+			nglGetShaderInfoLog( shaderVertex, sizeof( info ), nullptr, info );
+			GfxShaderResource::release( resource );
+			ErrorReturnMsg( false, "%s: failed to compile vertex shader! (%s)\n\n%s",
+				__FUNCTION__, shaderEntry.name, info );
+		#endif
+		}
+
+		nglAttachShader( resource->program, shaderVertex );
+		nglDeleteShader( shaderVertex );
+
+		// Vertex / Instance Formats
+		GLuint inputLayoutElementsCount = 0U;
+		if( shaderEntry.vertexFormat != U32_MAX )
+		{
+			Assert( shaderEntry.vertexFormat < inputLayoutFormatsVertexCount );
+			const OpenGLInputLayoutFormats &table = inputLayoutFormatsVertex[shaderEntry.vertexFormat];
+			for( GLuint i = 0; i < table.attributesCount; i++ )
+			{
+				const OpenGLInputLayoutAttributes &attributes = table.attributes[i];
+				nglBindAttribLocation( resource->program, inputLayoutElementsCount, attributes.name );
+				inputLayoutElementsCount++;
+			}
+		}
+
+		if( shaderEntry.instanceFormat != U32_MAX )
+		{
+			Assert( shaderEntry.instanceFormat < inputLayoutFormatsInstanceCount );
+			const OpenGLInputLayoutFormats &table = inputLayoutFormatsInstance[shaderEntry.instanceFormat];
+			for( GLuint i = 0; i < table.attributesCount; i++ )
+			{
+				const OpenGLInputLayoutAttributes &attributes = table.attributes[i];
+				nglBindAttribLocation( resource->program, inputLayoutElementsCount, attributes.name );
+				inputLayoutElementsCount++;
+			}
 		}
 	}
 
-	if( shaderEntry.instanceFormat != U32_MAX )
+	// Fragment Shader
+	if( CoreGfx::shader_has_stage( shaderID, GfxShaderStage_Vertex ) )
 	{
-		Assert( shaderEntry.instanceFormat < inputLayoutFormatsInstanceCount );
-		const OpenGLInputLayoutFormats &table = inputLayoutFormatsInstance[shaderEntry.instanceFormat];
-		for( GLuint i = 0; i < table.attributesCount; i++ )
+		GLuint shaderFragment = nglCreateShader( GL_FRAGMENT_SHADER );
+
+		const byte *codeFragment = Assets::binary.data + shaderEntry.offsetFragment + BINARY_OFFSET_GFX;
+		nglShaderSource( shaderFragment, 1, reinterpret_cast<const GLchar **>( &codeFragment ),
+			reinterpret_cast<const GLint *>( &shaderEntry.sizeFragment ) );
+
+		nglCompileShader( shaderFragment );
+
+		if( nglGetShaderiv( shaderFragment, GL_COMPILE_STATUS, &status ), !status )
 		{
-			const OpenGLInputLayoutAttributes &attributes = table.attributes[i];
-			nglBindAttribLocation( resource->program, inputLayoutElementsCount, attributes.name );
-			inputLayoutElementsCount++;
+		#if COMPILE_DEBUG
+			// TODO: Shader names in error messages
+			nglGetShaderInfoLog( shaderFragment, sizeof( info ), nullptr, info );
+			GfxShaderResource::release( resource );
+			ErrorReturnMsg( false, "%s: Failed to compile fragment shader! (%s)\n\n%s",
+				__FUNCTION__, shaderEntry.name, info );
+		#endif
 		}
+
+		nglAttachShader( resource->program, shaderFragment );
+		nglDeleteShader( shaderFragment );
 	}
 
+	// Compute Shader
+	if( CoreGfx::shader_has_stage( shaderID, GfxShaderStage_Compute ) )
+	{
+		// TODO: compute shaders (must upgrade to Opengl 4.5 & deprecate it on macOS)
+		GLuint shaderCompute;
+	}
+
+	// Link Shader
 	nglLinkProgram( resource->program );
-
 	if( nglGetProgramiv( resource->program, GL_LINK_STATUS, &status ), !status )
 	{
 	#if COMPILE_DEBUG
@@ -1254,9 +1383,6 @@ bool CoreGfx::api_shader_init( GfxShaderResource *&resource, u32 shaderID,
 			__FUNCTION__, shaderEntry.name, info );
 	#endif
 	}
-
-	nglDeleteShader( shaderVertex );
-	nglDeleteShader( shaderFragment );
 
 	resource->sizeVS = shaderEntry.sizeVertex;
 	resource->sizeVS = shaderEntry.sizeFragment;
@@ -1831,6 +1957,7 @@ bool CoreGfx::api_texture_init( GfxTextureResource *&resource, void *pixels,
 	resource->height = height;
 	resource->depth = 1U;
 	resource->levels = levels;
+	resource->layers = 1U;
 
 	const usize pixelSizeBytes = CoreGfx::colorFormatPixelSizeBytes[format];
 	const GLint glFormatInternal = OpenGLColorFormats[format].formatInternal;
@@ -1932,7 +2059,7 @@ bool CoreGfx::api_texture_bind( GfxTextureResource *resource, int slot )
 	const GLint location = opengl_texture_uniform_location( uniformLocationsTexture, slot );
 	nglUniform1i( location, slot );
 	nglActiveTexture( GL_TEXTURE0 + slot );
-	glBindTexture( GL_TEXTURE_2D, resource->textureSS );
+	glBindTexture( OpenGLTextureTypes[resource->type], resource->textureSS );
 
 	// OpenGL requires us to explitily set the sampler state on textures binds (TODO: Refactor)
 	isFilterModeMipmapping = resource->levels > 1;
@@ -1976,26 +2103,32 @@ void GfxRenderTargetResource::release( GfxRenderTargetResource *&resource )
 
 bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 	GfxTextureResource *&resourceColor, GfxTextureResource *&resourceDepth,
-	u16 width, u16 height, const GfxRenderTargetDescription &desc )
+	u16 width, u16 height, u16 layers, const GfxRenderTargetDescription &desc )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 	Assert( resource == nullptr );
 	Assert( resourceColor == nullptr );
 	Assert( resourceDepth == nullptr );
 
-	GLint TEXTURE_CURRENT = 0;
-	glGetIntegerv( GL_TEXTURE_BINDING_2D, &TEXTURE_CURRENT );
+	const bool isArrayTexture = layers > 1;
+	const GLenum targetSS = isArrayTexture ? GL_TEXTURE_2D_ARRAY : GL_TEXTURE_2D;
+	const GLenum targetMS = isArrayTexture ? GL_TEXTURE_2D_MULTISAMPLE_ARRAY : GL_TEXTURE_2D_MULTISAMPLE;
+
+	GLint cacheBoundTexture2D = 0;
+	glGetIntegerv( GL_TEXTURE_BINDING_2D, &cacheBoundTexture2D );
 
 	resource = renderTargetResources.make_new();
 	resource->width = width;
 	resource->height = height;
+	resource->layers = layers;
 	resource->desc = desc;
 
 	// Color Texture
 	if( desc.colorFormat != GfxColorFormat_NONE )
 	{
 		resourceColor = textureResources.make_new();
-		resourceColor->type = GfxTextureType_2D;
+		resourceColor->type = layers > 1 ? GfxTexturetype_2D_ARRAY : GfxTextureType_2D;
+		resourceColor->layers = layers;
 		resource->resourceColor = resourceColor;
 
 		const GLint glFormatInternal = OpenGLColorFormats[desc.colorFormat].formatInternal;
@@ -2013,17 +2146,25 @@ bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 		}
 
 		// Sampler (Single-Sample)
-		glBindTexture( GL_TEXTURE_2D, resourceColor->textureSS );
 		{
-			glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
-			glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
-			glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
-			glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+			glBindTexture( targetSS, resourceColor->textureSS );
+			glTexParameteri( targetSS, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
+			glTexParameteri( targetSS, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
+			glTexParameteri( targetSS, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+			glTexParameteri( targetSS, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
 
-			resource->size += GFX_SIZE_IMAGE_COLOR_BYTES( width, height, 1, desc.colorFormat );
+			resource->size += GFX_SIZE_IMAGE_COLOR_BYTES( width, height, layers, desc.colorFormat );
 
-			glTexImage2D( GL_TEXTURE_2D, 0, glFormatInternal,
-				width, height, 0, glFormat, glFormatType, nullptr );
+			if( isArrayTexture )
+			{
+				nglTexImage3D( targetSS, 0, glFormatInternal,
+					width, height, layers, 0, glFormat, glFormatType, nullptr );
+			}
+			else
+			{
+				glTexImage2D( targetSS, 0, glFormatInternal,
+					width, height, 0, glFormat, glFormatType, nullptr );
+			}
 
 			if( OPENGL_ERROR() )
 			{
@@ -2033,7 +2174,6 @@ bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 					__FUNCTION__, glGetError() );
 			}
 		}
-		glBindTexture( GL_TEXTURE_2D, TEXTURE_CURRENT );
 
 		if( desc.sampleCount > 1 )
 		{
@@ -2048,14 +2188,22 @@ bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 			}
 
 			// Sampler (Multi-Sample)
-			glBindTexture( GL_TEXTURE_2D_MULTISAMPLE, resourceColor->textureMS );
 			{
-				int sampleCount = desc.sampleCount;
+				glBindTexture( targetMS, resourceColor->textureMS );
 
-				resource->size += GFX_SIZE_IMAGE_COLOR_BYTES( width, height, 1, desc.colorFormat ) * sampleCount;
+				resource->size += GFX_SIZE_IMAGE_COLOR_BYTES( width, height, layers, desc.colorFormat ) *
+					desc.sampleCount;
 
-				nglTexImage2DMultisample( GL_TEXTURE_2D_MULTISAMPLE, sampleCount,
-					glFormatInternal, width, height, GL_TRUE);
+				if( isArrayTexture )
+				{
+					nglTexImage3DMultisample( targetMS, desc.sampleCount, glFormatInternal,
+						width, height, layers, GL_TRUE );
+				}
+				else
+				{
+					nglTexImage2DMultisample( targetMS, desc.sampleCount, glFormatInternal,
+						width, height, GL_TRUE );
+				}
 
 				if( OPENGL_ERROR() )
 				{
@@ -2065,7 +2213,6 @@ bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 						__FUNCTION__, glGetError() );
 				}
 			}
-			glBindTexture( GL_TEXTURE_2D, TEXTURE_CURRENT );
 		}
 
 		// CPU Readback
@@ -2075,8 +2222,8 @@ bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 			nglBindBuffer( GL_PIXEL_PACK_BUFFER, resource->pboColor );
 			{
 				resource->size += GFX_SIZE_IMAGE_COLOR_BYTES( width, height, 1, desc.colorFormat );
-				nglBufferData( GL_PIXEL_PACK_BUFFER, GFX_SIZE_IMAGE_COLOR_BYTES( width, height, 1, desc.colorFormat ),
-					nullptr, GL_STREAM_READ );
+				nglBufferData( GL_PIXEL_PACK_BUFFER,
+					GFX_SIZE_IMAGE_COLOR_BYTES( width, height, 1, desc.colorFormat ), nullptr, GL_STREAM_READ );
 			}
 			nglBindBuffer( GL_PIXEL_PACK_BUFFER, 0 );
 
@@ -2094,7 +2241,8 @@ bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 	if( desc.depthFormat != GfxDepthFormat_NONE )
 	{
 		resourceDepth = textureResources.make_new();
-		resourceDepth->type = GfxTextureType_2D;
+		resourceDepth->type = layers > 1 ? GfxTexturetype_2D_ARRAY : GfxTextureType_2D;
+		resourceDepth->layers = layers;
 		resource->resourceDepth = resourceDepth;
 
 		const GLint glFormatInternal = OpenGLDepthStencilFormats[desc.depthFormat].formatInternal;
@@ -2113,17 +2261,25 @@ bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 		}
 
 		// Sampler (Single-Sample)
-		glBindTexture( GL_TEXTURE_2D, resourceDepth->textureSS );
 		{
-			glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
-			glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
-			glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
-			glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+			glBindTexture( targetSS, resourceDepth->textureSS );
+			glTexParameteri( targetSS, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
+			glTexParameteri( targetSS, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
+			glTexParameteri( targetSS, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+			glTexParameteri( targetSS, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
 
-			resource->size += GFX_SIZE_IMAGE_DEPTH_BYTES( width, height, 1, desc.depthFormat );
+			resource->size += GFX_SIZE_IMAGE_DEPTH_BYTES( width, height, layers, desc.depthFormat );
 
-			glTexImage2D( GL_TEXTURE_2D, 0, glFormatInternal, width, height,
-				0, glFormat, glFormatType, nullptr );
+			if( isArrayTexture )
+			{
+				nglTexImage3D( targetSS, 0, glFormatInternal,
+					width, height, layers, 0, glFormat, glFormatType, nullptr );
+			}
+			else
+			{
+				glTexImage2D( targetSS, 0, glFormatInternal,
+					width, height, 0, glFormat, glFormatType, nullptr );
+			}
 
 			if( OPENGL_ERROR() )
 			{
@@ -2134,7 +2290,6 @@ bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 					__FUNCTION__, glGetError() );
 			}
 		}
-		glBindTexture( GL_TEXTURE_2D, TEXTURE_CURRENT );
 
 		if( desc.sampleCount > 1 )
 		{
@@ -2150,25 +2305,32 @@ bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 			}
 
 			// Sampler (Multi-Sample)
-			glBindTexture( GL_TEXTURE_2D_MULTISAMPLE, resourceDepth->textureMS );
 			{
-				int sampleCount = desc.sampleCount;
+				glBindTexture( targetMS, resourceDepth->textureMS );
 
-				resource->size += GFX_SIZE_IMAGE_COLOR_BYTES( width, height, 1, desc.colorFormat ) * sampleCount;
+				resource->size += GFX_SIZE_IMAGE_DEPTH_BYTES( width, height, layers, desc.depthFormat ) *
+					desc.sampleCount;
 
-				nglTexImage2DMultisample( GL_TEXTURE_2D_MULTISAMPLE, sampleCount,
-					glFormatInternal, width, height, GL_TRUE);
+				if( isArrayTexture )
+				{
+					nglTexImage3DMultisample( targetMS, desc.sampleCount, glFormatInternal,
+						width, height, layers, GL_TRUE );
+				}
+				else
+				{
+					nglTexImage2DMultisample( targetMS, desc.sampleCount, glFormatInternal,
+						width, height, GL_TRUE );
+				}
 
 				if( OPENGL_ERROR() )
 				{
 					GfxTextureResource::release( resourceColor );
 					GfxTextureResource::release( resourceDepth );
 					GfxRenderTargetResource::release( resource );
-					ErrorReturnMsg( false, "%s: failed to upload color multi-sample texture data (%d)",
+					ErrorReturnMsg( false, "%s: failed to upload depth multi-sample texture data (%d)",
 						__FUNCTION__, glGetError() );
 				}
 			}
-			glBindTexture( GL_TEXTURE_2D, TEXTURE_CURRENT );
 		}
 
 		// CPU Readback
@@ -2201,13 +2363,31 @@ bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 		// Attach Color
 		if( desc.colorFormat != GfxColorFormat_NONE )
 		{
-			nglFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, resourceColor->textureSS, 0 );
+			if( isArrayTexture )
+			{
+				nglFramebufferTextureLayer( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+					resourceColor->textureSS, 0, 0 );
+			}
+			else
+			{
+				nglFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+					targetSS, resourceColor->textureSS, 0 );
+			}
 		}
 
 		// Attach Depth
 		if( desc.depthFormat != GfxDepthFormat_NONE )
 		{
-			nglFramebufferTexture2D( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, resourceDepth->textureSS, 0 );
+			if( isArrayTexture )
+			{
+				nglFramebufferTextureLayer( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+					resourceDepth->textureSS, 0, 0 );
+			}
+			else
+			{
+				nglFramebufferTexture2D( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+					targetSS, resourceDepth->textureSS, 0 );
+			}
 		}
 
 		// Check Status
@@ -2231,15 +2411,31 @@ bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 			// Attach Color
 			if( desc.colorFormat != GfxColorFormat_NONE )
 			{
-				nglFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE,
-					resourceColor->textureMS, 0 );
+				if( isArrayTexture )
+				{
+					nglFramebufferTextureLayer( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+						resourceColor->textureMS, 0, 0 );
+				}
+				else
+				{
+					nglFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+						targetMS, resourceColor->textureMS, 0 );
+				}
 			}
 
 			// Attach Depth
 			if( desc.depthFormat != GfxDepthFormat_NONE )
 			{
-				nglFramebufferTexture2D( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D_MULTISAMPLE,
-					resourceDepth->textureMS, 0 );
+				if( isArrayTexture )
+				{
+					nglFramebufferTextureLayer( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+						resourceDepth->textureMS, 0, 0 );
+				}
+				else
+				{
+					nglFramebufferTexture2D( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+						targetMS, resourceDepth->textureMS, 0 );
+				}
 			}
 
 			// Check Status
@@ -2254,6 +2450,7 @@ bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 		nglBindFramebuffer( GL_FRAMEBUFFER, fboPrevious );
 	}
 
+	glBindTexture( GL_TEXTURE_2D, cacheBoundTexture2D );
 	PROFILE_GFX( Gfx::stats.gpuMemoryRenderTargets += resource->size );
 	return true;
 }
@@ -2949,7 +3146,7 @@ void CoreGfx::api_render_pass_begin( const GfxRenderPass &pass )
 {
 	OPENGL_CHECK_ERRORS_SCOPE
 
-	bind_targets( pass.targets );
+	bind_targets( pass.targets, pass.layers );
 }
 
 

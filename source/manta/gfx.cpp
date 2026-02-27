@@ -159,12 +159,12 @@ void debug_overlay_gfx( float x, float y ) { }
 bool CoreGfx::init()
 {
 #if GRAPHICS_ENABLED
-	ErrorIf( !CoreGfx::api_init(), "%s: Failed to initialize %s backend!", __FUNCTION__, BUILD_GRAPHICS );
-	ErrorIf( !CoreGfx::init_textures(), "%s: Failed to initialize textures!", __FUNCTION__ );
-	ErrorIf( !CoreGfx::init_uniform_buffers(), "%s: Failed to initialize uniform buffers!", __FUNCTION__ );
-	ErrorIf( !CoreGfx::init_shaders(), "%s: Failed to initialize shaders!", __FUNCTION__ );
-	ErrorIf( !CoreGfx::init_commands(), "%s: Failed to initialize command system!", __FUNCTION__ );
-	ErrorIf( !CoreGfx::batch.init( GFX_QUAD_BATCH_SIZE ), "%s: Failed to initialize quad batch!", __FUNCTION__ );
+	ErrorReturnIf( !CoreGfx::init_api(), false, "%s: Failed to initialize " BUILD_GRAPHICS " backend!", __FUNCTION__ );
+	ErrorReturnIf( !CoreGfx::init_textures(), false, "%s: Failed to initialize textures!", __FUNCTION__ );
+	ErrorReturnIf( !CoreGfx::init_buffers(), false, "%s: Failed to initialize buffers!", __FUNCTION__ );
+	ErrorReturnIf( !CoreGfx::init_shaders(), false, "%s: Failed to initialize shaders!", __FUNCTION__ );
+	ErrorReturnIf( !CoreGfx::init_commands(), false, "%s: Failed to initialize command system!", __FUNCTION__ );
+	ErrorReturnIf( !CoreGfx::batch.init(), false, "%s: Failed to initialize default quad batch!", __FUNCTION__ );
 #endif
 	return true;
 }
@@ -173,12 +173,12 @@ bool CoreGfx::init()
 bool CoreGfx::free()
 {
 #if GRAPHICS_ENABLED
-	ErrorIf( !CoreGfx::batch.free(), "%s: Failed to free default quad batch!", __FUNCTION__ );
-	ErrorIf( !CoreGfx::free_commands(), "%s: Failed to free command system!", __FUNCTION__ );
-	ErrorIf( !CoreGfx::free_shaders(), "%s: Failed to free shaders!", __FUNCTION__ );
-	ErrorIf( !CoreGfx::free_uniform_buffers(), "%s: Failed to free uniform buffers!", __FUNCTION__ );
-	ErrorIf( !CoreGfx::free_textures(), "%s: Failed to free textures!", __FUNCTION__ );
-	ErrorIf( !CoreGfx::api_free(), "%s: Failed to free %s backend!", __FUNCTION__, BUILD_GRAPHICS );
+	ErrorReturnIf( !CoreGfx::batch.free(), false, "%s: Failed to free default quad batch!", __FUNCTION__ );
+	ErrorReturnIf( !CoreGfx::free_commands(),false, "%s: Failed to free command system!", __FUNCTION__ );
+	ErrorReturnIf( !CoreGfx::free_shaders(),false, "%s: Failed to free shaders!", __FUNCTION__ );
+	ErrorReturnIf( !CoreGfx::free_buffers(),false, "%s: Failed to free buffers!", __FUNCTION__ );
+	ErrorReturnIf( !CoreGfx::free_textures(), false, "%s: Failed to free textures!", __FUNCTION__ );
+	ErrorReturnIf( !CoreGfx::free_api(), false, "%s: Failed to free %s backend!", __FUNCTION__, BUILD_GRAPHICS );
 #endif
 	return true;
 }
@@ -187,12 +187,25 @@ bool CoreGfx::free()
 bool CoreGfx::init_textures()
 {
 #if GRAPHICS_ENABLED
+	constexpr GfxColorFormat formats[Assets::TEXTURECOLORFORMAT_COUNT] =
+	{
+		GfxColorFormat_R8G8B8A8_FLOAT, // TextureColorFormat_R8G8B8A8
+		GfxColorFormat_R8G8, // TextureColorFormat_R8G8
+		GfxColorFormat_R8_UINT, // TextureColorFormat_R8
+		GfxColorFormat_R16G16B16A16_FLOAT, // TextureColorFormat_R16G16B16A16
+		GfxColorFormat_R16G16F_FLOAT, // TextureColorFormat_R16G16
+		GfxColorFormat_R16_FLOAT, // TextureColorFormat_R16
+		GfxColorFormat_R32G32B32A32_FLOAT, // TextureColorFormat_R32G32B32A32
+		GfxColorFormat_R32G32_FLOAT, // TextureColorFormat_R32G32
+		GfxColorFormat_R32_FLOAT, // TextureColorFormat_R32
+		GfxColorFormat_R10G10B10A2_FLOAT, // TextureColorFormat_R10G10B10A2
+	};
+
 	for( u32 i = 0; i < CoreAssets::textureCount; i++ )
 	{
 		const Assets::TextureEntry &textureEntry = Assets::texture( i );
 		CoreGfx::textures[i].init_2d( Assets::binary.data + textureEntry.offset,
-			textureEntry.width, textureEntry.height, textureEntry.levels,
-			GfxColorFormat_R8G8B8A8_FLOAT );
+			textureEntry.width, textureEntry.height, textureEntry.levels, formats[textureEntry.format] );
 	}
 #endif
 
@@ -213,7 +226,7 @@ bool CoreGfx::free_textures()
 }
 
 
-bool CoreGfx::init_uniform_buffers()
+bool CoreGfx::init_buffers()
 {
 #if GRAPHICS_ENABLED
 	static_assert( ARRAY_LENGTH( uniformBufferInitEntries ) == uniformBufferCount, "Missing GfxUniformBuffer!" );
@@ -228,7 +241,7 @@ bool CoreGfx::init_uniform_buffers()
 }
 
 
-bool CoreGfx::free_uniform_buffers()
+bool CoreGfx::free_buffers()
 {
 #if GRAPHICS_ENABLED
 	for( u32 i = 0; i < uniformBufferCount; i++ )
@@ -968,6 +981,14 @@ const double_m44 &Gfx::get_matrix_mvp_inverse()
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Shader
 
+bool CoreGfx::shader_has_stage( u32 shaderID, GfxShaderStage stage )
+{
+	Assert( shaderID < CoreGfx::shaderCount );
+	const ShaderEntry &shaderEntry = CoreGfx::shaderEntries[shaderID];
+	return shaderEntry.stages & stage;
+}
+
+
 bool CoreGfx::shader_bind_uniform_buffers_vertex( u32 shaderID )
 {
 	Assert( shaderID < CoreGfx::shaderCount );
@@ -1137,11 +1158,28 @@ void GfxRenderTarget::init( u16 width, u16 height, const GfxRenderTargetDescript
 {
 #if GRAPHICS_ENABLED
 	ErrorIf( !CoreGfx::api_render_target_init( resource,
-		textureColor.resource, textureDepth.resource, width, height, desc ),
+		textureColor.resource, textureDepth.resource, width, height, 1, desc ),
 		"Failed to init RenderTarget2D!" );
 
 	this->width = width;
 	this->height = height;
+	this->layers = 1;
+	this->desc = desc;
+	this->slot = -1;
+#endif
+}
+
+
+void GfxRenderTarget::init( u16 width, u16 height, u16 layers, const GfxRenderTargetDescription &desc )
+{
+#if GRAPHICS_ENABLED
+	ErrorIf( !CoreGfx::api_render_target_init( resource,
+		textureColor.resource, textureDepth.resource, width, height, layers, desc ),
+		"Failed to init RenderTarget2D!" );
+
+	this->width = width;
+	this->height = height;
+	this->layers = layers;
 	this->desc = desc;
 	this->slot = -1;
 #endif
@@ -1397,6 +1435,26 @@ void GfxRenderCommand::depth_write_mask( const GfxDepthWrite &mask )
 }
 
 
+void GfxRenderCommand::clear_color( Color color )
+{
+#if GRAPHICS_ENABLED
+	this->clearColor = true;
+	this->clearColorValue = color;
+#endif
+}
+
+
+void GfxRenderCommand::clear_depth( float depth )
+{
+#if GRAPHICS_ENABLED
+	this->clearDepth = true;
+	this->clearDepthValue = depth;
+#endif
+}
+
+
+
+
 void CoreGfx::render_command_execute_begin( const GfxRenderCommand &command )
 {
 #if GRAPHICS_ENABLED
@@ -1522,12 +1580,14 @@ void Gfx::render_graph_execute( const GfxRenderGraph &graph )
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Render Pass
 
-void GfxRenderPass::target( int slot, const GfxRenderTarget &target )
+void GfxRenderPass::target( int slot, const GfxRenderTarget &target, int layer )
 {
 #if GRAPHICS_ENABLED
 	Assert( slot >= 0 && slot < GFX_RENDER_TARGET_SLOT_COUNT );
+	Assert( layer >= 0 && layer < GFX_TEXTURE_ARRAY_LENGTH_MAX );
 	Assert( target.is_initialized() );
 	this->targets[slot] = target.resource;
+	this->layers[slot] = layer;
 #endif
 }
 

@@ -4,6 +4,7 @@
 
 #include <config.hpp>
 
+#include <core/assets.hpp>
 #include <core/memory.hpp>
 
 #include <manta/filesystem.hpp>
@@ -49,7 +50,10 @@ namespace Assets
 		usize offset;
 		u16 width;
 		u16 height;
-		u16 levels;
+		u16 depth;
+		u16 layers; // arrays
+		u16 levels; // mips
+		Assets::TextureColorFormat format;
 	};
 
 	inline u32 texture_count() { return CoreAssets::textureCount; }
@@ -99,23 +103,9 @@ class Material; // u32
 
 namespace Assets
 {
-	// NOTE: Must maintain parity with build/assets/material.hpp
-	enum_type( MaterialTextureSlot, int )
-	{
-		MaterialTextureSlot_Color = 0,
-		MaterialTextureSlot_Normal,
-		MaterialTextureSlot_Roughness,
-		MaterialTextureSlot_Metallic,
-		MaterialTextureSlot_Emissive,
-		MaterialTextureSlot_Specular,
-		MaterialTextureSlot_Shading,
-		// ...
-		MATERIALTEXTURESLOT_COUNT
-	};
-
 	struct MaterialEntry
 	{
-		u16 textures[MATERIALTEXTURESLOT_COUNT];
+		Assets::MaterialTextureSlot textures[MATERIALTEXTURESLOT_COUNT];
 	};
 
 	inline u32 material_count() { return CoreAssets::materialCount; }
@@ -129,25 +119,12 @@ class Mesh; // u32
 
 namespace Assets
 {
-	// NOTE: Must maintain parity with build/assets/mesh.hpp
-	enum_type( MeshFormatTypeVertex, int )
-	{
-		MeshFormatTypeVertex_Default = 0,
-	};
-
-	// NOTE: Must maintain parity with build/assets/mesh.hpp
-	enum_type( MeshFormatTypeIndex, int )
-	{
-		MeshFormatTypeIndex_U32 = 0,
-		MeshFormatTypeIndex_U16,
-	};
-
 	struct MeshEntry
 	{
-		MeshFormatTypeVertex formatVertex;
+		Assets::MeshFormatTypeVertex formatVertex;
 		usize offsetVertex;
 		usize sizeVertex;
-		MeshFormatTypeVertex formatIndex;
+		Assets::MeshFormatTypeVertex formatIndex;
 		usize offsetIndex;
 		usize sizeIndex;
 		float x1, y1, z1;
@@ -169,6 +146,7 @@ namespace Assets
 	{
 		u32 meshCount;
 		u32 meshes[32];
+		Assets::MeshFormatTypeVertex formatVertex;
 		float x1, y1, z1;
 		float x2, y2, z2;
 		DEBUG( const char *name );

@@ -37,7 +37,9 @@
 	extern "C" int ungetc( int, FILE * );
 	extern "C" int feof( FILE * );
 	extern "C" int ferror( FILE * );
-	extern "C" char *fgets( char *, int, FILE  );
+	extern "C" char *fgets( char *, int, FILE );
+	extern "C" int fputs( char const *, FILE * );
+	extern "C" int fflush( FILE * );
 
 	#if PIPELINE_OS_WINDOWS
 		extern "C" FILE *_popen( const char *, const char * );

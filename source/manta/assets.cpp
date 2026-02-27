@@ -17,9 +17,8 @@ namespace Assets
 bool CoreAssets::init()
 {
 	strjoin( Assets::binaryPath, EXECUTABLE_DIRECTORY, SLASH BUILD_PROJECT, ".bin" );
-	Assets::binary.open( Assets::binaryPath );
 
-	PrintLn( "%s", Assets::binaryPath );
+	Assets::binary.open( Assets::binaryPath );
 	ErrorReturnIf( !Assets::binary, false, "Assets: Failed to open binary file: %s", Assets::binaryPath );
 
 	return true;

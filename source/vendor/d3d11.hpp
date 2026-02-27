@@ -536,6 +536,14 @@
 		UINT MipLevels;
 	};
 
+	struct D3D11_TEX2D_ARRAY_SRV
+	{
+		UINT MostDetailedMip;
+		UINT MipLevels;
+		UINT FirstArraySlice;
+		UINT ArraySize;
+	};
+
 	struct D3D11_SHADER_RESOURCE_VIEW_DESC
 	{
 		DXGI_FORMAT Format;
@@ -544,12 +552,38 @@
 		union
 		{
 			D3D11_TEX2D_SRV Texture2D;
+			D3D11_TEX2D_ARRAY_SRV Texture2DArray;
 		};
 	};
 
 	struct D3D11_TEX2D_RTV
 	{
 		UINT MipSlice;
+	};
+
+	struct D3D11_TEX2D_ARRAY_RTV
+	{
+		UINT MipSlice;
+		UINT FirstArraySlice;
+		UINT ArraySize;
+	};
+
+	struct D3D11_TEX2DMS_RTV
+    {
+    	UINT UnusedField_NothingToDefine;
+    };
+
+	struct D3D11_TEX2DMS_ARRAY_RTV
+	{
+		UINT FirstArraySlice;
+		UINT ArraySize;
+	};
+
+	struct D3D11_TEX3D_RTV
+	{
+		UINT MipSlice;
+		UINT FirstWSlice;
+		UINT WSize;
 	};
 
 	struct D3D11_RENDER_TARGET_VIEW_DESC
@@ -559,12 +593,34 @@
 		union
 		{
 			D3D11_TEX2D_RTV Texture2D;
+			D3D11_TEX2D_ARRAY_RTV Texture2DArray;
+	        D3D11_TEX2DMS_RTV Texture2DMS;
+			D3D11_TEX2DMS_ARRAY_RTV Texture2DMSArray;
+			D3D11_TEX3D_RTV Texture3D;
 		};
 	};
 
 	struct D3D11_TEX2D_DSV
 	{
 		UINT MipSlice;
+	};
+
+	struct D3D11_TEX2D_ARRAY_DSV
+	{
+		UINT MipSlice;
+		UINT FirstArraySlice;
+		UINT ArraySize;
+	};
+
+	struct D3D11_TEX2DMS_DSV
+	{
+		UINT UnusedField_NothingToDefine;
+	};
+
+	struct D3D11_TEX2DMS_ARRAY_DSV
+	{
+		UINT FirstArraySlice;
+		UINT ArraySize;
 	};
 
 	struct D3D11_DEPTH_STENCIL_VIEW_DESC
@@ -575,6 +631,9 @@
 		union
 		{
 			D3D11_TEX2D_DSV Texture2D;
+			D3D11_TEX2D_ARRAY_DSV Texture2DArray;
+			D3D11_TEX2DMS_DSV Texture2DMS;
+			D3D11_TEX2DMS_ARRAY_DSV Texture2DMSArray;
 		};
 	};
 

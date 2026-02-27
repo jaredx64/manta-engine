@@ -388,13 +388,6 @@ namespace CoreWindow
 	}
 
 
-	void terminal_init()
-	{
-	#if WINDOW_ENABLED
-	#endif
-	}
-
-
 	void mouse_get_position( double &x, double &y )
 	{
 	#if WINDOW_ENABLED
@@ -453,6 +446,14 @@ namespace Window
 		XResizeWindow( CoreWindow::display, CoreWindow::handle, width, height );
 		XMoveWindow( CoreWindow::display, CoreWindow::handle, x, y );
 		XFlush( CoreWindow::display );
+	#endif
+	}
+
+
+	void set_position( int x, int y )
+	{
+	#if WINDOW_ENABLED
+		XMoveWindow( CoreWindow::display, CoreWindow::handle, x, y );
 	#endif
 	}
 

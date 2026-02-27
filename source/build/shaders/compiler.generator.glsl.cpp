@@ -107,8 +107,6 @@ static const char *GLSLPrimitives[] =
 	"mat2",             // Primitive_Float2x2
 	"mat3",             // Primitive_Float3x3
 	"mat4",             // Primitive_Float4x4
-	"sampler1D",        // Primitive_Texture1D
-	"sampler1DArray",   // Primitive_Texture1DArray
 	"sampler2D",        // Primitive_Texture2D
 	"sampler2DArray",   // Primitive_Texture2DArray
 	"sampler3D",        // Primitive_Texture3D
@@ -178,8 +176,6 @@ void GeneratorGLSL::process_names()
 
 			switch( variable.texture )
 			{
-				case Primitive_Texture1D:
-				case Primitive_Texture1DArray:
 				case Primitive_Texture2D:
 				case Primitive_Texture2DArray:
 				case Primitive_Texture3D:
@@ -302,6 +298,13 @@ void GeneratorGLSL::generate_function_declaration_main_pipeline( NodeFunctionDec
 	Function &function = parser.functions[node->functionID];
 	Type &returnType = parser.types[function.typeID];
 
+	// Enable Shader Stage
+	switch( node->functionType )
+	{
+		case FunctionType_MainVertex: shader.stages |= Assets::ShaderStageFlag_Vertex; break;
+		case FunctionType_MainFragment: shader.stages |= Assets::ShaderStageFlag_Fragment; break;
+	}
+
 	// Return Type & Name
 	output.append( indent ).append( "void main()\n" );
 	generate_statement_block( reinterpret_cast<NodeStatementBlock *>( node->block ) );
@@ -313,6 +316,9 @@ void GeneratorGLSL::generate_function_declaration_main_compute( NodeFunctionDecl
 {
 	Function &function = parser.functions[node->functionID];
 	Type &returnType = parser.types[function.typeID];
+
+	// Enable Shader Stage
+	shader.stages |= Assets::ShaderStageFlag_Compute;
 
 	// thread Groups
 	output.append( indent ).append( "layout( " );
@@ -371,6 +377,17 @@ void GeneratorGLSL::generate_function_call_intrinsics( NodeFunctionCall *node )
 				output.append( ".y, " );
 				generate_node_parenthesis( node );
 				output.append( ".z" );
+			output.append( " )" );
+		};
+
+	auto generate_node_uv_w_flipped = [this]( Node *nodeUV, Node *nodeW )
+		{
+			output.append( "vec3( " );
+				generate_node_parenthesis( nodeUV );
+				output.append( ".x, 1.0 - " );
+				generate_node_parenthesis( nodeUV );
+				output.append( ".y, " );
+				generate_node_parenthesis( nodeW );
 			output.append( " )" );
 		};
 
@@ -579,7 +596,6 @@ void GeneratorGLSL::generate_function_call_intrinsics( NodeFunctionCall *node )
 		case Intrinsic_TextureSample1D:
 		case Intrinsic_TextureSample1DArray:
 		case Intrinsic_TextureSample2D:
-		case Intrinsic_TextureSample2DArray:
 		case Intrinsic_TextureSample3D:
 		case Intrinsic_TextureSample3DArray:
 		case Intrinsic_TextureSampleCube:
@@ -591,6 +607,19 @@ void GeneratorGLSL::generate_function_call_intrinsics( NodeFunctionCall *node )
 			generate_node( get_param( node->param, 0 )->expr );
 			output.append( ", " );
 			generate_node_uv_flipped( get_param( node->param, 1 )->expr );
+			output.append( " )" );
+		}
+		return;
+
+		case Intrinsic_TextureSample2DArray:
+		{
+			// texture( texture, location );
+			output.append( "texture" );
+			output.append( "( " );
+			generate_node( get_param( node->param, 0 )->expr );
+			output.append( ", " );
+			generate_node_uv_w_flipped( get_param( node->param, 1 )->expr,
+				get_param( node->param, 2 )->expr );
 			output.append( " )" );
 		}
 		return;

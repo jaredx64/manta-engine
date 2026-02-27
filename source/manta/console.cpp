@@ -1455,6 +1455,7 @@ void CoreConsole::Log( Color color, const char *command, const char *message )
 	CoreConsole::log.add( LogLine { color, command, message } );
 	CoreConsole::logRegion.set_position_percent( 0.0f, true );
 	CoreConsole::logRegion.set_position_percent( 0.0f, false );
+	PrintLn( "CONSOLE: %s", message );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

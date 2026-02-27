@@ -13,10 +13,10 @@
 
 struct CacheMesh
 {
-	MeshFormatTypeVertex formatVertex;
+	Assets::MeshFormatTypeVertex formatVertex;
 	usize offsetVertex;
 	usize sizeVertex;
-	MeshFormatTypeIndex formatIndex;
+	Assets::MeshFormatTypeIndex formatIndex;
 	usize offsetIndex;
 	usize sizeIndex;
 	float x1, y1, z1;
@@ -27,8 +27,8 @@ struct CacheMesh
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 MeshID Meshes::register_new( CacheKey cacheKey,
-	MeshFormatTypeVertex formatVertex, void *dataVertex, usize sizeVertex,
-	MeshFormatTypeIndex formatIndex, void *dataIndex, usize sizeIndex,
+	Assets::MeshFormatTypeVertex formatVertex, void *dataVertex, usize sizeVertex,
+	Assets::MeshFormatTypeIndex formatIndex, void *dataIndex, usize sizeIndex,
 	float x1, float y1, float z1, float x2, float y2, float z2,
 	u32 skinSlotIndex )
 {
@@ -67,7 +67,7 @@ MeshID Meshes::register_new_from_cache( CacheKey cacheKey )
 
 	// Vertex Data
 	static Buffer dataVertexCache;
-	Assert( cache.formatVertex < MESHFORMATTYPEVERTEX_COUNT );
+	Assert( cache.formatVertex < Assets::MESHFORMATTYPEVERTEX_COUNT );
 	dataVertexCache.clear();
 	Assert( cache.sizeVertex != 0LLU );
 	dataVertexCache.write_from_file( Build::pathOutputRuntimeBinary,
@@ -75,7 +75,7 @@ MeshID Meshes::register_new_from_cache( CacheKey cacheKey )
 
 	// Index Data
 	static Buffer dataIndexCache;
-	Assert( cache.formatIndex < MESHFORMATTYPEINDEX_COUNT );
+	Assert( cache.formatIndex < Assets::MESHFORMATTYPEINDEX_COUNT );
 	dataIndexCache.clear();
 	if( cache.sizeIndex != 0LLU )
 	{
@@ -164,13 +164,13 @@ void Meshes::build()
 			{
 				source.append( "\t\t{ " );
 
-				snprintf( buffer, sizeof( buffer ), "%d, BINARY_OFFSET_ASSETS + %lluLLU, %lluLLU, ",
+				snprintf( buffer, sizeof( buffer ), "%u, BINARY_OFFSET_ASSETS + %lluLLU, %lluLLU, ",
 					mesh.formatVertex,
 					mesh.offsetVertex,
 					mesh.sizeVertex );
 				source.append( buffer );
 
-				snprintf( buffer, sizeof( buffer ), "%d, BINARY_OFFSET_ASSETS + %lluLLU, %lluLLU, ",
+				snprintf( buffer, sizeof( buffer ), "%u, BINARY_OFFSET_ASSETS + %lluLLU, %lluLLU, ",
 					mesh.formatIndex,
 					mesh.offsetIndex,
 					mesh.sizeIndex );

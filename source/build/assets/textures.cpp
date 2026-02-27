@@ -994,11 +994,14 @@ void Textures::build()
 			for( Texture &texture : textures )
 			{
 				snprintf( buffer, PATH_SIZE,
-					"\t\t{ BINARY_OFFSET_ASSETS + %lluLLU, %u, %u, %u }, // %s\n",
+					"\t\t{ BINARY_OFFSET_ASSETS + %lluLLU, %u, %u, %u, %u, %u, %u }, // %s\n",
 					texture.offset,
 					texture.width,
 					texture.height,
+					texture.depth,
+					texture.layers,
 					texture.levels,
+					texture.format,
 					texture.name.cstr() );
 
 				source.append( buffer );

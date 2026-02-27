@@ -38,6 +38,12 @@
 	#define Cursor XCursor
 	#define Colormap XColormap
 
+	// minwindef.h: NEAR/FAR are 16-bit DOS era keywords for pointer hints. This is irrelavent to
+	// 32/64 bit Windows hence it's safe to redefine these to no-ops. This allows us to use 'near'
+	// and 'far' as viable keywords in our own code
+	#define near
+	#define far
+
 #else
 
 	#undef min
@@ -65,6 +71,10 @@
 	#undef Visual
 	#undef Cursor
 	#undef Colormap
+
+	// minwindef.h
+	#undef near
+	#undef far
 
 #undef CONFLICT_GUARD
 #endif

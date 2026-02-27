@@ -247,6 +247,7 @@ void Gfx::codegen()
 		{
 			assets_struct( header,
 				"ShaderEntry",
+				"u8 stages;",
 				"usize offsetVertex;",
 				"usize sizeVertex;",
 				"usize offsetFragment;",
@@ -428,6 +429,10 @@ void Gfx::codegen()
 			for( Shader &shader : shaders )
 			{
 				source.append( "\t\t{ " );
+
+				snprintf( buffer, sizeof( buffer ), "%u, ",
+					shader.stages );
+				source.append( buffer );
 
 				snprintf( buffer, sizeof( buffer ), "%lluLLU, %lluLLU, ",
 					shader.offset[ShaderStage_Vertex], shader.size[ShaderStage_Vertex] );

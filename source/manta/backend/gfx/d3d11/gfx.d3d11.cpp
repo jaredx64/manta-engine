@@ -250,6 +250,71 @@ static const D3D11MapAccessMode D3D11CPUAccessModes[] =
 static_assert( ARRAY_LENGTH( D3D11CPUAccessModes ) == GFXWRITEMODE_COUNT,
 	"Missing GfxWriteMode!" );
 
+
+static const D3D11_RTV_DIMENSION D3D11RTVDimensionsSS[] =
+{
+	D3D11_RTV_DIMENSION_TEXTURE2D, // GfxTextureType_2D
+	D3D11_RTV_DIMENSION_TEXTURE2DARRAY, // GfxTexturetype_2D_ARRAY
+	// TODO: What should these be??
+	D3D11_RTV_DIMENSION_UNKNOWN, // GfxTextureType_3D
+	D3D11_RTV_DIMENSION_UNKNOWN, // GfxTextureType_CUBE
+	D3D11_RTV_DIMENSION_UNKNOWN, // GfxTextureType_CUBE_ARRAY
+};
+static_assert( ARRAY_LENGTH( D3D11RTVDimensionsSS ) == GFXTEXTURETYPE_COUNT,
+	"Missing GfxTextureType!" );
+
+
+static const D3D11_RTV_DIMENSION D3D11RTVDimensionsMS[] =
+{
+	D3D11_RTV_DIMENSION_TEXTURE2DMS, // GfxTextureType_2D
+	D3D11_RTV_DIMENSION_TEXTURE2DMSARRAY, // GfxTexturetype_2D_ARRAY
+	// TODO: What should these be??
+	D3D11_RTV_DIMENSION_UNKNOWN, // GfxTextureType_3D
+	D3D11_RTV_DIMENSION_UNKNOWN, // GfxTextureType_CUBE
+	D3D11_RTV_DIMENSION_UNKNOWN, // GfxTextureType_CUBE_ARRAY
+};
+static_assert( ARRAY_LENGTH( D3D11RTVDimensionsMS ) == GFXTEXTURETYPE_COUNT,
+	"Missing GfxTextureType!" );
+
+
+static const D3D11_DSV_DIMENSION D3D11DSVDimensionsSS[] =
+{
+	D3D11_DSV_DIMENSION_TEXTURE2D, // GfxTextureType_2D
+	D3D11_DSV_DIMENSION_TEXTURE2DARRAY, // GfxTexturetype_2D_ARRAY
+	// TODO: What should these be??
+	D3D11_DSV_DIMENSION_UNKNOWN, // GfxTextureType_3D
+	D3D11_DSV_DIMENSION_UNKNOWN, // GfxTextureType_CUBE
+	D3D11_DSV_DIMENSION_UNKNOWN, // GfxTextureType_CUBE_ARRAY
+};
+static_assert( ARRAY_LENGTH( D3D11DSVDimensionsSS ) == GFXTEXTURETYPE_COUNT,
+	"Missing GfxTextureType!" );
+
+
+static const D3D11_DSV_DIMENSION D3D11DSVDimensionsMS[] =
+{
+	D3D11_DSV_DIMENSION_TEXTURE2DMS, // GfxTextureType_2D
+	D3D11_DSV_DIMENSION_TEXTURE2DMS, // GfxTexturetype_2D_ARRAY
+	// TODO: What should these be??
+	D3D11_DSV_DIMENSION_UNKNOWN, // GfxTextureType_3D
+	D3D11_DSV_DIMENSION_UNKNOWN, // GfxTextureType_CUBE
+	D3D11_DSV_DIMENSION_UNKNOWN, // GfxTextureType_CUBE_ARRAY
+};
+static_assert( ARRAY_LENGTH( D3D11DSVDimensionsMS ) == GFXTEXTURETYPE_COUNT,
+	"Missing GfxTextureType!" );
+
+
+static const D3D11_SRV_DIMENSION D3D11SRVDimensions[] =
+{
+	D3D11_SRV_DIMENSION_TEXTURE2D, // GfxTextureType_2D
+	D3D11_SRV_DIMENSION_TEXTURE2DARRAY, // GfxTexturetype_2D_ARRAY
+	// TODO: What should these be??
+	D3D11_SRV_DIMENSION_TEXTURE3D, // GfxTextureType_3D
+	D3D11_SRV_DIMENSION_TEXTURECUBE, // GfxTextureType_CUBE
+	D3D11_SRV_DIMENSION_TEXTURECUBEARRAY, // GfxTextureType_CUBE_ARRAY
+};
+static_assert( ARRAY_LENGTH( D3D11SRVDimensions ) == GFXTEXTURETYPE_COUNT,
+	"Missing GfxTextureType!" );
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Resources
 
@@ -343,6 +408,7 @@ struct GfxTextureResource : public GfxResource
 	u16 height = 0;
 	u16 depth = 0;
 	u16 levels = 0;
+	u16 layers = 0;
 	usize size = 0;
 };
 
@@ -351,8 +417,8 @@ struct GfxRenderTargetResource : public GfxResource
 {
 	static void release( GfxRenderTargetResource *&resource );
 
-	ID3D11RenderTargetView *rtv = nullptr;
-	ID3D11DepthStencilView *dsv = nullptr;
+	ID3D11RenderTargetView *rtv[GFX_TEXTURE_ARRAY_LENGTH_MAX] = { nullptr };
+	ID3D11DepthStencilView *dsv[GFX_TEXTURE_ARRAY_LENGTH_MAX] = { nullptr };
 	ID3D11Texture2D *textureColorSS = nullptr;
 	ID3D11Texture2D *textureColorMS = nullptr;
 	ID3D11Texture2D *textureDepthSS = nullptr;
@@ -365,6 +431,7 @@ struct GfxRenderTargetResource : public GfxResource
 	GfxRenderTargetDescription desc = { };
 	u16 width = 0;
 	u16 height = 0;
+	u16 layers = 0;
 	usize size = 0;
 };
 
@@ -797,7 +864,7 @@ static bool apply_state_scissor( const GfxStateScissor &state )
 }
 
 
-static bool bind_targets( GfxRenderTargetResource *const *resources )
+static bool bind_targets( GfxRenderTargetResource *const *resources, const int *layers )
 {
 	static double_m44 cacheMatrixModel;
 	static double_m44 cacheMatrixView;
@@ -810,6 +877,7 @@ static bool bind_targets( GfxRenderTargetResource *const *resources )
 
 	for( int slot = 0; slot < GFX_RENDER_TARGET_SLOT_COUNT; slot++ )
 	{
+		const int layer = layers[slot];
 		GfxRenderTargetResource *const resource = resources[slot];
 
 		if( stateBoundTargetResources[slot] != nullptr && stateBoundTargetResources[slot] != resource )
@@ -839,7 +907,7 @@ static bool bind_targets( GfxRenderTargetResource *const *resources )
 		else
 		{
 			// Color
-			ID3D11RenderTargetView *viewColor = resource->rtv;
+			ID3D11RenderTargetView *viewColor = resource->rtv[layer];
 			hasCustomRenderTargets |= ( viewColor != nullptr );
 			dirtySlots[slot] |= ( stateBoundViewColor[slot] != viewColor );
 			stateBoundViewColor[slot] = viewColor;
@@ -847,7 +915,7 @@ static bool bind_targets( GfxRenderTargetResource *const *resources )
 			// Depth
 			if( slot == 0 )
 			{
-				ID3D11DepthStencilView *viewDepth = resource->dsv;
+				ID3D11DepthStencilView *viewDepth = resource->dsv[layer];
 				hasCustomRenderTargets |= ( viewDepth != nullptr );
 				dirtySlots[slot] |= ( stateBoundViewDepth != viewDepth );
 				stateBoundViewDepth = viewDepth;
@@ -904,7 +972,8 @@ static bool bind_targets( GfxRenderTargetResource *const *resources )
 static void render_targets_reset()
 {
 	GfxRenderTargetResource *targets[GFX_RENDER_TARGET_SLOT_COUNT] = { nullptr };
-	bind_targets( targets );
+	int layers[GFX_RENDER_TARGET_SLOT_COUNT] = { 0 };
+	bind_targets( targets, layers );
 }
 
 
@@ -1023,7 +1092,7 @@ static void d3d11_work_tracking_free()
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // GFX System
 
-bool CoreGfx::api_init()
+bool CoreGfx::init_api()
 {
 #if SWAPCHAIN_DPI_SCALED
 	const u16 w = Window::width;
@@ -1048,7 +1117,7 @@ bool CoreGfx::api_init()
 }
 
 
-bool CoreGfx::api_free()
+bool CoreGfx::free_api()
 {
 #if COMPILE_DEBUG
 	annotation->Release();
@@ -1509,7 +1578,7 @@ bool CoreGfx::api_shader_init( GfxShaderResource *&resource, u32 shaderID,
 	u32 csSize, vsSize, psSize;
 
 	// Vertex Shader
-	if( shaderEntry.sizeVertex > 0 )
+	if( CoreGfx::shader_has_stage( shaderID, GfxShaderStage_Vertex ) && shaderEntry.sizeVertex > 0 )
 	{
 		const void *codeVertex = reinterpret_cast<const void *>(
 			Assets::binary.data + shaderEntry.offsetVertex + BINARY_OFFSET_GFX );
@@ -1593,7 +1662,7 @@ bool CoreGfx::api_shader_init( GfxShaderResource *&resource, u32 shaderID,
 	}
 
 	// Fragment Shader
-	if( shaderEntry.sizeFragment > 0 )
+	if( CoreGfx::shader_has_stage( shaderID, GfxShaderStage_Fragment ) && shaderEntry.sizeFragment > 0 )
 	{
 		const void *codeFragment = reinterpret_cast<const void *>(
 			Assets::binary.data + shaderEntry.offsetFragment + BINARY_OFFSET_GFX );
@@ -1623,7 +1692,7 @@ bool CoreGfx::api_shader_init( GfxShaderResource *&resource, u32 shaderID,
 
 	// Compute Shader
 #if COMPUTE_SHADERS
-	if( shaderEntry.sizeFragment > 0 )
+	if( CoreGfx::shader_has_stage( shaderID, GfxShaderStage_Compute ) && shaderEntry.sizeCompute > 0 )
 	{
 		const void *codeCompute = reinterpret_cast<const void *>( Assets::binary.data + shaderEntry.offsetCompute );
 		if( FAILED( D3DCompile( codeCompute, shaderEntry.sizeCompute, nullptr, nullptr, nullptr,
@@ -2121,6 +2190,7 @@ bool CoreGfx::api_texture_init( GfxTextureResource *&resource, void *pixels,
 	resource->height = height;
 	resource->depth = 1U;
 	resource->levels = levels;
+	resource->layers = 1U;
 	resource->size = 0U;
 
 	DECL_ZERO( D3D11_TEXTURE2D_DESC, tDesc );
@@ -2221,8 +2291,11 @@ void GfxRenderTargetResource::release( GfxRenderTargetResource *&resource )
 {
 	if( resource == nullptr || resource->id == GFX_RESOURCE_ID_NULL ) { return; }
 
-	if( resource->rtv != nullptr ) { resource->rtv->Release(); }
-	if( resource->dsv != nullptr ) { resource->dsv->Release(); }
+	for( u16 i = 0; i < resource->layers; i++ )
+	{
+		if( resource->rtv[i] != nullptr ) { resource->rtv[i]->Release(); }
+		if( resource->dsv[i] != nullptr ) { resource->dsv[i]->Release(); }
+	}
 	if( resource->textureColorSS != nullptr ) { resource->textureColorSS->Release(); }
 	if( resource->textureColorMS != nullptr ) { resource->textureColorMS->Release(); }
 	if( resource->textureDepthSS != nullptr ) { resource->textureDepthSS->Release(); }
@@ -2239,7 +2312,7 @@ void GfxRenderTargetResource::release( GfxRenderTargetResource *&resource )
 
 bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 	GfxTextureResource *&resourceColor, GfxTextureResource *&resourceDepth,
-	u16 width, u16 height, const GfxRenderTargetDescription &desc )
+	u16 width, u16 height, u16 layers, const GfxRenderTargetDescription &desc )
 {
 	Assert( resource == nullptr );
 	Assert( resourceColor == nullptr );
@@ -2248,21 +2321,26 @@ bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 	resource = renderTargetResources.make_new();
 	resource->width = width;
 	resource->height = height;
+	resource->layers = layers;
 	resource->desc = desc;
 	resource->size = 0;
+
+	const bool isArrayTexture = layers > 1;
+	const GfxTextureType textureType = isArrayTexture ? GfxTexturetype_2D_ARRAY : GfxTextureType_2D;
 
 	// Color
 	if( desc.colorFormat != GfxColorFormat_NONE )
 	{
 		resourceColor = textureResources.make_new();
-		resourceColor->type = GfxTextureType_2D;
+		resourceColor->type = textureType;
+		resourceColor->layers = layers;
 
 		// Texture2D (Single-Sample)
 		DECL_ZERO( D3D11_TEXTURE2D_DESC, tDesc );
 		tDesc.Width = width;
 		tDesc.Height = height;
 		tDesc.MipLevels = 1;
-		tDesc.ArraySize = 1;
+		tDesc.ArraySize = layers;
 		tDesc.Format = D3D11ColorFormats[desc.colorFormat];
 		tDesc.SampleDesc.Count = 1;
 		tDesc.SampleDesc.Quality = 0;
@@ -2278,7 +2356,7 @@ bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 			GfxRenderTargetResource::release( resource );
 			ErrorReturnMsg( false, "%s: Failed to create color texture 2d", __FUNCTION__ );
 		}
-		resource->size += GFX_SIZE_IMAGE_COLOR_BYTES( width, height, 1, desc.colorFormat );
+		resource->size += GFX_SIZE_IMAGE_COLOR_BYTES( width, height, layers, desc.colorFormat );
 
 		// Texture2D (Multi-Sample)
 		if( desc.sampleCount > 1 )
@@ -2299,32 +2377,56 @@ bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 				GfxRenderTargetResource::release( resource );
 				ErrorReturnMsg( false, "%s: Failed to create color texture 2d", __FUNCTION__ );
 			}
-			resource->size += GFX_SIZE_IMAGE_COLOR_BYTES( width, height, 1, desc.colorFormat ) * msaaSampleCount;
+			resource->size += GFX_SIZE_IMAGE_COLOR_BYTES( width, height, layers, desc.colorFormat ) * msaaSampleCount;
 		}
 
 		// Render Target View
 		DECL_ZERO( D3D11_RENDER_TARGET_VIEW_DESC, rtvDesc );
 		rtvDesc.Format = tDesc.Format;
 		rtvDesc.ViewDimension = desc.sampleCount > 1 ?
-			D3D11_RTV_DIMENSION_TEXTURE2DMS : D3D11_RTV_DIMENSION_TEXTURE2D;
-		rtvDesc.Texture2D.MipSlice = 0;
+			D3D11RTVDimensionsMS[textureType] : D3D11RTVDimensionsSS[textureType];
 
-		Assert( resource->rtv == nullptr );
-		if( FAILED( device->CreateRenderTargetView( desc.sampleCount > 1 ?
-			resource->textureColorMS : resource->textureColorSS,
-			&rtvDesc, &resource->rtv ) ) )
+		for( u16 i = 0; i < layers; i++ )
 		{
-			GfxTextureResource::release( resourceColor );
-			GfxRenderTargetResource::release( resource );
-			ErrorReturnMsg( false, "%s: Failed to create color render target view", __FUNCTION__ );
+			if( isArrayTexture )
+			{
+				rtvDesc.Texture2DArray.MipSlice = 0;
+				rtvDesc.Texture2DArray.FirstArraySlice = static_cast<UINT>( i );
+				rtvDesc.Texture2DArray.ArraySize = 1;
+			}
+			else
+			{
+				rtvDesc.Texture2D.MipSlice = 0;
+			}
+
+			Assert( resource->rtv[i] == nullptr );
+			if( FAILED( device->CreateRenderTargetView( desc.sampleCount > 1 ?
+				resource->textureColorMS : resource->textureColorSS,
+				&rtvDesc, &resource->rtv[i] ) ) )
+			{
+				GfxTextureResource::release( resourceColor );
+				GfxRenderTargetResource::release( resource );
+				ErrorReturnMsg( false, "%s: Failed to create color render target view", __FUNCTION__ );
+			}
 		}
 
 		// Shader Resource View
 		DECL_ZERO( D3D11_SHADER_RESOURCE_VIEW_DESC, srvDesc );
 		srvDesc.Format = D3D11ColorFormats[desc.colorFormat];
-		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-		srvDesc.Texture2D.MostDetailedMip = 0;
-		srvDesc.Texture2D.MipLevels = 1;
+		srvDesc.ViewDimension = D3D11SRVDimensions[textureType];
+
+		if( isArrayTexture )
+		{
+			srvDesc.Texture2DArray.MostDetailedMip = 0;
+			srvDesc.Texture2DArray.MipLevels = 1;
+			srvDesc.Texture2DArray.FirstArraySlice = 0;
+			srvDesc.Texture2DArray.ArraySize = static_cast<UINT>( layers );
+		}
+		else
+		{
+			srvDesc.Texture2D.MostDetailedMip = 0;
+			srvDesc.Texture2D.MipLevels = 1;
+		}
 
 		Assert( resourceColor->srv == nullptr );
 		if( FAILED( device->CreateShaderResourceView( resource->textureColorSS, &srvDesc, &resourceColor->srv ) ) )
@@ -2363,7 +2465,8 @@ bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 	if( desc.depthFormat != GfxDepthFormat_NONE )
 	{
 		resourceDepth = textureResources.make_new();
-		resourceDepth->type = GfxTextureType_2D;
+		resourceDepth->type = textureType;
+		resourceDepth->layers = layers;
 
 		const bool hasMSAA = desc.sampleCount > 1;
 
@@ -2372,7 +2475,7 @@ bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 		tDesc.Width = width;
 		tDesc.Height = height;
 		tDesc.MipLevels = 1;
-		tDesc.ArraySize = 1;
+		tDesc.ArraySize = layers;
 		tDesc.Format = hasMSAA ? D3D11DepthStencilFormats[desc.depthFormat].srvFormat : // MSAA: Typed
 			D3D11DepthStencilFormats[desc.depthFormat].texFormat; // Single-Sample: Untyped
 		tDesc.SampleDesc.Count = 1;
@@ -2391,7 +2494,7 @@ bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 			GfxRenderTargetResource::release( resource );
 			ErrorReturnMsg( false, "%s: Failed to create depth texture 2d", __FUNCTION__ );
 		}
-		resource->size += GFX_SIZE_IMAGE_DEPTH_BYTES( width, height, 1, desc.depthFormat );
+		resource->size += GFX_SIZE_IMAGE_DEPTH_BYTES( width, height, layers, desc.depthFormat );
 
 		// Texture2D (Multi-Sample)
 		if( desc.sampleCount > 1 )
@@ -2415,34 +2518,59 @@ bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 				GfxRenderTargetResource::release( resource );
 				ErrorReturnMsg( false, "%s: Failed to create depth texture 2d", __FUNCTION__ );
 			}
-			resource->size += GFX_SIZE_IMAGE_DEPTH_BYTES( width, height, 1, desc.depthFormat ) * msaaSampleCount;
+			resource->size += GFX_SIZE_IMAGE_DEPTH_BYTES( width, height, layers, desc.depthFormat ) * msaaSampleCount;
 		}
 
 		// Depth-Stencil View
 		DECL_ZERO( D3D11_DEPTH_STENCIL_VIEW_DESC, dsvDesc );
 		dsvDesc.Format = D3D11DepthStencilFormats[desc.depthFormat].dsvFormat;
 		dsvDesc.ViewDimension = desc.sampleCount > 1 ?
-			D3D11_DSV_DIMENSION_TEXTURE2DMS : D3D11_DSV_DIMENSION_TEXTURE2D;
+			D3D11DSVDimensionsMS[textureType] : D3D11DSVDimensionsSS[textureType];
 		dsvDesc.Flags = 0;
 		dsvDesc.Texture2D.MipSlice = 0;
 
-		Assert( resource->dsv == nullptr );
-		if( FAILED( device->CreateDepthStencilView( desc.sampleCount > 1 ?
-			resource->textureDepthMS : resource->textureDepthSS,
-			&dsvDesc, &resource->dsv ) ) )
+		for( u16 i = 0; i < layers; i++ )
 		{
-			GfxTextureResource::release( resourceColor );
-			GfxTextureResource::release( resourceDepth );
-			GfxRenderTargetResource::release( resource );
-			ErrorReturnMsg( false, "%s: Failed to create depth render target view", __FUNCTION__ );
+			if( isArrayTexture )
+			{
+				dsvDesc.Texture2DArray.MipSlice = 0;
+				dsvDesc.Texture2DArray.FirstArraySlice = static_cast<UINT>( i );
+				dsvDesc.Texture2DArray.ArraySize = 1;
+			}
+			else
+			{
+				dsvDesc.Texture2D.MipSlice = 0;
+			}
+
+			Assert( resource->dsv[i] == nullptr );
+			if( FAILED( device->CreateDepthStencilView( desc.sampleCount > 1 ?
+				resource->textureDepthMS : resource->textureDepthSS,
+				&dsvDesc, &resource->dsv[i] ) ) )
+			{
+				GfxTextureResource::release( resourceColor );
+				GfxTextureResource::release( resourceDepth );
+				GfxRenderTargetResource::release( resource );
+				ErrorReturnMsg( false, "%s: Failed to create depth render target view", __FUNCTION__ );
+			}
 		}
 
 		// Shader Resource
 		DECL_ZERO( D3D11_SHADER_RESOURCE_VIEW_DESC, srvDesc );
 		srvDesc.Format = D3D11DepthStencilFormats[desc.depthFormat].srvFormat;
-		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-		srvDesc.Texture2D.MostDetailedMip = 0;
-		srvDesc.Texture2D.MipLevels = 1;
+		srvDesc.ViewDimension = D3D11SRVDimensions[textureType];
+
+		if( isArrayTexture )
+		{
+			srvDesc.Texture2DArray.MostDetailedMip = 0;
+			srvDesc.Texture2DArray.MipLevels = 1;
+			srvDesc.Texture2DArray.FirstArraySlice = 0;
+			srvDesc.Texture2DArray.ArraySize = static_cast<UINT>( layers );
+		}
+		else
+		{
+			srvDesc.Texture2D.MostDetailedMip = 0;
+			srvDesc.Texture2D.MipLevels = 1;
+		}
 
 		Assert( resourceDepth->srv == nullptr );
 		if( FAILED( device->CreateShaderResourceView( resource->textureDepthSS, &srvDesc, &resourceDepth->srv ) ) )
@@ -2513,7 +2641,7 @@ bool CoreGfx::api_render_target_copy_color(
 	if( srcResource == nullptr || dstResource == nullptr ) { return false; }
 	if( srcResource->width != dstResource->width || srcResource->height != dstResource->height ) { return false; }
 
-	if( srcResource->rtv && dstResource->rtv )
+	if( srcResource->rtv[0] && dstResource->rtv[0] )
 	{
 		ID3D11Resource *srcD3D11ResourceColor;
 		ID3D11Resource *dstD3D11ResourceColor;
@@ -2535,7 +2663,7 @@ bool CoreGfx::api_render_target_copy_depth(
 	if( srcResource == nullptr || dstResource == nullptr ) { return false; }
 	if( srcResource->width != dstResource->width || srcResource->height != dstResource->height ) { return false; }
 
-	if( srcResource->dsv && dstResource->dsv )
+	if( srcResource->dsv[0] && dstResource->dsv[0] )
 	{
 		ID3D11Resource *srcD3D11ResourceDepth;
 		ID3D11Resource *dstD3D11ResourceDepth;
@@ -2587,7 +2715,7 @@ bool CoreGfx::api_render_target_copy_part(
 	sourceRegion.front = 0;
 	sourceRegion.back = 1;
 
-	if( srcResource->rtv && dstResource->rtv )
+	if( srcResource->rtv[0] && dstResource->rtv[0] )
 	{
 		ID3D11Resource *srcD3D11ResourceColor;
 		ID3D11Resource *dstD3D11ResourceColor;
@@ -2622,7 +2750,8 @@ bool CoreGfx::api_render_target_buffer_read_color( GfxRenderTargetResource *&res
 	ErrorIf( !resource->desc.cpuAccess,
 		"Trying to CPU access a render target that does not have CPU access flag!" );
 
-	const u32 sizeSource = GFX_SIZE_IMAGE_COLOR_BYTES( resource->width, resource->height, 1, resource->desc.colorFormat );
+	const u32 sizeSource = GFX_SIZE_IMAGE_COLOR_BYTES( resource->width, resource->height, 1,
+		resource->desc.colorFormat );
 	Assert( size > 0 && sizeSource <= size );
 	Assert( buffer != nullptr );
 
@@ -2663,7 +2792,8 @@ bool CoreGfx::api_render_target_buffer_read_color_async_request( GfxRenderTarget
 	ErrorIf( !resource->desc.cpuAccess,
 		"Trying to CPU access a render target that does not have CPU access flag!" );
 
-	const u32 sizeSource = GFX_SIZE_IMAGE_COLOR_BYTES( resource->width, resource->height, 1, resource->desc.colorFormat );
+	const u32 sizeSource = GFX_SIZE_IMAGE_COLOR_BYTES( resource->width, resource->height, 1,
+		resource->desc.colorFormat );
 	Assert( size > 0 && sizeSource <= size );
 	Assert( buffer != nullptr );
 
@@ -2952,7 +3082,7 @@ void CoreGfx::api_render_pass_begin( const GfxRenderPass &pass )
 	}
 #endif
 
-	bind_targets( pass.targets );
+	bind_targets( pass.targets, pass.layers );
 }
 
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <core/types.hpp>
+#include <core/assets.hpp>
 #include <core/list.hpp>
 #include <core/buffer.hpp>
 #include <core/string.hpp>
@@ -9,22 +10,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// NOTE: Must maintain parity with manta/assets.hpp
-enum_type( MaterialTextureSlot, int )
-{
-	MaterialTextureSlot_Color = 0,
-	MaterialTextureSlot_Normal,
-	MaterialTextureSlot_Roughness,
-	MaterialTextureSlot_Metallic,
-	MaterialTextureSlot_Emissive,
-	MaterialTextureSlot_Specular,
-	MaterialTextureSlot_Shading,
-	// ...
-	MATERIALTEXTURESLOT_COUNT
-};
-
-
-constexpr const char *MaterialTextureSlotNames[MATERIALTEXTURESLOT_COUNT] =
+constexpr const char *MaterialTextureSlotNames[Assets::MATERIALTEXTURESLOT_COUNT] =
 {
 	"Color", // MaterialTextureSlot_Color
 	"Normal", // MaterialTextureSlot_Normal
@@ -32,7 +18,7 @@ constexpr const char *MaterialTextureSlotNames[MATERIALTEXTURESLOT_COUNT] =
 	"Metallic", // MaterialTextureSlot_Metallic
 	"Emissive", // MaterialTextureSlot_Emissive
 	"Specular", // MaterialTextureSlot_Specular
-	"Shading", // MaterialTextureSlot_Shading
+	"AO", // MaterialTextureSlot_AmbientOcclusion
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -40,12 +26,12 @@ constexpr const char *MaterialTextureSlotNames[MATERIALTEXTURESLOT_COUNT] =
 class Material
 {
 public:
-	void allocate_texture_from_file( MaterialTextureSlot slot, const char *textureName,
-		const char *texturePath, bool textureGenerateMips );
+	void allocate_texture_from_file( Assets::MaterialTextureSlot slot,
+		const char *textureName, const char *texturePath, bool textureGenerateMips );
 
 public:
 	CacheKey cacheKey;
-	TextureID textures[MATERIALTEXTURESLOT_COUNT] = { };
+	TextureID textures[Assets::MATERIALTEXTURESLOT_COUNT] = { };
 	String name;
 };
 

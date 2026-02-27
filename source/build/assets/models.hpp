@@ -4,6 +4,7 @@
 #include <core/list.hpp>
 #include <core/buffer.hpp>
 #include <core/string.hpp>
+#include <core/assets.hpp>
 
 #include <build/cache.hpp>
 #include <build/gfx.hpp>
@@ -24,6 +25,7 @@ public:
 
 public:
 	List<MeshID> meshes;
+	Assets::MeshFormatTypeVertex formatVertex;
 	float x1, y1, z1;
 	float x2, y2, z2;
 

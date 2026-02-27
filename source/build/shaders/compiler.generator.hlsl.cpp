@@ -310,6 +310,32 @@ static void semantics_get_name( char *buffer, const usize size, StructType struc
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+int GeneratorHLSL::append_structure_padding( String &output, const char *indent,
+	int sizeType, int alignmentType, int current )
+{
+	int padding = 0;
+
+	if( sizeType <= 16 )
+	{
+		const int registerOffset = current % 16;
+		if( registerOffset + sizeType > 16 ) { padding = 16 - registerOffset; }
+	}
+	else
+	{
+		padding = ( 16 - ( current % 16 ) ) % 16;
+	}
+
+	if( padding > 0 )
+	{
+		output.append( indent );
+		output.append( "char __pad").append( current );
+		output.append( "[" ).append( padding ).append( "];\n" );
+	}
+
+	return padding;
+}
+
+
 void GeneratorHLSL::append_structure_member_padded( String &output, const char *indent,
 	Type &type, Variable &variable, int &structureByteOffset )
 {
@@ -317,47 +343,47 @@ void GeneratorHLSL::append_structure_member_padded( String &output, const char *
 	int typeSizeBytes = 0;
 
 	StringView typeNameCPU;
-	int size, align;
+	int size;
 	switch( variable.typeID )
 	{
-		case Primitive_Bool: typeNameCPU = StringView( "u32" ); size = 4; align = 4; break;
-		case Primitive_Bool2: typeNameCPU = StringView( "u32_v2" ); size = 8; align = 4; break;
-		case Primitive_Bool3: typeNameCPU = StringView( "u32_v3" ); size = 12; align = 4; break;
-		case Primitive_Bool4: typeNameCPU = StringView( "u32_v4" ); size = 16; align = 16; break;
+		case Primitive_Bool: typeNameCPU = StringView( "u32" ); size = 4; break;
+		case Primitive_Bool2: typeNameCPU = StringView( "u32_v2" ); size = 8; break;
+		case Primitive_Bool3: typeNameCPU = StringView( "u32_v3" ); size = 12; break;
+		case Primitive_Bool4: typeNameCPU = StringView( "u32_v4" ); size = 16; break;
 
-		case Primitive_Int: typeNameCPU = StringView( "i32" ); size = 4; align = 4; break;
-		case Primitive_Int2: typeNameCPU = StringView( "int_v2" ); size = 8; align = 4; break;
-		case Primitive_Int3: typeNameCPU = StringView( "int_v3" ); size = 12; align = 4; break;
-		case Primitive_Int4: typeNameCPU = StringView( "int_v4" ); size = 16; align = 16; break;
+		case Primitive_Int: typeNameCPU = StringView( "i32" ); size = 4; break;
+		case Primitive_Int2: typeNameCPU = StringView( "int_v2" ); size = 8; break;
+		case Primitive_Int3: typeNameCPU = StringView( "int_v3" ); size = 12; break;
+		case Primitive_Int4: typeNameCPU = StringView( "int_v4" ); size = 16; break;
 
-		case Primitive_UInt: typeNameCPU = StringView( "u32" ); size = 4; align = 4; break;
-		case Primitive_UInt2: typeNameCPU = StringView( "u32_v2" ); size = 8; align = 4; break;
-		case Primitive_UInt3: typeNameCPU = StringView( "u32_v3" ); size = 12; align = 4; break;
-		case Primitive_UInt4: typeNameCPU = StringView( "u32_v4" ); size = 16; align = 16; break;
+		case Primitive_UInt: typeNameCPU = StringView( "u32" ); size = 4; break;
+		case Primitive_UInt2: typeNameCPU = StringView( "u32_v2" ); size = 8; break;
+		case Primitive_UInt3: typeNameCPU = StringView( "u32_v3" ); size = 12; break;
+		case Primitive_UInt4: typeNameCPU = StringView( "u32_v4" ); size = 16; break;
 
-		case Primitive_Float: typeNameCPU = StringView( "float" ); size = 4; align = 4; break;
-		case Primitive_Float2: typeNameCPU = StringView( "float_v2" ); size = 8; align = 4; break;
-		case Primitive_Float3: typeNameCPU = StringView( "float_v3" ); size = 12; align = 4; break;
-		case Primitive_Float4: typeNameCPU = StringView( "float_v4" ); size = 16; align = 16; break;
+		case Primitive_Float: typeNameCPU = StringView( "float" ); size = 4; break;
+		case Primitive_Float2: typeNameCPU = StringView( "float_v2" ); size = 8; break;
+		case Primitive_Float3: typeNameCPU = StringView( "float_v3" ); size = 12; break;
+		case Primitive_Float4: typeNameCPU = StringView( "float_v4" ); size = 16; break;
 
-		case Primitive_Float2x2: typeNameCPU = StringView( "float_m44" ); size = 64; align = 16; break;
-		case Primitive_Float3x3: typeNameCPU = StringView( "float_m44" ); size = 64; align = 16; break;
-		case Primitive_Float4x4: typeNameCPU = StringView( "float_m44" ); size = 64; align = 16; break;
+		case Primitive_Float2x2: typeNameCPU = StringView( "float_m44" ); size = 32; break;
+		case Primitive_Float3x3: typeNameCPU = StringView( "float_m44" ); size = 48; break;
+		case Primitive_Float4x4: typeNameCPU = StringView( "float_m44" ); size = 64; break;
 
-		default: typeNameCPU.data = nullptr; size = 0; align = 16; break;
+		default: typeNameCPU.data = nullptr; size = 0; break;
 	};
 
 	// Struct Size
-	if( type.tokenType == TokenType_SharedStruct ) { size = type.sizeBytesPadded; align = 16; }
+	if( type.tokenType == TokenType_SharedStruct ) { size = type.sizeBytesPadded; }
 
 	// Calculate required padding & increment byte offset
-	structureByteOffset += Generator::append_structure_padding( output, indent, size, align, structureByteOffset );
+	structureByteOffset += GeneratorHLSL::append_structure_padding( output, indent, size, 0, structureByteOffset );
 	auto round_up16 = []( int size ) { return ( size + 15 ) & ~15; };
 
 	// Type
 	if( variable.arrayLengthX > 0 && variable.arrayLengthY > 0 )
 	{
-		structureByteOffset += Generator::append_structure_padding( output, indent, 0, 16, structureByteOffset );
+		structureByteOffset += GeneratorHLSL::append_structure_padding( output, indent, 16, 0, structureByteOffset );
 
 		snprintf( typeNameBuffer, sizeof( typeNameBuffer ), "std140_array_2d_hlsl<%s%.*s, %d, %d>",
 			type.tokenType == TokenType_SharedStruct ? "GfxStructPadded::" : "",
@@ -378,7 +404,7 @@ void GeneratorHLSL::append_structure_member_padded( String &output, const char *
 	}
 	else if( variable.arrayLengthX > 0 )
 	{
-		structureByteOffset += Generator::append_structure_padding( output, indent, 0, 16, structureByteOffset );
+		structureByteOffset += GeneratorHLSL::append_structure_padding( output, indent, 16, 0, structureByteOffset );
 
 		snprintf( typeNameBuffer, sizeof( typeNameBuffer ), "std140_array_1d_hlsl<%s%.*s, %d>",
 			type.tokenType == TokenType_SharedStruct ? "GfxStructPadded::" : "",
@@ -584,6 +610,13 @@ void GeneratorHLSL::generate_function_declaration_main_pipeline( NodeFunctionDec
 	Function &function = parser.functions[node->functionID];
 	Type &returnType = parser.types[function.typeID];
 
+	// Enable Shader Stage
+	switch( node->functionType )
+	{
+		case FunctionType_MainVertex: shader.stages |= Assets::ShaderStageFlag_Vertex; break;
+		case FunctionType_MainFragment: shader.stages |= Assets::ShaderStageFlag_Fragment; break;
+	}
+
 	// In / Out
 	Assert( function.parameterCount >= 2 );
 	VariableID inID = function.parameterFirst;
@@ -619,6 +652,9 @@ void GeneratorHLSL::generate_function_declaration_main_compute( NodeFunctionDecl
 {
 	Function &function = parser.functions[node->functionID];
 	Type &returnType = parser.types[function.typeID];
+
+	// Enable Shader Stage
+	shader.stages |= Assets::ShaderStageFlag_Compute;
 
 	// Thread Groups
 	output.append( indent ).append( "[numthreads( " );
@@ -929,7 +965,6 @@ void GeneratorHLSL::generate_function_call_intrinsics( NodeFunctionCall *node )
 		case Intrinsic_TextureSample1D:
 		case Intrinsic_TextureSample1DArray:
 		case Intrinsic_TextureSample2D:
-		case Intrinsic_TextureSample2DArray:
 		case Intrinsic_TextureSample3D:
 		case Intrinsic_TextureSample3DArray:
 		case Intrinsic_TextureSampleCube:
@@ -941,6 +976,19 @@ void GeneratorHLSL::generate_function_call_intrinsics( NodeFunctionCall *node )
 			output.append( "GlobalSampler, " );
 			generate_node( get_param( node->param, 1 )->expr );
 			output.append( " )" );
+		}
+		return;
+
+		case Intrinsic_TextureSample2DArray:
+		{
+			// <texture>.Sample( sampler, location );
+			generate_node( get_param( node->param, 0 )->expr );
+			output.append( ".Sample( " );
+			output.append( "GlobalSampler, float3( " );
+			generate_node( get_param( node->param, 1 )->expr );
+			output.append( ", " );
+			generate_node( get_param( node->param, 2 )->expr );
+			output.append( " ) )" );
 		}
 		return;
 
@@ -1385,8 +1433,6 @@ void GeneratorHLSL::generate_texture( NodeTexture *node )
 
 	static const char *textureNames[] =
 	{
-		"Texture1D",        // TextureType_Texture1D
-		"Texture1DArray",   // TextureType_Texture1DArray
 		"Texture2D",        // TextureType_Texture2D
 		"Texture2DArray",   // TextureType_Texture2DArray
 		"Texture3D",        // TextureType_Texture3D

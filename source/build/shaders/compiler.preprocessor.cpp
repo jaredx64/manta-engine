@@ -783,12 +783,28 @@ static void parse_directive_include( String &input, String &output, Scanner &sca
 		path.append( token.name );
 	}
 	path.trim();
+	path.replace( "\\", "/" );
 
 	// Skip built-in #includes
 	if( path.equals( "shader_api.hpp" ) ) { return; }
 
-	// Insert root directory
-	path.insert( 0, directory );
+	// Shader Libraries
+	const char *directoryShaderlib = "source" SLASH;
+	constexpr const char *shaderlibs[] =
+	{
+		"shaderlib/vertex_formats.h",
+		"shaderlib/math.h",
+		"shaderlib/color.h",
+	};
+
+	bool pathIsShaderLib = false;
+	for( const char *lib : shaderlibs )
+	{
+		if( path.equals( lib ) ) { pathIsShaderLib = true; break; }
+	}
+
+	// Path Root
+	path.insert( 0, pathIsShaderLib ? directoryShaderlib : directory );
 
 	// Load File & Preprocess Contents
 	String contents;

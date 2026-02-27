@@ -26,11 +26,6 @@ namespace CoreWindow
 	}
 
 
-	void terminal_init()
-	{
-	}
-
-
 	void mouse_get_position( double &x, double &y )
 	{
 	}

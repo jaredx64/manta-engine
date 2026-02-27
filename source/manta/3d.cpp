@@ -1855,6 +1855,28 @@ FrustumDouble frustum_build( const double_m44 &matrixView, const double_m44 &mat
 }
 
 
+FrustumFloat frustum_build( const float_m44 &matrixView, const float_m44 &matrixProjection,
+	float _near, float _far )
+{
+	const float tanHalfFovY = 1.0f / matrixProjection.data[0x5];
+	const float fovY = 2.0f * atanf( tanHalfFovY ) * RAD2DEG_F;
+	const float aspect = matrixProjection[0x5] / matrixProjection[0x0];
+	const float_m44 matrixProjectionNearFar = float_m44_build_perspective( fovY, aspect, _near, _far );
+	return frustum_build( matrixView, matrixProjectionNearFar );
+}
+
+
+FrustumDouble frustum_build( const double_m44 &matrixView, const double_m44 &matrixProjection,
+	double _near, double _far )
+{
+	const double tanHalfFovY = 1.0 / matrixProjection.data[0x5];
+	const double fovY = 2.0 * atan( tanHalfFovY ) * RAD2DEG;
+	const double aspect = matrixProjection[0x5] / matrixProjection[0x0];
+	const double_m44 matrixProjectionNearFar = double_m44_build_perspective( fovY, aspect, _near, _far );
+	return frustum_build( matrixView, matrixProjectionNearFar );
+}
+
+
 bool frustum_contains_point( const FrustumFloat &frustum, const float_v3 &point )
 {
 	for( int i = 0; i < FRUSTUMPLANE_COUNT; i++ )

@@ -281,6 +281,7 @@ struct OpenGLInputLayoutFormats
 #define GL_TEXTURE_WRAP_T 0x2803
 #define GL_TEXTURE 0x1702
 #define GL_TEXTURE_CUBE_MAP 0x8513
+#define GL_TEXTURE_CUBE_MAP_ARRAY 0x9009
 #define GL_TEXTURE_BINDING_CUBE_MAP 0x8514
 #define GL_TEXTURE_CUBE_MAP_POSITIVE_X 0x8515
 #define GL_TEXTURE_CUBE_MAP_NEGATIVE_X 0x8516
@@ -708,6 +709,7 @@ struct OpenGLInputLayoutFormats
 #define GL_BUFFER_ACCESS 0x88BB
 #define GL_MULTISAMPLE 0x809D
 #define GL_TEXTURE_2D_MULTISAMPLE 0x9100
+#define GL_TEXTURE_2D_MULTISAMPLE_ARRAY 0x9102
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -752,6 +754,7 @@ struct OpenGLInputLayoutFormats
 	#define nglDeleteRenderbuffers glDeleteRenderbuffers
 	#define nglBindFramebuffer glBindFramebuffer
 	#define nglFramebufferTexture2D glFramebufferTexture2D
+	#define nglFramebufferTextureLayer glFramebufferTextureLayer
 	#define nglCheckFramebufferStatus glCheckFramebufferStatus
 	#define nglBlitFramebuffer glBlitFramebuffer
 	#define nglGetUniformBlockIndex glGetUniformBlockIndex
@@ -771,7 +774,9 @@ struct OpenGLInputLayoutFormats
 	#define nglBindRenderbuffer glBindRenderbuffer
 	#define nglRenderbufferStorageMultisample glRenderbufferStorageMultisample
 	#define nglFramebufferRenderbuffer glFramebufferRenderbuffer
+	#define nglTexImage3D glTexImage3D
 	#define nglTexImage2DMultisample glTexImage2DMultisample
+	#define nglTexImage3DMultisample glTexImage3DMultisample
 	#define nglDrawElementsInstanced glDrawElementsInstanced
 	#define nglDrawArraysInstanced glDrawArraysInstanced
 	#define nglFlushMappedBufferRange glFlushMappedBufferRange
@@ -814,6 +819,7 @@ extern "C"
 	GL_EXTERN GLenum GL_API glGetError();
 	GL_EXTERN GLubyte const *GL_API glGetString( GLenum );
 	GL_EXTERN void GL_API glTexImage2D( GLenum, GLint, GLint, GLsizei, GLsizei, GLint, GLenum, GLenum, const void * );
+	GL_EXTERN void GL_API glTexImage3D( GLenum, GLint, GLint, GLsizei, GLsizei, GLsizei, GLint, GLenum, GLenum, const void * );
 	GL_EXTERN void GL_API glTexParameteri( GLenum, GLenum, GLint );
 	GL_EXTERN void GL_API glViewport( GLint, GLint, GLsizei, GLsizei );
 	GL_EXTERN void GL_API glDepthFunc( GLenum );

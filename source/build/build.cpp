@@ -1607,7 +1607,7 @@ void BuilderCore::executable_run( int argc, char **argv )
 	for( int i = 0; i < multiLaunchCount; i++ )
 	{
 		Process process;
-		process_launch( process, Build::commandRun, argv );
+		process_launch( process, Build::commandRun, argv, i );
 	}
 }
 

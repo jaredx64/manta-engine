@@ -190,6 +190,8 @@ The generated shader code (hlsl/glsl/metal) is written to `projects\<project>\ou
 
 In an editor, basic syntax highlighting and IntelliSense is possible by optionally including `#include <shader_api.hpp>` in the shader file. That header is compatible with a C++ language server and provides a reference to the features/keywords of the shader language.
 
+Common shader library code code is available via `#include <shaderlib\...>` (see headers in `manta-engine\source\shaderlib`).
+
 The language is not complete, but the intention is to fully support raster (vertex + fragment), compute, and raytracing pipelines.
 
 **Example `.shader` code (Simple Phong):**

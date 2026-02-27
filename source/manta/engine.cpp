@@ -6,6 +6,7 @@
 #include <core/types.hpp>
 #include <core/string.hpp>
 
+#include <manta/terminal.hpp>
 #include <manta/profiler.hpp>
 #include <manta/assets.hpp>
 #include <manta/time.hpp>
@@ -33,13 +34,11 @@ namespace Engine
 {
 	static bool init( int argc, char **argv )
 	{
-		Engine::terminal_init();
-
+		ErrorReturnIf( !CoreThread::init(), false, "Engine: failed to initialize thread" );
+		ErrorReturnIf( !CoreTerminal::init(), false, "Engine: failed to initialize terminal" );
 		STEAMWORKS( ErrorReturnIf( !Steamworks::init(), false, "Failed to initialize Steam API!" ) );
-
 		ErrorReturnIf( !CoreAssets::init(), false, "Engine: failed to initialize assets" );
 		ErrorReturnIf( !CoreTime::init(), false, "Engine: failed to initialize timer" );
-		ErrorReturnIf( !CoreThread::init(), false, "Engine: failed to initialize thread" );
 		ErrorReturnIf( !CoreWindow::init(), false, "Engine: failed to initialize window" );
 		ErrorReturnIf( !CoreGfx::init(), false, "Engine: failed to initialize graphics system" );
 		ErrorReturnIf( !CoreConsole::init(), false, "Engine: failed to initialize console system" );
@@ -47,7 +46,7 @@ namespace Engine
 		ErrorReturnIf( !CoreObjects::init(), false, "Engine: failed to initialize object system" );
 		ErrorReturnIf( !CoreFonts::init(), false, "Engine: failed to initialize font system" );
 		ErrorReturnIf( !CoreUI::init(), false, "Engine: failed to initialize UI system" );
-		ErrorReturnIf( !CoreNetwork::init(), false, "Engine: failed to initialize Network system" );
+		ErrorReturnIf( !CoreNetwork::init(), false, "Engine: failed to initialize network system" );
 
 		PROFILING( CoreProfiler::PROFILER.init() );
 		PROFILING( CoreProfiler::PROFILER.capturing = true; );
@@ -67,11 +66,11 @@ namespace Engine
 		ErrorReturnIf( !CoreGfx::free(), false, "Engine: failed to free graphics system" );
 		ErrorReturnIf( !CoreAudio::free(), false, "Engine: failed to free audio system" );
 		ErrorReturnIf( !CoreWindow::free(), false, "Engine: failed to free window" );
-		ErrorReturnIf( !CoreThread::free(), false, "Engine: failed to free thread" );
 		ErrorReturnIf( !CoreTime::free(), false, "Engine: failed to free timer" );
 		ErrorReturnIf( !CoreAssets::free(), false, "Engine: failed to free assets" );
-
 		STEAMWORKS( ErrorReturnIf( !Steamworks::free(), false, "Failed to free Steam API!" ) );
+		ErrorReturnIf( !CoreTerminal::free(), false, "Engine: failed to free terminal" );
+		ErrorReturnIf( !CoreThread::free(), false, "Engine: failed to free thread" );
 
 		return true;
 	}
@@ -114,6 +113,7 @@ namespace Engine
 
 					// Pre-Engine
 					STEAMWORKS( Steamworks::callbacks() );
+					CoreTerminal::update();
 					Input::update( Frame::delta );
 					Window::update( Frame::delta );
 					Input::reset_active();
@@ -146,11 +146,6 @@ namespace Engine
 	void exit()
 	{
 		exiting = true;
-	}
-
-	void terminal_init()
-	{
-		CoreWindow::terminal_init();
 	}
 }
 

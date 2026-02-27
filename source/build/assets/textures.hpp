@@ -1,6 +1,7 @@
 #pragma once
 
 #include <core/types.hpp>
+#include <core/assets.hpp>
 #include <core/list.hpp>
 #include <core/buffer.hpp>
 #include <core/string.hpp>
@@ -23,7 +24,10 @@ public:
 	usize offset;
 	u16 width = 0;
 	u16 height = 0;
+	u16 depth = 0;
+	u16 layers = 0;
 	u16 levels = 0;
+	Assets::TextureColorFormat format = Assets::TextureColorFormat_R8G8B8A8;
 	List<GlyphID> glyphs;
 
 	List<CacheKey> glyphCacheKey; // Glyph dependencies

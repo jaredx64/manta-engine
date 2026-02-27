@@ -21,8 +21,6 @@ namespace CoreWindow
 	extern void show();
 	extern void poll();
 
-	extern void terminal_init();
-
 	extern void mouse_get_position( double &x, double &y );
 	extern void mouse_set_position( int x, int y );
 
@@ -46,6 +44,7 @@ namespace Window
 	extern void show_message_error( const char *title, const char *message );
 
 	extern void set_size( int width, int height );
+	extern void set_position( int x, int y );
 	extern void set_fullscreen( bool enabled );
 	extern void show_cursor( bool enabled );
 	extern void set_caption( const char *caption );

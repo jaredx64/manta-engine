@@ -30,8 +30,6 @@ const char *Primitives[] =
 	"float2x2",         // Primitive_Float2x2
 	"float3x3",         // Primitive_Float3x3
 	"float4x4",         // Primitive_Float4x4
-	"Texture1D",        // Primitive_Texture1D
-	"Texture1DArray",   // Primitive_Texture1DArray
 	"Texture2D",        // Primitive_Texture2D
 	"Texture2DArray",   // Primitive_Texture2DArray
 	"Texture3D",        // Primitive_Texture3D
@@ -186,8 +184,6 @@ static_assert( ARRAY_LENGTH( SVSemantics ) == SVSEMANTICTYPE_COUNT, "Missing SVS
 
 const char *TextureTypeNames[] =
 {
-	"texture1D",
-	"texture1DArray",
 	"texture2D",
 	"texture2DArray",
 	"texture3D",
@@ -227,8 +223,6 @@ const Keyword KeywordNames[] =
 	{ "vertex_output", TokenType_VertexOutput },
 	{ "fragment_input", TokenType_FragmentInput },
 	{ "fragment_output", TokenType_FragmentOutput },
-	{ "texture1D", TokenType_Texture1D },
-	{ "texture1DArray", TokenType_Texture1DArray },
 	{ "texture2D", TokenType_Texture2D },
 	{ "texture2DArray", TokenType_Texture2DArray },
 	{ "texture3D", TokenType_Texture3D },
@@ -1054,8 +1048,6 @@ bool Parser::parse( const char *string )
 			}
 			break;
 
-			case TokenType_Texture1D:
-			case TokenType_Texture1DArray:
 			case TokenType_Texture2D:
 			case TokenType_Texture2DArray:
 			case TokenType_Texture3D:
@@ -1079,15 +1071,16 @@ bool Parser::parse( const char *string )
 	}
 
 	// Main
-	const bool hasMain = mainVertex   != USIZE_MAX ||
-						 mainFragment != USIZE_MAX ||
-						 mainCompute  != USIZE_MAX;
+	const bool hasMain = mainVertex != USIZE_MAX ||
+		mainFragment != USIZE_MAX || mainCompute != USIZE_MAX;
 
+	/*
 	if( !hasMain )
 	{
 		scanner.back();
 		Error( "shader does not implement a main function!" );
 	}
+	*/
 
 	return true;
 }
@@ -1553,23 +1546,13 @@ Node *Parser::parse_texture()
 	TextureType textureType = TextureType_Texture2D;
 	switch( token.type )
 	{
-		case TokenType_Texture1D:
-			textureType = TextureType_Texture1D;
-			variable.texture = Primitive_Texture1D;
-		break;
-
-		case TokenType_Texture1DArray:
-			textureType = TextureType_Texture1D;
-			variable.texture = Primitive_Texture1DArray;
-		break;
-
 		case TokenType_Texture2D:
 			textureType = TextureType_Texture2D;
 			variable.texture = Primitive_Texture2D;
 		break;
 
 		case TokenType_Texture2DArray:
-			textureType = TextureType_Texture2D;
+			textureType = TextureType_Texture2DArray;
 			variable.texture = Primitive_Texture2DArray;
 		break;
 

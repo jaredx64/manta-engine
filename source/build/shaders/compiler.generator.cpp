@@ -3,6 +3,7 @@
 #include <core/string.hpp>
 #include <core/checksum.hpp>
 #include <core/math.hpp>
+#include <core/assets.hpp>
 
 #include <vendor/stdio.hpp>
 
@@ -1458,8 +1459,6 @@ void Generator::generate_texture( NodeTexture *node )
 
 	static const char *textureNames[] =
 	{
-		"Texture1D",        // TextureType_Texture1D
-		"Texture1DArray",   // TextureType_Texture1DArray
 		"Texture2D",        // TextureType_Texture2D
 		"Texture2DArray",   // TextureType_Texture2DArray
 		"Texture3D",        // TextureType_Texture3D
@@ -1600,23 +1599,10 @@ void Generator::indent_sub()
 int Generator::append_structure_padding( String &output, const char *indent,
 	int sizeType, int alignmentType, int current )
 {
-	const int sizeBlock = max( 16, sizeType );
+	// NOTE: std140 padding
 
-	// Pad to next alignment interval
-	int padding = ( alignmentType - ( current % alignmentType ) ) % alignmentType;
+	const int padding = ( alignmentType - ( current % alignmentType ) ) % alignmentType;
 
-	// Ensure type at alignment interval fits within a block (16 bytes)
-	int byteStart = current + padding;
-	int byteStartBlock = ( byteStart / sizeBlock ) * sizeBlock;
-	int byteEndBlock = byteStartBlock + sizeBlock;
-
-	// If not, pad to the next block interval
-	if( byteStart + sizeType > byteEndBlock )
-	{
-		padding += ( sizeBlock - ( byteStart % sizeBlock ) );
-	}
-
-	// Append padding
 	if( padding > 0 )
 	{
 		output.append( indent );
@@ -1660,8 +1646,8 @@ void Generator::append_structure_member_padded( String &output, const char *inde
 		case Primitive_Float3: typeNameCPU = StringView( "float_v3" ); size = 12; align = 16; break;
 		case Primitive_Float4: typeNameCPU = StringView( "float_v4" ); size = 16; align = 16; break;
 
-		case Primitive_Float2x2: typeNameCPU = StringView( "float_m44" ); size = 64; align = 16; break;
-		case Primitive_Float3x3: typeNameCPU = StringView( "float_m44" ); size = 64; align = 16; break;
+		case Primitive_Float2x2: typeNameCPU = StringView( "float_m44" ); size = 32; align = 16; break;
+		case Primitive_Float3x3: typeNameCPU = StringView( "float_m44" ); size = 48; align = 16; break;
 		case Primitive_Float4x4: typeNameCPU = StringView( "float_m44" ); size = 64; align = 16; break;
 
 		default: typeNameCPU.data = nullptr; size = 0; align = 16; break;

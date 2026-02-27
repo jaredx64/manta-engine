@@ -368,7 +368,7 @@ public:
 
 		if( find( key, index ) )
 		{
-			size--;// TODO: decrement size?
+			size--;
 			deadslot[index] = true;
 			Hash::set_null( data[index].key );
 			data[index].value.~V();

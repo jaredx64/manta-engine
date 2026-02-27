@@ -108,21 +108,22 @@ bool Skin::load_from_mtl( const char *path )
 			// Color (map_Kd) -- Note: Technically map_Kd is diffuse, but the engine will treat it as color
 			if( extract_texture_path( fileContents, "map_Kd ", start, end, pathTexture, nameTexture ) )
 			{
-				material.allocate_texture_from_file( MaterialTextureSlot_Color,
+				material.allocate_texture_from_file( Assets::MaterialTextureSlot_Color,
 					nameTexture.cstr(), pathTexture.cstr(), true );
 			}
 
 			// Normal (map_Kd)
 			if( extract_texture_path( fileContents, "norm ", start, end, pathTexture, nameTexture ) )
 			{
-				material.allocate_texture_from_file( MaterialTextureSlot_Normal,
+				PrintLn( "Normal map: %s", nameTexture.cstr() );
+				material.allocate_texture_from_file( Assets::MaterialTextureSlot_Normal,
 					nameTexture.cstr(), pathTexture.cstr(), true );
 			}
 
 			// Specular (map_Ks)
 			if( extract_texture_path( fileContents, "map_Ks ", start, end, pathTexture, nameTexture ) )
 			{
-				material.allocate_texture_from_file( MaterialTextureSlot_Specular,
+				material.allocate_texture_from_file( Assets::MaterialTextureSlot_Specular,
 					nameTexture.cstr(), pathTexture.cstr(), true );
 			}
 		}

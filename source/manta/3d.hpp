@@ -221,6 +221,11 @@ extern FrustumDouble frustum_build( const double_m44 &matrixMVP );
 extern FrustumFloat frustum_build( const float_m44 &matrixView, const float_m44 &matrixProjection );
 extern FrustumDouble frustum_build( const double_m44 &matrixView, const double_m44 &matrixProjection );
 
+extern FrustumFloat frustum_build( const float_m44 &matrixView, const float_m44 &matrixProjection,
+	float near, float far );
+extern FrustumDouble frustum_build( const double_m44 &matrixView, const double_m44 &matrixProjection,
+	double near, double far );
+
 extern bool frustum_contains_point( const FrustumFloat &frustum, const float_v3 &point );
 extern bool frustum_contains_point( const FrustumDouble &frustum, const double_v3 &point );
 

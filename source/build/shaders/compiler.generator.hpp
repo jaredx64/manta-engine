@@ -47,7 +47,6 @@ public:
 
 	virtual int append_structure_padding( String &output, const char *indent,
 		int sizeType, int alignmentType, int current );
-
 	virtual void append_structure_member_padded( String &output, const char *indent,
 		Type &type, Variable &variable, int &structureByteOffset );
 	virtual void append_structure_member_packed( String &output, const char *indent,
@@ -116,6 +115,8 @@ public:
 		Generator { shader, stage, parser } { }
 
 public:
+	virtual int append_structure_padding( String &output, const char *indent,
+		int sizeType, int alignmentType, int current );
 	virtual void append_structure_member_padded( String &output, const char *indent,
 		Type &type, Variable &variable, int &structureByteOffset );
 

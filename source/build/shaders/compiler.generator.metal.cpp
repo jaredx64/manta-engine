@@ -233,8 +233,8 @@ void GeneratorMetal::append_structure_member_padded( String &output, const char 
 		case Primitive_Float3: typeNameCPU = StringView( "float_v3" ); size = 12; align = 16; break;
 		case Primitive_Float4: typeNameCPU = StringView( "float_v4" ); size = 16; align = 16; break;
 
-		case Primitive_Float2x2: typeNameCPU = StringView( "float_m44" ); size = 64; align = 16; break;
-		case Primitive_Float3x3: typeNameCPU = StringView( "float_m44" ); size = 64; align = 16; break;
+		case Primitive_Float2x2: typeNameCPU = StringView( "float_m44" ); size = 32; align = 16; break;
+		case Primitive_Float3x3: typeNameCPU = StringView( "float_m44" ); size = 48; align = 16; break;
 		case Primitive_Float4x4: typeNameCPU = StringView( "float_m44" ); size = 64; align = 16; break;
 
 		default: typeNameCPU.data = nullptr; size = 0; align = 16; break;
@@ -643,6 +643,13 @@ void GeneratorMetal::generate_function_declaration_main_pipeline( NodeFunctionDe
 	Function &function = parser.functions[node->functionID];
 	Type &returnType = parser.types[function.typeID];
 
+	// Enable Shader Stage
+	switch( node->functionType )
+	{
+		case FunctionType_MainVertex: shader.stages |= Assets::ShaderStageFlag_Vertex; break;
+		case FunctionType_MainFragment: shader.stages |= Assets::ShaderStageFlag_Fragment; break;
+	}
+
 	// In / Out
 	Assert( function.parameterCount >= 2 );
 	VariableID inID = function.parameterFirst;
@@ -769,6 +776,9 @@ void GeneratorMetal::generate_function_declaration_main_compute( NodeFunctionDec
 {
 	Function &function = parser.functions[node->functionID];
 	Type &returnType = parser.types[function.typeID];
+
+	// Enable Shader Stage
+	shader.stages |= Assets::ShaderStageFlag_Compute;
 
 	// Thread Groups
 	output.append( indent ).append( "[numthreads( " );
@@ -1176,7 +1186,6 @@ void GeneratorMetal::generate_function_call_intrinsics( NodeFunctionCall *node )
 		case Intrinsic_TextureSample1D:
 		case Intrinsic_TextureSample1DArray:
 		case Intrinsic_TextureSample2D:
-		case Intrinsic_TextureSample2DArray:
 		case Intrinsic_TextureSample3D:
 		case Intrinsic_TextureSample3DArray:
 		case Intrinsic_TextureSampleCube:
@@ -1188,6 +1197,20 @@ void GeneratorMetal::generate_function_call_intrinsics( NodeFunctionCall *node )
 			output.append( ".sample( " );
 			output.append( "global.GlobalSampler, " );
 			generate_node( get_param( node->param, 1 )->expr );
+			output.append( " )" );
+		}
+		return;
+
+		case Intrinsic_TextureSample2DArray:
+		{
+			// <texture>.sample( sampler, location );
+			output.append( "global." );
+			generate_node( get_param( node->param, 0 )->expr );
+			output.append( ".sample( " );
+			output.append( "global.GlobalSampler, " );
+			generate_node( get_param( node->param, 1 )->expr );
+			output.append( ", " );
+			generate_node( get_param( node->param, 2 )->expr );
 			output.append( " )" );
 		}
 		return;
@@ -1387,10 +1410,8 @@ void GeneratorMetal::generate_texture( NodeTexture *node )
 
 	static const char *textureNames[] =
 	{
-		"texture1d",          // TextureType_Texture1D
-		"texture1d_array",    // TextureType_Texture1DArray
 		"texture2d",          // TextureType_Texture2D
-		"texture2d_rray",     // TextureType_Texture2DArray
+		"texture2d_array",    // TextureType_Texture2DArray
 		"texture3d",          // TextureType_Texture3D
 		"texture_cube",       // TextureType_TextureCube
 		"texture_cube_crray", // TextureType_TextureCubeArray

@@ -347,32 +347,6 @@ namespace CoreWindow
 	}
 
 
-	void terminal_init()
-	{
-	#if WINDOW_ENABLED
-	#if COMPILE_TERMINAL
-		if( !AttachConsole( ATTACH_PARENT_PROCESS ) ) { AllocConsole(); }
-		FILE *f;
-		freopen_s( &f, "CONOUT$", "w", stdout );
-		freopen_s( &f, "CONOUT$", "w", stderr );
-		freopen_s( &f, "CONIN$",  "r", stdin );
-
-		// Enable ANSI escape sequences
-		HANDLE hOut = GetStdHandle( STD_OUTPUT_HANDLE );
-		if( hOut != INVALID_HANDLE_VALUE )
-		{
-			DWORD dwMode = 0;
-			if( GetConsoleMode( hOut, &dwMode ) )
-			{
-				dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-				SetConsoleMode( hOut, dwMode );
-			}
-		}
-	#endif
-	#endif
-	}
-
-
 	void mouse_get_position( double &x, double &y )
 	{
 	#if WINDOW_ENABLED
@@ -432,6 +406,18 @@ namespace Window
 		const int x = ( screenRect.right - width ) / 2;
 		const int y = ( screenRect.bottom - height ) / 2;
 		SetWindowPos( CoreWindow::handle, NULL, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE );
+	#endif
+	}
+
+
+	void set_position( int x, int y )
+	{
+	#if WINDOW_ENABLED
+		RECT screenRect;
+		SystemParametersInfoA( SPI_GETWORKAREA, 0, &screenRect, 0 );
+
+		SetWindowPos( CoreWindow::handle, NULL, x, y,
+			Window::width, Window::height, SWP_NOZORDER | SWP_NOACTIVATE );
 	#endif
 	}
 

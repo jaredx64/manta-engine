@@ -707,12 +707,6 @@ struct float4x4
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Texures
 
-struct Texture1D { };
-#define texture1D(slot, type) Texture1D
-
-struct Texture1DArray { };
-#define texture1DArray(slot, type) Texture1DArray
-
 struct Texture2D { };
 #define texture2D(slot, type) Texture2D
 
@@ -818,13 +812,8 @@ template <typename A> float uint_to_float_bits( A x ) { return 0.0f; }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Texture Sampling Functions
 
-float4 texture_sample_1d( Texture1D texture, float x );
-float4 texture_sample_1d_array( Texture1DArray texture, float x );
-float4 texture_sample_1d_level( Texture1DArray texture, float x, int lod );
-float4 texture_index_1d( Texture2D texture, int x, int width, int lod );
-
 float4 texture_sample_2d( Texture2D texture, float2 uv );
-float4 texture_sample_2d_array( Texture2DArray texture, float2 uv );
+float4 texture_sample_2d_array( Texture2DArray texture, float2 uv, int layer );
 float4 texture_sample_2d_level( Texture2D texture, float2 uv, int lod );
 float4 texture_index_2d( Texture2D texture, int x, int y, int width, int height, int lod );
 

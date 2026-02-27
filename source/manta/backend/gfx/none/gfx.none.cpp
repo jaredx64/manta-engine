@@ -48,13 +48,13 @@ struct GfxRenderTargetResource : public GfxResource
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // GFX System
 
-bool CoreGfx::api_init()
+bool CoreGfx::init_api()
 {
 	return true;
 }
 
 
-bool CoreGfx::api_free()
+bool CoreGfx::free_api()
 {
 	return true;
 }
@@ -416,8 +416,7 @@ void GfxRenderTargetResource::release( GfxRenderTargetResource *&resource )
 
 bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 	GfxTextureResource *&resourceColor, GfxTextureResource *&resourceDepth,
-	u16 width, u16 height,
-	const GfxRenderTargetDescription &desc )
+	u16 width, u16 height, u16 layers, const GfxRenderTargetDescription &desc )
 {
 	return true;
 }

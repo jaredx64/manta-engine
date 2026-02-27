@@ -588,7 +588,6 @@ static u16 find_stream()
 	{
 		if( CoreAudio::sounds[i].idBus < 0 ) { return i; }
 	}
-
 	return U16_MAX;
 }
 
@@ -596,6 +595,7 @@ static u16 find_stream()
 
 static THREAD_FUNCTION( audio_stream )
 {
+#if AUDIO_ENABLED
 	for( ;; )
 	{
 		// For each stream
@@ -656,6 +656,7 @@ static THREAD_FUNCTION( audio_stream )
 		// buffer underrun
 		Thread::sleep( 4 );
 	}
+#endif
 
 	return 0;
 }
@@ -1053,6 +1054,7 @@ void CoreAudio::audio_mixer( i16 *output, u32 frames )
 
 void CoreAudio::Bus::init()
 {
+#if AUDIO_ENABLED
 	available = true;
 	bypass = false;
 	name = "";
@@ -1071,11 +1073,13 @@ void CoreAudio::Bus::init()
 		if( effectFunctions[i].init == nullptr ) { continue; }
 		effectFunctions[i].init( effects[i], states[i] );
 	}
+#endif
 }
 
 
 void CoreAudio::Voice::init()
 {
+#if AUDIO_ENABLED
 	idBus = -1;
 	generation = 0;
 	bypass = false;
@@ -1094,11 +1098,13 @@ void CoreAudio::Voice::init()
 		if( effectFunctions[i].init == nullptr ) { continue; }
 		effectFunctions[i].init( effects[i], states[i] );
 	}
+#endif
 };
 
 
 void CoreAudio::Stream::init()
 {
+#if AUDIO_ENABLED
 	idBus = -1;
 	generation = 0;
 	bypass = false;
@@ -1120,6 +1126,7 @@ void CoreAudio::Stream::init()
 		if( effectFunctions[i].init == nullptr ) { continue; }
 		effectFunctions[i].init( effects[i], states[i] );
 	}
+#endif
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1127,6 +1134,7 @@ void CoreAudio::Stream::init()
 SoundHandle CoreAudio::play_voice( int idBus, const i16 *samples, u32 samplesCount, int channels,
 	const AudioEffects &effects, const AudioDescription &description, const char *name )
 {
+#if AUDIO_ENABLED
 	const u16 v = find_voice();
 	if( v == U16_MAX ) { return SoundHandle { }; }
 	CoreAudio::Voice &voice = CoreAudio::voices[v];
@@ -1161,12 +1169,16 @@ SoundHandle CoreAudio::play_voice( int idBus, const i16 *samples, u32 samplesCou
 
 	// Return handle
 	return SoundHandle { static_cast<u16>( v ), U16_MAX, voice.generation };
+#else
+	return SoundHandle { };
+#endif
 }
 
 
 SoundHandle CoreAudio::play_stream( int idBus, u32 assetID,
 	const AudioEffects &effects, const AudioDescription &description, const char *name )
 {
+#if AUDIO_ENABLED
 	const u16 s = find_stream();
 	if( s == U16_MAX ) { return SoundHandle { }; }
 	CoreAudio::Stream &stream = CoreAudio::sounds[s];
@@ -1210,12 +1222,16 @@ SoundHandle CoreAudio::play_stream( int idBus, u32 assetID,
 
 	// Return handle
 	return SoundHandle { U16_MAX, static_cast<u16>( s ), stream.generation };
+#else
+	return SoundHandle { };
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void AudioEffects::init()
 {
+#if AUDIO_ENABLED
 	// Zero-initialize Effects
 	for( int i = 0; i < CoreAudio::EFFECTTYPE_COUNT; i++ )
 	{
@@ -1226,12 +1242,14 @@ void AudioEffects::init()
 	effects[CoreAudio::EffectType_Core].active = true;
 	effects[CoreAudio::EffectType_Core].set_parameter( CoreAudio::EffectParam_Core_Gain, 1.0f, 0.0f );
 	effects[CoreAudio::EffectType_Core].set_parameter( CoreAudio::EffectParam_Core_Pitch, 1.0f, 0.0f );
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool SoundHandle::is_playing() const
 {
+#if AUDIO_ENABLED
 	if( idStream == U16_MAX )
 	{
 		if( idVoice >= AUDIO_VOICE_COUNT ) { return false; }
@@ -1244,50 +1262,59 @@ bool SoundHandle::is_playing() const
 		if( CoreAudio::sounds[idStream].generation != generation ) { return false; }
 		return !( CoreAudio::sounds[idStream].idBus < 0 );
 	}
-
+#endif
 	return false;
 }
 
 
 bool SoundHandle::is_paused() const
 {
+#if AUDIO_ENABLED
 	if( !is_playing() ) { return false; }
 	return idStream == U16_MAX ? CoreAudio::voices[idVoice].bypass : CoreAudio::sounds[idStream].bypass;
+#else
+	return false;
+#endif
 }
 
 
 bool SoundHandle::pause( const bool pause ) const
 {
+#if AUDIO_ENABLED
 	if( !is_playing() ) { return false; }
-
 	if( idVoice != U16_MAX ) { CoreAudio::voices[idVoice].bypass = pause; }
 	if( idStream != U16_MAX ) { CoreAudio::sounds[idStream].bypass = pause; }
-
+#endif
 	return true;
 }
 
 
 bool SoundHandle::stop() const
 {
+#if AUDIO_ENABLED
 	if( !is_playing() ) { return true; }
-
 	if( idVoice != U16_MAX ) { CoreAudio::voices[idVoice].idBus = -1; }
 	if( idStream != U16_MAX ) { CoreAudio::sounds[idStream].idBus = -1; }
-
+#endif
 	return true;
 }
 
 
 AudioEffects *SoundHandle::operator->() const
 {
+#if AUDIO_ENABLED
 	if( !is_playing() ) { return &NULL_AUDIO_EFFECTS; }
 	return idStream == U16_MAX ? &CoreAudio::voices[idVoice].effects : &CoreAudio::sounds[idStream].effects;
+#else
+	return &NULL_AUDIO_EFFECTS;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void AudioContext::init( const AudioEffects &effects, const char *name )
 {
+#if AUDIO_ENABLED
 	// Reserve an audio bus
 	idBus = find_bus();
 	ErrorIf( idBus < 0, "AudioContext: exceeded bus capacity!" );
@@ -1304,11 +1331,13 @@ void AudioContext::init( const AudioEffects &effects, const char *name )
 		if( effectFunctions[i].init == nullptr ) { continue; }
 		effectFunctions[i].init( bus.effects[i], bus.states[i] );
 	}
+#endif
 };
 
 
 void AudioContext::free()
 {
+#if AUDIO_ENABLED
 	if( idBus < 0 || idBus >= AUDIO_BUS_COUNT ) { return; }
 
 	// Stop playing voices
@@ -1321,34 +1350,48 @@ void AudioContext::free()
 	// Mark our audio bus as available
 	CoreAudio::Bus &bus = CoreAudio::buses[idBus];
 	bus.available = true;
+#endif
 };
 
 
 AudioEffects *AudioContext::operator->() const
 {
+#if AUDIO_ENABLED
 	Assert( idBus > 0 || idBus < AUDIO_BUS_COUNT );
 	return &CoreAudio::buses[idBus].effects;
+#else
+	return &NULL_AUDIO_EFFECTS;
+#endif
 }
 
 
 bool AudioContext::is_paused() const
 {
+#if AUDIO_ENABLED
 	if( idBus < 0 || idBus >= AUDIO_BUS_COUNT ) { return false; }
 	return CoreAudio::buses[idBus].bypass;
+#else
+	return false;
+#endif
 }
 
 
 bool AudioContext::pause( const bool pause ) const
 {
+#if AUDIO_ENABLED
 	if( idBus < 0 || idBus >= AUDIO_BUS_COUNT ) { return false; }
 	CoreAudio::buses[idBus].bypass = pause;
 	return true;
+#else
+	return false;
+#endif
 }
 
 
 void AudioContext::set_listener( const float lookX, const float lookY, const float lookZ,
 	const float upX, const float upY, const float upZ )
 {
+#if AUDIO_ENABLED
 	if( idBus < 0 || idBus >= AUDIO_BUS_COUNT ) { return; }
 	CoreAudio::buses[idBus].lookX = lookX;
 	CoreAudio::buses[idBus].lookY = lookY;
@@ -1356,12 +1399,14 @@ void AudioContext::set_listener( const float lookX, const float lookY, const flo
 	CoreAudio::buses[idBus].upX = upX;
 	CoreAudio::buses[idBus].upY = upY;
 	CoreAudio::buses[idBus].upZ = upZ;
+#endif
 }
 
 
 SoundHandle AudioContext::play_sound( const u32 sound,
 	const AudioEffects &effects, const AudioDescription &description )
 {
+#if AUDIO_ENABLED
 	Assert( idBus >= 0 || idBus < AUDIO_BUS_COUNT );
 
 	Assert( sound < CoreAssets::soundCount );
@@ -1384,6 +1429,9 @@ SoundHandle AudioContext::play_sound( const u32 sound,
 		const int channels = soundEntry.channels;
 		return CoreAudio::play_voice( idBus, samples, samplesCount, channels, effects, description, name );
 	}
+#endif
+
+	return SoundHandle { };
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1402,15 +1450,17 @@ static const u16 fontSizeLabel = 12;
 static void draw_progress_bar( const int x, const int y, const int width, const int height,
 	const float percent, Color colorBackground, Color colorBar )
 {
+#if AUDIO_ENABLED
 	draw_rectangle( x, y, x + width, y + height, colorBackground );
 	draw_rectangle( x + 1, y + 1, x + 1 + static_cast<int>( ( width - 2 ) * percent ), y + height - 1, colorBar );
+#endif
 }
 
 
 static void audio_time_string( char *buffer, const usize size,
 	const float percent, const usize sampleCount, const int channels )
 {
-	// Total Time
+#if AUDIO_ENABLED
 	char timeTotal[32];
 	const usize secondsTotal = sampleCount / 44100 / sizeof( i16 ) / channels;
 	{
@@ -1419,7 +1469,6 @@ static void audio_time_string( char *buffer, const usize size,
 		snprintf( timeTotal, sizeof( timeTotal ), seconds < 10 ? "%u:0%u" : "%u:%u", minutes, seconds );
 	}
 
-	// Current Time
 	char timeCurrent[32];
 	const usize secondsCurrent = static_cast<usize>( secondsTotal * percent );
 	{
@@ -1428,8 +1477,8 @@ static void audio_time_string( char *buffer, const usize size,
 		snprintf( timeCurrent, sizeof( timeCurrent ), seconds < 10 ? "%u:0%u" : "%u:%u", minutes, seconds );
 	}
 
-	// Output buffer
 	snprintf( buffer, size, "%s/%s", timeCurrent, timeTotal );
+#endif
 }
 
 
@@ -1437,6 +1486,7 @@ static void audio_draw_label_value( const float x, const float y, const int widt
 	const Color colorLabel, const Color colorSeparator, const Color colorValue,
 	const char *label, const char *value )
 {
+#if AUDIO_ENABLED
 	const int_v2 labelDimensions = text_dimensions( font, fontSizeLabel, label );
 	const int_v2 valueDimensions = text_dimensions( font, fontSizeLabel, value );
 
@@ -1453,12 +1503,15 @@ static void audio_draw_label_value( const float x, const float y, const int widt
 
 	// Value
 	draw_text( font, fontSizeLabel, x + width - valueDimensions.x, y, colorValue, value );
+#endif
 }
 
 
 int_v2 CoreAudio::draw_debug( const Delta delta, float x, float y )
 {
 	int_v2 dimensions = int_v2 { 0, 0 };
+
+#if AUDIO_ENABLED
 	if( !DEBUG_ENABLED ) { return dimensions; }
 
 	for( int i = 0; i < AUDIO_BUS_COUNT; i++ )
@@ -1471,6 +1524,7 @@ int_v2 CoreAudio::draw_debug( const Delta delta, float x, float y )
 		dimensions.x = ( width > dimensions.x ? width : dimensions.x );
 		dimensions.y = ( dY - y > dimensions.y ? dY - y : dimensions.y );
 	}
+#endif
 
 	return dimensions;
 }
@@ -1478,6 +1532,7 @@ int_v2 CoreAudio::draw_debug( const Delta delta, float x, float y )
 
 bool CoreAudio::draw_bus( const Delta delta, int id, float &x, float &y )
 {
+#if AUDIO_ENABLED
 	Bus &bus = buses[id];
 	if( bus.available ) { return false; }
 	const float xIn = x;
@@ -1527,6 +1582,7 @@ bool CoreAudio::draw_bus( const Delta delta, int id, float &x, float &y )
 		}
 	}
 	x = xIn;
+#endif
 
 	return true;
 }
@@ -1534,6 +1590,7 @@ bool CoreAudio::draw_bus( const Delta delta, int id, float &x, float &y )
 
 bool CoreAudio::draw_voice( const Delta delta, int id, float &x, float &y )
 {
+#if AUDIO_ENABLED
 	Voice &voice = voices[id];
 	if( voice.idBus < 0 ) { return false; }
 
@@ -1558,6 +1615,7 @@ bool CoreAudio::draw_voice( const Delta delta, int id, float &x, float &y )
 		draw_effect( delta, voice.effects[i], i, x, y );
 	}
 	y += 4.0f;
+#endif
 
 	return true;
 }
@@ -1565,6 +1623,7 @@ bool CoreAudio::draw_voice( const Delta delta, int id, float &x, float &y )
 
 bool CoreAudio::draw_stream( const Delta delta, int id, float &x, float &y )
 {
+#if AUDIO_ENABLED
 	Stream &stream = sounds[id];
 	if( stream.idBus < 0 ) { return false; }
 
@@ -1605,6 +1664,7 @@ bool CoreAudio::draw_stream( const Delta delta, int id, float &x, float &y )
 		draw_effect( delta, stream.effects[i], i, x, y );
 	}
 	y += 4.0f;
+#endif
 
 	return true;
 }
@@ -1612,6 +1672,7 @@ bool CoreAudio::draw_stream( const Delta delta, int id, float &x, float &y )
 
 bool CoreAudio::draw_effect( const Delta delta, Effect &effect, int type, float &x, float &y )
 {
+#if AUDIO_ENABLED
 	if( !effect.active ) { return false; }
 
 	const int labelIndent = 64;
@@ -1662,6 +1723,9 @@ bool CoreAudio::draw_effect( const Delta delta, Effect &effect, int type, float 
 
 		default: AssertMsg( true, "Unsupported audio effect debug label!" ); return false;
 	}
+#endif
+
+	return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

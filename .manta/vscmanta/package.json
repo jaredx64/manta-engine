@@ -15,34 +15,62 @@
 	],
 	"contributes": {
 		"commands": [
-			{ "command": "vscmanta.about",              "title": "Manta: About" },
+			{ "command": "vscmanta.about", "title": "Manta: About" },
 
-			{ "command": "vscmanta.newProject",         "title": "Manta: New Project" },
+			{ "command": "vscmanta.newProject", "title": "Manta: New Project" },
 
-			{ "command": "vscmanta.selectProject",      "title": "Manta: Select Project" },
-			{ "command": "vscmanta.selectPlatform",     "title": "Manta: Select Platform" },
+			{ "command": "vscmanta.selectProject", "title": "Manta: Select Project" },
+			{ "command": "vscmanta.selectPlatform", "title": "Manta: Select Platform" },
 			{ "command": "vscmanta.selectArchitecture", "title": "Manta: Select Architecture" },
-			{ "command": "vscmanta.selectToolchain",    "title": "Manta: Select Toolchain" },
-			{ "command": "vscmanta.selectConfig",       "title": "Manta: Select Configuration" },
-			{ "command": "vscmanta.selectGraphics",     "title": "Manta: Select Graphics API" },
-			{ "command": "vscmanta.selectMultiLaunch",  "title": "Manta: Select Multi-Launch Count" },
+			{ "command": "vscmanta.selectToolchain", "title": "Manta: Select Toolchain" },
+			{ "command": "vscmanta.selectConfig", "title": "Manta: Select Configuration" },
+			{ "command": "vscmanta.selectGraphics", "title": "Manta: Select Graphics API" },
+			{ "command": "vscmanta.selectMultiLaunch", "title": "Manta: Select Multi-Launch Count" },
 
-			{ "command": "vscmanta.setWorkspace",       "title": "Manta: Select VSCode Workspace" },
+			{ "command": "vscmanta.setWorkspace", "title": "Manta: Select VSCode Workspace" },
 
-			{ "command": "vscmanta.cleanFull",          "title": "Manta: Clean Project Cache (Boot, Build, Runtime)" },
-			{ "command": "vscmanta.cleanPartial",       "title": "Manta: Clean Project Cache (Runtime only)" },
-			{ "command": "vscmanta.buildAndRun",        "title": "Manta: Build & Run" },
-			{ "command": "vscmanta.build",              "title": "Manta: Build" },
-			{ "command": "vscmanta.run",                "title": "Manta: Run" },
-			{ "command": "vscmanta.package",            "title": "Manta: Package" },
-			{ "command": "vscmanta.debugRuntime",       "title": "Manta: Debug Runtime" },
-			{ "command": "vscmanta.renderdoc",          "title": "Manta: RenderDoc" },
+			{ "command": "vscmanta.cleanFull", "title": "Manta: Clean Project Cache (Boot, Build, Runtime)" },
+			{ "command": "vscmanta.cleanPartial", "title": "Manta: Clean Project Cache (Runtime only)" },
+			{ "command": "vscmanta.buildAndRun", "title": "Manta: Build & Run" },
+			{ "command": "vscmanta.build", "title": "Manta: Build" },
+			{ "command": "vscmanta.run", "title": "Manta: Run" },
+			{ "command": "vscmanta.package", "title": "Manta: Package" },
+			{ "command": "vscmanta.debugRuntime", "title": "Manta: Debug Runtime" },
+			{ "command": "vscmanta.renderdoc", "title": "Manta: RenderDoc" },
 			{ "command": "vscmanta.insertCommentBreak", "title": "Manta: Inserts comment break" },
 			{ "command": "vscmanta.insertRandomHex32",  "title": "Manta: Inserts a random 32 bit number (hex formatted)" },
-			{ "command": "vscmanta.insertRandomHex64",  "title": "Manta: Inserts a random 64 bit number (hex formatted)" }
+			{ "command": "vscmanta.insertRandomHex64",  "title": "Manta: Inserts a random 64 bit number (hex formatted)" },
+
+			{ "command": "vscmanta.newAssetTexture", "title": "Texture" },
+			{ "command": "vscmanta.newAssetSprite", "title": "Sprite" },
+			{ "command": "vscmanta.newAssetMaterial", "title": "Material" },
+			{ "command": "vscmanta.newAssetSkin", "title": "Skin" },
+			{ "command": "vscmanta.newAssetModel", "title": "Model" },
+			{ "command": "vscmanta.newAssetFont", "title": "Font" },
+			{ "command": "vscmanta.newAssetData", "title": "Data Asset" },
+			{ "command": "vscmanta.newAssetShader", "title": "Shader" }
 		],
+		"submenus": [
+			{ "id": "vscmanta.create", "label": "New Asset... (Manta)" }
+		],
+		"menus": {
+			"explorer/context": [
+				{ "submenu": "vscmanta.create", "when": "explorerResourceIsFolder", "group": "navigation@10" }
+			],
+			"vscmanta.create": [
+				{ "command": "vscmanta.newAssetTexture", "when": "explorerResourceIsFolder", "group": "1_assets@1" },
+				{ "command": "vscmanta.newAssetSprite", "when": "explorerResourceIsFolder", "group": "1_assets@1" },
+				{ "command": "vscmanta.newAssetMaterial", "when": "explorerResourceIsFolder", "group": "1_assets@1" },
+				{ "command": "vscmanta.newAssetSkin", "when": "explorerResourceIsFolder", "group": "1_assets@1" },
+				{ "command": "vscmanta.newAssetModel", "when": "explorerResourceIsFolder", "group": "1_assets@1" },
+				{ "command": "vscmanta.newAssetFont", "when": "explorerResourceIsFolder", "group": "1_assets@1" },
+				{ "command": "vscmanta.newAssetData", "when": "explorerResourceIsFolder", "group": "1_assets@1" },
+				{ "command": "vscmanta.newAssetShader", "when": "explorerResourceIsFolder", "group": "1_assets@1" }
+			]
+		},
 		"languages": [
-			{ "id": "shader", "aliases": [ "Shader", "shader" ], "extensions": [ ".shader" ], "configuration": "syntax/shader.config.json" }
+			{ "id": "shader", "aliases": [ "Shader", "shader" ], "extensions": [ ".shader" ], "configuration": "syntax/shader.config.json" },
+			{ "id": "json", "extensions": [ ".texture", ".sprite", ".material", ".skin", ".model", ".font", ".asset" ] }
 		],
 		"grammars": [
 			{ "language": "shader", "scopeName": "source.shader", "path": "syntax/shader.syntax.json" }

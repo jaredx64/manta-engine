@@ -1,6 +1,7 @@
 #pragma once
 
 #include <core/types.hpp>
+#include <core/assets.hpp>
 #include <core/list.hpp>
 #include <core/buffer.hpp>
 #include <core/string.hpp>
@@ -12,34 +13,15 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// NOTE: Must maintain parity with manta/assets.hpp
-enum_type( MeshFormatTypeVertex, int )
-{
-	MeshFormatTypeVertex_Default = 0,
-	// ...
-	MESHFORMATTYPEVERTEX_COUNT
-};
-
-// NOTE: Must maintain parity with manta/assets.hpp
-enum_type( MeshFormatTypeIndex, int )
-{
-	MeshFormatTypeIndex_U32 = 0,
-	MeshFormatTypeIndex_U16,
-	// ...
-	MESHFORMATTYPEINDEX_COUNT
-};
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 class Mesh
 {
 public:
-	MeshFormatTypeVertex formatVertex;
+	Assets::MeshFormatTypeVertex formatVertex;
 	Buffer dataVertex;
 	usize offsetVertex;
 	usize sizeVertex;
 
-	MeshFormatTypeIndex formatIndex;
+	Assets::MeshFormatTypeIndex formatIndex;
 	Buffer dataIndex;
 	usize offsetIndex;
 	usize sizeIndex;
@@ -62,8 +44,8 @@ class Meshes
 {
 public:
 	MeshID register_new( CacheKey cacheKey,
-		MeshFormatTypeVertex formatVertex, void *dataVertex, usize sizeVertex,
-		MeshFormatTypeIndex formatIndex, void *dataIndex, usize sizeIndex,
+		Assets::MeshFormatTypeVertex formatVertex, void *dataVertex, usize sizeVertex,
+		Assets::MeshFormatTypeIndex formatIndex, void *dataIndex, usize sizeIndex,
 		float x1, float y1, float z1, float x2, float y2, float z2,
 		u32 skinSlotIndex );
 

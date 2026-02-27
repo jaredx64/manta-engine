@@ -136,8 +136,6 @@ enum_type( TokenType, int )
 	TokenType_VertexOutput,
 	TokenType_FragmentInput,
 	TokenType_FragmentOutput,
-	TokenType_Texture1D,
-	TokenType_Texture1DArray,
 	TokenType_Texture2D,
 	TokenType_Texture2DArray,
 	TokenType_Texture3D,
@@ -208,8 +206,6 @@ enum_type( Primitive, u32 )
 	Primitive_Float2x2,
 	Primitive_Float3x3,
 	Primitive_Float4x4,
-	Primitive_Texture1D,
-	Primitive_Texture1DArray,
 	Primitive_Texture2D,
 	Primitive_Texture2DArray,
 	Primitive_Texture3D,
@@ -406,8 +402,6 @@ enum_type( InputFormat, u32 )
 
 enum_type( TextureType, u32 )
 {
-	TextureType_Texture1D,
-	TextureType_Texture1DArray,
 	TextureType_Texture2D,
 	TextureType_Texture2DArray,
 	TextureType_Texture3D,

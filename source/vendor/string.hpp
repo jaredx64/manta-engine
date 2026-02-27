@@ -27,6 +27,7 @@
 	extern "C" char *strrchr( const char *, int );
 	extern "C" void *memchr( const void *, int, size_t );
 	extern "C" size_t strspn( const char *, const char * );
+	extern "C" size_t strcspn( char const *, char const * );
 
 	#if PIPELINE_COMPILER_MSVC
 		// NOTE: MSVC wants to know that the above declarations are intended to be used as compiler intrinsics

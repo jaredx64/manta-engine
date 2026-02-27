@@ -116,6 +116,16 @@ async function activate( context )
 	context.subscriptions.push( vscode.commands.registerCommand( "vscmanta.insertRandomHex32", CommandInsertRandomHex32 ) );
 	context.subscriptions.push( vscode.commands.registerCommand( "vscmanta.insertRandomHex64", CommandInsertRandomHex64 ) );
 
+	context.subscriptions.push( vscode.commands.registerCommand( "vscmanta.newAssetTexture", CommandNewAssetTexture ) );
+	context.subscriptions.push( vscode.commands.registerCommand( "vscmanta.newAssetSprite", CommandNewAssetSprite ) );
+	context.subscriptions.push( vscode.commands.registerCommand( "vscmanta.newAssetMaterial", CommandNewAssetMaterial ) );
+	context.subscriptions.push( vscode.commands.registerCommand( "vscmanta.newAssetSkin", CommandNewAssetSkin ) );
+	context.subscriptions.push( vscode.commands.registerCommand( "vscmanta.newAssetModel", CommandNewAssetModel ) );
+	context.subscriptions.push( vscode.commands.registerCommand( "vscmanta.newAssetFont", CommandNewAssetFont ) );
+	context.subscriptions.push( vscode.commands.registerCommand( "vscmanta.newAssetData", CommandNewAssetData ) );
+	context.subscriptions.push( vscode.commands.registerCommand( "vscmanta.newAssetShader", CommandNewAssetShader ) );
+
+
 	// Build Configuration Widgets
 	WidgetCreate( context, WIDGET_WORKSPACE, "[]", "vscmanta.setWorkspace" );
 	WIDGET_WORKSPACE.tooltip = "Set workspace";
@@ -1191,6 +1201,7 @@ function CommandCleanFull()
 		cleanCommand = [
 			"cls",
 			`if exist ${outputPath} rmdir ${outputPath} /s /q`,
+			`echo Clean: deleted "${outputPath}"`,
 		];
 		cleanCommand = "cmd /c \"" + cleanCommand.join( " & " ) + "\"";
 	}
@@ -1199,6 +1210,7 @@ function CommandCleanFull()
 		cleanCommand = [
 			"clear",
 			`rm -rf ${outputPath}`,
+			`echo Clean: deleted "${outputPath}"`,
 		];
 		cleanCommand = cleanCommand.join( " ; " );
 	}
@@ -1217,6 +1229,7 @@ function CommandCleanPartial()
 		cleanCommand = [
 			"cls",
 			`if exist ${outputPath} rmdir ${outputPath} /s /q`,
+			`echo Clean Runtime: deleted "${outputPath}"`,
 		];
 		cleanCommand = "cmd /c \"" + cleanCommand.join( " & " ) + "\"";
 	}
@@ -1225,6 +1238,7 @@ function CommandCleanPartial()
 		cleanCommand = [
 			"clear",
 			`rm -rf ${outputPath}`,
+			`echo Clean Runtime: deleted "${outputPath}"`,
 		];
 		cleanCommand = cleanCommand.join( " ; " );
 	}
@@ -1335,6 +1349,7 @@ async function CommandRunWait( args )
 	fs.rmSync( lockPath );
 }
 
+
 async function CommandStartDebugging( args )
 {
 	if( !args.config )
@@ -1345,6 +1360,7 @@ async function CommandStartDebugging( args )
 
 	vscode.debug.startDebugging( vscode.workspace.workspaceFolders[0], args.config );
 }
+
 
 function CommandInsertCommentBreak()
 {
@@ -1369,7 +1385,9 @@ function CommandInsertRandomHex32()
 	editor.edit( editBuilder => { editBuilder.insert( position, hex ); } );
 }
 
-function CommandInsertRandomHex64() {
+
+function CommandInsertRandomHex64()
+{
 	const editor = vscode.window.activeTextEditor;
 	if( !editor ) { return; }
 	const hi = Math.floor( Math.random() * 0xFFFFFFFF );
@@ -1382,6 +1400,286 @@ function CommandInsertRandomHex64() {
 }
 
 
+async function CreateAssetFileUri( uri, assetLabel, extension )
+{
+	if( !uri )
+	{
+		vscode.window.showErrorMessage( "No folder selected" );
+		return null;
+	}
+
+	const input = await vscode.window.showInputBox(
+		{
+			prompt: `Enter ${assetLabel} file name:`,
+			value: ""
+		} );
+
+	if( !input ) { return null; }
+
+	let fileName = input.trim();
+	const extRegex = new RegExp( `\\${extension}$`, "i" );
+	fileName = fileName.replace( extRegex, "" );
+	fileName += `${extension}`;
+
+	const filePath = path.join( uri.fsPath, fileName );
+	const fileUri = vscode.Uri.file( filePath );
+
+	try
+	{
+		await vscode.workspace.fs.stat( fileUri );
+		vscode.window.showErrorMessage( "File already exists" );
+		return null;
+	}
+	catch { }
+
+	return fileUri;
+}
+
+
+async function CommandNewAssetTexture( uri )
+{
+	const fileUri = await CreateAssetFileUri( uri, "Texture", ".texture" );
+	if( !fileUri ) { return; }
+
+	const contents =
+	{
+		path: "path_to_image.png",
+		mips: false,
+	};
+
+	await vscode.workspace.fs.writeFile(
+		fileUri,
+		Buffer.from( JSON.stringify( contents, null, 4 ), "utf8" )
+	);
+
+	const doc = await vscode.workspace.openTextDocument( fileUri );
+	await vscode.window.showTextDocument( doc );
+}
+
+
+async function CommandNewAssetSprite( uri )
+{
+	const fileUri = await CreateAssetFileUri( uri, "Sprite", ".sprite" );
+	if( !fileUri ) { return; }
+
+	const contents =
+	{
+		path: "path_to_image.png",
+		atlas: "default",
+		count: 1,
+		xorigin: 0,
+		yorigin: 0,
+	};
+
+	await vscode.workspace.fs.writeFile(
+		fileUri,
+		Buffer.from( JSON.stringify( contents, null, 4 ), "utf8" )
+	);
+
+	const doc = await vscode.workspace.openTextDocument( fileUri );
+	await vscode.window.showTextDocument( doc );
+}
+
+
+async function CommandNewAssetMaterial( uri )
+{
+	const fileUri = await CreateAssetFileUri( uri, "Material", ".material" );
+	if( !fileUri ) { return; }
+
+	const contents =
+	{
+		color: "image_color.png",
+		normal: "image_normal.png",
+		roughness: "image_roughness.png",
+		metallic: "image_metallic.png",
+		emissive: "image_emissive.png",
+		specular: "image_specular.png",
+		ao: "image_ao.png",
+	};
+
+	await vscode.workspace.fs.writeFile(
+		fileUri,
+		Buffer.from( JSON.stringify( contents, null, 4 ), "utf8" )
+	);
+
+	const doc = await vscode.workspace.openTextDocument( fileUri );
+	await vscode.window.showTextDocument( doc );
+}
+
+
+async function CommandNewAssetSkin( uri )
+{
+	const fileUri = await CreateAssetFileUri( uri, "Skin", ".skin" );
+	if( !fileUri ) { return; }
+
+	// TODO: Implement .skin asset type
+	const contents =
+	{
+		path: "path_to_image.png",
+	};
+
+	await vscode.workspace.fs.writeFile(
+		fileUri,
+		Buffer.from( JSON.stringify( contents, null, 4 ), "utf8" )
+	);
+
+	const doc = await vscode.workspace.openTextDocument( fileUri );
+	await vscode.window.showTextDocument( doc );
+}
+
+
+async function CommandNewAssetModel( uri )
+{
+	const fileUri = await CreateAssetFileUri( uri, "Model", ".model" );
+	if( !fileUri ) { return; }
+
+	const contents =
+	{
+		model: "model.obj",
+		skins:
+		[
+			"model.mtl",
+		]
+	};
+
+	await vscode.workspace.fs.writeFile(
+		fileUri,
+		Buffer.from( JSON.stringify( contents, null, 4 ), "utf8" )
+	);
+
+	const doc = await vscode.workspace.openTextDocument( fileUri );
+	await vscode.window.showTextDocument( doc );
+}
+
+
+async function CommandNewAssetFont( uri )
+{
+	const fileUri = await CreateAssetFileUri( uri, "Font", ".font" );
+	if( !fileUri ) { return; }
+
+	const contents =
+	{
+		license: "license.txt",
+		default: "ttf_regular.ttf",
+		italic: "ttf_italic.ttf",
+		bold: "ttf_bold.ttf",
+		bold_italic: "ttf_bold_italic.ttf",
+	};
+
+	await vscode.workspace.fs.writeFile(
+		fileUri,
+		Buffer.from( JSON.stringify( contents, null, 4 ), "utf8" )
+	);
+
+	const doc = await vscode.workspace.openTextDocument( fileUri );
+	await vscode.window.showTextDocument( doc );
+}
+
+
+async function CommandNewAssetData( uri )
+{
+	const fileUri = await CreateAssetFileUri( uri, "Data Asset", ".asset" );
+	if( !fileUri ) { return; }
+
+	const contents =
+	{
+		path: "path_to_asset.png",
+	};
+
+	await vscode.workspace.fs.writeFile(
+		fileUri,
+		Buffer.from( JSON.stringify( contents, null, 4 ), "utf8" )
+	);
+
+	const doc = await vscode.workspace.openTextDocument( fileUri );
+	await vscode.window.showTextDocument( doc );
+}
+
+
+async function CommandNewAssetShader( uri )
+{
+	const fileUri = await CreateAssetFileUri( uri, "Shader", ".shader" );
+	if( !fileUri ) { return; }
+
+	const contents =
+`#include <shader_api.hpp>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+vertex_input BuiltinVertex
+{
+	float3 position packed_as( FLOAT32 );
+	float2 uv packed_as( UNORM16 );
+	float4 color packed_as( UNORM8 );
+};
+
+vertex_output VertexOutput
+{
+	float4 position position_out;
+	float2 uv;
+	float4 color;
+};
+
+fragment_input FragmentInput
+{
+	float4 position position_in;
+	float2 uv;
+	float4 color;
+};
+
+fragment_output FragmentOutput
+{
+	float4 color target( 0, COLOR );
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+uniform_buffer( 0 ) UniformsPipeline
+{
+	float4x4 matrixModel;
+	float4x4 matrixView;
+	float4x4 matrixPerspective;
+	float4x4 matrixMVP;
+	float4x4 matrixModelInverse;
+	float4x4 matrixViewInverse;
+	float4x4 matrixPerspectiveInverse;
+	float4x4 matrixMVPInverse;
+};
+
+texture2D( 0, float4 ) textureColor;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void vertex_main( BuiltinVertex In, VertexOutput Out, UniformsPipeline Pipeline )
+{
+	Out.position = mul( Pipeline.matrixMVP, float4( In.position, 1.0 ) );
+	Out.uv = In.uv;
+	Out.color = In.color;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void fragment_main( FragmentInput In, FragmentOutput Out )
+{
+	float4 colorTexture = texture_sample_2d( textureColor, In.uv );
+	if( colorTexture.a <= 0.0 ) { discard; }
+	Out.color = colorTexture * In.color;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+`;
+
+	await vscode.workspace.fs.writeFile(
+		fileUri,
+		Buffer.from( contents, "utf8" )
+	);
+
+	const doc = await vscode.workspace.openTextDocument( fileUri );
+	await vscode.window.showTextDocument( doc );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 async function OpenFile( path )
 {
 	let relative = vscode.Uri.joinPath( vscode.workspace.workspaceFolders[0].uri, path );
@@ -1389,6 +1687,7 @@ async function OpenFile( path )
 
 	return await vscode.window.showTextDocument( document, { preview: false } );
 }
+
 
 function fsExistsWithTimeout( filePath, timeout )
 {

@@ -65,7 +65,9 @@ static UniformBufferBinding stateBoundUniformBufferResources[GFX_RESOURCE_COUNT_
 
 static GfxRenderTargetResource *stateBoundTargetResources[GFX_RENDER_TARGET_SLOT_COUNT] = { nullptr };
 static u32 stateBoundColorTextures[GFX_RENDER_TARGET_SLOT_COUNT] = { 0U };
+static u32 stateBoundColorLayers[GFX_RENDER_TARGET_SLOT_COUNT] = { 0U };
 static u32 stateBoundDepthTexture = 0U;
+static u32 stateBoundDepthLayer = 0U;
 
 static GfxTextureResource *stateBoundTextureResources[GFX_TEXTURE_SLOT_COUNT] = { nullptr };
 
@@ -198,6 +200,30 @@ static const MTLCompareFunction MetalDepthFunctions[] =
 };
 static_assert( ARRAY_LENGTH( MetalDepthFunctions ) == GFXDEPTHFUNCTION_COUNT,
 	"Missing GfxDepthFunction!" );
+
+
+static const MTLTextureType MetalTextureTypesSS[] =
+{
+	MTLTextureType2D, // GfxTextureType_2D
+	MTLTextureType2DArray, // GfxTexturetype_2D_ARRAY
+	MTLTextureType3D, // GfxTextureType_3D
+	MTLTextureTypeCube, // GfxTextureType_CUBE
+	MTLTextureTypeCubeArray, // GfxTextureType_CUBE_ARRAY
+};
+static_assert( ARRAY_LENGTH( MetalTextureTypesSS ) == GFXTEXTURETYPE_COUNT,
+	"Missing GfxTextureType!" );
+
+
+static const MTLTextureType MetalTextureTypesMS[] =
+{
+	MTLTextureType2DMultisample, // GfxTextureType_2D
+	MTLTextureType2DMultisampleArray, // GfxTexturetype_2D_ARRAY
+	MTLTextureType3D, // GfxTextureType_3D
+	MTLTextureTypeCube, // GfxTextureType_CUBE
+	MTLTextureTypeCubeArray, // GfxTextureType_CUBE_ARRAY
+};
+static_assert( ARRAY_LENGTH( MetalTextureTypesMS ) == GFXTEXTURETYPE_COUNT,
+	"Missing GfxTextureType!" );
 
 
 static const MTLCompareFunction MetalStencilCompareFuncs[] =
@@ -343,6 +369,7 @@ struct GfxTextureResource : public GfxResource
 	u16 height = 0;
 	u16 depth = 0;
 	u16 levels = 0;
+	u16 layers = 0;
 	usize size = 0;
 };
 
@@ -359,6 +386,7 @@ struct GfxRenderTargetResource : public GfxResource
 
 	u16 width = 0;
 	u16 height = 0;
+	u16 layers = 0;
 	usize size = 0;
 };
 
@@ -1127,7 +1155,7 @@ static void metal_prepare_encoder( const GfxStatePipeline &pipelineState )
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Metal Render State
 
-static void render_target_2d_resolve_msaa( GfxRenderTargetResource *resource )
+static void render_target_resolve_msaa( GfxRenderTargetResource *resource )
 {
 	if( resource == nullptr ) { return; }
 	if( resource->desc.sampleCount <= 1 ) { return; }
@@ -1154,7 +1182,7 @@ static void render_target_2d_resolve_msaa( GfxRenderTargetResource *resource )
 }
 
 
-static bool bind_targets( GfxRenderTargetResource *const *resources )
+static bool bind_targets( GfxRenderTargetResource *const *resources, const int *layers )
 {
 	static u16 cacheViewportWidth;
 	static u16 cacheViewportHeight;
@@ -1171,10 +1199,11 @@ static bool bind_targets( GfxRenderTargetResource *const *resources )
 	for( int slot = 0; slot < GFX_RENDER_TARGET_SLOT_COUNT; slot++ )
 	{
 		GfxRenderTargetResource *const resource = resources[slot];
+		const int layer = layers[slot];
 
 		if( stateBoundTargetResources[slot] != nullptr && stateBoundTargetResources[slot] != resource )
 		{
-			render_target_2d_resolve_msaa( stateBoundTargetResources[slot] );
+			render_target_resolve_msaa( stateBoundTargetResources[slot] );
 		}
 
 		hasCustomRenderTargets |= ( resource != nullptr );
@@ -1185,11 +1214,15 @@ static bool bind_targets( GfxRenderTargetResource *const *resources )
 		{
 			dirtySlot[slot] |= ( stateBoundColorTextures[slot] != 0U );
 			stateBoundColorTextures[slot] = 0U;
+			dirtySlot[slot] |= ( stateBoundColorLayers[slot] != 0U );
+			stateBoundColorLayers[slot] = 0U;
 
 			if( slot == 0 )
 			{
 				dirtySlot[slot] |= ( stateBoundDepthTexture != 0U );
 				stateBoundDepthTexture = 0U;
+				dirtySlot[slot] |= ( stateBoundDepthLayer != 0U );
+				stateBoundDepthLayer = 0U;
 			}
 		}
 		else
@@ -1207,11 +1240,15 @@ static bool bind_targets( GfxRenderTargetResource *const *resources )
 					resource->textureColorMS->id : resource->textureColorSS->id;
 				dirtySlot[slot] |= ( stateBoundColorTextures[slot] != ( colorTexture + 1 ) );
 				stateBoundColorTextures[slot] = ( colorTexture + 1 );
+				dirtySlot[slot] |= ( stateBoundColorLayers[slot] != layer );
+				stateBoundColorLayers[slot] = layer;
 			}
 			else
 			{
 				dirtySlot[slot] |= ( stateBoundColorTextures[slot] != 0 );
 				stateBoundColorTextures[slot] = 0;
+				dirtySlot[slot] |= ( stateBoundColorLayers[slot] != 0 );
+				stateBoundColorLayers[slot] = 0;
 			}
 
 			// Depth
@@ -1223,11 +1260,15 @@ static bool bind_targets( GfxRenderTargetResource *const *resources )
 						resource->textureDepthMS->id : resource->textureDepthSS->id;
 					dirtySlot[slot] |= ( stateBoundDepthTexture != ( depthTexture + 1 ) );
 					stateBoundDepthTexture = ( depthTexture + 1 );
+					dirtySlot[slot] |= ( stateBoundDepthLayer != layer );
+					stateBoundDepthLayer = layer;
 				}
 				else
 				{
 					dirtySlot[slot] |= ( stateBoundDepthTexture != 0U );
 					stateBoundDepthTexture = 0U;
+					dirtySlot[slot] |= ( stateBoundDepthLayer != 0 );
+					stateBoundDepthLayer = 0;
 				}
 			}
 		}
@@ -1260,6 +1301,7 @@ static bool bind_targets( GfxRenderTargetResource *const *resources )
 			if( !dirtySlot[slot] ) { continue; }
 			mtlRenderPassDescriptor.colorAttachments[slot].texture = stateBoundColorTextures[slot] == 0U ?
 				nil : mtlTextures[stateBoundColorTextures[slot] - 1];
+			mtlRenderPassDescriptor.colorAttachments[slot].slice = stateBoundColorLayers[slot];
 			mtlRenderPassDescriptor.colorAttachments[slot].loadAction = MTLLoadActionLoad;
 			mtlRenderPassDescriptor.colorAttachments[slot].storeAction = MTLStoreActionStore;
 		}
@@ -1268,6 +1310,7 @@ static bool bind_targets( GfxRenderTargetResource *const *resources )
 		{
 			mtlRenderPassDescriptor.depthAttachment.texture = stateBoundDepthTexture == 0U ?
 				nil : mtlTextures[stateBoundDepthTexture - 1];
+			mtlRenderPassDescriptor.depthAttachment.slice = stateBoundDepthLayer;
 			mtlRenderPassDescriptor.depthAttachment.loadAction = MTLLoadActionLoad;
 			mtlRenderPassDescriptor.depthAttachment.storeAction = MTLStoreActionStore;
 		}
@@ -1275,12 +1318,14 @@ static bool bind_targets( GfxRenderTargetResource *const *resources )
 	else
 	{
 		mtlRenderPassDescriptor.colorAttachments[0].texture = drawable.texture;
+		mtlRenderPassDescriptor.colorAttachments[0].slice = 0;
 		mtlRenderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionLoad;
 		mtlRenderPassDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
 
 		if( swapchainTextureDepth != nil )
 		{
 			mtlRenderPassDescriptor.depthAttachment.texture = swapchainTextureDepth;
+			mtlRenderPassDescriptor.depthAttachment.slice = 0;
 			mtlRenderPassDescriptor.depthAttachment.loadAction = MTLLoadActionLoad;
 			mtlRenderPassDescriptor.depthAttachment.storeAction = MTLStoreActionStore;
 		}
@@ -1324,7 +1369,8 @@ static bool bind_targets( GfxRenderTargetResource *const *resources )
 static void render_targets_reset()
 {
 	GfxRenderTargetResource *targets[GFX_RENDER_TARGET_SLOT_COUNT] = { nullptr };
-	bind_targets( targets );
+	int layers[GFX_RENDER_TARGET_SLOT_COUNT] = { 0 };
+	bind_targets( targets, layers );
 }
 
 
@@ -1338,7 +1384,7 @@ static void render_pass_validate()
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // GFX System
 
-bool CoreGfx::api_init()
+bool CoreGfx::init_api()
 {
 #if SWAPCHAIN_DPI_SCALED
 	const u16 w = Window::width;
@@ -1358,7 +1404,7 @@ bool CoreGfx::api_init()
 }
 
 
-bool CoreGfx::api_free()
+bool CoreGfx::free_api()
 {
 	resources_free();
 	api_swapchain_free();
@@ -2149,6 +2195,7 @@ bool CoreGfx::api_texture_init( GfxTextureResource *&resource, void *pixels,
 	resource->height = height;
 	resource->depth = 1;
 	resource->levels = levels;
+	resource->layers = 1;
 
 	MTLTextureDescriptor *desc = [MTLTextureDescriptor
 		texture2DDescriptorWithPixelFormat: MetalColorFormats[format]
@@ -2258,7 +2305,7 @@ void GfxRenderTargetResource::release( GfxRenderTargetResource *&resource )
 
 bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 	GfxTextureResource *&resourceColor, GfxTextureResource *&resourceDepth,
-	u16 width, u16 height, const GfxRenderTargetDescription &desc )
+	u16 width, u16 height, u16 layers, const GfxRenderTargetDescription &desc )
 {
 	Assert( resource == nullptr );
 	Assert( resourceColor == nullptr );
@@ -2267,20 +2314,26 @@ bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 	resource = renderTargetResources.make_new();
 	resource->width = width;
 	resource->height = height;
+	resource->layers = layers;
 	resource->desc = desc;
+
+	const bool isArrayTexture = layers > 1;
+	const GfxTextureType textureType = isArrayTexture ? GfxTexturetype_2D_ARRAY : GfxTextureType_2D;
 
 	if( desc.colorFormat != GfxColorFormat_NONE )
 	{
 		Assert( resource->textureColorSS == nullptr );
 		resource->textureColorSS = textureResources.make_new();
-		resource->textureColorSS->type = GfxTextureType_2D;
+		resource->textureColorSS->type = textureType;
+		resource->textureColorSS->layers = layers;
 		resourceColor = resource->textureColorSS;
 
 		MTLTextureDescriptor *colorDescriptorSS = [[MTLTextureDescriptor alloc] init];
-		colorDescriptorSS.textureType = MTLTextureType2D;
+		colorDescriptorSS.textureType = MetalTextureTypesSS[textureType];
 		colorDescriptorSS.pixelFormat = MetalColorFormats[desc.colorFormat];
 		colorDescriptorSS.width = width;
 		colorDescriptorSS.height = height;
+		colorDescriptorSS.arrayLength = layers;
 		colorDescriptorSS.sampleCount = 1;
 		colorDescriptorSS.storageMode = desc.cpuAccess ? MTLStorageModeShared : MTLStorageModePrivate;
 		colorDescriptorSS.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
@@ -2290,19 +2343,21 @@ bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 		ErrorReturnIf( mtlTextures[resource->textureColorSS->id] == nil, false,
 			"%s: Failed to create color MTLTexture for render target!", __FUNCTION__);
 
-		resource->size += GFX_SIZE_IMAGE_COLOR_BYTES( width, height, 1, desc.colorFormat );
+		resource->size += GFX_SIZE_IMAGE_COLOR_BYTES( width, height, layers, desc.colorFormat );
 
 		if( desc.sampleCount > 1 )
 		{
 			Assert( resource->textureColorMS == nullptr );
 			resource->textureColorMS = textureResources.make_new();
-			resource->textureColorMS->type = GfxTextureType_2D;
+			resource->textureColorMS->type = textureType;
+			resource->textureColorMS->layers = layers;
 
 			MTLTextureDescriptor *colorDescriptorMS = [[MTLTextureDescriptor alloc] init];
-			colorDescriptorMS.textureType = MTLTextureType2DMultisample;
+			colorDescriptorMS.textureType = MetalTextureTypesMS[textureType];
 			colorDescriptorMS.pixelFormat = MetalColorFormats[desc.colorFormat];
 			colorDescriptorMS.width = width;
 			colorDescriptorMS.height = height;
+			colorDescriptorMS.arrayLength = layers;
 			colorDescriptorMS.sampleCount = desc.sampleCount;
 			colorDescriptorMS.storageMode = desc.cpuAccess ? MTLStorageModeShared : MTLStorageModePrivate;
 			colorDescriptorMS.usage = MTLTextureUsageRenderTarget;
@@ -2312,7 +2367,7 @@ bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 			ErrorReturnIf( mtlTextures[resource->textureColorMS->id] == nil, false,
 				"%s: Failed to create multisample color MTLTexture for render target!", __FUNCTION__);
 
-			resource->size += GFX_SIZE_IMAGE_COLOR_BYTES( width, height, 1, desc.colorFormat ) * desc.sampleCount;
+			resource->size += GFX_SIZE_IMAGE_COLOR_BYTES( width, height, layers, desc.colorFormat ) * desc.sampleCount;
 		}
 	}
 
@@ -2320,14 +2375,16 @@ bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 	{
 		Assert( resource->textureDepthSS == nullptr );
 		resource->textureDepthSS = textureResources.make_new();
-		resource->textureDepthSS->type = GfxTextureType_2D;
+		resource->textureDepthSS->type = textureType;
+		resource->textureDepthSS->layers = layers;
 		resourceDepth = resource->textureDepthSS;
 
 		MTLTextureDescriptor *depthDescriptorSS = [[MTLTextureDescriptor alloc] init];
-		depthDescriptorSS.textureType = MTLTextureType2D;
+		depthDescriptorSS.textureType = MetalTextureTypesSS[textureType];
 		depthDescriptorSS.pixelFormat = MetalDepthStencilFormats[desc.depthFormat];
 		depthDescriptorSS.width = width;
 		depthDescriptorSS.height = height;
+		depthDescriptorSS.arrayLength = layers;
 		depthDescriptorSS.sampleCount = 1;
 		depthDescriptorSS.storageMode = desc.cpuAccess ? MTLStorageModeShared : MTLStorageModePrivate;
 		depthDescriptorSS.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
@@ -2337,19 +2394,21 @@ bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 		ErrorReturnIf( mtlTextures[resource->textureDepthSS->id] == nil, false,
 			"%s: Failed to create depth MTLTexture for render target!", __FUNCTION__ );
 
-		resource->size += GFX_SIZE_IMAGE_DEPTH_BYTES( width, height, 1, desc.depthFormat );
+		resource->size += GFX_SIZE_IMAGE_DEPTH_BYTES( width, height, layers, desc.depthFormat );
 
 		if( desc.sampleCount > 1 )
 		{
 			Assert( resource->textureDepthMS == nullptr );
 			resource->textureDepthMS = textureResources.make_new();
-			resource->textureDepthMS->type = GfxTextureType_2D;
+			resource->textureDepthMS->type = textureType;
+			resource->textureDepthMS->layers = layers;
 
 			MTLTextureDescriptor *depthDescriptorMS = [[MTLTextureDescriptor alloc] init];
-			depthDescriptorMS.textureType = MTLTextureType2DMultisample;
+			depthDescriptorMS.textureType = MetalTextureTypesMS[textureType];
 			depthDescriptorMS.pixelFormat = MetalDepthStencilFormats[desc.depthFormat];
 			depthDescriptorMS.width = width;
 			depthDescriptorMS.height = height;
+			depthDescriptorMS.arrayLength = layers;
 			depthDescriptorMS.sampleCount = desc.sampleCount;
 			depthDescriptorMS.storageMode = desc.cpuAccess ? MTLStorageModeShared : MTLStorageModePrivate;
 			depthDescriptorMS.usage = MTLTextureUsageRenderTarget;
@@ -2359,7 +2418,7 @@ bool CoreGfx::api_render_target_init( GfxRenderTargetResource *&resource,
 			ErrorReturnIf( mtlTextures[resource->textureDepthMS->id] == nil, false,
 				"%s: Failed to create multisample depth MTLTexture for render target!", __FUNCTION__ );
 
-			resource->size += GFX_SIZE_IMAGE_DEPTH_BYTES( width, height, 1, desc.depthFormat ) * desc.sampleCount;
+			resource->size += GFX_SIZE_IMAGE_DEPTH_BYTES( width, height, layers, desc.depthFormat ) * desc.sampleCount;
 		}
 	}
 
@@ -2886,7 +2945,7 @@ void CoreGfx::api_render_command_execute_post( const GfxRenderCommand &command )
 
 void CoreGfx::api_render_pass_begin( const GfxRenderPass &pass )
 {
-	bind_targets( pass.targets );
+	bind_targets( pass.targets, pass.layers );
 }
 
 
@@ -2895,4 +2954,4 @@ void CoreGfx::api_render_pass_end( const GfxRenderPass &pass )
 	// NOTE: Do nothing here, since subsequent api_render_pass_begin() will rebind targets
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////#include <manta/gfx.hpp>

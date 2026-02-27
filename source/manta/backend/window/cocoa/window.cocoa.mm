@@ -567,13 +567,6 @@ namespace CoreWindow
 	}
 
 
-	void terminal_init()
-	{
-	#if WINDOW_ENABLED
-	#endif
-	}
-
-
 	void set_caption( const char *caption )
 	{
 	#if WINDOW_ENABLED
@@ -651,10 +644,24 @@ namespace Window
 		NSRect contentRect = { { 0, 0 }, { static_cast<CGFloat>( width ), static_cast<CGFloat>( height ) } };
 		NSRect frame = [CoreWindow::window frameRectForContentRect: contentRect];
 
-		// Receneter window
+		// Recenter window
 		NSRect screenRect = [[NSScreen mainScreen] frame];
 		frame.origin.x = ( screenRect.size.width - frame.size.width ) / 2;
 		frame.origin.y = ( screenRect.size.height - frame.size.height ) / 2;
+
+		[CoreWindow::window setFrame: frame display: YES animate: YES];
+	#endif
+	}
+
+
+	void set_position( int x, int y )
+	{
+	#if WINDOW_ENABLED
+		NSRect contentRect = { { 0, 0 }, { static_cast<CGFloat>( width ), static_cast<CGFloat>( height ) } };
+		NSRect frame = [CoreWindow::window frameRectForContentRect: contentRect];
+		NSRect screenRect = [[NSScreen mainScreen] frame];
+		frame.origin.x = x;
+		frame.origin.y = y;
 
 		[CoreWindow::window setFrame: frame display: YES animate: YES];
 	#endif

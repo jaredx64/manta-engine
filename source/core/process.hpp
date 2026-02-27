@@ -15,7 +15,7 @@ struct Process
 	int exitCode;
 };
 
-static bool process_launch( Process &process, const char *exe, char **argv );
+static bool process_launch( Process &process, const char *exe, char **argv, int instanceID = 0 );
 static bool process_poll( Process &process );
 static void process_wait( Process &process );
 
@@ -26,7 +26,7 @@ static void process_wait( Process &process );
 #include <vendor/string.hpp>
 #include <vendor/stdio.hpp>
 
-static bool process_launch( Process &process, const char *exe, char **argv )
+static bool process_launch( Process &process, const char *exe, char **argv, int instanceID )
 {
 	STARTUPINFOA si { };
 	PROCESS_INFORMATION pi { };
@@ -38,7 +38,12 @@ static bool process_launch( Process &process, const char *exe, char **argv )
 	{
 		strncat( cmd, " ", sizeof( cmd ) - strlen( cmd ) - 1 );
 		strncat( cmd, argv[i], sizeof( cmd ) - strlen( cmd ) - 1 );
+
 	}
+
+	char instance[32];
+	snprintf( instance, sizeof( instance ), " -instance=%d", instanceID );
+	strncat( cmd, instance, sizeof( cmd ) - strlen( cmd ) - 1 );
 
 	if( !CreateProcessA( nullptr, cmd, nullptr, nullptr, false, 0, nullptr, nullptr, &si, &pi ) ) { return false; }
 
@@ -87,7 +92,7 @@ static void process_wait( Process &process )
 
 #include <vendor/posix.hpp>
 
-static bool process_launch( Process &process, const char *exe, char **argv )
+static bool process_launch( Process &process, const char *exe, char **argv, int instanceID )
 {
 	// TODO: Ideally each process should spawn its own terminal, like Windows
 
